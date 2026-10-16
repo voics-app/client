@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+release/
+coverage/
+target/
+*.node
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+.vite/
+*.log
+.DS_Store
+native.d.ts
