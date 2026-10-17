@@ -20,7 +20,7 @@ function tokens(initial = 'old') {
 describe('HttpClient', () => {
   it('sends JSON with the bearer token to /api/v1', async () => {
     const fetchFn = vi.fn(async () => json(200, { ok: true }));
-    const client = new HttpClient({ baseUrl: 'https://api.test/', fetch: fetchFn, tokens: tokens() });
+    const client = new HttpClient({ baseUrl: 'https://api.test/', fetch: fetchFn as unknown as typeof fetch, tokens: tokens() });
     await expect(client.request('POST', '/guilds', { body: { name: 'x' } })).resolves.toEqual({ ok: true });
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://api.test/api/v1/guilds');
@@ -29,8 +29,8 @@ describe('HttpClient', () => {
   });
 
   it('serialises query parameters, skipping undefined', async () => {
-    const fetchFn = vi.fn(async () => json(200, []));
-    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn, tokens: tokens() });
+    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => json(200, []));
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn as unknown as typeof fetch, tokens: tokens() });
     await client.request('GET', '/channels/1/messages', { query: { before: '9', after: undefined, limit: 50 } });
     expect(fetchFn.mock.calls[0]![0]).toBe('https://api.test/api/v1/channels/1/messages?before=9&limit=50');
   });
@@ -41,7 +41,7 @@ describe('HttpClient', () => {
       const auth = (init?.headers as Record<string, string>).Authorization;
       return auth === 'Bearer new' ? json(200, { ok: 1 }) : json(401, { code: 0, message: '401: Unauthorized' });
     });
-    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn, tokens: t });
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn as unknown as typeof fetch, tokens: t });
     const results = await Promise.all([client.request('GET', '/users/@me'), client.request('GET', '/users/@me/settings')]);
     expect(results).toEqual([{ ok: 1 }, { ok: 1 }]);
     expect(t.refresh).toHaveBeenCalledTimes(1);
@@ -61,7 +61,7 @@ describe('HttpClient', () => {
       calls += 1;
       return calls === 1 ? json(429, { code: 429, message: 'slow down', retry_after: 0.25 }) : json(200, { ok: true });
     });
-    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn, tokens: tokens() });
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn as unknown as typeof fetch, tokens: tokens() });
     const pending = client.request('GET', '/x');
     await vi.advanceTimersByTimeAsync(300);
     await expect(pending).resolves.toEqual({ ok: true });

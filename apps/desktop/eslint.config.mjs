@@ -20,7 +20,7 @@ export default tseslint.config(
         'error',
         {
           patterns: [
-            { group: ['react', 'react-dom', 'zustand', 'electron'], message: 'domain must stay framework-free', importNamesPattern: '.*' },
+            { group: ['react', 'react-dom', 'zustand', 'electron'], message: 'domain must stay framework-free' },
           ],
         },
       ],

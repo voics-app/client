@@ -7,7 +7,9 @@ import { randomBytes } from 'node:crypto';
 import type { CryptoBridge, CryptoMethod, CryptoStatus, LocalMessageRecord } from '../shared/ipc';
 import { readSecret, userDataPath, writeSecret } from './persistence';
 
-type NativeModule = typeof import('@discordy/crypto');
+import type * as NativeModuleNs from '@discordy/crypto';
+
+type NativeModule = typeof NativeModuleNs;
 type NativeEngine = InstanceType<NativeModule['NativeCrypto']>;
 
 const b64 = (buf: Buffer): string => buf.toString('base64');

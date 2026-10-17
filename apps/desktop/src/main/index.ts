@@ -1,5 +1,6 @@
 /** Main-process composition root. */
-import { BrowserWindow, app } from 'electron';
+import type { BrowserWindow} from 'electron';
+import { app } from 'electron';
 import { join } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';

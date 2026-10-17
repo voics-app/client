@@ -1,5 +1,6 @@
 /** IPC handlers: the only path from the sandboxed renderer to privileged APIs. */
-import { BrowserWindow, Notification, app, ipcMain, shell } from 'electron';
+import type { BrowserWindow} from 'electron';
+import { Notification, app, ipcMain, shell } from 'electron';
 import { IpcChannel, type AppInfo, type ConnectionProfile, type NotificationRequest, type StoredSession, type CaptureSelection } from '../shared/ipc';
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
