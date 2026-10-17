@@ -54,6 +54,7 @@ export class GatewayClient implements GatewayPort {
   private readonly dispatch = new Listeners<[string, unknown]>();
   private readonly stateChange = new Listeners<[GatewayState]>();
   private readonly fatal = new Listeners<[number]>();
+  private readonly opFrames = new Listeners<[number, unknown]>();
   private readonly random: () => number;
 
   constructor(private readonly options: GatewayClientOptions) {
@@ -70,6 +71,11 @@ export class GatewayClient implements GatewayPort {
 
   onFatal(listener: (code: number) => void): () => void {
     return this.fatal.add(listener);
+  }
+
+  /** Non-dispatch frames such as E2EE_ENVELOPE (20), P2P_SIGNAL (22) and WATCH_TOGETHER (24). */
+  onOp(listener: (op: number, data: unknown) => void): () => void {
+    return this.opFrames.add(listener);
   }
 
   connect(): void {
@@ -170,7 +176,7 @@ export class GatewayClient implements GatewayPort {
         this.handleDispatch(frame);
         break;
       default:
-        if (frame.t) this.dispatch.emit(frame.t, frame.d);
+        this.opFrames.emit(frame.op, frame.d);
     }
   }
 

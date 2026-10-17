@@ -8,4 +8,5 @@ export interface GatewayPort {
   onDispatch(listener: (event: string, data: unknown) => void): () => void;
   onState(listener: (state: GatewayState) => void): () => void;
   onFatal(listener: (code: number) => void): () => void;
+  onOp(listener: (op: number, data: unknown) => void): () => void;
 }
