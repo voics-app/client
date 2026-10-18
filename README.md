@@ -73,5 +73,5 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 ## Pending owner actions
 
 - Code signing certificates for Windows and macOS (installers are unsigned).
-- A STUN/TURN server for P2P across restrictive NATs; `iceServers` is empty until one is provisioned.
+- A STUN/TURN server for P2P across restrictive NATs. The gateway READY payload carries `turn` (coturn REST credentials, 1h TTL); the client builds `iceServers` from it (plus a derived STUN entry) and re-identifies at 80% of the TTL to refresh them.
 - The generated `@discordy-voics/contracts` package, once published, replaces `apps/desktop/src/shared/contracts`.

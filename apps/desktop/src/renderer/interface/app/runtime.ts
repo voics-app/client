@@ -6,12 +6,13 @@ import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/application/sessionManager';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
+import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
 import { HttpClient } from '@renderer/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
-import type { AuthResponse } from '@shared/contracts/rest';
+import type { AuthResponse, ReadyPayload } from '@shared/contracts/rest';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { notifyIncoming } from './notifications';
@@ -90,6 +91,7 @@ export function createRuntime(info: AppInfo): Runtime {
     invalidate: (key) => void queryClient.invalidateQueries({ queryKey: [...key] }),
   });
   let identityUserId = '';
+  const turn = new TurnCredentials(() => gateway.renewSession());
   const privacy = new PrivateMessaging({
     gateway,
     api,
@@ -99,10 +101,12 @@ export function createRuntime(info: AppInfo): Runtime {
       return { userId: s.user?.id ?? identityUserId, deviceId: s.deviceId ?? '', identityKeyB64: s.identityKeyB64 ?? '' };
     },
     createPeerConnection: browserPeerConnection,
+    iceServers: () => turn.iceServers(),
     deviceLabel: `Discordy ${info.platform}`,
   });
   gateway.onDispatch((event, data) => {
     dispatch(event, data);
+    if (event === 'READY') turn.update((data as ReadyPayload).turn);
     privacy.handleDispatch(event, data);
     if (event === 'READY' && useSessionStore.getState().deviceId) void privacy.start().catch(() => undefined);
   });
@@ -133,7 +137,10 @@ export function createRuntime(info: AppInfo): Runtime {
     },
     onChange: (signedIn) => {
       queryClient.clear();
-      if (!signedIn) privacy.stop();
+      if (!signedIn) {
+        privacy.stop();
+        turn.clear();
+      }
       for (const fn of signedIn ? hooks.onSignedIn : hooks.onSignedOut) fn();
     },
   });

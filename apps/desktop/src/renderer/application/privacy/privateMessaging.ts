@@ -19,7 +19,7 @@ export interface PrivateMessagingDeps {
   getSelf: () => SelfIdentity;
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   now?: () => number;
-  iceServers?: PeerConnectionConfig['iceServers'];
+  iceServers?: () => PeerConnectionConfig['iceServers'];
   deviceLabel?: string;
 }
 

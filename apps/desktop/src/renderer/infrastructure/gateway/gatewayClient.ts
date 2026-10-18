@@ -96,6 +96,14 @@ export class GatewayClient implements GatewayPort {
     this.setState('closed');
   }
 
+  /** Forces a fresh IDENTIFY (RESUME does not repeat READY) so the gateway mints new TURN credentials. */
+  renewSession(): void {
+    if (this.manualClose || this.state === 'idle' || this.state === 'closed') return;
+    this.sessionId = null;
+    this.sequence = null;
+    this.reconnect(false);
+  }
+
   send(op: number, d: unknown): void {
     const frame = JSON.stringify({ op, d });
     if (op === GatewayOp.HEARTBEAT) {

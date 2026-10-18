@@ -374,6 +374,15 @@ export interface AttachmentUploadSlot {
   upload_filename: string;
 }
 
+/** Short-lived coturn REST credentials minted by the gateway (P2 TURN_URLS / TURN_STATIC_AUTH_SECRET). */
+export interface TurnCredentials {
+  urls: string[];
+  username: string;
+  credential: string;
+  /** Seconds the credential stays valid. */
+  ttl: number;
+}
+
 export interface ReadyPayload {
   v: number;
   user: User;
@@ -385,4 +394,5 @@ export interface ReadyPayload {
   user_settings: UserSettings;
   read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
   presences?: PresenceUpdate[];
+  turn?: TurnCredentials;
 }
