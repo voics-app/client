@@ -23,7 +23,7 @@ export type UserSettingsTab =
   | 'connection'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'bans' | 'audit' | 'automod';
+export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'bans' | 'audit';
 
 export type Dialog =
   | { kind: 'createGuild' }

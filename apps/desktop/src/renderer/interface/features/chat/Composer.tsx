@@ -1,0 +1,280 @@
+import { ArrowBendUpLeft, File as FileIcon, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { Permission } from '@shared/contracts/permissions';
+import type { Channel, DeliveryMode } from '@shared/contracts/rest';
+import { reportError } from '../../app/actions';
+import { getRuntime } from '../../app/runtime';
+import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
+import { displayName } from '../../shared/hooks/useNames';
+import { Avatar } from '../../shared/ui/Avatar';
+import { IconButton } from '../../shared/ui/IconButton';
+import { ModeSwitcher } from '../privacy/ModeSwitcher';
+import { PeerStatus } from '../privacy/PeerStatus';
+import { useEmojiPopover } from './EmojiPopover';
+
+const MAX_FILES = 10;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const TYPING_INTERVAL_MS = 8000;
+
+interface Suggestion {
+  kind: 'user' | 'channel' | 'role' | 'emoji';
+  key: string;
+  label: string;
+  detail?: string;
+  insert: string;
+  avatar?: { id: string; name: string; avatar: string | null };
+  /** Mention token to translate on send, e.g. `@ada` -> `<@123>`. */
+  mention?: { token: string; wire: string };
+}
+
+function activeToken(text: string, caret: number): { trigger: '@' | '#' | ':'; query: string; start: number } | null {
+  const before = text.slice(0, caret);
+  const m = /(^|\s)([@#:])([\w.-]{0,32})$/.exec(before);
+  if (!m) return null;
+  const trigger = m[2] as '@' | '#' | ':';
+  if (trigger === ':' && m[3]!.length < 2) return null;
+  return { trigger, query: m[3]!.toLowerCase(), start: caret - m[3]!.length - 1 };
+}
+
+export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const [text, setText] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [caret, setCaret] = useState(0);
+  const [selected, setSelected] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const mentionMap = useRef(new Map<string, string>());
+  const lastTyping = useRef(0);
+  const perms = useChannelPermissions(channel.id);
+  const replyTo = useUiStore((s) => s.replyTo[channel.id]);
+  const setReplyTo = useUiStore((s) => s.setReplyTo);
+  const members = useGuildStore((s) => (channel.guild_id ? s.members[channel.guild_id] : undefined));
+  const guild = useGuildStore((s) => (channel.guild_id ? s.guilds[channel.guild_id] : undefined));
+  const channels = useGuildStore((s) => s.channels);
+  const density = usePrefsStore((s) => s.density);
+
+  const standard = mode === 'standard';
+  const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
+  const canAttach = standard && (!channel.guild_id || can(perms, Permission.ATTACH_FILES));
+
+  const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));
+
+  function insertAtCaret(value: string): void {
+    const el = ref.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + value + text.slice(end);
+    setText(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + value.length, start + value.length);
+      setCaret(start + value.length);
+    });
+  }
+
+  useEffect(() => {
+    ref.current?.focus();
+  }, [channel.id]);
+  useEffect(() => {
+    if (replyTo) ref.current?.focus();
+  }, [replyTo]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+  }, [text]);
+
+  const token = activeToken(text, caret);
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!token) return [];
+    if (token.trigger === '@') {
+      const users = Object.values(members ?? {})
+        .filter((m) => displayName(m.user, m.nick).toLowerCase().includes(token.query) || m.user.username.toLowerCase().includes(token.query))
+        .slice(0, 8)
+        .map<Suggestion>((m) => {
+          const name = displayName(m.user, m.nick);
+          return { kind: 'user', key: m.user.id, label: name, detail: `@${m.user.username}`, insert: `@${name}`, avatar: { id: m.user.id, name, avatar: m.user.avatar }, mention: { token: `@${name}`, wire: `<@${m.user.id}>` } };
+        });
+      const roles = (guild?.roles ?? [])
+        .filter((r) => r.mentionable && r.id !== guild?.id && r.name.toLowerCase().includes(token.query))
+        .slice(0, 4)
+        .map<Suggestion>((r) => ({ kind: 'role', key: r.id, label: r.name, detail: 'Role', insert: `@${r.name}`, mention: { token: `@${r.name}`, wire: `<@&${r.id}>` } }));
+      const everyone = can(perms, Permission.MENTION_EVERYONE) && 'everyone'.startsWith(token.query) ? [{ kind: 'role', key: 'everyone', label: 'everyone', detail: 'Notify everyone', insert: '@everyone' } satisfies Suggestion] : [];
+      return [...users, ...roles, ...everyone].slice(0, 8);
+    }
+    if (token.trigger === '#') {
+      return Object.values(channels)
+        .filter((c) => c.guild_id === channel.guild_id && c.type === 0 && (c.name ?? '').includes(token.query))
+        .slice(0, 8)
+        .map<Suggestion>((c) => ({ kind: 'channel', key: c.id, label: c.name ?? '', insert: `#${c.name}`, mention: { token: `#${c.name}`, wire: `<#${c.id}>` } }));
+    }
+    return (guild ? guild.emojis : [])
+      .filter((e) => e.id && e.name && e.name.toLowerCase().includes(token.query))
+      .slice(0, 8)
+      .map<Suggestion>((e) => ({ kind: 'emoji', key: e.id!, label: `:${e.name}:`, insert: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}> ` }));
+  }, [token, members, guild, channels, channel.guild_id, perms]);
+
+  useEffect(() => setSelected(0), [token?.trigger, token?.query]);
+
+  const accept = (s: Suggestion) => {
+    if (!token) return;
+    const next = `${text.slice(0, token.start)}${s.insert} ${text.slice(caret)}`;
+    if (s.mention) mentionMap.current.set(s.mention.token, s.mention.wire);
+    setText(next);
+    const pos = token.start + s.insert.length + 1;
+    requestAnimationFrame(() => {
+      ref.current?.focus();
+      ref.current?.setSelectionRange(pos, pos);
+      setCaret(pos);
+    });
+  };
+
+  const addFiles = useCallback(
+    (incoming: File[]) => {
+      if (!canAttach) {
+        reportError(new Error(standard ? 'You do not have permission to attach files here.' : 'Attachments are not available in private delivery modes.'), 'Cannot attach files');
+        return;
+      }
+      const ok = incoming.filter((f) => f.size <= MAX_FILE_BYTES);
+      if (ok.length < incoming.length) reportError(new Error('Files must be 25 MB or smaller.'), 'File too large');
+      setFiles((prev) => [...prev, ...ok].slice(0, MAX_FILES));
+    },
+    [canAttach, standard],
+  );
+
+  const send = async () => {
+    let content = text.trim();
+    if (!content && files.length === 0) return;
+    for (const [tok, wire] of mentionMap.current) content = content.split(tok).join(wire);
+    const input = { content, files: files.length > 0 ? files : undefined, replyTo: replyTo?.id ?? null };
+    const draft = { text, files };
+    setText('');
+    setFiles([]);
+    setReplyTo(channel.id, null);
+    mentionMap.current.clear();
+    try {
+      await getRuntime().privacy.sender.send(channel, input);
+    } catch (e) {
+      if (!useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
+      setText((current) => current || draft.text);
+      setFiles((current) => (current.length > 0 ? current : draft.files));
+    }
+  };
+
+  const notifyTyping = () => {
+    if (!standard || !text) return;
+    const now = Date.now();
+    if (now - lastTyping.current < TYPING_INTERVAL_MS) return;
+    lastTyping.current = now;
+    void getRuntime().api.typing(channel.id).catch(() => undefined);
+  };
+
+  const wrapSelection = (mark: string) => {
+    const el = ref.current;
+    if (!el) return;
+    const { selectionStart: a, selectionEnd: b } = el;
+    const next = `${text.slice(0, a)}${mark}${text.slice(a, b)}${mark}${text.slice(b)}`;
+    setText(next);
+    requestAnimationFrame(() => el.setSelectionRange(a + mark.length, b + mark.length));
+  };
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    addFiles([...e.dataTransfer.files]);
+  };
+  const onPaste = (e: ClipboardEvent) => {
+    const pasted = [...e.clipboardData.files];
+    if (pasted.length > 0) {
+      e.preventDefault();
+      addFiles(pasted);
+    }
+  };
+
+  const placeholder = !canSend ? 'You do not have permission to send messages in this channel' : `Message ${channel.guild_id ? `#${channel.name}` : channel.recipients?.length === 1 ? `@${displayName(channel.recipients[0]!)}` : 'group'}`;
+  const replyName = replyTo ? displayName(replyTo.author) : '';
+
+  return (
+    <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+      <PeerStatus channel={channel} mode={mode} />
+      {suggestions.length > 0 && (
+        <ul className="suggestions glass" role="listbox" aria-label="Suggestions">
+          {suggestions.map((s, i) => (
+            <li key={s.key} role="option" aria-selected={i === selected}>
+              <button type="button" className={i === selected ? 'is-selected' : ''} onMouseEnter={() => setSelected(i)} onMouseDown={(e) => { e.preventDefault(); accept(s); }}>
+                {s.avatar && <Avatar id={s.avatar.id} name={s.avatar.name} avatar={s.avatar.avatar} size={22} />}
+                <span>{s.label}</span>
+                {s.detail && <span className="suggestion-detail">{s.detail}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={`composer${dragging ? ' is-dragging' : ''}${!canSend ? ' is-disabled' : ''}`}>
+        {replyTo && (
+          <div className="composer-reply">
+            <ArrowBendUpLeft size={14} /> Replying to <strong>{replyName}</strong>
+            <span className="composer-reply-text">{replyTo.content}</span>
+            <IconButton label="Cancel reply" size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
+          </div>
+        )}
+        {files.length > 0 && (
+          <ul className="composer-files">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${i}`}>
+                {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt="" onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)} /> : <FileIcon size={26} weight="light" />}
+                <span>{f.name}</span>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}><X size={12} /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="composer-row">
+          <IconButton label={canAttach ? 'Attach files' : 'Attachments unavailable in this mode'} disabled={!canAttach || !canSend} onClick={() => fileInput.current?.click()}>
+            <PlusCircle size={22} />
+          </IconButton>
+          <input ref={fileInput} type="file" multiple hidden onChange={(e) => { addFiles([...(e.target.files ?? [])]); e.target.value = ''; }} />
+          <textarea
+            ref={ref}
+            className="composer-input"
+            rows={1}
+            value={text}
+            disabled={!canSend}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            onChange={(e) => { setText(e.target.value); setCaret(e.target.selectionStart); notifyTyping(); }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onPaste={onPaste}
+            onKeyDown={(e) => {
+              if (suggestions.length > 0) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); setSelected((i) => (i + 1) % suggestions.length); return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); setSelected((i) => (i - 1 + suggestions.length) % suggestions.length); return; }
+                if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); accept(suggestions[selected]!); return; }
+                if (e.key === 'Escape') { setCaret(0); return; }
+              }
+              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); wrapSelection('**'); return; }
+              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') { e.preventDefault(); wrapSelection('*'); return; }
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); }
+              if (e.key === 'Escape' && replyTo) setReplyTo(channel.id, null);
+            }}
+          />
+          <ModeSwitcher channel={channel} mode={mode} />
+          <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
+          <IconButton label="Send message" tone="accent" active={Boolean(text.trim() || files.length)} disabled={!canSend || (!text.trim() && files.length === 0)} onClick={() => void send()}>
+            <PaperPlaneRight size={20} weight="fill" />
+          </IconButton>
+        </div>
+        {!standard && (
+          <p className="composer-note"><LockSimple size={12} weight="fill" /> {mode === 'ephemeral' ? 'End-to-end encrypted with MLS. Kept only on your devices.' : 'Sent directly to your peer. Kept only on your devices.'}</p>
+        )}
+        {dragging && <div className="drop-overlay">Drop files to attach</div>}
+      </div>
+      {emoji.node}
+    </div>
+  );
+}
