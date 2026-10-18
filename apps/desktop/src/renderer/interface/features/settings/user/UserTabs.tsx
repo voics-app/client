@@ -260,10 +260,14 @@ export function VoiceTab() {
         <Field label="Input volume">{() => <Slider label="Input volume" value={prefs.inputVolume} min={0} max={2} step={0.05} onChange={(v) => prefs.set('inputVolume', v)} format={(v) => `${Math.round(v * 100)}%`} />}</Field>
         <Field label="Output volume">{() => <Slider label="Output volume" value={prefs.outputVolume} min={0} max={2} step={0.05} onChange={(v) => prefs.set('outputVolume', v)} format={(v) => `${Math.round(v * 100)}%`} />}</Field>
       </div>
-      <div className="meter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={1} aria-valuenow={level}>
-        <span className="meter-fill" style={{ transform: `scaleX(${level})` }} />
-        {prefs.inputMode === 'vad' && <span className="meter-threshold" style={{ left: `${prefs.vadThreshold * 100}%` }} />}
-      </div>
+      <Field label="Mic test" hint="Speak to see your input level.">
+        {() => (
+          <div className="meter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={1} aria-valuenow={level}>
+            <span className="meter-fill" style={{ transform: `scaleX(${level})` }} />
+            {prefs.inputMode === 'vad' && <span className="meter-threshold" style={{ left: `${prefs.vadThreshold * 100}%` }} />}
+          </div>
+        )}
+      </Field>
       <SettingRow title="Input mode"><Segmented label="Input mode" value={prefs.inputMode} onChange={(v) => prefs.set('inputMode', v)} options={[{ value: 'vad', label: 'Voice activity' }, { value: 'ptt', label: 'Push to talk' }]} /></SettingRow>
       {prefs.inputMode === 'vad' ? (
         <SettingRow title="Sensitivity" description="Speech above the marker opens the microphone."><Slider label="Voice activity threshold" value={prefs.vadThreshold} min={0.02} max={0.6} step={0.01} onChange={(v) => prefs.set('vadThreshold', v)} /></SettingRow>

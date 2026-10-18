@@ -7,6 +7,8 @@ export default tseslint.config(
   { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'stage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  // Plain Node diagnostic scripts (e.g. tests/live/attach-watch.mjs).
+  { files: ['**/*.mjs'], languageOptions: { globals: globals.node } },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
