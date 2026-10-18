@@ -8,7 +8,7 @@ C4Component
   Container_Boundary(main, "Main process") {
     Component(shell, "Window and policies", "Electron", "CSP, navigation guards, tray, single instance, deep links")
     Component(ipc, "IPC handlers", "Electron", "Typed channels; session vault, capture, hotkeys, updater")
-    Component(crypto, "Crypto host", "napi-rs", "OpenMLS, Ed25519, SQLCipher local store")
+    Component(crypto, "Crypto host", "napi-rs", "OpenMLS, Ed25519, encrypted SQLite local store (ChaCha20-Poly1305)")
   }
   Container_Boundary(preload, "Preload") {
     Component(bridge, "window.discordy", "contextBridge", "Whitelisted API")
@@ -36,7 +36,7 @@ C4Component
 ## Delivery modes
 
 - **Standard**: REST send with optimistic message reconciled by nonce; a 409 `50160` triggers re-resolution and the private path.
-- **Ephemeral**: one MLS group per channel (group id = channel id). Welcome and commit envelopes precede application messages over op 20. Incoming envelopes are decrypted, persisted in the SQLCipher store, shown, then ACKed (op 21).
+- **Ephemeral**: one MLS group per channel (group id = channel id). Welcome and commit envelopes precede application messages over op 20. Incoming envelopes are decrypted, persisted in the encrypted local store, shown, then ACKed (op 21).
 - **P2P**: WebRTC DataChannel; offer/answer/ICE relayed over op 22. Each side signs its DTLS fingerprint with its device identity key and verifies the peer's signature against the published identity key. Unverified peers are refused.
 
 ## Voice

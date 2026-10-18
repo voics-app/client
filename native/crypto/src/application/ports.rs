@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use crate::domain::error::CryptoError;
 use crate::domain::message::LocalMessage;
 
-/// Device-local encrypted persistence (SQLCipher in production, memory in tests).
+/// Device-local encrypted persistence (encrypted SQLite in production, memory in tests).
 pub trait SecureStore: Send {
     fn load_identity(&self) -> Result<Option<Vec<u8>>, CryptoError>;
     fn save_identity(&self, secret: &[u8]) -> Result<(), CryptoError>;

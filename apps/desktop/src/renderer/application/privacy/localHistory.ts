@@ -1,4 +1,4 @@
-/** Local private-message history in the SQLCipher store (via the crypto bridge). */
+/** Local private-message history in the encrypted local store (via the crypto bridge). */
 import type { CryptoBridge } from '@shared/ipc';
 import type { ChatMessage } from '../stores/messageStore';
 
