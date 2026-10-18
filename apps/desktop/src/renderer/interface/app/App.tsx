@@ -52,8 +52,9 @@ export function App() {
     void loadAppInfo()
       .then(async (info) => {
         const rt = createRuntime(info);
-        registerEngines(rt);
+        // StrictMode runs this effect twice in dev; only the surviving runtime gets the engines.
         if (!alive) return;
+        registerEngines(rt);
         setRuntime(rt);
         await rt.session.boot();
       })
