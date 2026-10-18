@@ -11,7 +11,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use crate::application::ports::SecureStore;
 use crate::domain::error::CryptoError;
 use crate::domain::identity::DeviceIdentity;
-use crate::domain::message::{AddMembersOutcome, Incoming, LocalMessage};
+use crate::domain::message::{AddMembersOutcome, RemoveMembersOutcome, Incoming, LocalMessage};
 use crate::infrastructure::mls_provider::{diff_state, PersistentProvider};
 
 pub const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -131,6 +131,41 @@ impl<S: SecureStore> CryptoEngine<S> {
             welcome: welcome.tls_serialize_detached().map_err(mls_err)?,
             epoch: group.epoch().as_u64(),
         })
+    }
+
+    /// Signature (identity) public keys of every current leaf, own device included.
+    pub fn member_keys(&self, group_id: &[u8]) -> Result<Vec<Vec<u8>>, CryptoError> {
+        let group = self.require_group(group_id)?;
+        Ok(group.members().map(|m| m.signature_key).collect())
+    }
+
+    /// Commits the removal of the leaves owning `signature_keys` and advances the epoch.
+    /// Keys that are not (or no longer) in the group are skipped; if none match, nothing is committed.
+    pub fn remove_members(
+        &mut self,
+        group_id: &[u8],
+        signature_keys: &[Vec<u8>],
+    ) -> Result<Option<RemoveMembersOutcome>, CryptoError> {
+        let mut group = self.require_group(group_id)?;
+        let signer = self.signer()?;
+        let own = self.identity()?.public_bytes().to_vec();
+        let targets: Vec<LeafNodeIndex> = group
+            .members()
+            .filter(|m| m.signature_key != own && signature_keys.contains(&m.signature_key))
+            .map(|m| m.index)
+            .collect();
+        if targets.is_empty() {
+            return Ok(None);
+        }
+        let (commit, _welcome, _group_info) = group
+            .remove_members(&self.provider, &signer, &targets)
+            .map_err(mls_err)?;
+        group.merge_pending_commit(&self.provider).map_err(mls_err)?;
+        self.persist()?;
+        Ok(Some(RemoveMembersOutcome {
+            commit: commit.tls_serialize_detached().map_err(mls_err)?,
+            epoch: group.epoch().as_u64(),
+        }))
     }
 
     /// Joins a group from a Welcome and returns `(group_id, epoch)`.
@@ -308,6 +343,45 @@ mod tests {
         let a = alice.export_secret(b"channel-42", "dave-media", b"", 32).unwrap();
         let b = bob.export_secret(b"channel-42", "dave-media", b"", 32).unwrap();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn removed_device_cannot_read_after_the_removal_commit() {
+        let mut alice = engine("alice:1");
+        let mut bob = engine("bob:2");
+        let mut carol = engine("carol:3");
+        let bob_key = bob.ensure_identity().unwrap().to_vec();
+        let packages = [
+            bob.generate_key_packages(1).unwrap().remove(0),
+            carol.generate_key_packages(1).unwrap().remove(0),
+        ];
+        alice.create_group(b"g").unwrap();
+        let added = alice.add_members(b"g", &packages).unwrap();
+        bob.join_from_welcome(&added.welcome).unwrap();
+        carol.join_from_welcome(&added.welcome).unwrap();
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 3);
+
+        let removal = alice.remove_members(b"g", &[bob_key.clone()]).unwrap().unwrap();
+        assert_eq!(removal.epoch, added.epoch + 1);
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
+        assert!(!alice.member_keys(b"g").unwrap().contains(&bob_key));
+        // Already removed: nothing left to commit.
+        assert!(alice.remove_members(b"g", &[bob_key]).unwrap().is_none());
+
+        let carol_before = carol.export_secret(b"g", "dave-media", b"", 32).unwrap();
+        assert!(matches!(carol.process_incoming(b"g", &removal.commit).unwrap(), Incoming::Commit { .. }));
+        bob.process_incoming(b"g", &removal.commit).ok();
+
+        let (ciphertext, _) = alice.encrypt(b"g", b"after removal").unwrap();
+        assert!(matches!(
+            carol.process_incoming(b"g", &ciphertext).unwrap(),
+            Incoming::Application { .. }
+        ));
+        assert!(bob.process_incoming(b"g", &ciphertext).is_err());
+
+        let alice_secret = alice.export_secret(b"g", "dave-media", b"", 32).unwrap();
+        assert_eq!(alice_secret, carol.export_secret(b"g", "dave-media", b"", 32).unwrap());
+        assert_ne!(alice_secret, carol_before, "media key must rotate on the epoch change");
     }
 
     #[test]

@@ -16,6 +16,7 @@ function setup(supported = true) {
     joinFromWelcome: vi.fn(async () => ({ groupId: 'voice:g', epoch: 5 })),
     processIncoming: vi.fn(async () => ({ kind: 'commit' as const, epoch: 3 })),
     exportSecret: vi.fn(async () => b64([1, 2, 3, 4])),
+    removeMembers: vi.fn(async (_group: string, _keys: string[]) => ({ commitB64: 'rc', epoch: 4 }) as { commitB64: string; epoch: number } | null),
   };
   const cryptor = {
     supported,
@@ -32,6 +33,7 @@ function setup(supported = true) {
     userId: 'me',
     crypto,
     cryptor,
+    identityKeysOf: async () => ['key-of-leaver'],
     send: (op, d) => sent.push({ op, d }),
     onActive: (a) => active.push(a),
     onError: (m) => errors.push(m),
@@ -113,5 +115,25 @@ describe('DaveSession', () => {
     crypto.processIncoming.mockRejectedValueOnce(new Error('bad commit'));
     await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 2, commit_b64: 'x' });
     expect(errors).toEqual(['bad commit']);
+  });
+});
+
+describe('DaveSession participant removal', () => {
+  it('commits the removal of a departed participant and rotates the media key on the new epoch', async () => {
+    const { dave, crypto, cryptor, sent } = setup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    cryptor.setEpoch.mockClear();
+
+    await dave.participantLeft('leaver');
+
+    expect(crypto.removeMembers).toHaveBeenCalledWith('voice:g', ['key-of-leaver']);
+    expect(cryptor.setEpoch.mock.calls[0]![0]).toBe(4);
+    expect(sent.at(-1)).toEqual({ op: VoiceOp.DAVE_MLS_COMMIT_WELCOME, d: { transition_id: 1, commit_b64: 'rc', welcome_b64: '', user_ids: [] } });
+  });
+
+  it('does nothing on a device that is not the committer', async () => {
+    const { dave, crypto } = setup();
+    await dave.participantLeft('leaver');
+    expect(crypto.removeMembers).not.toHaveBeenCalled();
   });
 });

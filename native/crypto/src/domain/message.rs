@@ -28,3 +28,9 @@ pub struct AddMembersOutcome {
     pub welcome: Vec<u8>,
     pub epoch: u64,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoveMembersOutcome {
+    pub commit: Vec<u8>,
+    pub epoch: u64,
+}

@@ -75,9 +75,23 @@ export class PrivateMessaging {
     else if (op === GatewayOp.P2P_SIGNAL) void this.p2p.handleSignal(data as P2PSignal);
   }
 
+  /** Someone left, was kicked or banned: the remaining devices commit their removal from every group of the guild. */
+  private dropGuildMember(event: { guild_id: string; user?: { id: string } }): void {
+    if (event.user?.id === this.deps.getSelf().userId) return;
+    void this.ephemeral.reconcileAll(event.guild_id).catch(() => undefined);
+  }
+
+  private dropRecipient(event: { channel_id: string; user?: { id: string } }): void {
+    if (event.user?.id === this.deps.getSelf().userId) return;
+    void this.ephemeral.reconcileMembership(event.channel_id).catch(() => undefined);
+  }
+
   /** Feed gateway DISPATCH events (P2P_SIGNAL_FAILED, CHANNEL_DELIVERY_MODE_UPDATE). */
   handleDispatch(event: string, data: unknown): void {
     if (event === 'P2P_SIGNAL_FAILED') this.p2p.handleSignalFailed(data as P2PSignalFailed);
+    else if (event === 'GUILD_MEMBER_REMOVE' || event === 'GUILD_BAN_ADD') this.dropGuildMember(data as { guild_id: string; user?: { id: string } });
+    else if (event === 'CHANNEL_RECIPIENT_REMOVE') this.dropRecipient(data as { channel_id: string; user?: { id: string } });
+    else if (event === 'USER_DEVICES_UPDATE') void this.ephemeral.reconcileAll().catch(() => undefined);
     else if (event === 'CHANNEL_DELIVERY_MODE_UPDATE') {
       const update = data as ChannelDeliveryModeUpdate;
       const guilds = useGuildStore.getState();

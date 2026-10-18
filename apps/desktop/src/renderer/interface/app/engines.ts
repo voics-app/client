@@ -21,7 +21,11 @@ export function getEngines(): Engines | null {
 export function registerEngines(runtime: Runtime): Engines {
   if (engines) return engines;
 
-  const voice = createVoiceController({ gateway: runtime.gateway, platform: runtime.info.platform });
+  const voice = createVoiceController({
+    gateway: runtime.gateway,
+    platform: runtime.info.platform,
+    identityKeysOf: async (userId) => (await runtime.api.listUserDevices(userId)).map((d) => d.identity_key_b64),
+  });
   const watch = createWatchTogetherService(runtime.gateway);
 
   runtime.hooks.onVoiceServerUpdate = (update) => voice.onVoiceServerUpdate(update);

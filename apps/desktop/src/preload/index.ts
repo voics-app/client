@@ -17,6 +17,8 @@ const cryptoMethods: CryptoMethod[] = [
   'hasGroup',
   'createGroup',
   'addMembers',
+  'memberKeys',
+  'removeMembers',
   'joinFromWelcome',
   'encrypt',
   'processIncoming',

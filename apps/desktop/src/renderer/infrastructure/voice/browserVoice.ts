@@ -14,9 +14,11 @@ export interface BrowserVoiceOptions {
   gateway: Pick<GatewayPort, 'send'>;
   /** `process.platform` value from AppInfo; Windows enables loopback audio for screen share. */
   platform: string;
+  /** Identity public keys of a user's devices, used to remove departed participants from the media group. */
+  identityKeysOf?(userId: string): Promise<string[]>;
 }
 
-function createVoiceSession(params: SessionParams): VoiceSession {
+function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceOptions['identityKeysOf']): VoiceSession {
   const cryptor = new FrameCryptor();
   const bridge = window.discordy;
   const session = new VoiceSession({
@@ -32,7 +34,7 @@ function createVoiceSession(params: SessionParams): VoiceSession {
     cryptor,
     createDave: bridge
       ? (send, hooks) =>
-          new DaveSession({ groupId: `voice:${params.serverId}`, userId: params.userId, crypto: bridge.crypto, cryptor, send, ...hooks })
+          new DaveSession({ groupId: `voice:${params.serverId}`, userId: params.userId, crypto: bridge.crypto, cryptor, identityKeysOf, send, ...hooks })
       : undefined,
   });
   session.onStatus((status) => {
@@ -45,7 +47,7 @@ export function createVoiceController(options: BrowserVoiceOptions): VoiceContro
   const bridge = window.discordy;
   return new VoiceController({
     gateway: options.gateway,
-    createSession: createVoiceSession,
+    createSession: (params) => createVoiceSession(params, options.identityKeysOf),
     mic: createBrowserMicPipeline(),
     mixer: createBrowserMixer(),
     openCamera: (deviceId) =>

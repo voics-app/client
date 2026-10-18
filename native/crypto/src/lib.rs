@@ -31,6 +31,12 @@ pub struct AddMembersResult {
 }
 
 #[napi(object)]
+pub struct RemoveMembersResult {
+    pub commit: Buffer,
+    pub epoch: i64,
+}
+
+#[napi(object)]
 pub struct JoinResult {
     pub group_id: Buffer,
     pub epoch: i64,
@@ -120,6 +126,23 @@ impl NativeCrypto {
                 commit: o.commit.into(),
                 welcome: o.welcome.into(),
                 epoch: o.epoch as i64,
+            })
+        })
+    }
+
+    /// Identity (signature) public keys of every device currently in the group, own device included.
+    #[napi]
+    pub fn member_keys(&self, group_id: Buffer) -> Result<Vec<Buffer>> {
+        self.with(|e| e.member_keys(&group_id).map(|keys| keys.into_iter().map(Buffer::from).collect()))
+    }
+
+    /// Commits the removal of the devices owning `identity_keys`; `None` when none of them is a member.
+    #[napi]
+    pub fn remove_members(&self, group_id: Buffer, identity_keys: Vec<Buffer>) -> Result<Option<RemoveMembersResult>> {
+        let keys: Vec<Vec<u8>> = identity_keys.iter().map(|b| b.to_vec()).collect();
+        self.with(|e| {
+            e.remove_members(&group_id, &keys).map(|outcome| {
+                outcome.map(|o| RemoveMembersResult { commit: o.commit.into(), epoch: o.epoch as i64 })
             })
         })
     }
