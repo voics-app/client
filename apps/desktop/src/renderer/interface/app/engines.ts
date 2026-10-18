@@ -13,13 +13,23 @@ export interface Engines {
 }
 
 let engines: Engines | null = null;
+let boundRuntime: Runtime | null = null;
 
 export function getEngines(): Engines | null {
   return engines;
 }
 
+/** Binds the engines to `runtime`. Calling it with a different runtime (React StrictMode creates
+ * and discards one in dev) disposes the old engines and rebinds, so voice never sends through a
+ * gateway that was never connected. */
 export function registerEngines(runtime: Runtime): Engines {
-  if (engines) return engines;
+  if (engines && boundRuntime === runtime) return engines;
+  if (engines) {
+    engines.voice.dispose();
+    engines.watch.dispose();
+    engines = null;
+  }
+  boundRuntime = runtime;
 
   const voice = createVoiceController({
     gateway: runtime.gateway,
