@@ -66,6 +66,25 @@ describe('dispatchRouter', () => {
     useVoiceStore.getState().resetCall();
   });
 
+  it('accepts unavailable guild placeholders in READY and fills them from GUILD_CREATE', () => {
+    const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate: vi.fn() });
+    route('READY', {
+      v: 1,
+      user: me,
+      session_id: 's',
+      guilds: [{ id: '100', unavailable: true }],
+      private_channels: [],
+      relationships: [],
+      user_settings: {},
+    });
+    expect(useSessionStore.getState().status).toBe('ready');
+    expect(useGuildStore.getState().guilds['100']).toBeUndefined();
+
+    route('GUILD_CREATE', guild);
+    expect(useGuildStore.getState().order).toEqual(['100']);
+    expect(useGuildStore.getState().channels['200']?.name).toBe('general');
+  });
+
   it('hydrates every store from READY', () => {
     setup();
     expect(useSessionStore.getState().user?.id).toBe('1');

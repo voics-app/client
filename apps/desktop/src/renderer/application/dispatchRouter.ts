@@ -39,16 +39,23 @@ interface ReactionEvent {
 
 const meId = () => useSessionStore.getState().user?.id ?? null;
 
+/** READY lists guilds as `{id, unavailable: true}` placeholders (as Discord does); the full guild
+ * follows in its own GUILD_CREATE. Only complete guilds are hydrated here. */
+function isFullGuild(guild: GuildFull | { id: string; unavailable?: boolean }): guild is GuildFull {
+  return Array.isArray((guild as GuildFull).channels);
+}
+
 function hydrateReady(ready: ReadyPayload): void {
   const session = useSessionStore.getState();
   session.setUser(ready.user);
   session.setSettings(ready.user_settings ?? {});
-  useGuildStore.getState().hydrate(ready.guilds, ready.private_channels, ready.user_settings?.guild_positions);
+  const guilds = (ready.guilds as Array<GuildFull | { id: string; unavailable?: boolean }>).filter(isFullGuild);
+  useGuildStore.getState().hydrate(guilds, ready.private_channels, ready.user_settings?.guild_positions);
   useRelationshipStore.getState().hydrate(ready.relationships ?? []);
   useReadStateStore.getState().hydrate(ready.read_state ?? []);
-  const presences = [...(ready.presences ?? []), ...ready.guilds.flatMap((g) => g.presences ?? [])];
+  const presences = [...(ready.presences ?? []), ...guilds.flatMap((g) => g.presences ?? [])];
   usePresenceStore.getState().setMany(Object.fromEntries(presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
-  for (const g of ready.guilds) useVoiceStore.getState().hydrate(g.id, g.voice_states ?? []);
+  for (const g of guilds) useVoiceStore.getState().hydrate(g.id, g.voice_states ?? []);
   useSessionStore.setState({ sessionId: ready.session_id, status: 'ready' });
 }
 
