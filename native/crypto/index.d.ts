@@ -23,6 +23,11 @@ export interface IncomingResult {
   epoch?: number;
 }
 
+export interface RemoveMembersResult {
+  commit: Buffer;
+  epoch: number;
+}
+
 export interface StoredMessage {
   channelId: string;
   messageId: string;
@@ -40,6 +45,10 @@ export declare class NativeCrypto {
   hasGroup(groupId: Buffer): boolean;
   createGroup(groupId: Buffer): number;
   addMembers(groupId: Buffer, keyPackages: Buffer[]): AddMembersResult;
+  /** Identity (signature) public keys of every device currently in the group, own device included. */
+  memberKeys(groupId: Buffer): Buffer[];
+  /** Commits the removal of the devices owning `identityKeys`; null when none of them is a member. */
+  removeMembers(groupId: Buffer, identityKeys: Buffer[]): RemoveMembersResult | null;
   joinFromWelcome(welcome: Buffer): JoinResult;
   encrypt(groupId: Buffer, plaintext: Buffer): EncryptResult;
   processIncoming(groupId: Buffer, message: Buffer): IncomingResult;

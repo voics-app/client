@@ -117,7 +117,10 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
         usePresenceStore.getState().setMany(Object.fromEntries(d.presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
       }
     },
-    GUILD_BAN_ADD: (d: { guild_id: string }) => ctx.invalidate(['guild', d.guild_id, 'bans']),
+    GUILD_BAN_ADD: (d: { guild_id: string; user?: User }) => {
+      if (d.user) guilds().removeMember(d.guild_id, d.user.id);
+      ctx.invalidate(['guild', d.guild_id, 'bans']);
+    },
     GUILD_BAN_REMOVE: (d: { guild_id: string }) => ctx.invalidate(['guild', d.guild_id, 'bans']),
     GUILD_EMOJIS_UPDATE: (d: { guild_id: string; emojis: Emoji[] }) => guilds().setEmojis(d.guild_id, d.emojis),
     INVITE_CREATE: (d: { guild_id?: string }) => d.guild_id && ctx.invalidate(['guild', d.guild_id, 'invites']),

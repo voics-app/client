@@ -26,7 +26,7 @@ export const FRAME_KEY_LABEL = 'discordy-voice-frame-key-v1';
 
 export type DaveCrypto = Pick<
   CryptoBridge,
-  'generateKeyPackages' | 'hasGroup' | 'createGroup' | 'addMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
+  'generateKeyPackages' | 'hasGroup' | 'createGroup' | 'addMembers' | 'removeMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
 >;
 
 export interface DaveOptions {
@@ -34,6 +34,8 @@ export interface DaveOptions {
   userId: string;
   crypto: DaveCrypto;
   cryptor: FrameCryptorPort;
+  /** Identity public keys (base64) of every device of a user; needed to remove a departed participant. */
+  identityKeysOf?(userId: string): Promise<string[]>;
   send(op: number, d: unknown): void;
   onActive(active: boolean): void;
   onError(message: string): void;
@@ -63,6 +65,29 @@ export class DaveSession {
       return;
     }
     await this.guard(() => this.sendKeyPackage());
+  }
+
+  /**
+   * A participant left the call. The committer removes their devices and advances the epoch, which
+   * rotates the media key (derived from the new epoch's exporter secret) so the departed device
+   * cannot decrypt frames sent after the transition. Non-committers rotate on ANNOUNCE_COMMIT.
+   */
+  participantLeft(userId: string): Promise<void> {
+    return this.guard(async () => {
+      if (!this.committer || !this.options.identityKeysOf) return;
+      const keys = await this.options.identityKeysOf(userId);
+      const removal = await this.options.crypto.removeMembers(this.groupId, keys);
+      if (!removal) return;
+      this.transitionSeq += 1;
+      await this.installEpoch(removal.epoch);
+      this.pending.set(this.transitionSeq, removal.epoch);
+      this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, {
+        transition_id: this.transitionSeq,
+        commit_b64: removal.commitB64,
+        welcome_b64: '',
+        user_ids: [],
+      });
+    });
   }
 
   stop(): void {

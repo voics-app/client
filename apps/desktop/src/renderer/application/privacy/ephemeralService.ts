@@ -15,6 +15,7 @@ import { usePrivacyStore } from '../stores/privacyStore';
 import { useSessionStore } from '../stores/sessionStore';
 import type { DeviceDirectory} from './deviceDirectory';
 import { participantsOf } from './deviceDirectory';
+import { removeStaleDevices, type Membership } from './groupRemoval';
 import type { AttachmentService } from './attachmentService';
 import type { LocalHistory } from './localHistory';
 import {
@@ -44,9 +45,6 @@ export interface EphemeralDeps {
   getSelf: () => SelfIdentity;
   now: () => number;
 }
-
-/** deviceId -> userId of every device in the MLS group, as known to this device. */
-type Membership = Record<string, string>;
 
 interface KeyPackageMeta {
   uploadedAt: number;
@@ -86,6 +84,25 @@ export class EphemeralService {
   /** Handles one E2EE_ENVELOPE addressed to this device (gateway→client carries only our entry). */
   handleEnvelope(envelope: E2EEEnvelope): Promise<void> {
     return this.enqueue(() => this.receiveNow(envelope));
+  }
+
+  /**
+   * Re-checks the MLS group of a channel against its current participants and devices, and commits
+   * the removal of devices that no longer belong. `attempt` > 0 is a retry after a lost commit race.
+   */
+  reconcileMembership(channelId: string, attempt = 0): Promise<void> {
+    return this.enqueue(() => this.reconcileNow(channelId, attempt));
+  }
+
+  /** Reconciles every channel that has an MLS group, optionally limited to one guild. */
+  async reconcileAll(guildId?: string): Promise<void> {
+    const crypto = this.deps.crypto;
+    if (!crypto || !(await crypto.status()).available) return;
+    for (const channel of Object.values(useGuildStore.getState().channels)) {
+      if (guildId !== undefined && channel.guild_id !== guildId) continue;
+      if (!(await crypto.hasGroup(channel.id))) continue;
+      await this.reconcileMembership(channel.id).catch(() => undefined);
+    }
   }
 
   // ---- sending -----------------------------------------------------------------
@@ -160,6 +177,7 @@ export class EphemeralService {
     }
 
     try {
+      membership = await this.dropRemovedDevices(channelId, crypto, membership, { force: true });
       membership = await this.addMissingDevices(channelId, crypto, membership);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
@@ -168,6 +186,48 @@ export class EphemeralService {
     }
     await this.deps.history.putState(`mls-members:${channelId}`, membership);
     return membership;
+  }
+
+  /** Commits the removal of group devices that are no longer participants and relays the commit. */
+  private async dropRemovedDevices(
+    channelId: string,
+    crypto: CryptoBridge,
+    membership: Membership,
+    options: { attempt?: number; force?: boolean },
+  ): Promise<Membership> {
+    const deps = { crypto, devices: this.deps.devices, self: this.deps.getSelf() };
+    const { membership: next, commit } = await removeStaleDevices(deps, channelId, membership, options);
+    if (commit) {
+      if (commit.recipients.length > 0) {
+        const recipients = commit.recipients.map((r) => ({ ...r, ciphertext_b64: commit.commitB64 }));
+        this.relay(channelId, generateLocalId(this.deps.now()), 'commit', commit.epoch, recipients);
+      }
+      usePrivacyStore.getState().setGroup(channelId, 'ready', commit.epoch);
+    }
+    return next;
+  }
+
+  private async reconcileNow(channelId: string, attempt: number): Promise<void> {
+    const crypto = await this.requireCrypto();
+    if (!(await crypto.hasGroup(channelId))) return;
+    const key = `mls-members:${channelId}`;
+    const stored = (await this.deps.history.getState<Membership>(key)) ?? {};
+    try {
+      await this.deps.history.putState(key, await this.dropRemovedDevices(channelId, crypto, stored, { attempt }));
+    } catch (error) {
+      usePrivacyStore.getState().setGroup(channelId, 'error', undefined, error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** After a commit was applied: notice our own removal, otherwise prune and follow up on pending removals. */
+  private async afterCommit(channelId: string, crypto: CryptoBridge): Promise<void> {
+    const keys = await crypto.memberKeys(channelId);
+    if (!keys.includes(this.deps.getSelf().identityKeyB64)) {
+      await this.deps.history.putState(`mls-members:${channelId}`, {});
+      usePrivacyStore.getState().setGroup(channelId, 'error', undefined, 'This device was removed from the encrypted conversation.');
+      return;
+    }
+    await this.reconcileNow(channelId, 0);
   }
 
   private async currentDevices(channelId: string): Promise<Membership> {
@@ -238,9 +298,17 @@ export class EphemeralService {
           if (!accepted) privacy.setGroup(channelId, 'error', result.epoch, 'Dropped a message from an unknown device.');
         }
         if (result.epoch !== undefined) privacy.setGroup(channelId, 'ready', result.epoch);
+        if (result.kind === 'commit') await this.afterCommit(channelId, crypto);
       }
       this.ack(envelope);
     } catch (error) {
+      if (envelope.content_type === 'commit' && /epoch/i.test(error instanceof Error ? error.message : String(error))) {
+        // Lost a commit race: the lowest epoch wins, so this stale commit can never apply. Drop it and
+        // retry any removal that is still pending as the next committer in line.
+        this.ack(envelope);
+        await this.reconcileNow(channelId, 1);
+        return;
+      }
       // Not acknowledged: the gateway keeps the entry (7 day TTL) so it can be retried once the cause is fixed.
       privacy.setGroup(channelId, 'error', undefined, error instanceof Error ? error.message : String(error));
     }

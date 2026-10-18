@@ -67,6 +67,8 @@ export function fakeCrypto(gateway?: FakeGateway, available = true) {
       return 1;
     }),
     addMembers: vi.fn(async (_g: string, pkgs: string[]) => ({ commitB64: btoa(`commit:${pkgs.length}`), welcomeB64: btoa('welcome'), epoch: 2 })),
+    memberKeys: vi.fn(async (): Promise<string[]> => []),
+    removeMembers: vi.fn(async (): Promise<{ commitB64: string; epoch: number } | null> => null),
     joinFromWelcome: vi.fn(async () => {
       groups.add('500');
       return { groupId: '500', epoch: 3 };

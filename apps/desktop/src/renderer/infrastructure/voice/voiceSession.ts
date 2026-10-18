@@ -401,6 +401,7 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private onClientDisconnect({ user_id }: ClientDisconnect): void {
+    void this.dave?.participantLeft(user_id);
     for (const source of ['audio', 'camera', 'screen'] as const) this.upsertSource(user_id, source, 0, 0);
     const store = useVoiceStore.getState();
     store.setSpeaking(user_id, 0);

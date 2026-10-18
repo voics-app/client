@@ -70,6 +70,11 @@ export class CryptoHost {
       const r = this.requireEngine().addMembers(groupKey(groupId), packages.map(buf));
       return { commitB64: b64(r.commit), welcomeB64: b64(r.welcome), epoch: r.epoch };
     },
+    memberKeys: async (groupId) => this.requireEngine().memberKeys(groupKey(groupId)).map(b64),
+    removeMembers: async (groupId, identityKeys) => {
+      const r = this.requireEngine().removeMembers(groupKey(groupId), identityKeys.map(buf));
+      return r ? { commitB64: b64(r.commit), epoch: r.epoch } : null;
+    },
     joinFromWelcome: async (welcome) => {
       const r = this.requireEngine().joinFromWelcome(buf(welcome));
       return { groupId: r.groupId.toString('utf8'), epoch: r.epoch };
