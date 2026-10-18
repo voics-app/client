@@ -45,6 +45,8 @@ export interface CustomStatus {
 
 export interface UserSettings {
   default_delivery_mode: DeliveryMode;
+  /** Every call the user starts or joins is end-to-end encrypted (voice#8). */
+  e2ee_calls_default?: boolean;
   status?: PresenceStatus;
   custom_status?: CustomStatus | null;
   theme?: 'dark' | 'light' | 'oled';

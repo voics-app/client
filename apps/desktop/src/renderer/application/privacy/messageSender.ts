@@ -84,6 +84,12 @@ export class MessageSender {
     useSessionStore.getState().setSettings(settings);
   }
 
+  /** Account-wide: every call the user starts or joins is end-to-end encrypted (voice#8). */
+  async setE2eeCallsDefault(enabled: boolean): Promise<void> {
+    const settings = await this.deps.api.updateSettings({ e2ee_calls_default: enabled });
+    useSessionStore.getState().setSettings(settings);
+  }
+
   /** Server history for standard channels merged with the local encrypted store. */
   async loadHistory(channel: Channel, before?: string): Promise<void> {
     const mode = this.resolveMode(channel);
