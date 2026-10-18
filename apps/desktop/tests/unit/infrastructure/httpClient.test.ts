@@ -47,6 +47,14 @@ describe('HttpClient', () => {
     expect(t.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('reports a non-JSON error response with its HTTP status', async () => {
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: async () => new Response('<html>413 Request Entity Too Large</html>', { status: 413 }), tokens: tokens() });
+    const error = await client.request('PATCH', '/guilds/1', { body: {} }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(413);
+    expect((error as ApiError).message).toBe('Request failed with HTTP 413');
+  });
+
   it('reports an expired session when refresh fails', async () => {
     const t = { access: () => 'old', refresh: vi.fn(async () => null), expired: vi.fn() };
     const client = new HttpClient({ baseUrl: 'https://api.test', fetch: async () => json(401, { code: 0, message: 'no' }), tokens: t });

@@ -18,7 +18,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea } from '../../../shared/ui/Form';
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
-import { readAsDataUrl } from '../server/ServerTabs';
+import { readImageUpload } from '../imageUpload';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -67,16 +67,30 @@ export function ProfileTab() {
   const [bio, setBio] = useState(user?.bio ?? '');
   const [accent, setAccent] = useState(user?.accent_color ? `#${user.accent_color.toString(16).padStart(6, '0')}` : '#7c6cf0');
   const [avatar, setAvatar] = useState<string | undefined>();
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   if (!user) return null;
+  const chooseAvatar = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setAvatar(await readImageUpload(file));
+      setAvatarError(null);
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : 'Could not read the image.');
+    }
+  };
+
   const save = async () => {
     setSaving(true);
-    const updated = await attempt(() => getRuntime().api.updateMe({ global_name: globalName || null, bio, accent_color: parseInt(accent.slice(1), 16), ...(avatar ? { avatar } : {}) }), 'Could not save profile');
-    setSaving(false);
-    if (updated) {
-      useSessionStore.getState().setUser(updated);
-      setAvatar(undefined);
+    try {
+      const updated = await attempt(() => getRuntime().api.updateMe({ global_name: globalName || null, bio, accent_color: parseInt(accent.slice(1), 16), ...(avatar ? { avatar } : {}) }), 'Could not save profile');
+      if (updated) {
+        useSessionStore.getState().setUser(updated);
+        setAvatar(undefined);
+      }
+    } finally {
+      setSaving(false);
     }
   };
   return (
@@ -86,7 +100,8 @@ export function ProfileTab() {
           {avatar ? <img src={avatar} alt="" /> : <Avatar id={user.id} name={displayName(user)} avatar={user.avatar} size={96} />}
           <span><Upload size={18} /> Change</span>
         </button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setAvatar(await readAsDataUrl(f)); }} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => void chooseAvatar(e.target.files?.[0])} />
+        {avatarError && <p className="field-error" role="alert">{avatarError}</p>}
         <div className="stack grow">
           <Field label="Display name">{(id) => <Input id={id} value={globalName} maxLength={32} placeholder={user.username} onChange={(e) => setGlobalName(e.target.value)} />}</Field>
           <Field label="About me">{(id) => <TextArea id={id} value={bio} maxLength={190} onChange={(e) => setBio(e.target.value)} />}</Field>
