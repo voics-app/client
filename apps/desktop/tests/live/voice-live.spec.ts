@@ -5,6 +5,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const BASE = process.env.LIVE_BASE ?? 'http://localhost:18000';
 
@@ -41,6 +42,12 @@ test('bob joins a voice channel through the real client', async () => {
   await page.getByLabel('Password').fill('Discordy-dev-2026!');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('navigation', { name: 'Servers' })).toBeVisible({ timeout: 30_000 });
+  if (process.env.RECONNECT) {
+    // Drop the gateway connection the way a proxy restart does, then join after the client resumes.
+    execFileSync('docker', ['restart', 'discordy-caddy-1']);
+    await page.waitForTimeout(8_000);
+    console.log('[reconnect] caddy restarted');
+  }
   await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Discordy HQ' }).click();
   await page.getByRole('button', { name: /Lounge/ }).first().click();
 
