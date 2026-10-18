@@ -12,6 +12,7 @@
       "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src/renderer/**/*", "src/shared/**/*", "src/preload/api.d.ts", "tests/unit/**/*"],
+  "include": [
+    "brand.json","src/renderer/**/*", "src/shared/**/*", "src/preload/api.d.ts", "tests/unit/**/*"],
   "exclude": ["tests/unit/main/**"]
 }

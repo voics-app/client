@@ -11,6 +11,7 @@ import { LocalHistory } from './localHistory';
 import { MessageSender } from './messageSender';
 import { P2PService, type PeerConnectionConfig, type PeerConnectionLike } from './p2pService';
 import type { SelfIdentity } from './types';
+import { BRAND } from '@shared/brand';
 
 export interface PrivateMessagingDeps {
   gateway: GatewayPort;
@@ -65,7 +66,7 @@ export class PrivateMessaging {
 
   /** Step 1 (before registering the device): opens the encrypted store and returns the identity public key (base64). */
   initialiseIdentity(): Promise<string> {
-    return this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? 'Discordy desktop');
+    return this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? `${BRAND.displayName} desktop`);
   }
 
   /** Step 2 (after READY): publishes key packages when needed. Failures never block the rest of the app. */

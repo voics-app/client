@@ -1,10 +1,8 @@
 {
   "name": "@discordy/desktop",
-  "productName": "Discordy",
   "version": "0.1.0",
   "private": true,
-  "description": "Discordy desktop client",
-  "author": "Discordy <noreply@voics.nl>",
+  "description": "Desktop client (see brand.json)",
   "homepage": "https://discordy.voics.nl",
   "license": "UNLICENSED",
   "main": "./out/main/index.js",
@@ -17,9 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "electron-vite build && playwright test",
-    "dist:win": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --win nsis --publish never",
-    "dist:mac": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --mac dmg --publish never",
-    "dist:linux": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --linux AppImage deb --publish never"
+    "dist:win": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --win nsis --publish never",
+    "dist:mac": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --mac dmg --publish never",
+    "dist:linux": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --linux AppImage deb --publish never"
   },
   "dependencies": {
     "@discordy/crypto": "workspace:*",

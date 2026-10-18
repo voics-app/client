@@ -11,6 +11,7 @@ import { Field, Input } from '../../shared/ui/Form';
 import { gentle } from '../../shared/ui/motion';
 import { Segmented } from '../../shared/ui/Form';
 import { ConnectionPicker } from './ConnectionPicker';
+import { BRAND } from '@shared/brand';
 
 type Mode = 'login' | 'register';
 
@@ -64,7 +65,7 @@ export function AuthScreen() {
       <aside className="auth-hero" aria-hidden="false">
         <div className="orb orb-a" /><div className="orb orb-b" />
         <div className="auth-hero-inner">
-          <Eyebrow>Discordy</Eyebrow>
+          <Eyebrow>{BRAND.displayName}</Eyebrow>
           <h1>Talk the way you want to be heard.</h1>
           <p>Chat, voice, video and screen share with three delivery modes. The mode is always visible, never hidden.</p>
           <ul className="auth-points">

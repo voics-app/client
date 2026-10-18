@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'stage/**'] },
+  { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'stage/**', 'electron-builder.config.cjs'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   // Plain Node diagnostic scripts (e.g. tests/live/attach-watch.mjs).

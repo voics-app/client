@@ -48,14 +48,14 @@ describe('resolveUpdateFeed', () => {
 
 describe('routeFromDeepLink', () => {
   it('maps invites and channels', () => {
-    expect(routeFromDeepLink('voics://invite/AbC123')).toBe('/invite/AbC123');
-    expect(routeFromDeepLink('voics://channels/1/2')).toBe('/channels/1/2');
-    expect(routeFromDeepLink('voics://channels/@me/9')).toBe('/channels/@me/9');
+    expect(routeFromDeepLink('discordy://invite/AbC123')).toBe('/invite/AbC123');
+    expect(routeFromDeepLink('discordy://channels/1/2')).toBe('/channels/1/2');
+    expect(routeFromDeepLink('discordy://channels/@me/9')).toBe('/channels/@me/9');
   });
 
   it('ignores unknown or malicious links', () => {
     expect(routeFromDeepLink('https://evil.test')).toBeNull();
-    expect(routeFromDeepLink('voics://settings/../../x')).toBeNull();
-    expect(routeFromDeepLink('voics://invite/<script>')).toBeNull();
+    expect(routeFromDeepLink('discordy://settings/../../x')).toBeNull();
+    expect(routeFromDeepLink('discordy://invite/<script>')).toBeNull();
   });
 });

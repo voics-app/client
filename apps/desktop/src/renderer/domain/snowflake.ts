@@ -1,4 +1,4 @@
-/** Snowflake helpers (P5): 42 bits ms since the Discordy epoch, 10 bits worker, 12 bits sequence. */
+/** Snowflake helpers (P5): 42 bits ms since the platform epoch, 10 bits worker, 12 bits sequence. */
 
 export const DISCORDY_EPOCH_MS = 1767225600000;
 const BUCKET_MS = 864_000_000;

@@ -1,6 +1,7 @@
-/** `voics://` deep links → renderer routes. Anything unrecognised is dropped. */
+import { BRAND } from '../shared/brand';
+/** Brand-scheme deep links → renderer routes. Anything unrecognised is dropped. */
 
-export const PROTOCOL = 'voics';
+export const PROTOCOL = BRAND.protocolScheme;
 
 const ID = /^\d{1,20}$/;
 const INVITE = /^[A-Za-z0-9-]{2,32}$/;

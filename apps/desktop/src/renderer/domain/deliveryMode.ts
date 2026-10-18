@@ -1,5 +1,6 @@
 /** Delivery-mode rules (P11), mirrored client-side for the composer badge and settings UI. */
 import type { DeliveryMode } from '@shared/contracts/rest';
+import { BRAND } from '@shared/brand';
 
 const STRICTNESS: Record<DeliveryMode, number> = { standard: 0, ephemeral: 1, p2p: 2 };
 export const DELIVERY_MODES: readonly DeliveryMode[] = ['standard', 'ephemeral', 'p2p'];
@@ -55,7 +56,7 @@ export const MODE_COPY: Record<DeliveryMode, { label: string; short: string; des
   standard: {
     label: 'Standard',
     short: 'Standard',
-    description: 'Stored on Discordy servers. History syncs across devices; bots and embeds work.',
+    description: `Stored on ${BRAND.displayName} servers. History syncs across devices; bots and embeds work.`,
   },
   ephemeral: {
     label: 'Ephemeral E2EE',

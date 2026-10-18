@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const desktop = join(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'desktop');
 const stage = join(desktop, 'stage');
 const pkg = JSON.parse(readFileSync(join(desktop, 'package.json'), 'utf8'));
+const brand = JSON.parse(readFileSync(join(desktop, 'brand.json'), 'utf8'));
 
 if (!existsSync(join(desktop, 'out', 'main', 'index.js'))) throw new Error('run electron-vite build first');
 rmSync(stage, { recursive: true, force: true });
@@ -18,10 +19,10 @@ cpSync(join(desktop, 'resources'), join(stage, 'resources'), { recursive: true }
 
 const runtime = {
   name: pkg.name,
-  productName: pkg.productName,
+  productName: brand.productName,
   version: pkg.version,
-  description: pkg.description,
-  author: pkg.author,
+  description: brand.description,
+  author: brand.publisher,
   homepage: pkg.homepage,
   license: pkg.license,
   main: pkg.main,
