@@ -1,0 +1,61 @@
+{
+  "name": "@discordy/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop client (see brand.json)",
+  "homepage": "https://discordy.voics.nl",
+  "license": "UNLICENSED",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "electron-vite build && playwright test",
+    "dist:win": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --win nsis --publish never",
+    "dist:mac": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --mac dmg --publish never",
+    "dist:linux": "electron-vite build && node ../../scripts/stage-app.mjs && electron-builder --config electron-builder.config.cjs --linux AppImage deb --publish never"
+  },
+  "dependencies": {
+    "@discordy/crypto": "workspace:*",
+    "electron-updater": "6.6.2"
+  },
+  "optionalDependencies": {
+    "uiohook-napi": "1.5.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/jetbrains-mono": "5.2.8",
+    "@jitsi/rnnoise-wasm": "0.2.1",
+    "@phosphor-icons/react": "2.1.10",
+    "@playwright/test": "1.56.1",
+    "@tanstack/react-query": "5.90.5",
+    "@tanstack/react-virtual": "3.13.12",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "5.1.0",
+    "electron": "38.8.6",
+    "electron-builder": "26.0.12",
+    "electron-vite": "4.0.1",
+    "eslint": "9.39.1",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "framer-motion": "12.43.0",
+    "globals": "16.5.0",
+    "jsdom": "27.1.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.3",
+    "vite": "7.2.2",
+    "vitest": "3.2.4",
+    "ws": "8.18.3",
+    "zustand": "5.0.8"
+  }
+}

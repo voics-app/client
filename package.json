@@ -1,0 +1,25 @@
+{
+  "name": "discordy-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discordy desktop client (Electron + React)",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @discordy/desktop dev",
+    "build": "pnpm --filter @discordy/crypto build && pnpm --filter @discordy/desktop build",
+    "build:native": "pnpm --filter @discordy/crypto build",
+    "test": "pnpm --filter @discordy/desktop test && pnpm --filter @discordy/crypto test",
+    "test:e2e": "pnpm --filter @discordy/desktop test:e2e",
+    "lint": "pnpm --filter @discordy/desktop lint",
+    "typecheck": "pnpm --filter @discordy/desktop typecheck",
+    "dist:win": "pnpm build:native && pnpm --filter @discordy/desktop dist:win",
+    "dist:mac": "pnpm build:native && pnpm --filter @discordy/desktop dist:mac",
+    "dist:linux": "pnpm build:native && pnpm --filter @discordy/desktop dist:linux",
+    "test:unit": "pnpm --filter @discordy/desktop test",
+    "lint:native": "pnpm --filter @discordy/crypto lint"
+  }
+}
