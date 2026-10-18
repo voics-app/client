@@ -105,12 +105,19 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     GUILD_ROLE_CREATE: (d: { guild_id: string; role: Role }) => guilds().upsertRole(d.guild_id, d.role),
     GUILD_ROLE_UPDATE: (d: { guild_id: string; role: Role }) => guilds().upsertRole(d.guild_id, d.role),
     GUILD_ROLE_DELETE: (d: { guild_id: string; role_id: string }) => guilds().removeRole(d.guild_id, d.role_id),
-    GUILD_MEMBER_ADD: (d: GuildMember & { guild_id: string }) => guilds().upsertMember(d.guild_id, d),
+    GUILD_MEMBER_ADD: (d: GuildMember & { guild_id: string }) => {
+      guilds().upsertMember(d.guild_id, d);
+      if (d.user.bot) useInteractionStore.getState().invalidateCommands(d.guild_id);
+    },
     GUILD_MEMBER_UPDATE: (d: GuildMember & { guild_id: string }) => {
       const existing = guilds().members[d.guild_id]?.[d.user.id];
       guilds().upsertMember(d.guild_id, { ...existing, ...d });
     },
-    GUILD_MEMBER_REMOVE: (d: { guild_id: string; user: User }) => guilds().removeMember(d.guild_id, d.user.id),
+    GUILD_MEMBER_REMOVE: (d: { guild_id: string; user: User }) => {
+      guilds().removeMember(d.guild_id, d.user.id);
+      if (d.user.bot) useInteractionStore.getState().invalidateCommands(d.guild_id);
+    },
+    APPLICATION_COMMAND_PERMISSIONS_UPDATE: (d: { guild_id: string }) => useInteractionStore.getState().invalidateCommands(d.guild_id),
     GUILD_MEMBERS_CHUNK: (d: { guild_id: string; members: GuildMember[]; presences?: PresenceUpdate[] }) => {
       guilds().upsertMembers(d.guild_id, d.members);
       if (d.presences) {

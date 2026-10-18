@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { InteractionService } from '@renderer/application/interactionService';
-import { useInteractionStore } from '@renderer/application/stores/interactionStore';
+import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -23,11 +23,14 @@ const channel = { id: '200', type: 0, guild_id: '100', name: 'general', delivery
 
 function fakeApi(over: Partial<Record<keyof ApiPort, unknown>> = {}) {
   return {
+    commandIndex: vi.fn(async () => ({
+      applications: [{ id: 'app-1', name: 'Dice Bot', icon: null, bot_id: '50' }],
+      application_commands: [roll],
+    })),
     applications: vi.fn(async () => [{ id: 'app-own', name: 'Mine' }]),
-    globalCommands: vi.fn(async (id: string) => (id === 'app-1' ? [roll] : [])),
-    guildCommands: vi.fn(async (id: string) => {
+    globalCommands: vi.fn(async (id: string) => {
       if (id === 'app-own') return [{ ...roll, id: 'cmd-own', application_id: 'app-own', name: 'own' }];
-      throw new Error('missing access');
+      return [roll];
     }),
     createInteraction: vi.fn(async () => ({ id: 'int-1' })),
     ...over,
@@ -71,6 +74,15 @@ describe('interactionStore', () => {
     expect(useInteractionStore.getState().modal?.title).toBe('T');
     s.closeModal();
     expect(useInteractionStore.getState().modal).toBeNull();
+  });
+
+  it('invalidates the cached commands of one guild', () => {
+    const s = useInteractionStore.getState();
+    s.setCommands('100', flattenCommands([roll]));
+    s.setCommands('101', flattenCommands([roll]));
+    s.invalidateCommands('100');
+    expect(useInteractionStore.getState().commands['100']).toBeUndefined();
+    expect(useInteractionStore.getState().commands['101']).toHaveLength(1);
   });
 });
 
@@ -119,17 +131,86 @@ describe('dispatch routing', () => {
     expect(modal).toMatchObject({ interactionId: 'int-1', applicationId: 'app-1', customId: 'feedback', title: 'Feedback' });
     expect(useInteractionStore.getState().pending['200']).toEqual([]);
   });
+
+  describe('command index invalidation', () => {
+    const cached = () => useInteractionStore.getState().setCommands('100', flattenCommands([roll]));
+    const cachedGuild = () => useInteractionStore.getState().commands['100'];
+    const member = (user: User) => ({ guild_id: '100', user, roles: [], joined_at: '2026-10-16T10:00:00.000Z', deaf: false, mute: false });
+
+    it('invalidates the guild command cache on APPLICATION_COMMAND_PERMISSIONS_UPDATE', () => {
+      cached();
+      route()('APPLICATION_COMMAND_PERMISSIONS_UPDATE', { id: 'cmd-roll', application_id: 'app-1', guild_id: '100', permissions: [] });
+      expect(cachedGuild()).toBeUndefined();
+    });
+
+    it('invalidates the guild command cache when a bot joins', () => {
+      cached();
+      route()('GUILD_MEMBER_ADD', member(bot));
+      expect(cachedGuild()).toBeUndefined();
+    });
+
+    it('keeps the guild command cache when a human joins', () => {
+      cached();
+      route()('GUILD_MEMBER_ADD', member(me));
+      expect(cachedGuild()).toHaveLength(1);
+    });
+
+    it('invalidates the guild command cache when a bot leaves', () => {
+      cached();
+      route()('GUILD_MEMBER_REMOVE', { guild_id: '100', user: bot });
+      expect(cachedGuild()).toBeUndefined();
+    });
+
+    it('keeps the guild command cache when a human leaves', () => {
+      cached();
+      route()('GUILD_MEMBER_REMOVE', { guild_id: '100', user: me });
+      expect(cachedGuild()).toHaveLength(1);
+    });
+  });
 });
 
 describe('InteractionService', () => {
-  it('discovers global and guild commands, tolerating applications that refuse the request', async () => {
+  it('loads guild commands from the command index', async () => {
     const api = fakeApi();
     const service = new InteractionService(api);
-    const entries = await service.loadCommands('100', [{ id: 'app-1', name: 'Dice Bot' }]);
-    expect(entries.map((e) => e.label).sort()).toEqual(['own', 'roll']);
+    const entries = await service.loadGuildCommands('100');
+    expect(api.commandIndex).toHaveBeenCalledWith('100');
+    expect(api.applications).not.toHaveBeenCalled();
+    expect(api.globalCommands).not.toHaveBeenCalled();
+    expect(entries.map((e) => e.label)).toEqual(['roll']);
     expect(useInteractionStore.getState().appNames['app-1']).toBe('Dice Bot');
+    expect(useInteractionStore.getState().commands['100']).toHaveLength(1);
+  });
+
+  it('serves guild commands from the cache until invalidated', async () => {
+    const api = fakeApi();
+    const service = new InteractionService(api);
+    await service.loadGuildCommands('100');
+    await service.loadGuildCommands('100');
+    expect(api.commandIndex).toHaveBeenCalledTimes(1);
+    useInteractionStore.getState().invalidateCommands('100');
+    await service.loadGuildCommands('100');
+    expect(api.commandIndex).toHaveBeenCalledTimes(2);
+  });
+
+  it('caches each guild separately', async () => {
+    const api = fakeApi();
+    const service = new InteractionService(api);
+    await service.loadGuildCommands('100');
+    await service.loadGuildCommands('101');
+    expect(api.commandIndex).toHaveBeenCalledTimes(2);
+    useInteractionStore.getState().invalidateCommands('100');
+    expect(useInteractionStore.getState().commands['101']).toHaveLength(1);
+  });
+
+  it('loads direct-message commands from the caller applications and recipient bots', async () => {
+    const api = fakeApi();
+    const service = new InteractionService(api);
+    const entries = await service.loadDirectCommands([{ id: 'app-1', name: 'Dice Bot' }]);
+    expect(api.commandIndex).not.toHaveBeenCalled();
+    expect(entries.map((e) => e.label).sort()).toEqual(['own', 'roll']);
+    expect(useInteractionStore.getState().commands[DM_SCOPE]).toHaveLength(2);
     expect(useInteractionStore.getState().appNames['app-own']).toBe('Mine');
-    expect(useInteractionStore.getState().commands['100']).toHaveLength(2);
   });
 
   it('submits a command interaction and shows the thinking placeholder', async () => {
