@@ -11,6 +11,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { InteractionModal } from '../chat/InteractionModal';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
@@ -318,6 +319,15 @@ function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }
 }
 
 export function DialogHost() {
+  return (
+    <>
+      <ActiveDialog />
+      <InteractionModal />
+    </>
+  );
+}
+
+function ActiveDialog() {
   const dialog = useUiStore((s) => s.dialog);
   if (!dialog) return null;
   switch (dialog.kind) {

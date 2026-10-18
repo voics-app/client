@@ -5,6 +5,7 @@ import type {
   GuildFull,
   GuildMember,
   Message,
+  ModalCreate,
   PresenceUpdate,
   ReadyPayload,
   Relationship,
@@ -15,6 +16,7 @@ import type {
 } from '@shared/contracts/rest';
 import type { MessageAck, TypingStart, VoiceServerUpdate } from '@shared/contracts/gateway';
 import { useGuildStore } from './stores/guildStore';
+import { useInteractionStore } from './stores/interactionStore';
 import { useMessageStore, type ChatMessage } from './stores/messageStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
@@ -52,6 +54,7 @@ function hydrateReady(ready: ReadyPayload): void {
 
 function receiveMessage(message: Message, ctx: DispatchContext): void {
   useMessageStore.getState().receive(message);
+  if (message.interaction_metadata) useInteractionStore.getState().resolvePending(message.channel_id, message.interaction_metadata.id);
   const guilds = useGuildStore.getState();
   const channel = guilds.channels[message.channel_id];
   if (channel) guilds.upsertChannel({ ...channel, last_message_id: message.id });
@@ -143,6 +146,20 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     SESSIONS_REPLACE: () => undefined,
 
     VOICE_STATE_UPDATE: (d: VoiceState) => useVoiceStore.getState().upsertState(d),
+    INTERACTION_MODAL_CREATE: (d: ModalCreate) => {
+      const store = useInteractionStore.getState();
+      const applicationId = store.applicationOf[d.interaction_id];
+      if (!applicationId) return;
+      store.resolvePending(d.channel_id, d.interaction_id);
+      store.openModal({
+        interactionId: d.interaction_id,
+        applicationId,
+        channelId: d.channel_id,
+        customId: d.data.custom_id,
+        title: d.data.title,
+        components: d.data.components,
+      });
+    },
     VOICE_SERVER_UPDATE: (d: VoiceServerUpdate) => ctx.onVoiceServerUpdate(d),
   };
 
