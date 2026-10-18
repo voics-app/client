@@ -34,6 +34,7 @@ export interface InteractionState {
   applicationOf: Record<string, string>;
   modal: OpenModal | null;
   setCommands(scope: string, entries: SlashEntry[]): void;
+  invalidateCommands(scope: string): void;
   setAppName(applicationId: string, name: string): void;
   addPending(pending: PendingInteraction): void;
   rememberApplication(interactionId: string, applicationId: string): void;
@@ -49,6 +50,11 @@ const initial = { commands: {}, appNames: {}, pending: {}, applicationOf: {}, mo
 export const useInteractionStore = create<InteractionState>((set) => ({
   ...initial,
   setCommands: (scope, entries) => set((s) => ({ commands: { ...s.commands, [scope]: entries } })),
+  invalidateCommands: (scope) =>
+    set((s) => {
+      const { [scope]: _dropped, ...commands } = s.commands;
+      return { commands };
+    }),
   setAppName: (applicationId, name) => set((s) => ({ appNames: { ...s.appNames, [applicationId]: name } })),
   addPending: (pending) =>
     set((s) => ({

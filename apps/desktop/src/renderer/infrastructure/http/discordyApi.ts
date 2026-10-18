@@ -8,6 +8,7 @@ import type {
   AuthResponse,
   Ban,
   Channel,
+  CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
@@ -262,8 +263,8 @@ export class DiscordyApi implements ApiPort {
   globalCommands(applicationId: string) {
     return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);
   }
-  guildCommands(applicationId: string, guildId: string) {
-    return this.get<ApplicationCommand[]>(`/applications/${applicationId}/guilds/${guildId}/commands`);
+  commandIndex(guildId: string) {
+    return this.get<CommandIndex>(`/guilds/${guildId}/application-command-index`);
   }
   createInteraction(body: CreateInteractionBody) {
     return this.post<{ id: string }>('/interactions', body);

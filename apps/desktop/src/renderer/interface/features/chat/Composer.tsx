@@ -84,13 +84,16 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
 
   useEffect(() => {
     if (commandSearch === null) return;
+    const interactions = getRuntime().interactions;
+    if (channel.guild_id) {
+      void interactions.loadGuildCommands(channel.guild_id).catch(() => undefined);
+      return;
+    }
     const last = commandLoads.get(scope) ?? 0;
     if (Date.now() - last < COMMAND_REFRESH_MS) return;
     commandLoads.set(scope, Date.now());
-    const bots = channel.guild_id
-      ? Object.values(members ?? {}).filter((m) => m.user.bot).map((m) => ({ id: m.user.id, name: displayName(m.user, m.nick) }))
-      : (channel.recipients ?? []).filter((u) => u.bot).map((u) => ({ id: u.id, name: displayName(u) }));
-    void getRuntime().interactions.loadCommands(channel.guild_id ?? null, bots).catch(() => commandLoads.delete(scope));
+    const bots = (channel.recipients ?? []).filter((u) => u.bot).map((u) => ({ id: u.id, name: displayName(u) }));
+    void interactions.loadDirectCommands(bots).catch(() => commandLoads.delete(scope));
   }, [commandSearch === null, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));

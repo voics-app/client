@@ -187,7 +187,9 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     }
     if (path === '/applications') return json(res, 200, [{ id: APP_ID, name: 'Dice Bot', icon: null, bot: BOT }]);
     if (path === `/applications/${APP_ID}/commands`) return json(res, 200, COMMANDS);
-    if (/^\/applications\/\d+\/guilds\/\d+\/commands$/.test(path)) return json(res, 200, []);
+    if (/^\/guilds\/\d+\/application-command-index$/.test(path)) {
+      return json(res, 200, { applications: [{ id: APP_ID, name: 'Dice Bot', icon: null, bot_id: BOT.id }], application_commands: COMMANDS });
+    }
     if (path === '/interactions' && req.method === 'POST') {
       interactions.push(body);
       const id = snowflake();

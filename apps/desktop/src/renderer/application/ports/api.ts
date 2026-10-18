@@ -7,6 +7,7 @@ import type {
   AuthResponse,
   Ban,
   Channel,
+  CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
@@ -123,6 +124,6 @@ export interface ApiPort {
 
   applications(): Promise<ApplicationSummary[]>;
   globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
-  guildCommands(applicationId: string, guildId: string): Promise<ApplicationCommand[]>;
+  commandIndex(guildId: string): Promise<CommandIndex>;
   createInteraction(body: CreateInteractionBody): Promise<{ id: string }>;
 }

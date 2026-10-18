@@ -27,31 +27,37 @@ export interface CandidateApplication {
 export class InteractionService {
   constructor(private readonly api: ApiPort) {}
 
+  /** Returns the commands invokable in a guild from the per-guild cache, fetching the command index on a miss. */
+  async loadGuildCommands(guildId: string): Promise<SlashEntry[]> {
+    const store = useInteractionStore.getState();
+    const cached = store.commands[guildId];
+    if (cached) return cached;
+    const index = await this.api.commandIndex(guildId);
+    for (const app of index.applications) store.setAppName(app.id, app.name);
+    const entries = flattenCommands(index.application_commands);
+    store.setCommands(guildId, entries);
+    return entries;
+  }
+
   /**
-   * Loads the global and guild commands of every application that could serve this scope: the caller's own
-   * applications plus the given candidates (bot members). Applications that refuse the request are skipped.
+   * Loads the global commands of every application that could serve a direct message: the caller's own
+   * applications plus the recipient bots. Applications that refuse the request are skipped.
    */
-  async loadCommands(guildId: string | null, candidates: CandidateApplication[]): Promise<SlashEntry[]> {
+  async loadDirectCommands(bots: CandidateApplication[]): Promise<SlashEntry[]> {
     const store = useInteractionStore.getState();
     const own = await this.api.applications().catch(() => []);
     const apps = new Map<string, string>();
-    for (const c of candidates) apps.set(c.id, c.name);
+    for (const c of bots) apps.set(c.id, c.name);
     for (const a of own) apps.set(a.id, a.name);
     for (const [id, name] of apps) store.setAppName(id, name);
 
     const fetched = await Promise.all(
-      [...apps.keys()].map(async (id) => {
-        const lists = await Promise.allSettled([
-          this.api.globalCommands(id),
-          ...(guildId ? [this.api.guildCommands(id, guildId)] : []),
-        ]);
-        return lists.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-      }),
+      [...apps.keys()].map((id) => this.api.globalCommands(id).catch((): ApplicationCommand[] => [])),
     );
     const unique = new Map<string, ApplicationCommand>();
     for (const c of fetched.flat()) unique.set(c.id, c);
     const entries = flattenCommands([...unique.values()]);
-    store.setCommands(guildId ?? DM_SCOPE, entries);
+    store.setCommands(DM_SCOPE, entries);
     return entries;
   }
 

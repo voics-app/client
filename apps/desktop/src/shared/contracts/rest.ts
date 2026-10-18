@@ -306,6 +306,20 @@ export interface ApplicationSummary {
   bot?: User;
 }
 
+/** Application entry of `GET /guilds/{id}/application-command-index`: an installed bot and its avatar. */
+export interface CommandIndexApplication {
+  id: Snowflake;
+  name: string;
+  icon: string | null;
+  bot_id: Snowflake | null;
+}
+
+/** Response of `GET /guilds/{id}/application-command-index`: the commands a member can invoke in a guild. */
+export interface CommandIndex {
+  applications: CommandIndexApplication[];
+  application_commands: ApplicationCommand[];
+}
+
 export const InteractionType = { APPLICATION_COMMAND: 2, MESSAGE_COMPONENT: 3, AUTOCOMPLETE: 4, MODAL_SUBMIT: 5 } as const;
 
 export const ComponentType = {
