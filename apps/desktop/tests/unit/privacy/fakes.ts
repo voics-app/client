@@ -107,12 +107,28 @@ export const asApi = (api: object) => api as unknown as ApiPort;
 
 export class FakeDataChannel implements DataChannelLike {
   readyState = 'connecting';
+  bufferedAmount = 0;
+  bufferedAmountLowThreshold = 0;
+  binaryType = 'blob';
+  /** When true, binary sends stay buffered until flush() is called (models a slow link). */
+  holdBuffer = false;
   onopen: (() => void) | null = null;
   onclose: (() => void) | null = null;
+  onbufferedamountlow: (() => void) | null = null;
   onmessage: ((event: { data: unknown }) => void) | null = null;
   sent: string[] = [];
-  send(data: string) {
-    this.sent.push(data);
+  binary: Uint8Array[] = [];
+  send(data: string | ArrayBuffer) {
+    if (typeof data === 'string') {
+      this.sent.push(data);
+      return;
+    }
+    this.binary.push(new Uint8Array(data.slice(0)));
+    if (this.holdBuffer) this.bufferedAmount += data.byteLength;
+  }
+  flush() {
+    this.bufferedAmount = 0;
+    this.onbufferedamountlow?.();
   }
   close() {
     this.readyState = 'closed';

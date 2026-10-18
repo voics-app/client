@@ -22,6 +22,7 @@ function setup() {
     crypto,
     devices: new DeviceDirectory(asApi(api), () => 1_800_000_000_000),
     history: new LocalHistory(() => crypto),
+    attachments: { prepareP2P: async () => [], accept: async () => undefined },
     getSelf: () => SELF,
     createPeerConnection: () => {
       const pc = new FakePeerConnection();

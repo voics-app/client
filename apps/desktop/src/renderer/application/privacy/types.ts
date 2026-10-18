@@ -1,5 +1,6 @@
 /** Shared types and wire helpers for the private delivery modes (Ephemeral E2EE and P2P). */
-import type { Attachment, Channel, DeliveryMode, User } from '@shared/contracts/rest';
+import type { Channel, DeliveryMode, User } from '@shared/contracts/rest';
+import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '@renderer/domain/privateAttachment';
 import { snowflakeFromTimestamp } from '@renderer/domain/snowflake';
 import type { ChatMessage } from '../stores/messageStore';
 
@@ -12,7 +13,7 @@ export interface SelfIdentity {
 export interface SendInput {
   content: string;
   replyTo?: string | null;
-  /** Standard mode only: private modes refuse attachments rather than uploading plaintext to a server. */
+  /** Private modes encrypt these on this device first; only ciphertext ever leaves it. */
   files?: File[];
 }
 
@@ -22,7 +23,8 @@ export interface PrivatePayload {
   nonce: string;
   timestamp: string;
   reply_to?: string | null;
-  attachments?: Attachment[];
+  /** Encrypted-file refs (key, nonce, hash, name, mime, size); only ever inside the encrypted envelope. */
+  files?: PrivateFileRef[];
 }
 
 export type PrivateDeliveryFailure =
@@ -60,7 +62,8 @@ export function encodePayload(payload: PrivatePayload): string {
   return utf8ToB64(JSON.stringify(payload));
 }
 
-export function decodePayload(b64: string): PrivatePayload {
+/** `bind` validates attached file refs against the receiving channel, mode and the message id they must belong to. */
+export function decodePayload(b64: string, bind?: { channelId: string; mode: PrivateMode; messageId: string }): PrivatePayload {
   const parsed: unknown = JSON.parse(b64ToUtf8(b64));
   if (typeof parsed !== 'object' || parsed === null) throw new Error('payload is not an object');
   const p = parsed as Partial<PrivatePayload>;
@@ -73,8 +76,19 @@ export function decodePayload(b64: string): PrivatePayload {
     nonce: p.nonce,
     timestamp: p.timestamp,
     reply_to: p.reply_to ?? null,
-    attachments: p.attachments ?? [],
+    files: bind ? validFiles(p.files, bind) : [],
   };
+}
+
+/** Keeps only well-formed refs that belong to this message; anything else a peer sent is dropped. */
+export function validFiles(raw: unknown, bind: { channelId: string; mode: PrivateMode; messageId: string }): PrivateFileRef[] {
+  if (!Array.isArray(raw)) return [];
+  const refs: PrivateFileRef[] = [];
+  for (const item of raw.slice(0, MAX_PRIVATE_FILES)) {
+    const ref = parseFileRef(item, bind.channelId, bind.mode);
+    if (ref && ref.id.startsWith(`${bind.messageId}:`) && !refs.some((r) => r.id === ref.id)) refs.push(ref);
+  }
+  return refs;
 }
 
 let localSequence = 0;
@@ -107,7 +121,7 @@ export function buildPrivateMessage(input: BuildMessageInput): ChatMessage {
     mention_everyone: false,
     mentions: [],
     mention_roles: [],
-    attachments: payload.attachments ?? [],
+    attachments: (payload.files ?? []).map(toAttachment),
     embeds: [],
     pinned: false,
     type: payload.reply_to ? 19 : 0,

@@ -105,9 +105,6 @@ export class MessageSender {
   // ---- internals --------------------------------------------------------------------
 
   private async sendPrivate(channel: Channel, mode: Exclude<DeliveryMode, 'standard'>, input: SendInput): Promise<ChatMessage> {
-    if (input.files && input.files.length > 0) {
-      throw new PrivateDeliveryError('unsupported', `Attachments are not available in ${mode === 'p2p' ? 'P2P' : 'Ephemeral E2EE'} chats yet; nothing was uploaded.`);
-    }
     return mode === 'ephemeral' ? this.deps.ephemeral.send(channel, input) : this.deps.p2p.send(channel, input);
   }
 
