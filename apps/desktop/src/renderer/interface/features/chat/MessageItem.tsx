@@ -1,11 +1,11 @@
-import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, File as FileIcon, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
 import { memo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
-import type { Attachment, Embed } from '@shared/contracts/rest';
+import type { Embed } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
@@ -16,33 +16,10 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { Tooltip } from '../../shared/ui/Tooltip';
+import { AttachmentView } from './AttachmentView';
 import { useEmojiPopover } from './EmojiPopover';
 import { MarkdownView } from './MarkdownView';
 import { MessageEditor } from './MessageEditor';
-
-function sizeLabel(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-}
-
-function AttachmentView({ attachment }: { attachment: Attachment }) {
-  const isImage = attachment.content_type?.startsWith('image/');
-  const isVideo = attachment.content_type?.startsWith('video/');
-  const isAudio = attachment.content_type?.startsWith('audio/');
-  if (isImage) return <img className="attachment-image" src={attachment.proxy_url ?? attachment.url} alt={attachment.description ?? attachment.filename} loading="lazy" style={{ aspectRatio: attachment.width && attachment.height ? `${attachment.width} / ${attachment.height}` : undefined }} />;
-  if (isVideo) return <video className="attachment-image" src={attachment.url} controls preload="metadata" />;
-  if (isAudio) return <audio src={attachment.url} controls preload="none" />;
-  return (
-    <a className="attachment-file" href={attachment.url} target="_blank" rel="noreferrer">
-      <FileIcon size={28} weight="light" />
-      <span>
-        <span className="attachment-name">{attachment.filename}</span>
-        <span className="attachment-size">{sizeLabel(attachment.size)}</span>
-      </span>
-    </a>
-  );
-}
 
 function EmbedView({ embed }: { embed: Embed }) {
   const color = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : 'var(--accent)';
@@ -242,7 +219,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               {message.edited_timestamp && <span className="edited">(edited)</span>}
             </>
           )}
-          {message.attachments.length > 0 && <div className="attachments">{message.attachments.map((a) => <AttachmentView key={a.id} attachment={a} />)}</div>}
+          {message.attachments.length > 0 && <div className="attachments">{message.attachments.map((a) => <AttachmentView key={a.id} attachment={a} channelId={message.channel_id} />)}</div>}
           {message.embeds.map((e, i) => <EmbedView key={i} embed={e} />)}
           <Reactions message={message} />
           {message.thread && (

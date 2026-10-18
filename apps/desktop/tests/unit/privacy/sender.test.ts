@@ -84,12 +84,14 @@ describe('MessageSender routing', () => {
     expect(useMessageStore.getState().timelines['500']?.ids ?? []).toEqual([]);
   });
 
-  it('refuses attachments in private modes instead of uploading plaintext', async () => {
-    const { sender, api, ephemeral } = setup(dm('ephemeral'));
+  it('hands attachments to the private services, never uploading them in the clear', async () => {
+    const { sender, api, ephemeral, p2p } = setup(dm('ephemeral'));
     const file = new File(['x'], 'a.txt');
-    await expect(sender.send(dm('ephemeral'), { content: '', files: [file] })).rejects.toMatchObject({ reason: 'unsupported' });
+    await sender.send(dm('ephemeral'), { content: '', files: [file] });
+    await sender.send(dm('p2p'), { content: '', files: [file] });
+    expect(ephemeral.send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ files: [file] }));
+    expect(p2p.send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ files: [file] }));
     expect(api.createAttachmentSlots).not.toHaveBeenCalled();
-    expect(ephemeral.send).not.toHaveBeenCalled();
   });
 
   it('refuses edit and delete in private chats', async () => {
@@ -160,6 +162,8 @@ describe('PrivateMessaging facade', () => {
       crypto,
       getSelf: () => SELF,
       createPeerConnection: () => new FakePeerConnection(),
+      fetchBytes: async () => new Uint8Array(0),
+      cdnUrl: () => "https://cdn.test",
     });
     return { pm, gateway, api };
   }

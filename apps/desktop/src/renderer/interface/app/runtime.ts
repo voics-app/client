@@ -7,6 +7,7 @@ import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/a
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
 import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
+import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
@@ -101,6 +102,8 @@ export function createRuntime(info: AppInfo): Runtime {
       return { userId: s.user?.id ?? identityUserId, deviceId: s.deviceId ?? '', identityKeyB64: s.identityKeyB64 ?? '' };
     },
     createPeerConnection: browserPeerConnection,
+    fetchBytes,
+    cdnUrl: () => useConnectionStore.getState().cdnUrl,
     iceServers: () => turn.iceServers(),
     deviceLabel: `Discordy ${info.platform}`,
   });

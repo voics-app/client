@@ -27,6 +27,7 @@ function setup(options: { available?: boolean; noCrypto?: boolean } = {}) {
     crypto: bridge,
     devices,
     history: new LocalHistory(() => bridge),
+    attachments: { prepareCdn: async () => [] },
     getSelf: () => SELF,
     now: () => clock,
   });

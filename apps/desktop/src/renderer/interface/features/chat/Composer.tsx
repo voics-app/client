@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent,
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { maxFileBytes } from '@renderer/domain/privateAttachment';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
 import { reportError } from '../../app/actions';
@@ -59,7 +60,7 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
 
   const standard = mode === 'standard';
   const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
-  const canAttach = standard && (!channel.guild_id || can(perms, Permission.ATTACH_FILES));
+  const canAttach = !channel.guild_id || can(perms, Permission.ATTACH_FILES);
 
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));
 
@@ -137,14 +138,15 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const addFiles = useCallback(
     (incoming: File[]) => {
       if (!canAttach) {
-        reportError(new Error(standard ? 'You do not have permission to attach files here.' : 'Attachments are not available in private delivery modes.'), 'Cannot attach files');
+        reportError(new Error('You do not have permission to attach files here.'), 'Cannot attach files');
         return;
       }
-      const ok = incoming.filter((f) => f.size <= MAX_FILE_BYTES);
-      if (ok.length < incoming.length) reportError(new Error('Files must be 25 MB or smaller.'), 'File too large');
+      const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
+      const ok = incoming.filter((f) => f.size <= limit && (mode === 'standard' || f.size > 0));
+      if (ok.length < incoming.length) reportError(new Error(`Files must be between 1 byte and ${Math.round(limit / 1048576)} MB.`), 'File not attached');
       setFiles((prev) => [...prev, ...ok].slice(0, MAX_FILES));
     },
-    [canAttach, standard],
+    [canAttach, mode],
   );
 
   const send = async () => {
