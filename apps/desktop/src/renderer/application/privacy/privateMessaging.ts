@@ -4,6 +4,7 @@ import type { CryptoBridge } from '@shared/ipc';
 import type { ApiPort } from '../ports/api';
 import type { GatewayPort } from '../ports/gateway';
 import { useGuildStore } from '../stores/guildStore';
+import { AttachmentService } from './attachmentService';
 import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';
 import { LocalHistory } from './localHistory';
@@ -18,6 +19,10 @@ export interface PrivateMessagingDeps {
   crypto: CryptoBridge | undefined;
   getSelf: () => SelfIdentity;
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
+  /** Downloads an encrypted attachment from the CDN. */
+  fetchBytes: (url: string) => Promise<Uint8Array>;
+  /** Public CDN origin of the active connection profile. */
+  cdnUrl: () => string;
   now?: () => number;
   iceServers?: () => PeerConnectionConfig['iceServers'];
   deviceLabel?: string;
@@ -27,17 +32,20 @@ export class PrivateMessaging {
   readonly sender: MessageSender;
   readonly ephemeral: EphemeralService;
   readonly p2p: P2PService;
+  readonly attachments: AttachmentService;
 
   constructor(private readonly deps: PrivateMessagingDeps) {
     const now = deps.now ?? Date.now;
     const devices = new DeviceDirectory(deps.api, now);
     const history = new LocalHistory(() => deps.crypto);
+    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes, cdnBase: deps.cdnUrl });
     this.ephemeral = new EphemeralService({
       gateway: deps.gateway,
       api: deps.api,
       crypto: deps.crypto,
       devices,
       history,
+      attachments: this.attachments,
       getSelf: deps.getSelf,
       now,
     });
@@ -46,6 +54,7 @@ export class PrivateMessaging {
       crypto: deps.crypto,
       devices,
       history,
+      attachments: this.attachments,
       getSelf: deps.getSelf,
       createPeerConnection: deps.createPeerConnection,
       now,

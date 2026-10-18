@@ -4,6 +4,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { maxFileBytes } from '@renderer/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
@@ -71,7 +72,7 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
 
   const standard = mode === 'standard';
   const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
-  const canAttach = standard && (!channel.guild_id || can(perms, Permission.ATTACH_FILES));
+  const canAttach = !channel.guild_id || can(perms, Permission.ATTACH_FILES);
 
   const canUseCommands = standard && (!channel.guild_id || can(perms, Permission.USE_APPLICATION_COMMANDS));
   const commandSearch = canUseCommands && !command ? slashQuery(text) : null;
@@ -185,14 +186,15 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const addFiles = useCallback(
     (incoming: File[]) => {
       if (!canAttach) {
-        reportError(new Error(standard ? 'You do not have permission to attach files here.' : 'Attachments are not available in private delivery modes.'), 'Cannot attach files');
+        reportError(new Error('You do not have permission to attach files here.'), 'Cannot attach files');
         return;
       }
-      const ok = incoming.filter((f) => f.size <= MAX_FILE_BYTES);
-      if (ok.length < incoming.length) reportError(new Error('Files must be 25 MB or smaller.'), 'File too large');
+      const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
+      const ok = incoming.filter((f) => f.size <= limit && (mode === 'standard' || f.size > 0));
+      if (ok.length < incoming.length) reportError(new Error(`Files must be between 1 byte and ${Math.round(limit / 1048576)} MB.`), 'File not attached');
       setFiles((prev) => [...prev, ...ok].slice(0, MAX_FILES));
     },
-    [canAttach, standard],
+    [canAttach, mode],
   );
 
   const runCommand = async () => {

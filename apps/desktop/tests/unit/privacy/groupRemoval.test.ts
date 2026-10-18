@@ -28,6 +28,7 @@ function setup(self = LOW_SELF) {
     crypto,
     devices: new DeviceDirectory(asApi(api), () => 0),
     history: new LocalHistory(() => crypto),
+    attachments: { prepareCdn: async () => [] },
     getSelf: () => self,
     now: () => 1_800_000_000_000,
   });

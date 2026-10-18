@@ -14,6 +14,10 @@ import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { usePrivacyStore } from '../stores/privacyStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { GCM_TAG_BYTES, type PrivateFileRef } from '@renderer/domain/privateAttachment';
+import { useTransferStore } from '../stores/transferStore';
+import { AttachmentError, type AttachmentFailure } from './attachmentCipher';
+import type { AttachmentService, OutgoingP2PFile } from './attachmentService';
 import type { DeviceDirectory } from './deviceDirectory';
 import type { LocalHistory } from './localHistory';
 import {
@@ -22,6 +26,7 @@ import {
   encryptionUnavailable,
   generateLocalId,
   utf8ToB64,
+  validFiles,
   type PrivatePayload,
   type SelfIdentity,
   type SendInput,
@@ -29,10 +34,14 @@ import {
 
 export interface DataChannelLike {
   readyState: string;
+  bufferedAmount: number;
+  bufferedAmountLowThreshold: number;
+  binaryType: string;
   onopen: (() => void) | null;
   onclose: (() => void) | null;
+  onbufferedamountlow: (() => void) | null;
   onmessage: ((event: { data: unknown }) => void) | null;
-  send(data: string): void;
+  send(data: string | ArrayBuffer): void;
   close(): void;
 }
 
@@ -60,6 +69,7 @@ export interface P2PDeps {
   crypto: CryptoBridge | undefined;
   devices: DeviceDirectory;
   history: LocalHistory;
+  attachments: Pick<AttachmentService, 'prepareP2P' | 'accept'>;
   getSelf: () => SelfIdentity;
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   now: () => number;
@@ -78,12 +88,21 @@ interface Link {
   initiator: boolean;
   remoteSet: boolean;
   pendingIce: unknown[];
+  /** Announced by the peer message frame, awaiting their file frames. */
+  expected: Map<string, PrivateFileRef>;
+  current: { ref: PrivateFileRef; chunks: Uint8Array[]; received: number; total: number } | null;
+  /** Wakes senders parked on backpressure when the link goes away. */
+  drainWaiters: Set<() => void>;
   opened: Promise<void>;
   resolveOpen: () => void;
   rejectOpen: (error: Error) => void;
 }
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+export const FILE_CHUNK_BYTES = 16 * 1024;
+/** Stop queueing above this many buffered bytes and resume once the channel drains below the low mark. */
+export const BUFFER_HIGH_BYTES = 1024 * 1024;
+export const BUFFER_LOW_BYTES = 256 * 1024;
 const linkKey = (channelId: string, deviceId: string) => `${channelId}:${deviceId}`;
 
 function allFingerprints(sdp: string): string[] {
@@ -101,6 +120,7 @@ function uniqueFingerprint(sdp: string): string | null {
 
 export class P2PService {
   private readonly links = new Map<string, Link>();
+  private readonly streams = new Set<Promise<void>>();
 
   constructor(private readonly deps: P2PDeps) {}
 
@@ -108,6 +128,24 @@ export class P2PService {
   async send(channel: Channel, input: SendInput): Promise<ChatMessage> {
     await this.requireCrypto();
     const author = this.selfUser();
+    const id = generateLocalId(this.deps.now());
+    const outgoing = input.files && input.files.length > 0 ? await this.deps.attachments.prepareP2P(input.files, id) : [];
+    try {
+      return await this.deliver(channel, input, author, id, outgoing);
+    } catch (error) {
+      for (const file of outgoing) {
+        useTransferStore.getState().update(file.attachment.id, { state: 'error', reason: 'peer_offline', error: 'The message was not delivered.' });
+      }
+      throw error;
+    }
+  }
+
+  /** Resolves once every in-flight file stream has finished or failed. */
+  async idle(): Promise<void> {
+    while (this.streams.size > 0) await Promise.allSettled([...this.streams]);
+  }
+
+  private async deliver(channel: Channel, input: SendInput, author: User, id: string, outgoing: OutgoingP2PFile[]): Promise<ChatMessage> {
     const peers = await this.peerDevices(channel);
     if (peers.length === 0) throw new PrivateDeliveryError('peer_offline', 'Peer offline: no devices to reach.');
 
@@ -125,13 +163,13 @@ export class P2PService {
       throw new PrivateDeliveryError(reason, failures[0] ?? 'Peer offline.');
     }
 
-    const id = generateLocalId(this.deps.now());
     const payload: PrivatePayload = {
       v: 1,
       content: input.content,
       nonce: id,
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
+      files: outgoing.map((f) => f.attachment.private),
     };
     const wire = JSON.stringify({ t: 'msg', id, ...payload });
     for (const link of open) link.channel?.send(wire);
@@ -139,6 +177,7 @@ export class P2PService {
     const message = buildPrivateMessage({ id, channel, author, payload, mode: 'p2p' });
     await this.deps.history.save(message);
     useMessageStore.getState().receive(message);
+    if (outgoing.length > 0) this.track(this.streamFiles(open, outgoing));
     return message;
   }
 
@@ -234,6 +273,9 @@ export class P2PService {
       initiator,
       remoteSet: false,
       pendingIce: [],
+      expected: new Map(),
+      current: null,
+      drainWaiters: new Set(),
       opened,
       resolveOpen,
       rejectOpen,
@@ -343,32 +385,166 @@ export class P2PService {
       usePrivacyStore.getState().setP2P(link.channelId, 'open', true);
       link.resolveOpen();
     };
+    channel.binaryType = 'arraybuffer';
     channel.onclose = () => this.closeLink(link.key, 'peer_offline');
     channel.onmessage = (event) => void this.onWire(link, event.data);
     if (channel.readyState === 'open') channel.onopen();
   }
 
   private async onWire(link: Link, data: unknown): Promise<void> {
-    if (typeof data !== 'string') return;
+    if (typeof data !== 'string') {
+      this.onChunk(link, data);
+      return;
+    }
     try {
-      const parsed = JSON.parse(data) as Partial<PrivatePayload> & { t?: string; id?: string };
-      if (parsed.t !== 'msg' || typeof parsed.id !== 'string' || typeof parsed.content !== 'string') return;
-      const payload: PrivatePayload = {
-        v: 1,
-        content: parsed.content,
-        nonce: parsed.id,
-        timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date(this.deps.now()).toISOString(),
-        reply_to: parsed.reply_to ?? null,
-        attachments: [],
-      };
-      const channel = useGuildStore.getState().channels[link.channelId] ?? { id: link.channelId, guild_id: null };
-      // The author is the verified link peer, never a field the peer supplies.
-      const message = buildPrivateMessage({ id: parsed.id, channel, author: this.peerUser(link), payload, mode: 'p2p' });
-      if (useMessageStore.getState().timelines[link.channelId]?.byId[message.id]) return;
-      await this.deps.history.save(message);
-      useMessageStore.getState().receive(message);
+      const parsed = JSON.parse(data) as Partial<PrivatePayload> & { t?: string; id?: string; size?: number };
+      if (parsed.t === 'file' && typeof parsed.id === 'string') this.onFileStart(link, parsed.id, parsed.size);
+      else if (parsed.t === 'file-end' && typeof parsed.id === 'string') await this.onFileEnd(link, parsed.id);
+      else if (parsed.t === 'msg') await this.onMessage(link, parsed);
     } catch {
       // Malformed frames from a peer are ignored.
+    }
+  }
+
+  private async onMessage(link: Link, parsed: Partial<PrivatePayload> & { id?: string }): Promise<void> {
+    if (typeof parsed.id !== 'string' || typeof parsed.content !== 'string') return;
+    const files = validFiles(parsed.files, { channelId: link.channelId, mode: 'p2p', messageId: parsed.id });
+    const payload: PrivatePayload = {
+      v: 1,
+      content: parsed.content,
+      nonce: parsed.id,
+      timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date(this.deps.now()).toISOString(),
+      reply_to: parsed.reply_to ?? null,
+      files,
+    };
+    const channel = useGuildStore.getState().channels[link.channelId] ?? { id: link.channelId, guild_id: null };
+    // The author is the verified link peer, never a field the peer supplies.
+    const message = buildPrivateMessage({ id: parsed.id, channel, author: this.peerUser(link), payload, mode: 'p2p' });
+    if (useMessageStore.getState().timelines[link.channelId]?.byId[message.id]) return;
+    // Register synchronously: the peer file frames may follow before the awaits below finish.
+    for (const ref of files) {
+      link.expected.set(ref.id, ref);
+      useTransferStore.getState().update(ref.id, { state: 'receiving', loaded: 0, total: ref.size + GCM_TAG_BYTES });
+    }
+    await this.deps.history.save(message);
+    useMessageStore.getState().receive(message);
+  }
+
+  private onFileStart(link: Link, id: string, size: unknown): void {
+    const ref = link.expected.get(id);
+    if (!ref || link.current) return;
+    const total = ref.size + GCM_TAG_BYTES;
+    if (size !== total) {
+      this.failIncoming(link, ref.id, 'size_mismatch', 'The file is not the size the sender announced; it was discarded.');
+      return;
+    }
+    link.current = { ref, chunks: [], received: 0, total };
+  }
+
+  private onChunk(link: Link, data: unknown): void {
+    const current = link.current;
+    if (!current) return;
+    const bytes =
+      data instanceof ArrayBuffer ? new Uint8Array(data) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : null;
+    if (!bytes) return;
+    current.received += bytes.length;
+    if (current.received > current.total) {
+      this.failIncoming(link, current.ref.id, 'size_mismatch', 'The peer sent more data than it announced; the file was discarded.');
+      return;
+    }
+    current.chunks.push(bytes);
+    useTransferStore.getState().update(current.ref.id, { state: 'receiving', loaded: current.received });
+  }
+
+  private async onFileEnd(link: Link, id: string): Promise<void> {
+    const current = link.current;
+    if (!current || current.ref.id !== id) return;
+    link.current = null;
+    link.expected.delete(id);
+    if (current.received !== current.total) {
+      this.failIncoming(link, id, 'size_mismatch', 'The transfer ended before the whole file arrived.');
+      return;
+    }
+    const whole = new Uint8Array(new ArrayBuffer(current.total));
+    let offset = 0;
+    for (const chunk of current.chunks) {
+      whole.set(chunk, offset);
+      offset += chunk.length;
+    }
+    await this.deps.attachments.accept(current.ref, whole).catch(() => undefined);
+  }
+
+  private failIncoming(link: Link, id: string, reason: AttachmentFailure, message: string): void {
+    if (link.current?.ref.id === id) link.current = null;
+    link.expected.delete(id);
+    useTransferStore.getState().update(id, { state: 'error', reason, error: message });
+  }
+
+  // ---- outgoing file streams ---------------------------------------------------------
+
+  private track(stream: Promise<void>): void {
+    this.streams.add(stream);
+    void stream.finally(() => this.streams.delete(stream));
+  }
+
+  private async streamFiles(links: Link[], files: OutgoingP2PFile[]): Promise<void> {
+    for (const file of files) {
+      const id = file.attachment.id;
+      const total = file.ciphertext.length * links.length;
+      useTransferStore.getState().update(id, { state: 'sending', loaded: 0, total });
+      let sent = 0;
+      const results = await Promise.allSettled(
+        links.map((link) =>
+          this.sendFile(link, id, file.ciphertext, (bytes) => {
+            sent += bytes;
+            useTransferStore.getState().update(id, { state: 'sending', loaded: sent });
+          }),
+        ),
+      );
+      if (results.every((r) => r.status === 'rejected')) {
+        const cause = (results[0] as PromiseRejectedResult).reason as unknown;
+        useTransferStore.getState().update(id, {
+          state: 'error',
+          reason: 'peer_offline',
+          error: cause instanceof Error ? cause.message : 'The peer went offline before the file was sent.',
+        });
+      } else {
+        useTransferStore.getState().update(id, { state: 'done', loaded: total });
+      }
+    }
+  }
+
+  private async sendFile(link: Link, id: string, ciphertext: Uint8Array, onBytes: (n: number) => void): Promise<void> {
+    this.openChannel(link).send(JSON.stringify({ t: 'file', id, size: ciphertext.length }));
+    for (let offset = 0; offset < ciphertext.length; offset += FILE_CHUNK_BYTES) {
+      await this.waitForDrain(link);
+      const chunk = ciphertext.slice(offset, offset + FILE_CHUNK_BYTES);
+      this.openChannel(link).send(chunk.buffer);
+      onBytes(chunk.length);
+    }
+    this.openChannel(link).send(JSON.stringify({ t: 'file-end', id }));
+  }
+
+  private openChannel(link: Link): DataChannelLike {
+    const channel = link.channel;
+    if (!channel || channel.readyState !== 'open') throw new AttachmentError('peer_offline', 'The peer went offline before the file was sent.');
+    return channel;
+  }
+
+  private async waitForDrain(link: Link): Promise<void> {
+    for (;;) {
+      const channel = this.openChannel(link);
+      if (channel.bufferedAmount < BUFFER_HIGH_BYTES) return;
+      await new Promise<void>((resolve) => {
+        const wake = () => {
+          link.drainWaiters.delete(wake);
+          channel.onbufferedamountlow = null;
+          resolve();
+        };
+        link.drainWaiters.add(wake);
+        channel.bufferedAmountLowThreshold = BUFFER_LOW_BYTES;
+        channel.onbufferedamountlow = wake;
+      });
     }
   }
 
@@ -403,7 +579,9 @@ export class P2PService {
     const link = this.links.get(key);
     if (!link) return;
     this.links.delete(key);
+    for (const id of [...link.expected.keys()]) this.failIncoming(link, id, 'peer_offline', 'The transfer was interrupted because the peer went offline.');
     link.channel?.close();
+    for (const wake of [...link.drainWaiters]) wake();
     link.pc.close();
     link.rejectOpen(new PrivateDeliveryError('peer_offline', 'Peer offline.'));
     const stillOpen = [...this.links.values()].some((l) => l.channelId === link.channelId && l.channel?.readyState === 'open');

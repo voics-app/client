@@ -16,6 +16,7 @@ import { useSessionStore } from '../stores/sessionStore';
 import type { DeviceDirectory} from './deviceDirectory';
 import { participantsOf } from './deviceDirectory';
 import { removeStaleDevices, type Membership } from './groupRemoval';
+import type { AttachmentService } from './attachmentService';
 import type { LocalHistory } from './localHistory';
 import {
   PrivateDeliveryError,
@@ -40,6 +41,7 @@ export interface EphemeralDeps {
   crypto: CryptoBridge | undefined;
   devices: DeviceDirectory;
   history: LocalHistory;
+  attachments: Pick<AttachmentService, 'prepareCdn'>;
   getSelf: () => SelfIdentity;
   now: () => number;
 }
@@ -118,12 +120,14 @@ export class EphemeralService {
     }
 
     const id = generateLocalId(this.deps.now());
+    const attached = input.files && input.files.length > 0 ? await this.deps.attachments.prepareCdn(channelId, input.files, id) : [];
     const payload: PrivatePayload = {
       v: 1,
       content: input.content,
       nonce: id,
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
+      files: attached.map((a) => a.private),
     };
     const { ciphertextB64, epoch } = await crypto.encrypt(channelId, encodePayload(payload));
     this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
@@ -321,7 +325,7 @@ export class EphemeralService {
   private async acceptApplication(envelope: E2EEEnvelope, plaintextB64: string): Promise<boolean> {
     const self = this.deps.getSelf();
     const channelId = envelope.channel_id;
-    const payload = decodePayload(plaintextB64);
+    const payload = decodePayload(plaintextB64, { channelId, mode: 'ephemeral', messageId: envelope.message_id });
     const participants = participantsOf(channelId, self.userId).filter((id) => id !== self.userId);
     const senderUserId = await this.deps.devices.ownerOf(participants, envelope.sender_device_id);
     if (!senderUserId) return false;
