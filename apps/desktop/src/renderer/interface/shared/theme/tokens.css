@@ -1,0 +1,135 @@
+/* Nightglass design tokens. Surfaces are OKLCH hue 275 ink; one accent for intent. */
+:root {
+  --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', monospace;
+
+  --fs-caption: 11px;
+  --fs-meta: 12px;
+  --fs-small: 13px;
+  --fs-ui: 14px;
+  --fs-body: 15px;
+  --fs-title: 17px;
+  --fs-section: 20px;
+  --fs-page: 24px;
+  --fs-hero: 30px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-chip: 6px;
+  --radius-control: 10px;
+  --radius-panel: 14px;
+  --radius-dialog: 20px;
+  --radius-full: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+
+  --titlebar-h: 36px;
+  --rail-w: 72px;
+  --sidebar-w: 264px;
+  --members-w: 248px;
+
+  --status-online: oklch(0.78 0.17 150);
+  --status-idle: oklch(0.82 0.15 85);
+  --status-dnd: oklch(0.68 0.2 25);
+  --status-offline: oklch(0.55 0.02 275);
+
+  --mode-standard: oklch(0.76 0.03 275);
+  --mode-ephemeral: oklch(0.78 0.16 165);
+  --mode-p2p: oklch(0.8 0.15 70);
+
+  --danger: oklch(0.68 0.2 25);
+  --success: oklch(0.76 0.16 150);
+  --warning: oklch(0.82 0.15 85);
+
+  --z-sidebar: 10;
+  --z-float: 40;
+  --z-modal: 60;
+  --z-toast: 80;
+}
+
+/* Accents: hue and chroma; lightness derived per theme. */
+:root, [data-accent='iris'] { --accent-h: 275; --accent-c: 0.2; }
+[data-accent='aurora'] { --accent-h: 175; --accent-c: 0.14; }
+[data-accent='ember'] { --accent-h: 45; --accent-c: 0.17; }
+[data-accent='rose'] { --accent-h: 5; --accent-c: 0.2; }
+[data-accent='citrine'] { --accent-h: 100; --accent-c: 0.16; }
+[data-accent='sky'] { --accent-h: 235; --accent-c: 0.16; }
+
+/* Dark: four elevations of ink. */
+:root, [data-theme='dark'] {
+  color-scheme: dark;
+  --bg-0: oklch(0.16 0.012 275);
+  --bg-1: oklch(0.195 0.014 275);
+  --bg-2: oklch(0.23 0.016 275);
+  --bg-3: oklch(0.275 0.018 275);
+  --fg: oklch(0.95 0.008 275);
+  --fg-muted: oklch(0.76 0.018 275);
+  --fg-subtle: oklch(0.62 0.02 275);
+  --accent: oklch(0.7 var(--accent-c) var(--accent-h));
+  --accent-strong: oklch(0.62 var(--accent-c) var(--accent-h));
+  --accent-fg: oklch(0.99 0.005 var(--accent-h));
+  --accent-text: oklch(0.82 calc(var(--accent-c) * 0.8) var(--accent-h));
+  --shadow-color: 275 40% 4%;
+  --glass-bg: oklch(0.22 0.016 275 / 0.72);
+  --glass-edge: oklch(1 0 0 / 0.1);
+  --scrim: oklch(0.1 0.02 275 / 0.62);
+}
+
+[data-theme='oled'] {
+  color-scheme: dark;
+  --bg-0: oklch(0 0 0);
+  --bg-1: oklch(0.125 0.01 275);
+  --bg-2: oklch(0.17 0.013 275);
+  --bg-3: oklch(0.22 0.016 275);
+  --glass-bg: oklch(0.14 0.012 275 / 0.78);
+  --scrim: oklch(0 0 0 / 0.7);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg-0: oklch(0.955 0.008 275);
+  --bg-1: oklch(0.975 0.006 275);
+  --bg-2: oklch(0.99 0.004 275);
+  --bg-3: oklch(0.935 0.01 275);
+  --fg: oklch(0.22 0.025 275);
+  --fg-muted: oklch(0.4 0.03 275);
+  --fg-subtle: oklch(0.5 0.03 275);
+  --accent: oklch(0.55 var(--accent-c) var(--accent-h));
+  --accent-strong: oklch(0.48 var(--accent-c) var(--accent-h));
+  --accent-fg: oklch(0.99 0.005 var(--accent-h));
+  --accent-text: oklch(0.45 var(--accent-c) var(--accent-h));
+  --shadow-color: 275 30% 30%;
+  --glass-bg: oklch(0.99 0.004 275 / 0.78);
+  --glass-edge: oklch(1 0 0 / 0.7);
+  --scrim: oklch(0.3 0.03 275 / 0.35);
+  --status-offline: oklch(0.65 0.02 275);
+  --mode-standard: oklch(0.45 0.03 275);
+  --mode-ephemeral: oklch(0.5 0.14 165);
+  --mode-p2p: oklch(0.55 0.14 60);
+  --success: oklch(0.52 0.14 150);
+  --warning: oklch(0.55 0.13 70);
+  --danger: oklch(0.55 0.2 25);
+}
+
+:root {
+  --hairline: color-mix(in oklch, var(--fg) 8%, transparent);
+  --hairline-strong: color-mix(in oklch, var(--fg) 14%, transparent);
+  --hover: color-mix(in oklch, var(--fg) 6%, transparent);
+  --pressed: color-mix(in oklch, var(--fg) 10%, transparent);
+  --accent-soft: color-mix(in oklch, var(--accent) 16%, transparent);
+  --accent-ring: color-mix(in oklch, var(--accent) 55%, transparent);
+  --shadow-float: 0 12px 32px -8px hsl(var(--shadow-color) / 0.45), 0 2px 6px -2px hsl(var(--shadow-color) / 0.25);
+  --shadow-dialog: 0 32px 80px -16px hsl(var(--shadow-color) / 0.6), 0 8px 24px -8px hsl(var(--shadow-color) / 0.35);
+  --shadow-inset: inset 0 1px 0 color-mix(in oklch, var(--fg) 8%, transparent);
+  --glass-filter: blur(24px) saturate(140%);
+}

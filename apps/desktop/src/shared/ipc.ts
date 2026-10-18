@@ -1,0 +1,150 @@
+/**
+ * Typed IPC contract shared by main, preload and renderer. The renderer is
+ * sandboxed; everything privileged goes through `window.discordy`.
+ */
+
+export type ConnectionProfileId = 'production' | 'local' | 'custom';
+
+export interface ConnectionProfile {
+  id: ConnectionProfileId;
+  apiUrl: string;
+  gatewayUrl: string;
+  cdnUrl: string;
+}
+
+export interface AppInfo {
+  version: string;
+  platform: string;
+  updateFeedUrl: string;
+  connection: ConnectionProfile;
+  e2eTest: boolean;
+}
+
+export interface StoredSession {
+  accessToken: string;
+  refreshToken: string;
+  userId: string;
+  deviceId: string | null;
+}
+
+export interface CaptureSource {
+  id: string;
+  name: string;
+  kind: 'screen' | 'window';
+  thumbnailDataUrl: string;
+  appIconDataUrl: string | null;
+}
+
+export interface CaptureSelection {
+  sourceId: string;
+  /** Capture system/app audio via Windows loopback where supported. */
+  audio: boolean;
+}
+
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string };
+
+export interface NotificationRequest {
+  title: string;
+  body: string;
+  route?: string;
+  silent?: boolean;
+}
+
+export interface CryptoStatus {
+  available: boolean;
+  reason?: string;
+}
+
+export interface IncomingMlsResult {
+  kind: 'application' | 'commit' | 'proposal' | 'ignored';
+  plaintextB64?: string;
+  senderIdentity?: string;
+  epoch?: number;
+}
+
+export interface LocalMessageRecord {
+  channelId: string;
+  messageId: string;
+  sortKey: number;
+  json: string;
+}
+
+export interface CryptoBridge {
+  status(): Promise<CryptoStatus>;
+  /** Opens the per-user encrypted store and returns the device identity public key (base64). */
+  initialise(userId: string, deviceLabel: string): Promise<string>;
+  sign(dataB64: string): Promise<string>;
+  verify(publicKeyB64: string, dataB64: string, signatureB64: string): Promise<boolean>;
+  generateKeyPackages(count: number): Promise<string[]>;
+  hasGroup(groupId: string): Promise<boolean>;
+  createGroup(groupId: string): Promise<number>;
+  addMembers(groupId: string, keyPackagesB64: string[]): Promise<{ commitB64: string; welcomeB64: string; epoch: number }>;
+  joinFromWelcome(welcomeB64: string): Promise<{ groupId: string; epoch: number }>;
+  encrypt(groupId: string, plaintextB64: string): Promise<{ ciphertextB64: string; epoch: number }>;
+  processIncoming(groupId: string, messageB64: string): Promise<IncomingMlsResult>;
+  exportSecret(groupId: string, label: string, length: number): Promise<string>;
+  putMessage(record: LocalMessageRecord): Promise<void>;
+  listMessages(channelId: string, beforeSortKey: number | null, limit: number): Promise<LocalMessageRecord[]>;
+  deleteMessage(channelId: string, messageId: string): Promise<void>;
+}
+
+export interface DiscordyBridge {
+  app: {
+    info(): Promise<AppInfo>;
+    setConnection(profile: ConnectionProfile): Promise<AppInfo>;
+    openExternal(url: string): Promise<void>;
+    setBadgeCount(count: number): void;
+    notify(request: NotificationRequest): void;
+    onNavigate(listener: (route: string) => void): () => void;
+    flashFrame(): void;
+  };
+  session: {
+    load(): Promise<StoredSession | null>;
+    save(session: StoredSession): Promise<void>;
+    clear(): Promise<void>;
+  };
+  capture: {
+    listSources(): Promise<CaptureSource[]>;
+    select(selection: CaptureSelection): Promise<void>;
+  };
+  hotkeys: {
+    setPushToTalk(keycode: number | null): Promise<boolean>;
+    onPushToTalk(listener: (pressed: boolean) => void): () => void;
+  };
+  updates: {
+    check(): Promise<void>;
+    install(): void;
+    onStatus(listener: (status: UpdateStatus) => void): () => void;
+  };
+  crypto: CryptoBridge;
+}
+
+export const IpcChannel = {
+  appInfo: 'app:info',
+  appSetConnection: 'app:set-connection',
+  appOpenExternal: 'app:open-external',
+  appBadge: 'app:badge',
+  appNotify: 'app:notify',
+  appNavigate: 'app:navigate',
+  appFlash: 'app:flash',
+  sessionLoad: 'session:load',
+  sessionSave: 'session:save',
+  sessionClear: 'session:clear',
+  captureList: 'capture:list',
+  captureSelect: 'capture:select',
+  hotkeyPtt: 'hotkey:ptt',
+  hotkeyPttEvent: 'hotkey:ptt-event',
+  updatesCheck: 'updates:check',
+  updatesInstall: 'updates:install',
+  updatesStatus: 'updates:status',
+  crypto: 'crypto:call',
+} as const;
+
+export type CryptoMethod = keyof CryptoBridge;
