@@ -1,0 +1,47 @@
+appId: nl.voics.discordy
+productName: Discordy
+copyright: Discordy
+artifactName: Discordy-Setup-${version}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - resources/**
+  - package.json
+asar: true
+asarUnpack:
+  - "**/*.node"
+npmRebuild: false
+protocols:
+  - name: Discordy
+    schemes:
+      - discordy
+publish:
+  provider: generic
+  url: https://discordy-updates.voics.nl
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  shortcutName: Discordy
+mac:
+  category: public.app-category.social-networking
+  target:
+    - dmg
+  icon: build/icon.png
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Network
+  icon: build/icon.png
+  maintainer: Discordy <noreply@voics.nl>
