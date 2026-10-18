@@ -55,7 +55,7 @@ function AddFriend() {
     e.preventDefault();
     setBusy(true);
     try {
-      await getRuntime().api.putRelationship('@me', { username: username.trim() });
+      await getRuntime().api.sendFriendRequest(username.trim());
       setResult({ ok: true, text: `Friend request sent to ${username.trim()}.` });
       setUsername('');
     } catch (err) {
