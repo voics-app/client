@@ -21,6 +21,9 @@ LABEL org.opencontainers.image.title="discordy-client" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="UNLICENSED"
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/apps/desktop/out/renderer /usr/share/nginx/html
 EXPOSE 8080
