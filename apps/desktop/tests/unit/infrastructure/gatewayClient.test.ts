@@ -135,6 +135,18 @@ describe('GatewayClient', () => {
     expect(second.sent.find((f) => f.op === GatewayOp.RESUME)?.d).toEqual({ token: 'tok', session_id: 'sess', seq: 7 });
   });
 
+  it('does not double the /gateway path when the resume URL already includes it', async () => {
+    const client = makeClient();
+    client.connect();
+    const first = FakeSocket.latest();
+    hello(first);
+    await Promise.resolve();
+    first.receive({ op: 0, t: 'READY', s: 1, d: { session_id: 'sess', resume_gateway_url: 'ws://localhost:18000/gateway', user: { id: '1' } } });
+    first.serverClose(1006);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeSocket.latest().url).toBe('ws://localhost:18000/gateway?v=1&encoding=json');
+  });
+
   it('reconnects and resumes when told to RECONNECT (op 7)', async () => {
     const client = makeClient();
     client.connect();

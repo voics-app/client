@@ -139,7 +139,9 @@ export class GatewayClient implements GatewayPort {
     this.detach();
     const base = resume && this.resumeUrl ? this.resumeUrl : this.options.url;
     this.setState(resume ? 'resuming' : 'connecting');
-    const socket = this.options.socketFactory(`${base.replace(/\/+$/, '')}/gateway?v=1&encoding=json`);
+    // resume_gateway_url may arrive with or without the /gateway path; never double it.
+    const origin = base.replace(/\/+$/, '').replace(/\/gateway$/, '');
+    const socket = this.options.socketFactory(`${origin}/gateway?v=1&encoding=json`);
     this.socket = socket;
     socket.onmessage = (event) => this.handleFrame(event.data);
     socket.onclose = (event) => this.handleClose(event.code);
