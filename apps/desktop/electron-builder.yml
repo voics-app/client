@@ -3,6 +3,7 @@ productName: Discordy
 copyright: Discordy
 artifactName: Discordy-Setup-${version}.${ext}
 directories:
+  app: stage
   output: release
   buildResources: build
 files:
