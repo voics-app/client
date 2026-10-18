@@ -1,5 +1,6 @@
 import { Menu, Tray, app, nativeImage, type BrowserWindow } from 'electron';
 import { join } from 'node:path';
+import { BRAND } from '../shared/brand';
 
 export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => void): Tray {
   const icon = nativeImage.createFromPath(join(__dirname, '../../resources/tray.png'));
@@ -11,13 +12,13 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
     w.show();
     w.focus();
   };
-  tray.setToolTip('Discordy');
+  tray.setToolTip(BRAND.displayName);
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Open Discordy', click: show },
+      { label: `Open ${BRAND.displayName}`, click: show },
       { type: 'separator' },
       { label: `Version ${app.getVersion()}`, enabled: false },
-      { label: 'Quit Discordy', click: onQuit },
+      { label: `Quit ${BRAND.displayName}`, click: onQuit },
     ]),
   );
   tray.on('click', show);

@@ -7,6 +7,7 @@ import { useMessageStore } from './stores/messageStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
+import { BRAND } from '@shared/brand';
 
 export interface SessionVault {
   load(): Promise<StoredSession | null>;
@@ -96,7 +97,7 @@ export class SessionManager {
     let deviceId: string | null = null;
     if (identity) {
       const device = await rt.api.registerDevice({
-        name: this.deps.deviceName ?? 'Discordy desktop',
+        name: this.deps.deviceName ?? `${BRAND.displayName} desktop`,
         identity_key_b64: identity.identityKeyB64,
       });
       deviceId = device.device_id;

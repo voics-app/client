@@ -13,6 +13,7 @@ import { Button } from '../../shared/ui/Button';
 import { Input } from '../../shared/ui/Form';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count, EmptyState } from '../../shared/ui/Misc';
+import { BRAND } from '@shared/brand';
 
 type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add';
 
@@ -66,7 +67,7 @@ function AddFriend() {
   return (
     <form className="add-friend" onSubmit={submit}>
       <h2>Add friend</h2>
-      <p>You can add people with their Discordy username.</p>
+      <p>You can add people with their {BRAND.displayName} username.</p>
       <div className="add-friend-row">
         <Input aria-label="Username" data-autofocus placeholder="Enter a username" value={username} onChange={(e) => setUsername(e.target.value)} />
         <Button type="submit" variant="primary" loading={busy} disabled={username.trim().length < 2}>Send request</Button>

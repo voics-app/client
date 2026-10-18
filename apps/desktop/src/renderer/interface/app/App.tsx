@@ -14,6 +14,7 @@ import { useGlobalShortcuts } from './shortcuts';
 import { createRuntime, type Runtime } from './runtime';
 import { handleRoute } from './navigation';
 import { registerEngines } from './engines';
+import { BRAND } from '@shared/brand';
 
 /** Applies theme, accent, motion and density preferences to the document root. */
 function useAppearance(): void {
@@ -67,7 +68,7 @@ export function App() {
   useEffect(() => bridge?.app.onNavigate(handleRoute), []);
 
   if (failure) return <Boot message={failure} />;
-  if (!runtime) return <Boot message="Starting Discordy" />;
+  if (!runtime) return <Boot message={`Starting ${BRAND.displayName}`} />;
 
   return (
     <QueryClientProvider client={runtime.queryClient}>

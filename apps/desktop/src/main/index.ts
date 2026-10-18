@@ -13,6 +13,7 @@ import { loadMainSettings } from './settings';
 import { createTray } from './tray';
 import { Updater } from './updater';
 import { createMainWindow, installSessionPolicies } from './window';
+import { BRAND } from '../shared/brand';
 
 if (process.env.DISCORDY_USER_DATA_DIR) app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
 
@@ -111,7 +112,7 @@ if (!app.requestSingleInstanceLock()) {
     event.preventDefault();
     navigate(url);
   });
-  app.setAppUserModelId('nl.voics.discordy');
+  app.setAppUserModelId(BRAND.appId);
   registerProtocol();
   pendingRoute = routeFromDeepLink(findDeepLink(process.argv) ?? '');
 

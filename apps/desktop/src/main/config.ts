@@ -3,8 +3,9 @@
  * persisted user choice (Settings → Connection) > production defaults.
  */
 import type { ConnectionProfile, ConnectionProfileId } from '../shared/ipc';
+import { BRAND } from '../shared/brand';
 
-export const DEFAULT_UPDATE_FEED_URL = 'https://discordy-updates.voics.nl';
+export const DEFAULT_UPDATE_FEED_URL = BRAND.updateFeedHost;
 
 export const PROFILES: Record<Exclude<ConnectionProfileId, 'custom'>, ConnectionProfile> = {
   production: {

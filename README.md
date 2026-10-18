@@ -46,6 +46,10 @@ pnpm dist:linux     # AppImage and deb (run on Linux)
 
 Installers are unsigned. Auto-update uses the generic provider at `UPDATE_FEED_URL`.
 
+## How to rename the app
+
+Edit `apps/desktop/brand.json` (displayName, productName, shortName, appId, protocolScheme, description, publisher, updateFeedHost). The window title, tray, UI copy, deep-link scheme, installer name and `electron-builder.config.cjs` all read it. The unit test `tests/unit/brand/brand.test.ts` fails if the display name is hardcoded anywhere else in `apps/desktop/src`. `@discordy/*` package names and `DISCORDY_*` environment variables are identifiers and stay as they are.
+
 ## Configuration
 
 | Variable | Default | Purpose |

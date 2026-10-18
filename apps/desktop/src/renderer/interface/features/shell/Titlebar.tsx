@@ -1,6 +1,7 @@
 import { MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { BRAND } from '@shared/brand';
 
 const isMac = navigator.userAgent.includes('Mac');
 
@@ -13,7 +14,7 @@ export function Titlebar() {
     <header className={`titlebar${isMac ? ' is-mac' : ''}`}>
       <div className="titlebar-brand">
         <span className="brand-mark" aria-hidden="true" />
-        <span>Discordy</span>
+        <span>{BRAND.displayName}</span>
       </div>
       <button type="button" className="palette-pill" onClick={() => open(true)} aria-label="Open command palette">
         <MagnifyingGlass size={14} />

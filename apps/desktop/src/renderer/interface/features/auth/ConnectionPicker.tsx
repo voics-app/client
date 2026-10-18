@@ -6,6 +6,7 @@ import { errorMessage } from '../../app/actions';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { BRAND } from '@shared/brand';
 
 const PRESETS: Record<'production' | 'local', ConnectionProfile> = {
   production: { id: 'production', apiUrl: 'https://discordy-api.voics.nl', gatewayUrl: 'wss://discordy-gateway.voics.nl', cdnUrl: 'https://discordy-cdn.voics.nl' },
@@ -37,7 +38,7 @@ export function ConnectionPicker({ open, onClose }: { open: boolean; onClose: ()
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Connection" description="Choose which Discordy servers this app talks to." footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} onClick={() => void apply()}>Apply and reload</Button></>}>
+    <Modal open={open} onClose={onClose} title="Connection" description={`Choose which ${BRAND.displayName} servers this app talks to.`} footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} onClick={() => void apply()}>Apply and reload</Button></>}>
       <Segmented label="Profile" value={id} onChange={setId} options={[{ value: 'production', label: 'Production' }, { value: 'local', label: 'Local dev' }, { value: 'custom', label: 'Custom' }]} />
       {(['apiUrl', 'gatewayUrl', 'cdnUrl'] as const).map((key) => (
         <Field key={key} label={key === 'apiUrl' ? 'API URL' : key === 'gatewayUrl' ? 'Gateway URL' : 'CDN URL'}>

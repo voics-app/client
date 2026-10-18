@@ -19,6 +19,7 @@ import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea }
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
 import { readImageUpload } from '../imageUpload';
+import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -51,7 +52,7 @@ export function AccountTab() {
           variant="danger"
           icon={<SignOut size={16} />}
           onClick={() =>
-            openDialog({ kind: 'confirm', title: 'Sign out?', body: 'You will need to sign in again to use Discordy on this device.', confirmLabel: 'Sign out', danger: true, onConfirm: async () => { useUiStore.getState().openSettings(null); await getRuntime().session.logout(); } })
+            openDialog({ kind: 'confirm', title: 'Sign out?', body: `You will need to sign in again to use ${BRAND.displayName} on this device.`, confirmLabel: 'Sign out', danger: true, onConfirm: async () => { useUiStore.getState().openSettings(null); await getRuntime().session.logout(); } })
           }
         >
           Sign out
@@ -241,7 +242,7 @@ export function VoiceTab() {
       void (async () => {
         const ok = (await bridge?.hotkeys.setPushToTalk(code)) ?? false;
         if (ok) { prefs.patch({ pttKeycode: code, pttLabel: keyLabel(e.code) }); setPttNote(null); }
-        else setPttNote('Global key capture is unavailable on this system, so push-to-talk only works while Discordy is focused.');
+        else setPttNote(`Global key capture is unavailable on this system, so push-to-talk only works while ${BRAND.displayName} is focused.`);
         if (!ok) prefs.patch({ pttKeycode: code, pttLabel: keyLabel(e.code) });
       })();
     };

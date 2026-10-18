@@ -1,0 +1,10 @@
+{
+  "displayName": "Discordy",
+  "productName": "Discordy",
+  "shortName": "Discordy",
+  "appId": "nl.voics.discordy",
+  "protocolScheme": "discordy",
+  "description": "Discordy desktop client",
+  "publisher": "Discordy <noreply@voics.nl>",
+  "updateFeedHost": "https://discordy-updates.voics.nl"
+}

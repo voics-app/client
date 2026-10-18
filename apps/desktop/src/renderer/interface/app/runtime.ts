@@ -18,6 +18,7 @@ import type { AuthResponse, ReadyPayload } from '@shared/contracts/rest';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { notifyIncoming } from './notifications';
+import { BRAND } from '@shared/brand';
 
 export interface Runtime {
   info: AppInfo;
@@ -107,7 +108,7 @@ export function createRuntime(info: AppInfo): Runtime {
     fetchBytes,
     cdnUrl: () => useConnectionStore.getState().cdnUrl,
     iceServers: () => turn.iceServers(),
-    deviceLabel: `Discordy ${info.platform}`,
+    deviceLabel: `${BRAND.displayName} ${info.platform}`,
   });
   gateway.onDispatch((event, data) => {
     dispatch(event, data);
@@ -132,7 +133,7 @@ export function createRuntime(info: AppInfo): Runtime {
   manager = new SessionManager({
     vault: sessionVault,
     runtime: sessionRuntime,
-    deviceName: `Discordy ${info.platform}`,
+    deviceName: `${BRAND.displayName} ${info.platform}`,
     identity: async (userId) => {
       if (!bridge) return null;
       const status = await bridge.crypto.status();
