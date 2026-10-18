@@ -3,16 +3,20 @@ import { DEFAULT_UPDATE_FEED_URL, PROFILES, resolveConnection, resolveUpdateFeed
 import { routeFromDeepLink } from '../../../src/main/deepLinks';
 
 describe('resolveConnection', () => {
+  it('points the local profile at the dev stack on 127.0.0.1:18000', () => {
+    expect(PROFILES.local.apiUrl).toBe('http://127.0.0.1:18000');
+    expect(PROFILES.local.gatewayUrl).toBe('ws://127.0.0.1:18000');
+    expect(PROFILES.local.cdnUrl).toBe('http://127.0.0.1:18000/cdn');
+  });
+
   it('defaults to production endpoints', () => {
     expect(resolveConnection({}, null)).toEqual(PROFILES.production);
     expect(PROFILES.production.apiUrl).toBe('https://discordy-api.voics.nl');
     expect(PROFILES.production.gatewayUrl).toBe('wss://discordy-gateway.voics.nl');
   });
 
-  it('local profile points at the compose ingress on :8000', () => {
-    const local = resolveConnection({ DISCORDY_PROFILE: 'local' }, null);
-    expect(local.apiUrl).toBe('http://localhost:8000');
-    expect(local.gatewayUrl).toBe('ws://localhost:8000');
+  it('DISCORDY_PROFILE=local resolves to the local profile', () => {
+    expect(resolveConnection({ DISCORDY_PROFILE: 'local' }, null)).toEqual(PROFILES.local);
   });
 
   it('env overrides individual endpoints and win over persisted settings', () => {
