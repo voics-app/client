@@ -28,7 +28,8 @@ export default defineConfig({
     root: resolve(__dirname, 'src/renderer'),
     resolve: { alias },
     plugins: [react(), brandHtml],
-    server: { port: 5173, strictPort: true },
+    // RENDERER_PORT lets a second `pnpm dev` run next to the first (pair it with DISCORDY_USER_DATA_DIR).
+    server: { port: Number(process.env.RENDERER_PORT || 5173), strictPort: true },
     worker: { format: 'es' },
     build: {
       rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') },

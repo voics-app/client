@@ -25,6 +25,12 @@ pnpm build:native   # builds native/crypto for this platform
 pnpm dev            # electron-vite dev server with HMR
 ```
 
+A second dev client (another account) needs its own renderer port and user data folder. In PowerShell:
+
+```powershell
+$env:RENDERER_PORT=5174; $env:DISCORDY_USER_DATA_DIR="$env:TEMP\discordy-dev-2"; pnpm dev
+```
+
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
 
 ## Test and lint
@@ -59,7 +65,8 @@ Edit `apps/desktop/brand.json` (displayName, productName, shortName, appId, prot
 | `DISCORDY_GATEWAY_URL` | profile | Gateway WebSocket base URL |
 | `DISCORDY_CDN_URL` | profile | Attachments and avatars |
 | `UPDATE_FEED_URL` | `https://discordy-updates.voics.nl` | electron-updater feed |
-| `DISCORDY_USER_DATA_DIR` | OS default | Override the user data directory (tests) |
+| `DISCORDY_USER_DATA_DIR` | OS default | Override the user data directory (tests, a second client) |
+| `RENDERER_PORT` | `5173` | Dev server port for `pnpm dev` (run a second client) |
 
 Users can also switch profile from the sign-in screen or Settings, Connection.
 
