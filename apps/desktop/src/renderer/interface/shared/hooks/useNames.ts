@@ -2,7 +2,8 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import type { User } from '@shared/contracts/rest';
 
 export function displayName(user: Pick<User, 'username' | 'global_name'>, nick?: string | null): string {
-  return nick || user.global_name || user.username;
+  // Gateway events can carry partial users ({ id } only), so never return undefined.
+  return nick || user.global_name || user.username || 'Unknown user';
 }
 
 /** Display name honouring the guild nickname. */

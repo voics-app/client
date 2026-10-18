@@ -20,7 +20,7 @@ function hueOf(seed: string): number {
 }
 
 export function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   const first = parts[0]!;
   return (parts.length > 1 ? first[0]! + parts[parts.length - 1]![0]! : first.slice(0, 2)).toUpperCase();
@@ -33,7 +33,7 @@ export function assetUrl(cdn: string, kind: 'avatars' | 'icons' | 'banners', id:
 /** Avatar with optional presence dot and the audio-driven speaking ring. */
 export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square }: Props) {
   const cdn = useConnectionStore((s) => s.cdnUrl);
-  const h = hueOf(id ?? name);
+  const h = hueOf(id ?? name ?? '');
   const style = {
     width: size,
     height: size,
