@@ -14,6 +14,10 @@ jobs:
       test-script: "test:unit"
   docker:
     needs: [node]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     uses: discordy-voics/.github/.github/workflows/docker.yml@main
     with:
       image-name: client
