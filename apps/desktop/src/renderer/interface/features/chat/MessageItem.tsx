@@ -1,11 +1,11 @@
-import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, Eye, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
 import { memo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
-import type { Embed } from '@shared/contracts/rest';
+import { MessageFlag, type Embed } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
@@ -19,6 +19,7 @@ import { Tooltip } from '../../shared/ui/Tooltip';
 import { AttachmentView } from './AttachmentView';
 import { useEmojiPopover } from './EmojiPopover';
 import { MarkdownView } from './MarkdownView';
+import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
 
 function EmbedView({ embed }: { embed: Embed }) {
@@ -59,6 +60,19 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
       ) : (
         <span className="reply-text is-missing">Original message unavailable</span>
       )}
+    </div>
+  );
+}
+
+function InteractionHeader({ message }: { message: ChatMessage }) {
+  const meta = message.interaction_metadata;
+  if (!meta) return null;
+  return (
+    <div className="interaction-header">
+      <span className="reply-hook" aria-hidden="true" />
+      <Avatar id={meta.user.id} name={displayName(meta.user)} avatar={meta.user.avatar} size={16} />
+      <span className="reply-name">{displayName(meta.user)}</span>
+      <span className="reply-text">used {meta.name ? <strong>/{meta.name}</strong> : 'a command'}</span>
     </div>
   );
 }
@@ -164,7 +178,10 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
   const failed = message.localState === 'failed';
   const sending = message.localState === 'sending';
   const mentionsMe = me ? message.mentions.some((u) => u.id === me) || message.mention_everyone : false;
+  const ephemeral = ((message.flags ?? 0) & MessageFlag.EPHEMERAL) !== 0;
   const system = message.type !== 0 && message.type !== 19 && message.type !== 20;
+
+  if (ephemeral && message.interaction_metadata && message.interaction_metadata.user.id !== me) return null;
 
   if (system) {
     return (
@@ -186,6 +203,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
       onContextMenu={menu.openAt}
     >
       {startsGroup && <ReplyPreview message={message} />}
+      {startsGroup && <InteractionHeader message={message} />}
       <div className="message-row">
         <div className="message-gutter">
           {startsGroup ? (
@@ -221,7 +239,14 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           )}
           {message.attachments.length > 0 && <div className="attachments">{message.attachments.map((a) => <AttachmentView key={a.id} attachment={a} channelId={message.channel_id} />)}</div>}
           {message.embeds.map((e, i) => <EmbedView key={i} embed={e} />)}
+          <MessageComponents message={message} />
           <Reactions message={message} />
+          {ephemeral && (
+            <p className="message-ephemeral">
+              <Eye size={13} /> Only you can see this
+              <button type="button" onClick={() => useMessageStore.getState().remove(message.channel_id, message.id)}>Dismiss message</button>
+            </p>
+          )}
           {message.thread && (
             <button type="button" className="thread-chip" onClick={() => setSidePanel({ kind: 'thread', threadId: message.thread!.id })}>
               <ChatTeardropText size={16} /> {message.thread.name} <span>{message.thread.message_count ?? 0} messages</span>

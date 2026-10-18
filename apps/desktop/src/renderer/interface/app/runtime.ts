@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@shared/contracts/gateway';
 import type { AppInfo } from '@shared/ipc';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
+import { InteractionService } from '@renderer/application/interactionService';
 import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/application/sessionManager';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
@@ -25,6 +26,7 @@ export interface Runtime {
   gateway: GatewayClient;
   session: SessionManager;
   privacy: PrivateMessaging;
+  interactions: InteractionService;
   queryClient: QueryClient;
   /** Extension point filled by feature modules (voice, private messaging). */
   hooks: RuntimeHooks;
@@ -148,6 +150,6 @@ export function createRuntime(info: AppInfo): Runtime {
     },
   });
 
-  current = { info, http, api, gateway, session: manager, privacy, queryClient, hooks };
+  current = { info, http, api, gateway, session: manager, privacy, interactions: new InteractionService(api), queryClient, hooks };
   return current;
 }

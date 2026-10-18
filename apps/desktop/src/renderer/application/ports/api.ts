@@ -1,10 +1,13 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
 import type {
+  ApplicationCommand,
+  ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
   AuthResponse,
   Ban,
   Channel,
+  CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
   Device,
@@ -117,4 +120,9 @@ export interface ApiPort {
   upload(url: string, file: Blob): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;
+
+  applications(): Promise<ApplicationSummary[]>;
+  globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
+  guildCommands(applicationId: string, guildId: string): Promise<ApplicationCommand[]>;
+  createInteraction(body: CreateInteractionBody): Promise<{ id: string }>;
 }

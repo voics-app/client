@@ -1,11 +1,14 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '@renderer/application/ports/api';
 import type {
+  ApplicationCommand,
+  ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
   AuthResponse,
   Ban,
   Channel,
+  CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
   Device,
@@ -251,5 +254,18 @@ export class DiscordyApi implements ApiPort {
 
   voiceRegions() {
     return this.get<VoiceRegion[]>('/voice/regions');
+  }
+
+  applications() {
+    return this.get<ApplicationSummary[]>('/applications');
+  }
+  globalCommands(applicationId: string) {
+    return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);
+  }
+  guildCommands(applicationId: string, guildId: string) {
+    return this.get<ApplicationCommand[]>(`/applications/${applicationId}/guilds/${guildId}/commands`);
+  }
+  createInteraction(body: CreateInteractionBody) {
+    return this.post<{ id: string }>('/interactions', body);
   }
 }
