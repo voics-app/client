@@ -63,7 +63,8 @@ export interface P2PDeps {
   getSelf: () => SelfIdentity;
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   now: () => number;
-  iceServers?: PeerConnectionConfig['iceServers'];
+  /** Evaluated per connection so refreshed TURN credentials apply to new links. */
+  iceServers?: () => PeerConnectionConfig['iceServers'];
   connectTimeoutMs?: number;
 }
 
@@ -215,7 +216,7 @@ export class P2PService {
   }
 
   private newLink(channelId: string, peerUserId: string, peerDeviceId: string, initiator: boolean): Link {
-    const pc = this.deps.createPeerConnection({ iceServers: this.deps.iceServers ?? [] });
+    const pc = this.deps.createPeerConnection({ iceServers: this.deps.iceServers?.() ?? [] });
     let resolveOpen!: () => void;
     let rejectOpen!: (error: Error) => void;
     const opened = new Promise<void>((resolve, reject) => {

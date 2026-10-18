@@ -58,6 +58,24 @@ describe('GatewayClient', () => {
     expect(client.state).toBe('ready');
   });
 
+  it('renewSession drops the session and re-identifies so READY carries fresh TURN credentials', async () => {
+    const client = makeClient();
+    client.connect();
+    const first = FakeSocket.latest();
+    hello(first);
+    await Promise.resolve();
+    ready(first, 1);
+    client.renewSession();
+    expect(client.sessionId).toBeNull();
+    vi.advanceTimersByTime(60_000);
+    const second = FakeSocket.latest();
+    expect(second).not.toBe(first);
+    hello(second);
+    await Promise.resolve();
+    expect(second.sent.some((f) => f.op === GatewayOp.IDENTIFY)).toBe(true);
+    expect(second.sent.some((f) => f.op === GatewayOp.RESUME)).toBe(false);
+  });
+
   it('heartbeats with the last sequence and detects zombie connections', async () => {
     const client = makeClient();
     client.connect();
