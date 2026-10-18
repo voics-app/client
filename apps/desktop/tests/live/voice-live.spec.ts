@@ -19,7 +19,7 @@ test('bob joins a voice channel through the real client', async () => {
       DISCORDY_API_URL: BASE,
       DISCORDY_GATEWAY_URL: BASE.replace(/^http/, 'ws'),
       DISCORDY_CDN_URL: `${BASE}/cdn`,
-      ELECTRON_RENDERER_URL: '',
+      ELECTRON_RENDERER_URL: process.env.LIVE_DEV ? 'http://localhost:5173' : '',
     } as Record<string, string>,
   });
   const page = await app.firstWindow();
