@@ -66,6 +66,7 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  sendFriendRequest(username: string): Promise<void>;
   putRelationship(userId: string, body?: { type?: number; username?: string }): Promise<void>;
   deleteRelationship(userId: string): Promise<void>;
 
