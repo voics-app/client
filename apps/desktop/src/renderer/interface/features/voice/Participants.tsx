@@ -79,14 +79,15 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
   const muted = participant.state.self_mute || participant.state.mute;
   const deaf = participant.state.self_deaf || participant.state.deaf;
   const live = kind === 'screen';
+  const hasVideo = Boolean(stream) && kind !== 'avatar';
 
   return (
     <div
-      className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
+      className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
       style={{ '--speak': speaking } as React.CSSProperties}
       onContextMenu={participant.isSelf ? undefined : menu.openAt}
     >
-      {stream && kind !== 'avatar' ? (
+      {stream && hasVideo ? (
         <MediaElement stream={stream} muted className="tile-video" onReady={setVideo} />
       ) : (
         <div className="tile-avatar">
@@ -101,7 +102,7 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
       {live && (
         <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
       )}
-      {stream && kind !== 'avatar' && (
+      {hasVideo && (
         <div className="tile-tools">
           {onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
           {video && 'requestPictureInPicture' in video && (
