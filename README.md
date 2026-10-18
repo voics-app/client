@@ -13,7 +13,7 @@ Electron + React desktop client for Discordy: servers, channels, threads, DMs, v
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |
 | `apps/desktop/src/renderer/infrastructure` | HTTP and gateway clients, WebRTC, audio, workers |
 | `apps/desktop/src/renderer/interface` | React UI: design system, features, composition root |
-| `native/crypto` | napi-rs module: OpenMLS, Ed25519 identity, SQLCipher store |
+| `native/crypto` | napi-rs module: OpenMLS, Ed25519 identity, encrypted local store |
 
 ## Run locally
 
@@ -64,7 +64,7 @@ Users can also switch profile from the sign-in screen or Settings, Connection.
 - Ephemeral E2EE and P2P never fall back to plaintext. If the native crypto module is unavailable, those sends fail with an explanation.
 - Voice shows an E2EE badge only when the voice server announces DAVE and frame keys are actually installed.
 - Protected (DRM) video captures as black by design. The share picker detects this and offers Watch Together.
-- The session is stored with Electron `safeStorage` (OS keychain). The SQLCipher key for local private history is wrapped by the same keychain.
+- The session is stored with Electron `safeStorage` (OS keychain). The store key for local private history is wrapped by the same keychain.
 
 ## Not in v1
 

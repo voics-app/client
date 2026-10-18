@@ -1,7 +1,7 @@
 /**
  * Hosts the napi-rs crypto module in the main process and exposes it to the
  * renderer as the `CryptoBridge` over a single whitelisted IPC channel.
- * The SQLCipher key is 256 random bits wrapped by the OS keychain.
+ * The store key is 256 random bits wrapped by the OS keychain.
  */
 import { randomBytes } from 'node:crypto';
 import type { CryptoBridge, CryptoMethod, CryptoStatus, LocalMessageRecord } from '../shared/ipc';

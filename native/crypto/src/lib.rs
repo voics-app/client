@@ -17,7 +17,7 @@ use application::engine::CryptoEngine;
 use domain::error::CryptoError;
 use domain::identity::verify_signature;
 use domain::message::{Incoming, LocalMessage};
-use infrastructure::sqlcipher_store::SqlCipherStore;
+use infrastructure::encrypted_sqlite_store::EncryptedSqliteStore;
 
 fn to_napi(e: CryptoError) -> Error {
     Error::new(Status::GenericFailure, e.to_string())
@@ -72,7 +72,7 @@ pub fn verify(public_key: Buffer, message: Buffer, signature: Buffer) -> Result<
 
 #[napi]
 pub struct NativeCrypto {
-    engine: Mutex<CryptoEngine<SqlCipherStore>>,
+    engine: Mutex<CryptoEngine<EncryptedSqliteStore>>,
 }
 
 #[napi]
@@ -80,12 +80,12 @@ impl NativeCrypto {
     /// Opens the encrypted store at `path` with a 256-bit hex key and the MLS credential label.
     #[napi(factory)]
     pub fn open(path: String, key_hex: String, credential_label: String) -> Result<Self> {
-        let store = SqlCipherStore::open(&path, &key_hex).map_err(to_napi)?;
+        let store = EncryptedSqliteStore::open(&path, &key_hex).map_err(to_napi)?;
         let engine = CryptoEngine::open(store, &credential_label).map_err(to_napi)?;
         Ok(Self { engine: Mutex::new(engine) })
     }
 
-    fn with<T>(&self, f: impl FnOnce(&mut CryptoEngine<SqlCipherStore>) -> std::result::Result<T, CryptoError>) -> Result<T> {
+    fn with<T>(&self, f: impl FnOnce(&mut CryptoEngine<EncryptedSqliteStore>) -> std::result::Result<T, CryptoError>) -> Result<T> {
         let mut guard = self
             .engine
             .lock()

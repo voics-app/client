@@ -306,12 +306,12 @@ impl<S: SecureStore> CryptoEngine<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infrastructure::sqlcipher_store::SqlCipherStore;
+    use crate::infrastructure::encrypted_sqlite_store::EncryptedSqliteStore;
 
     const KEY: &str = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
-    fn engine(label: &str) -> CryptoEngine<SqlCipherStore> {
-        let mut e = CryptoEngine::open(SqlCipherStore::open_in_memory(KEY).unwrap(), label).unwrap();
+    fn engine(label: &str) -> CryptoEngine<EncryptedSqliteStore> {
+        let mut e = CryptoEngine::open(EncryptedSqliteStore::open_in_memory(KEY).unwrap(), label).unwrap();
         e.ensure_identity().unwrap();
         e
     }
@@ -361,7 +361,7 @@ mod tests {
         carol.join_from_welcome(&added.welcome).unwrap();
         assert_eq!(alice.member_keys(b"g").unwrap().len(), 3);
 
-        let removal = alice.remove_members(b"g", &[bob_key.clone()]).unwrap().unwrap();
+        let removal = alice.remove_members(b"g", std::slice::from_ref(&bob_key)).unwrap().unwrap();
         assert_eq!(removal.epoch, added.epoch + 1);
         assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
         assert!(!alice.member_keys(b"g").unwrap().contains(&bob_key));
@@ -391,12 +391,12 @@ mod tests {
         let path = dir.join("engine.db");
         let path = path.to_str().unwrap();
         let public = {
-            let mut e = CryptoEngine::open(SqlCipherStore::open(path, KEY).unwrap(), "a:1").unwrap();
+            let mut e = CryptoEngine::open(EncryptedSqliteStore::open(path, KEY).unwrap(), "a:1").unwrap();
             let public = e.ensure_identity().unwrap();
             e.create_group(b"g").unwrap();
             public
         };
-        let mut reopened = CryptoEngine::open(SqlCipherStore::open(path, KEY).unwrap(), "a:1").unwrap();
+        let mut reopened = CryptoEngine::open(EncryptedSqliteStore::open(path, KEY).unwrap(), "a:1").unwrap();
         assert_eq!(reopened.ensure_identity().unwrap(), public);
         assert!(reopened.has_group(b"g").unwrap());
         assert_eq!(reopened.epoch(b"g").unwrap(), 0);
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn operations_require_identity() {
-        let mut e = CryptoEngine::open(SqlCipherStore::open_in_memory(KEY).unwrap(), "a:1").unwrap();
+        let mut e = CryptoEngine::open(EncryptedSqliteStore::open_in_memory(KEY).unwrap(), "a:1").unwrap();
         assert!(matches!(e.generate_key_packages(1), Err(CryptoError::NoIdentity)));
     }
 }

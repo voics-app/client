@@ -1,5 +1,5 @@
 //! OpenMLS provider whose key/value storage can be snapshotted and restored, so
-//! group state survives restarts by being mirrored into the SQLCipher store.
+//! group state survives restarts by being mirrored into the encrypted SQLite store.
 
 use std::collections::HashMap;
 
@@ -48,11 +48,11 @@ impl OpenMlsProvider for PersistentProvider {
     }
 }
 
+pub type MlsState = HashMap<Vec<u8>, Vec<u8>>;
+pub type MlsUpserts = Vec<(Vec<u8>, Vec<u8>)>;
+
 /// Computes the minimal set of changes turning `before` into `after`.
-pub fn diff_state(
-    before: &HashMap<Vec<u8>, Vec<u8>>,
-    after: &HashMap<Vec<u8>, Vec<u8>>,
-) -> (Vec<(Vec<u8>, Vec<u8>)>, Vec<Vec<u8>>) {
+pub fn diff_state(before: &MlsState, after: &MlsState) -> (MlsUpserts, Vec<Vec<u8>>) {
     let upserts = after
         .iter()
         .filter(|(k, v)| before.get(*k) != Some(*v))
