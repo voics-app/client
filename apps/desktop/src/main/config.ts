@@ -16,9 +16,9 @@ export const PROFILES: Record<Exclude<ConnectionProfileId, 'custom'>, Connection
   },
   local: {
     id: 'local',
-    apiUrl: 'http://localhost:8000',
-    gatewayUrl: 'ws://localhost:8000',
-    cdnUrl: 'http://localhost:8000/cdn',
+    apiUrl: 'http://127.0.0.1:18000',
+    gatewayUrl: 'ws://127.0.0.1:18000',
+    cdnUrl: 'http://127.0.0.1:18000/cdn',
   },
 };
 
