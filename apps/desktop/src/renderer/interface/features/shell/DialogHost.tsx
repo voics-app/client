@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
+import { dmCandidates } from '@renderer/application/dmCandidates';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
 import { ChannelType, type Invite } from '@shared/contracts/rest';
@@ -230,13 +232,13 @@ function NewDmDialog() {
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const close = useClose();
-  const guilds = useGuildStore((s) => s.members);
+  const members = useGuildStore((s) => s.members);
   const channels = useGuildStore((s) => s.channels);
+  const relationships = useRelationshipStore((s) => s.byUser);
   const me = useSessionStore((s) => s.user?.id);
-  const people = new Map<string, { id: string; name: string; avatar: string | null }>();
-  for (const members of Object.values(guilds)) for (const m of Object.values(members)) if (m.user.id !== me && !m.user.bot) people.set(m.user.id, { id: m.user.id, name: displayName(m.user, m.nick), avatar: m.user.avatar });
-  for (const c of Object.values(channels)) for (const u of c.recipients ?? []) if (u.id !== me) people.set(u.id, { id: u.id, name: displayName(u), avatar: u.avatar });
-  const list = [...people.values()].filter((p) => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 30);
+  const list = dmCandidates({ meId: me, members, channels, relationships, displayName })
+    .filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 30);
   const create = async () => {
     setBusy(true);
     const channel = await attempt(() => getRuntime().api.openPrivateChannel(picked), 'Could not open conversation');
