@@ -13,15 +13,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Select, TextArea } from '../../../shared/ui/Form';
 import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
-
-export function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read file'));
-    reader.readAsDataURL(file);
-  });
-}
+import { readAsDataUrl, readImageUpload } from '../imageUpload';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -43,19 +35,33 @@ export function ServerOverview({ guildId }: { guildId: string }) {
   const [description, setDescription] = useState(guild?.description ?? '');
   const [region, setRegion] = useState(guild?.voice_region ?? '');
   const [icon, setIcon] = useState<string | null | undefined>(undefined);
+  const [iconError, setIconError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const regions = useQuery({ queryKey: ['voice', 'regions'], queryFn: () => getRuntime().api.voiceRegions(), staleTime: 300_000 });
   if (!guild) return null;
   const dirty = name !== guild.name || description !== (guild.description ?? '') || region !== (guild.voice_region ?? '') || icon !== undefined;
 
+  const chooseIcon = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setIcon(await readImageUpload(file));
+      setIconError(null);
+    } catch (error) {
+      setIconError(error instanceof Error ? error.message : 'Could not read the image.');
+    }
+  };
+
   const save = async () => {
     setSaving(true);
-    const updated = await attempt(() => getRuntime().api.updateGuild(guildId, { name, description: description || null, voice_region: region || null, ...(icon !== undefined ? { icon } : {}) }), 'Could not save server');
-    setSaving(false);
-    if (updated) {
-      useGuildStore.getState().patchGuild({ ...updated, id: guildId });
-      setIcon(undefined);
+    try {
+      const updated = await attempt(() => getRuntime().api.updateGuild(guildId, { name, description: description || null, voice_region: region || null, ...(icon !== undefined ? { icon } : {}) }), 'Could not save server');
+      if (updated) {
+        useGuildStore.getState().patchGuild({ ...updated, id: guildId });
+        setIcon(undefined);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -66,7 +72,8 @@ export function ServerOverview({ guildId }: { guildId: string }) {
           {icon ? <img src={icon} alt="" /> : <Avatar id={guild.id} name={guild.name} avatar={guild.icon} size={96} square />}
           <span><Upload size={18} /> Change</span>
         </button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) setIcon(await readAsDataUrl(f)); }} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => void chooseIcon(e.target.files?.[0])} />
+        {iconError && <p className="field-error" role="alert">{iconError}</p>}
         <div className="stack grow">
           <Field label="Server name">{(id) => <Input id={id} value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />}</Field>
           <Field label="Description">{(id) => <TextArea id={id} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />}</Field>

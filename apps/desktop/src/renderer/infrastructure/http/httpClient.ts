@@ -95,10 +95,7 @@ export class HttpClient {
     if (response.status === 204) return null as T;
     const text = await response.text();
     const parsed: unknown = text ? safeJson(text) : null;
-    if (!response.ok) {
-      const envelope = (parsed ?? {}) as Partial<ApiErrorBody>;
-      throw new ApiError(response.status, envelope.code ?? response.status, envelope.message ?? response.statusText, envelope.errors);
-    }
+    if (!response.ok) throw errorFromResponse(response.status, text);
     return parsed as T;
   }
 
@@ -120,6 +117,22 @@ export class HttpClient {
     const response = await this.fetchFn(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
     if (!response.ok) throw new ApiError(response.status, response.status, `Upload failed (${response.status})`);
     onProgress?.(1);
+  }
+}
+
+/** Builds the error for a failed response; proxies and gateways send HTML or empty bodies. */
+function errorFromResponse(status: number, text: string): ApiError {
+  const envelope = parseEnvelope(text);
+  const message = envelope?.message || `Request failed with HTTP ${status}`;
+  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors);
+}
+
+function parseEnvelope(text: string): Partial<ApiErrorBody> | null {
+  try {
+    const value: unknown = JSON.parse(text);
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Partial<ApiErrorBody>) : null;
+  } catch {
+    return null;
   }
 }
 
