@@ -240,6 +240,135 @@ export interface Message {
   message_reference?: MessageReference;
   referenced_message?: Message | null;
   thread?: Channel;
+  application_id?: Snowflake;
+  components?: MessageComponent[];
+  interaction_metadata?: InteractionMetadata;
+}
+
+export const MessageFlag = {
+  EPHEMERAL: 1 << 6,
+  LOADING: 1 << 7,
+} as const;
+
+export const CommandType = { CHAT_INPUT: 1, USER: 2, MESSAGE: 3 } as const;
+
+export const CommandOptionType = {
+  SUB_COMMAND: 1,
+  SUB_COMMAND_GROUP: 2,
+  STRING: 3,
+  INTEGER: 4,
+  BOOLEAN: 5,
+  USER: 6,
+  CHANNEL: 7,
+  ROLE: 8,
+  MENTIONABLE: 9,
+  NUMBER: 10,
+  ATTACHMENT: 11,
+} as const;
+
+export interface CommandOptionChoice {
+  name: string;
+  value: string | number;
+}
+
+export interface ApplicationCommandOption {
+  type: number;
+  name: string;
+  description: string;
+  required?: boolean;
+  choices?: CommandOptionChoice[];
+  options?: ApplicationCommandOption[];
+  channel_types?: number[];
+  min_value?: number;
+  max_value?: number;
+  min_length?: number;
+  max_length?: number;
+  autocomplete?: boolean;
+}
+
+export interface ApplicationCommand {
+  id: Snowflake;
+  type?: number;
+  application_id: Snowflake;
+  guild_id?: Snowflake;
+  name: string;
+  description: string;
+  options?: ApplicationCommandOption[];
+  default_member_permissions?: string | null;
+  version?: Snowflake;
+}
+
+/** Application as listed by `GET /applications` (the caller's own applications). */
+export interface ApplicationSummary {
+  id: Snowflake;
+  name: string;
+  icon?: string | null;
+  bot?: User;
+}
+
+export const InteractionType = { APPLICATION_COMMAND: 2, MESSAGE_COMPONENT: 3, AUTOCOMPLETE: 4, MODAL_SUBMIT: 5 } as const;
+
+export const ComponentType = {
+  ACTION_ROW: 1,
+  BUTTON: 2,
+  STRING_SELECT: 3,
+  TEXT_INPUT: 4,
+  USER_SELECT: 5,
+  ROLE_SELECT: 6,
+  MENTIONABLE_SELECT: 7,
+  CHANNEL_SELECT: 8,
+} as const;
+
+export interface SelectOption {
+  label: string;
+  value: string;
+  description?: string;
+  emoji?: Emoji;
+  default?: boolean;
+}
+
+export interface MessageComponent {
+  type: number;
+  custom_id?: string;
+  style?: number;
+  label?: string;
+  emoji?: Emoji;
+  url?: string;
+  disabled?: boolean;
+  options?: SelectOption[];
+  placeholder?: string;
+  min_values?: number;
+  max_values?: number;
+  min_length?: number;
+  max_length?: number;
+  required?: boolean;
+  value?: string;
+  channel_types?: number[];
+  components?: MessageComponent[];
+}
+
+export interface InteractionMetadata {
+  id: Snowflake;
+  type: number;
+  user: User;
+  name?: string;
+}
+
+/** Body of `POST /interactions` (P9): a user invokes a command, component or modal. */
+export interface CreateInteractionBody {
+  type: number;
+  application_id: Snowflake;
+  channel_id: Snowflake;
+  guild_id?: Snowflake;
+  message_id?: Snowflake;
+  data: Record<string, unknown>;
+}
+
+/** `INTERACTION_MODAL_CREATE` dispatch payload. */
+export interface ModalCreate {
+  interaction_id: Snowflake;
+  channel_id: Snowflake;
+  data: { custom_id: string; title: string; components: MessageComponent[] };
 }
 
 export interface Invite {

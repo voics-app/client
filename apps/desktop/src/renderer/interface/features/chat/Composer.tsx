@@ -1,8 +1,10 @@
 import { ArrowBendUpLeft, File as FileIcon, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
 import { reportError } from '../../app/actions';
@@ -14,13 +16,16 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
+import { SlashCommandPanel } from './SlashCommandPanel';
 
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
+const COMMAND_REFRESH_MS = 60_000;
+const commandLoads = new Map<string, number>();
 
 interface Suggestion {
-  kind: 'user' | 'channel' | 'role' | 'emoji';
+  kind: 'user' | 'channel' | 'role' | 'emoji' | 'command';
   key: string;
   label: string;
   detail?: string;
@@ -28,6 +33,7 @@ interface Suggestion {
   avatar?: { id: string; name: string; avatar: string | null };
   /** Mention token to translate on send, e.g. `@ada` -> `<@123>`. */
   mention?: { token: string; wire: string };
+  entry?: SlashEntry;
 }
 
 function activeToken(text: string, caret: number): { trigger: '@' | '#' | ':'; query: string; start: number } | null {
@@ -45,6 +51,9 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const [caret, setCaret] = useState(0);
   const [selected, setSelected] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [command, setCommand] = useState<SlashEntry | null>(null);
+  const [commandValues, setCommandValues] = useState<OptionValues>({});
+  const [running, setRunning] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const mentionMap = useRef(new Map<string, string>());
@@ -56,10 +65,32 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const guild = useGuildStore((s) => (channel.guild_id ? s.guilds[channel.guild_id] : undefined));
   const channels = useGuildStore((s) => s.channels);
   const density = usePrefsStore((s) => s.density);
+  const scope = channel.guild_id ?? DM_SCOPE;
+  const catalogue = useInteractionStore((s) => s.commands[scope]);
+  const appNames = useInteractionStore((s) => s.appNames);
 
   const standard = mode === 'standard';
   const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
   const canAttach = standard && (!channel.guild_id || can(perms, Permission.ATTACH_FILES));
+
+  const canUseCommands = standard && (!channel.guild_id || can(perms, Permission.USE_APPLICATION_COMMANDS));
+  const commandSearch = canUseCommands && !command ? slashQuery(text) : null;
+
+  useEffect(() => {
+    setCommand(null);
+    setCommandValues({});
+  }, [channel.id]);
+
+  useEffect(() => {
+    if (commandSearch === null) return;
+    const last = commandLoads.get(scope) ?? 0;
+    if (Date.now() - last < COMMAND_REFRESH_MS) return;
+    commandLoads.set(scope, Date.now());
+    const bots = channel.guild_id
+      ? Object.values(members ?? {}).filter((m) => m.user.bot).map((m) => ({ id: m.user.id, name: displayName(m.user, m.nick) }))
+      : (channel.recipients ?? []).filter((u) => u.bot).map((u) => ({ id: u.id, name: displayName(u) }));
+    void getRuntime().interactions.loadCommands(channel.guild_id ?? null, bots).catch(() => commandLoads.delete(scope));
+  }, [commandSearch === null, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));
 
@@ -91,6 +122,16 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
 
   const token = activeToken(text, caret);
   const suggestions = useMemo<Suggestion[]>(() => {
+    if (commandSearch !== null) {
+      return searchEntries(catalogue ?? [], commandSearch, 8).map<Suggestion>((entry) => ({
+        kind: 'command',
+        key: entry.key,
+        label: `/${entry.label}`,
+        detail: appNames[entry.command.application_id] ?? entry.description,
+        insert: '',
+        entry,
+      }));
+    }
     if (!token) return [];
     if (token.trigger === '@') {
       const users = Object.values(members ?? {})
@@ -117,11 +158,18 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
       .filter((e) => e.id && e.name && e.name.toLowerCase().includes(token.query))
       .slice(0, 8)
       .map<Suggestion>((e) => ({ kind: 'emoji', key: e.id!, label: `:${e.name}:`, insert: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}> ` }));
-  }, [token, members, guild, channels, channel.guild_id, perms]);
+  }, [token, members, guild, channels, channel.guild_id, perms, commandSearch, catalogue, appNames]);
 
-  useEffect(() => setSelected(0), [token?.trigger, token?.query]);
+  useEffect(() => setSelected(0), [token?.trigger, token?.query, commandSearch]);
 
   const accept = (s: Suggestion) => {
+    if (s.entry) {
+      setCommand(s.entry);
+      setCommandValues({});
+      setText('');
+      setCaret(0);
+      return;
+    }
     if (!token) return;
     const next = `${text.slice(0, token.start)}${s.insert} ${text.slice(caret)}`;
     if (s.mention) mentionMap.current.set(s.mention.token, s.mention.wire);
@@ -147,7 +195,23 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
     [canAttach, standard],
   );
 
+  const runCommand = async () => {
+    if (!command || running) return;
+    setRunning(true);
+    try {
+      await getRuntime().interactions.invoke(channel, command, commandValues);
+      setCommand(null);
+      setCommandValues({});
+      requestAnimationFrame(() => ref.current?.focus());
+    } catch (e) {
+      reportError(e, 'Command failed');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const send = async () => {
+    if (command) return runCommand();
     let content = text.trim();
     if (!content && files.length === 0) return;
     for (const [tok, wire] of mentionMap.current) content = content.split(tok).join(wire);
@@ -203,7 +267,7 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
       {suggestions.length > 0 && (
-        <ul className="suggestions glass" role="listbox" aria-label="Suggestions">
+        <ul className="suggestions glass" role="listbox" aria-label={commandSearch !== null ? 'Commands' : 'Suggestions'}>
           {suggestions.map((s, i) => (
             <li key={s.key} role="option" aria-selected={i === selected}>
               <button type="button" className={i === selected ? 'is-selected' : ''} onMouseEnter={() => setSelected(i)} onMouseDown={(e) => { e.preventDefault(); accept(s); }}>
@@ -233,6 +297,9 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
               </li>
             ))}
           </ul>
+        )}
+        {command && (
+          <SlashCommandPanel entry={command} values={commandValues} channel={channel} busy={running} onChange={setCommandValues} onRun={() => void runCommand()} onCancel={() => { setCommand(null); ref.current?.focus(); }} />
         )}
         <div className="composer-row">
           <IconButton label={canAttach ? 'Attach files' : 'Attachments unavailable in this mode'} disabled={!canAttach || !canSend} onClick={() => fileInput.current?.click()}>
@@ -265,7 +332,7 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
           />
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
-          <IconButton label="Send message" tone="accent" active={Boolean(text.trim() || files.length)} disabled={!canSend || (!text.trim() && files.length === 0)} onClick={() => void send()}>
+          <IconButton label="Send message" tone="accent" active={Boolean(text.trim() || files.length || command)} disabled={!canSend || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
           </IconButton>
         </div>

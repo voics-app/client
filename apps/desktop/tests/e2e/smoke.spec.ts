@@ -51,6 +51,44 @@ test('sends a message in a channel', async () => {
   expect(JSON.stringify([...backend.messages.values()])).toContain('hello from playwright');
 });
 
+test('runs slash commands and renders interaction responses', async () => {
+  const log = page.getByRole('log', { name: 'Messages' });
+  const composer = page.getByRole('textbox', { name: /Message #general/ });
+  const commands = page.getByRole('listbox', { name: 'Commands' });
+
+  await composer.fill('/rol');
+  await commands.getByRole('option', { name: /\/roll/ }).click();
+  await page.getByLabel('sides', { exact: true }).fill('20');
+  await page.getByLabel('mode', { exact: true }).selectOption('max');
+  await page.getByRole('button', { name: 'Run command' }).click();
+  await expect(log.getByText('Dice Bot is thinking')).toBeVisible({ timeout: 10_000 });
+  await expect(log.getByText('You rolled a 20')).toBeVisible({ timeout: 15_000 });
+  await expect(log.getByText('Dice Bot is thinking')).toBeHidden();
+  expect(backend.interactions.at(-1)).toMatchObject({ type: 2, data: { name: 'roll', options: [{ name: 'sides', value: 20 }, { name: 'mode', value: 'max' }] } });
+
+  await log.getByRole('button', { name: 'Roll again' }).click();
+  await expect(log.getByText('Component again pressed')).toBeVisible({ timeout: 15_000 });
+  expect(backend.interactions.at(-1)).toMatchObject({ type: 3, data: { custom_id: 'again', component_type: 2 } });
+
+  await log.getByRole('combobox', { name: 'Pick a die' }).first().selectOption('d20');
+  await expect(log.getByText('Component pick chose d20')).toBeVisible({ timeout: 15_000 });
+
+  await composer.fill('/secret');
+  await commands.getByRole('option', { name: /\/secret/ }).click();
+  await page.getByRole('button', { name: 'Run command' }).click();
+  await expect(log.getByText('Only you can see this')).toBeVisible({ timeout: 15_000 });
+
+  await composer.fill('/feedback');
+  await commands.getByRole('option', { name: /\/feedback/ }).click();
+  await page.getByRole('button', { name: 'Run command' }).click();
+  const modal = page.getByRole('dialog', { name: 'Send feedback' });
+  await expect(modal).toBeVisible({ timeout: 15_000 });
+  await modal.getByLabel('Your thoughts').fill('lovely');
+  await modal.getByRole('button', { name: 'Submit' }).click();
+  await expect(log.getByText('Thanks for the feedback: lovely')).toBeVisible({ timeout: 15_000 });
+  expect(backend.interactions.at(-1)).toMatchObject({ type: 5, data: { custom_id: 'feedback-form' } });
+});
+
 test('the delivery mode badge is always visible', async () => {
   await expect(page.getByRole('status', { name: /Delivery mode: Standard/ })).toBeVisible();
 });
