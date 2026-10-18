@@ -1,9 +1,9 @@
-/** Largest avatar, icon or banner the api accepts; the api enforces the same 8 MiB bound. */
-export const MAX_IMAGE_UPLOAD_BYTES = 8 * 1024 * 1024;
+/** Largest avatar, icon or banner the api accepts; the api enforces the same 10 MiB bound. */
+export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 /** The inline message for a picked file the api would refuse, or null when it can be uploaded. */
 export function imageUploadError(file: { size: number }): string | null {
-  return file.size > MAX_IMAGE_UPLOAD_BYTES ? 'Images must be 8 MB or smaller.' : null;
+  return file.size > MAX_IMAGE_UPLOAD_BYTES ? 'Images must be 10 MB or smaller.' : null;
 }
 
 export function readAsDataUrl(file: File): Promise<string> {
