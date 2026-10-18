@@ -131,6 +131,14 @@ describe('MessageSender mode switches', () => {
     await sender.setDefaultMode('ephemeral');
     expect(useSessionStore.getState().settings.default_delivery_mode).toBe('ephemeral');
   });
+
+  it('turns on end-to-end encryption for every call', async () => {
+    const { sender, api } = setup();
+    api.updateSettings.mockResolvedValue({ default_delivery_mode: 'standard', e2ee_calls_default: true });
+    await sender.setE2eeCallsDefault(true);
+    expect(api.updateSettings).toHaveBeenCalledWith({ e2ee_calls_default: true });
+    expect(useSessionStore.getState().settings.e2ee_calls_default).toBe(true);
+  });
 });
 
 describe('MessageSender history', () => {

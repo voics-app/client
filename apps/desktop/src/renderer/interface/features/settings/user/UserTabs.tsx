@@ -137,6 +137,10 @@ export function PrivacyTab() {
       {crypto && !crypto.available && (
         <p className="settings-warning" role="alert">Encrypted modes are unavailable on this install: {crypto.reason ?? 'the native crypto module did not load'}. Nothing is ever sent unencrypted in a private mode.</p>
       )}
+      <h3>Calls</h3>
+      <SettingRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted.">
+        <Switch label="Encrypt all my calls end-to-end" checked={settings.e2ee_calls_default === true} disabled={crypto !== null && !crypto.available} onChange={(v) => void attempt(() => getRuntime().privacy.sender.setE2eeCallsDefault(v), 'Could not update calls setting')} />
+      </SettingRow>
       <h3>Per-chat overrides</h3>
       {overrides.length === 0 ? <p className="setting-desc">No chats override your default. Change a chat's mode from its composer.</p> : (
         <ul className="manage-list">
