@@ -10,6 +10,8 @@ const settings = (extra: Partial<RingerSettings> = {}): RingerSettings => ({
   deafened: false,
   outputDeviceId: 'speakers',
   focused: false,
+  ringtone: 'chime',
+  ringtoneVolume: 0.6,
   ...extra,
 });
 
@@ -25,7 +27,7 @@ describe('CallRinger', () => {
   it('rings on the output device when a call rings for the user', () => {
     const { ringer, ringtone, notify } = rig();
     ringer.update({ '900': incoming }, '2');
-    expect(ringtone.start).toHaveBeenCalledWith('speakers');
+    expect(ringtone.start).toHaveBeenCalledWith('speakers', { tone: 'chime', volume: 0.6 });
     expect(notify).toHaveBeenCalledWith(incoming, '1');
   });
 
@@ -63,7 +65,7 @@ describe('CallRinger', () => {
   it('plays the ringback for the caller, not the ringtone', () => {
     const { ringer, ringtone, ringback } = rig();
     ringer.update({ '900': incoming }, '1');
-    expect(ringback.start).toHaveBeenCalledWith('speakers');
+    expect(ringback.start).toHaveBeenCalledWith('speakers', { volume: 0.6 });
     expect(ringtone.start).not.toHaveBeenCalled();
   });
 

@@ -5,6 +5,8 @@ import { usePrefsStore, DEFAULT_KEYBINDS, type AccentId, type ThemeId } from '@r
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
+import { RINGTONE_OPTIONS, type RingtoneId } from '@renderer/domain/ringtones';
+import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { keyLabel, uiohookKeycode } from '@renderer/domain/uiohookKeys';
 import type { DeliveryMode } from '@shared/contracts/rest';
 import type { UpdateStatus } from '@shared/ipc';
@@ -358,6 +360,17 @@ export function AppearanceTab() {
   );
 }
 
+const preview = new Ringtone();
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Plays the ringtone for a few seconds on the chosen output device. */
+function previewRingtone(tone: RingtoneId, volume: number, outputDeviceId: string | null): void {
+  preview.stop();
+  if (previewTimer) clearTimeout(previewTimer);
+  preview.start(outputDeviceId, { tone, volume });
+  previewTimer = setTimeout(() => preview.stop(), 3_000);
+}
+
 export function NotificationsTab() {
   const prefs = usePrefsStore();
   return (
@@ -365,6 +378,17 @@ export function NotificationsTab() {
       <SettingRow title="Desktop notifications" description="Shown for mentions and direct messages."><Switch label="Desktop notifications" checked={prefs.notifyDesktop} onChange={(v) => prefs.set('notifyDesktop', v)} /></SettingRow>
       <SettingRow title="Only mentions"><Switch label="Only mentions" checked={prefs.notifyOnlyMentions} onChange={(v) => prefs.set('notifyOnlyMentions', v)} /></SettingRow>
       <SettingRow title="Notification sounds"><Switch label="Notification sounds" checked={prefs.notifySounds} onChange={(v) => prefs.set('notifySounds', v)} /></SettingRow>
+      <Field label="Ringtone">
+        {(id) => (
+          <div className="setting-inline">
+            <Select id={id} value={prefs.ringtone} onChange={(e) => prefs.set('ringtone', e.target.value as RingtoneId)}>
+              {RINGTONE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </Select>
+            <Button variant="secondary" onClick={() => previewRingtone(prefs.ringtone, prefs.ringtoneVolume, prefs.outputDeviceId)}>Preview</Button>
+          </div>
+        )}
+      </Field>
+      <Field label="Ringtone volume">{() => <Slider label="Ringtone volume" value={prefs.ringtoneVolume} min={0} max={1} step={0.05} onChange={(v) => prefs.set('ringtoneVolume', v)} format={(v) => `${Math.round(v * 100)}%`} />}</Field>
       <SettingRow title="Flash taskbar"><Switch label="Flash taskbar" checked={prefs.flashTaskbar} onChange={(v) => prefs.set('flashTaskbar', v)} /></SettingRow>
       <p className="setting-desc">Notifications for encrypted chats show only the sender's name; message text is never put in notification text for private modes.</p>
     </Page>

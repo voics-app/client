@@ -23,6 +23,8 @@ const ringer = new CallRinger({
       deafened: useVoiceStore.getState().selfDeaf,
       outputDeviceId: prefs.outputDeviceId,
       focused: document.hasFocus(),
+      ringtone: prefs.ringtone,
+      ringtoneVolume: prefs.ringtoneVolume,
     };
   },
   notify: (call, callerId) => {

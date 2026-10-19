@@ -5,6 +5,7 @@
  * The caller hears a ringback while waiting alone in a call that rings someone else (not deafened).
  */
 import type { Snowflake } from '@shared/contracts/rest';
+import type { RingtoneId } from '@renderer/domain/ringtones';
 import { callerOf, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
 
 export interface RingerSettings {
@@ -13,11 +14,19 @@ export interface RingerSettings {
   deafened: boolean;
   outputDeviceId: string | null;
   focused: boolean;
+  ringtone: RingtoneId;
+  /** 0..1 */
+  ringtoneVolume: number;
+}
+
+interface Tone {
+  start(outputDeviceId: string | null, options?: { tone?: RingtoneId; volume?: number }): void;
+  stop(): void;
 }
 
 export interface RingerDeps {
-  ringtone: { start(outputDeviceId: string | null): void; stop(): void };
-  ringback: { start(outputDeviceId: string | null): void; stop(): void };
+  ringtone: Tone;
+  ringback: Tone;
   settings(): RingerSettings;
   notify(call: DmCall, callerId: Snowflake | null): void;
 }
@@ -34,11 +43,11 @@ export class CallRinger {
     this.ringingChannels = new Set(incoming.map((call) => call.channelId));
 
     if (incoming.length === 0 || settings.deafened || !settings.notifySounds) this.deps.ringtone.stop();
-    else this.deps.ringtone.start(settings.outputDeviceId);
+    else this.deps.ringtone.start(settings.outputDeviceId, { tone: settings.ringtone, volume: settings.ringtoneVolume });
 
     const outgoing = userId !== null && Object.values(calls).some((call) => isRingingOut(call, userId));
     if (!outgoing || incoming.length > 0 || settings.deafened) this.deps.ringback.stop();
-    else this.deps.ringback.start(settings.outputDeviceId);
+    else this.deps.ringback.start(settings.outputDeviceId, { volume: settings.ringtoneVolume });
 
     if (!userId || settings.focused || !settings.notifyDesktop) return;
     for (const call of fresh) this.deps.notify(call, callerOf(call, userId));

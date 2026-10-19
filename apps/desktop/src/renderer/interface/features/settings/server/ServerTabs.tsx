@@ -69,7 +69,7 @@ export function ServerOverview({ guildId }: { guildId: string }) {
     <Page title="Server overview" sub="Name, icon and where voice runs.">
       <div className="overview-row">
         <button type="button" className="icon-upload" onClick={() => fileRef.current?.click()} aria-label="Change server icon">
-          {icon ? <img src={icon} alt="" /> : <Avatar id={guild.id} name={guild.name} avatar={guild.icon} size={96} square />}
+          {icon ? <img src={icon} alt="" /> : <Avatar id={guild.id} name={guild.name} avatar={guild.icon} size={96} square kind="icons" />}
           <span><Upload size={18} /> Change</span>
         </button>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => void chooseIcon(e.target.files?.[0])} />
