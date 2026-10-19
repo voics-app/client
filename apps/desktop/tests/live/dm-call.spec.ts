@@ -199,6 +199,30 @@ async function inbound(page: Page): Promise<Record<string, number>> {
   });
 }
 
+/** Per video stream: decoded frames, resolution, frame rate and (outbound) why quality is limited. */
+async function videoStreams(page: Page): Promise<Record<string, unknown>[]> {
+  return page.evaluate(async () => {
+    const out: Record<string, unknown>[] = [];
+    for (const pc of (window as unknown as { __pcs: RTCPeerConnection[] }).__pcs ?? []) {
+      const stats = await pc.getStats();
+      stats.forEach((s) => {
+        if (s.kind !== "video" || (s.type !== "inbound-rtp" && s.type !== "outbound-rtp")) return;
+        out.push({
+          dir: s.type === "inbound-rtp" ? "in" : "out",
+          ssrc: s.ssrc,
+          frames: s.type === "inbound-rtp" ? s.framesDecoded : s.framesEncoded,
+          w: s.frameWidth,
+          h: s.frameHeight,
+          fps: s.framesPerSecond,
+          kbps: s.targetBitrate ? Math.round(s.targetBitrate / 1000) : undefined,
+          limit: s.qualityLimitationReason,
+        });
+      });
+    }
+    return out;
+  });
+}
+
 async function callStatus(page: Page): Promise<string> {
   const text = await page.locator("body").innerText();
   return (
@@ -284,6 +308,18 @@ test("alice calls bob in a DM", async () => {
     expect(b["frames-decoded"] ?? 0, "bob sees alice's camera").toBeGreaterThan(
       0,
     );
+
+    // Camera and screen share at the same time: bob decodes both as separate streams.
+    await alice.page.getByRole("button", { name: "Share your screen" }).first().click();
+    await alice.page.getByRole("listbox", { name: "Capture sources" }).getByRole("button").first().click({ timeout: 15_000 });
+    await alice.page.getByRole("button", { name: "Go live" }).click();
+    await alice.page.waitForTimeout(15_000);
+    const sent = (await videoStreams(alice.page)).filter((v) => v.dir === "out");
+    const received = (await videoStreams(bob.page)).filter((v) => v.dir === "in" && Number(v.frames) > 0);
+    console.log(`--- camera+screen: alice sends ${JSON.stringify(sent)}`);
+    console.log(`--- camera+screen: bob receives ${JSON.stringify(received)}`);
+    expect(sent.filter((v) => Number(v.frames) > 0), "alice encodes camera and screen").toHaveLength(2);
+    expect(received, "bob decodes alice's camera and screen").toHaveLength(2);
   } finally {
     console.log([...alice.log, ...bob.log].join("\n"));
     await alice.app.close().catch(() => undefined);
