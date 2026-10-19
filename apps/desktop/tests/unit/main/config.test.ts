@@ -63,3 +63,17 @@ describe('routeFromDeepLink', () => {
     expect(routeFromDeepLink('discordy://invite/<script>')).toBeNull();
   });
 });
+
+describe('DeepLinkInbox', () => {
+  it('holds the launch link until the renderer asks, then delivers live', async () => {
+    const { DeepLinkInbox } = await import('../../../src/main/deepLinks');
+    const inbox = new DeepLinkInbox('/invite/cold');
+    const sent: string[] = [];
+    inbox.submit('/invite/early', (r) => sent.push(r));
+    expect(sent).toEqual([]);
+    expect(inbox.take()).toBe('/invite/early');
+    expect(inbox.take()).toBeNull();
+    inbox.submit('/invite/live', (r) => sent.push(r));
+    expect(sent).toEqual(['/invite/live']);
+  });
+});

@@ -13,7 +13,7 @@ import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
 import { useGlobalShortcuts } from './shortcuts';
 import { createRuntime, type Runtime } from './runtime';
-import { handleRoute } from './navigation';
+import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
 import { BRAND } from '@shared/brand';
 
@@ -66,7 +66,15 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => bridge?.app.onNavigate(handleRoute), []);
+  useEffect(() => {
+    const off = bridge?.app.onNavigate(handleRoute);
+    // Pull any link that launched the app before this listener existed (cold start).
+    void bridge?.app.takePendingRoute().then((route) => route && handleRoute(route));
+    return off;
+  }, []);
+  useEffect(() => {
+    if (status === 'ready') flushPendingRoute();
+  }, [status]);
 
   if (failure) return <Boot message={failure} />;
   if (!runtime) return <Boot message={`Starting ${BRAND.displayName}`} />;

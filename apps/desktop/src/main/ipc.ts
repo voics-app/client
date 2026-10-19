@@ -17,6 +17,7 @@ export interface IpcDeps {
   crypto: CryptoHost;
   pushToTalk: PushToTalk;
   updater: Updater;
+  takePendingRoute: () => string | null;
 }
 
 function assertTrustedSender(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, deps: IpcDeps): void {
@@ -36,6 +37,7 @@ export function registerIpc(deps: IpcDeps): void {
     });
 
   handle(IpcChannel.appInfo, () => deps.info());
+  handle(IpcChannel.appTakePendingRoute, () => deps.takePendingRoute());
   handle(IpcChannel.appSetConnection, (profile: ConnectionProfile) => {
     const valid = validateProfile(profile);
     saveMainSettings({ connection: valid });
