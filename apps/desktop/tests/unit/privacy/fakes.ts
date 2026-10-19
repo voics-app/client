@@ -28,7 +28,7 @@ export function resetStores(channel: Channel = dm()): void {
   usePrivacyStore.setState({ p2p: {}, groups: {}, watch: {}, serverOffsetMs: 0 });
   useGuildStore.getState().reset();
   useGuildStore.getState().upsertChannel(channel);
-  useSessionStore.setState({ user: selfUser, settings: { default_delivery_mode: 'standard', delivery_overrides: {} } });
+  useSessionStore.setState({ user: selfUser, deviceId: SELF.deviceId, settings: { default_delivery_mode: 'standard', delivery_overrides: {} } });
 }
 
 export class FakeGateway implements GatewayPort {

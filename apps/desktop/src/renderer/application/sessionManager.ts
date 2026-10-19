@@ -35,6 +35,8 @@ export interface SessionDeps {
   deviceName?: string;
   /** Called after sign-in/out so private-messaging engines can start or stop. */
   onChange?(signedIn: boolean): void;
+  /** Sign-in still succeeds; the user is told encrypted modes are off on this device. */
+  onDeviceRegistrationFailed?(error: unknown): void;
 }
 
 export class SessionManager {
@@ -96,11 +98,15 @@ export class SessionManager {
     const identity = await this.deps.identity(auth.user.id).catch(() => null);
     let deviceId: string | null = null;
     if (identity) {
-      const device = await rt.api.registerDevice({
-        name: this.deps.deviceName ?? `${BRAND.displayName} desktop`,
-        identity_key_b64: identity.identityKeyB64,
-      });
-      deviceId = device.device_id;
+      try {
+        const device = await rt.api.registerDevice({
+          name: this.deps.deviceName ?? `${BRAND.displayName} desktop`,
+          identity_key_b64: identity.identityKeyB64,
+        });
+        deviceId = device.device_id;
+      } catch (error) {
+        this.deps.onDeviceRegistrationFailed?.(error);
+      }
     }
     session.setDevice(deviceId, identity?.identityKeyB64 ?? null);
     this.stored = { accessToken: auth.access_token, refreshToken: auth.refresh_token, userId: auth.user.id, deviceId };

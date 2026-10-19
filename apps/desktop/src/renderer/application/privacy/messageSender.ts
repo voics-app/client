@@ -4,7 +4,7 @@ import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
-import { effectiveDeliveryMode, validateModeForChannel } from '@renderer/domain/deliveryMode';
+import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
 import type { P2PService } from './p2pService';
@@ -61,6 +61,8 @@ export class MessageSender {
     const target = mode ?? 'standard';
     const reason = validateModeForChannel(target, this.scopeOf(channel));
     if (reason) throw new PrivateDeliveryError('invalid_mode', reason);
+    const deviceReason = validateModeForDevice(target, Boolean(useSessionStore.getState().deviceId));
+    if (deviceReason) throw new PrivateDeliveryError('encryption_unavailable', deviceReason);
 
     const guilds = useGuildStore.getState();
     if (channel.guild_id) {
@@ -111,6 +113,8 @@ export class MessageSender {
   // ---- internals --------------------------------------------------------------------
 
   private async sendPrivate(channel: Channel, mode: Exclude<DeliveryMode, 'standard'>, input: SendInput): Promise<ChatMessage> {
+    const deviceReason = validateModeForDevice(mode, Boolean(useSessionStore.getState().deviceId));
+    if (deviceReason) throw new PrivateDeliveryError('encryption_unavailable', deviceReason);
     return mode === 'ephemeral' ? this.deps.ephemeral.send(channel, input) : this.deps.p2p.send(channel, input);
   }
 

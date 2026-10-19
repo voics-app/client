@@ -3,8 +3,25 @@ import {
   effectiveDeliveryMode,
   stricterMode,
   validateModeForChannel,
+  validateModeForDevice,
   availableModes,
 } from '@renderer/domain/deliveryMode';
+
+describe('validateModeForDevice', () => {
+  it('never blocks standard mode', () => {
+    expect(validateModeForDevice('standard', false)).toBeNull();
+  });
+
+  it('blocks encrypted modes on a device that is not registered', () => {
+    expect(validateModeForDevice('ephemeral', false)).toMatch(/Settings > Devices/);
+    expect(validateModeForDevice('p2p', false)).toMatch(/Settings > Devices/);
+  });
+
+  it('allows encrypted modes once the device is registered', () => {
+    expect(validateModeForDevice('ephemeral', true)).toBeNull();
+    expect(validateModeForDevice('p2p', true)).toBeNull();
+  });
+});
 
 describe('stricterMode', () => {
   it('orders standard < ephemeral < p2p', () => {

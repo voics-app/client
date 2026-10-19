@@ -68,6 +68,27 @@ describe('SessionManager', () => {
     expect(rt.connect).toHaveBeenCalled();
   });
 
+  it('signs in when device registration fails, without a device, and reports it', async () => {
+    const v = vault();
+    const rt = runtime();
+    const failure = new Error('Maximum number of devices reached.');
+    (rt.api.registerDevice as ReturnType<typeof vi.fn>).mockRejectedValue(failure);
+    const onDeviceRegistrationFailed = vi.fn();
+    const m = new SessionManager({
+      vault: v,
+      runtime: rt,
+      identity: async () => ({ identityKeyB64: 'key' }),
+      onDeviceRegistrationFailed,
+    });
+    await m.login({ email: 'a@b.c', password: 'pw' });
+    expect(useSessionStore.getState().user?.id).toBe('1');
+    expect(useSessionStore.getState().status).toBe('connecting');
+    expect(useSessionStore.getState().deviceId).toBeNull();
+    expect(v.saved).toMatchObject({ accessToken: 'a1', userId: '1', deviceId: null });
+    expect(rt.connect).toHaveBeenCalled();
+    expect(onDeviceRegistrationFailed).toHaveBeenCalledWith(failure);
+  });
+
   it('works without a native crypto identity (standard mode only)', async () => {
     const rt = runtime();
     const m = new SessionManager({ vault: vault(), runtime: rt, identity: async () => null });

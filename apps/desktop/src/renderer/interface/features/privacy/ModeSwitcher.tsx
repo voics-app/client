@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { DELIVERY_MODES, MODE_COPY, validateModeForChannel } from '@renderer/domain/deliveryMode';
+import { DELIVERY_MODES, MODE_COPY, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
 import { attempt } from '../../app/actions';
@@ -28,6 +28,7 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
   const triggerRef = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const defaultMode = useSessionStore((s) => s.settings.default_delivery_mode);
+  const deviceRegistered = useSessionStore((s) => Boolean(s.deviceId));
   const perms = useGuildPermissions(channel.guild_id);
   const canChange = !channel.guild_id || can(perms, Permission.MANAGE_CHANNELS);
   const scope = { isGuild: Boolean(channel.guild_id), memberCount: memberCountOf(channel) };
@@ -72,7 +73,7 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
             <ul>
               {DELIVERY_MODES.map((m) => {
                 const Icon = ICON[m];
-                const invalid = validateModeForChannel(m, scope);
+                const invalid = validateModeForChannel(m, scope) ?? validateModeForDevice(m, deviceRegistered);
                 const disabled = Boolean(invalid) || !canChange || busy !== null;
                 return (
                   <li key={m}>
