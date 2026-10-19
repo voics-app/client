@@ -1,5 +1,5 @@
 import { At, Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -11,6 +11,7 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 
 export function HomeSidebar() {
   const channels = useGuildStore((s) => s.channels);
@@ -27,6 +28,8 @@ export function HomeSidebar() {
         .sort((a, b) => (b.last_message_id ? timestampOf(b.last_message_id) : 0) - (a.last_message_id ? timestampOf(a.last_message_id) : 0)),
     [channels],
   );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRovingFocus(scrollRef, { selector: '.nav-row, .dm-row' });
   const friendsActive = view.kind === 'home' && !view.channelId;
 
   return (
@@ -34,7 +37,7 @@ export function HomeSidebar() {
       <div className="sidebar-top">
         <button type="button" className="palette-pill is-sidebar" onClick={() => useUiStore.getState().openPalette(true)}>Find or start a conversation</button>
       </div>
-      <div className="sidebar-scroll">
+      <div ref={scrollRef} className="sidebar-scroll">
         <button type="button" className={`nav-row${friendsActive ? ' is-active' : ''}`} onClick={() => navigate({ kind: 'home', channelId: null })} aria-current={friendsActive || undefined}>
           <UsersThree size={22} weight={friendsActive ? 'fill' : 'regular'} /> <span>Friends</span> <Count value={pending} tone="danger" />
         </button>

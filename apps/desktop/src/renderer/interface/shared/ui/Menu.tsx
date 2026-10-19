@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { wrapIndex } from '@renderer/domain/rovingFocus';
 import { snappy } from './motion';
 
 export type MenuEntry =
@@ -24,18 +25,26 @@ export function Menu({ open, x, y, entries, onClose, minWidth = 200 }: Props) {
   useEffect(() => {
     if (!open) return;
     const el = ref.current;
+    // Escape (or any close) hands focus back to whatever opened the menu.
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     el?.querySelector<HTMLElement>('[role=menuitem]:not([disabled])')?.focus();
     const onDown = (e: globalThis.MouseEvent) => {
       if (!el?.contains(e.target as Node)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
         e.preventDefault();
         const items = [...(el?.querySelectorAll<HTMLElement>('[role=menuitem]:not([disabled])') ?? [])];
         if (items.length === 0) return;
         const i = items.indexOf(document.activeElement as HTMLElement);
-        const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : wrapIndex(items.length, i, e.key === 'ArrowDown' ? 1 : -1);
         items[next]?.focus();
       }
     };
@@ -46,6 +55,7 @@ export function Menu({ open, x, y, entries, onClose, minWidth = 200 }: Props) {
       document.removeEventListener('mousedown', onDown, true);
       document.removeEventListener('keydown', onKey, true);
       window.removeEventListener('blur', onClose);
+      if (trigger?.isConnected && (document.activeElement === document.body || el?.contains(document.activeElement))) trigger.focus();
     };
   }, [open, onClose]);
 

@@ -34,6 +34,10 @@
   --dur-base: 220ms;
 
   --titlebar-h: 36px;
+  --focus-ring: var(--accent);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-inset: -2px;
   --rail-w: 72px;
   --sidebar-w: 264px;
   --members-w: 248px;

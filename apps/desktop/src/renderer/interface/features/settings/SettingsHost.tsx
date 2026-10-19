@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from '@phosphor-icons/react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore, type ServerSettingsTab, type SettingsTarget, type UserSettingsTab } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
+import { useDialogFocus } from '../../shared/hooks/useDialogFocus';
 import { IconButton } from '../../shared/ui/IconButton';
 import { gentle } from '../../shared/ui/motion';
 import { ChannelSettings } from './channel/ChannelSettings';
@@ -27,13 +28,16 @@ const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
 ];
 
 function Layout({ title, nav, children, onClose, footer }: { title: string; nav: ReactNode; children: ReactNode; onClose: () => void; footer?: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref);
   useEffect(() => {
+    // Dialogs and menus opened on top of settings stop Escape in the capture phase, so only a bare Escape arrives here.
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="settings" role="dialog" aria-modal="true" aria-label={title}>
+    <div ref={ref} tabIndex={-1} className="settings" role="dialog" aria-modal="true" aria-label={title}>
       <nav className="settings-nav">{nav}{footer}</nav>
       <div className="settings-content">
         <div className="settings-inner">{children}</div>
