@@ -18,6 +18,8 @@ export interface BrowserVoiceOptions {
   identityKeysOf?(userId: string): Promise<string[]>;
 }
 
+const LEGACY_ENCODED_STREAMS = !('RTCRtpScriptTransform' in globalThis);
+
 function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceOptions['identityKeysOf']): VoiceSession {
   const cryptor = new FrameCryptor();
   const bridge = window.discordy;
@@ -29,8 +31,10 @@ function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceO
     sessionId: params.sessionId,
     token: params.token,
     socketFactory: browserSocketFactory,
-    // `encodedInsertableStreams` enables the createEncodedStreams fallback on Chromium without RTCRtpScriptTransform.
-    createPeerConnection: () => new RTCPeerConnection({ bundlePolicy: 'max-bundle', encodedInsertableStreams: true } as RTCConfiguration),
+    // `encodedInsertableStreams` enables the createEncodedStreams fallback, needed only on Chromium without
+    // RTCRtpScriptTransform. With it set, every sender and receiver must be piped (FrameCryptor.bypass for clear calls).
+    createPeerConnection: () =>
+      new RTCPeerConnection({ bundlePolicy: 'max-bundle', ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration),
     cryptor,
     createDave: bridge
       ? (send, hooks) =>

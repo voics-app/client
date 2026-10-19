@@ -16,6 +16,10 @@ export interface FrameCryptorPort {
   readonly supported: boolean;
   attachSender(sender: RTCRtpSender, kind: MediaKind, codec: string, userId: string): void;
   attachReceiver(receiver: RTCRtpReceiver, kind: MediaKind, codec: string, userId: string): void;
+  /** Pipes clear media straight through on a sender or receiver of a call that is not E2EE. Only the
+   * encoded-streams fallback needs it: with `encodedInsertableStreams` set, Chromium sends and plays
+   * nothing until every endpoint's streams are consumed. A no-op with RTCRtpScriptTransform. */
+  bypass(endpoint: RTCRtpSender | RTCRtpReceiver): void;
   setEpoch(generation: number, secret: Uint8Array): Promise<void>;
   activate(generation: number): void;
   setPassthrough(value: boolean): void;
@@ -72,6 +76,14 @@ export class FrameCryptor implements FrameCryptorPort {
 
   attachReceiver(receiver: RTCRtpReceiver, kind: MediaKind, codec: string, userId: string): void {
     this.attach(receiver, { operation: 'decrypt', kind, codec, userId });
+  }
+
+  bypass(endpoint: RTCRtpSender | RTCRtpReceiver): void {
+    if (this.scriptTransform || !this.legacyStreams) return;
+    const legacy = endpoint as EncodedStreamsEndpoint;
+    if (!legacy.createEncodedStreams) return;
+    const { readable, writable } = legacy.createEncodedStreams();
+    void readable.pipeTo(writable).catch(() => undefined);
   }
 
   async setEpoch(generation: number, secret: Uint8Array): Promise<void> {

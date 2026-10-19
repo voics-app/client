@@ -9,6 +9,8 @@ export interface AudioSection {
   mid: string;
   payloadType: number;
   codec: 'opus';
+  /** SSRC the browser chose for our audio; the voice node must expect this one. */
+  ssrc: number | null;
 }
 
 export interface VideoSection {
@@ -16,6 +18,8 @@ export interface VideoSection {
   payloadType: number;
   rtxPayloadType: number | null;
   codec: string;
+  ssrc: number | null;
+  rtxSsrc: number | null;
 }
 
 export interface ParsedOffer {
@@ -58,6 +62,14 @@ function attr(lines: readonly string[], name: string): string | null {
   const prefix = `a=${name}:`;
   const line = lines.find((l) => l.startsWith(prefix));
   return line ? line.slice(prefix.length).trim() : null;
+}
+
+/** The primary SSRC of a section and, when present, its RTX partner from `a=ssrc-group:FID`. */
+function ssrcsOf(lines: readonly string[]): { ssrc: number | null; rtxSsrc: number | null } {
+  const fid = attr(lines, 'ssrc-group')?.split(' ');
+  if (fid && fid[0] === 'FID' && fid.length >= 3) return { ssrc: Number(fid[1]), rtxSsrc: Number(fid[2]) };
+  const first = lines.find((l) => l.startsWith('a=ssrc:'));
+  return { ssrc: first ? Number(first.slice('a=ssrc:'.length).split(' ')[0]) : null, rtxSsrc: null };
 }
 
 function rtpmaps(lines: readonly string[]): { pt: number; codec: string }[] {
@@ -105,7 +117,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): Parse
     iceUfrag,
     icePwd,
     fingerprint,
-    audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus' },
+    audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus', ssrc: ssrcsOf(audioRaw.lines).ssrc },
     video: videoRaw ? parseVideo(videoRaw.lines, preferredVideoCodec) : null,
     audioLevelExtId: audioLevel?.id ?? null,
     extmaps,
@@ -127,6 +139,7 @@ function parseVideo(lines: readonly string[], preferred: string): VideoSection |
     payloadType: chosen.pt,
     rtxPayloadType: rtx ? Number(rtx[0]) : null,
     codec: chosen.codec.toUpperCase(),
+    ...ssrcsOf(lines),
   };
 }
 
