@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScreenShare, type ScreenShareDeps } from '@renderer/application/voice/screenShare';
 import { detectProtectedContent, isBlackFrame, type FrameSampler } from '@renderer/application/voice/blackFrame';
-import { presetConstraints } from '@renderer/domain/screenPresets';
+import { presetConstraints } from '@renderer/domain/videoPresets';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 
 class FakeTrack {

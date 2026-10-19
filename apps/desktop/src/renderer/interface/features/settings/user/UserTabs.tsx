@@ -6,6 +6,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
 import { RINGTONE_OPTIONS, type RingtoneId } from '@renderer/domain/ringtones';
+import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { keyLabel, uiohookKeycode } from '@renderer/domain/uiohookKeys';
 import type { DeliveryMode } from '@shared/contracts/rest';
@@ -292,6 +293,7 @@ export function VoiceTab() {
       <SettingRow title="Automatic gain control"><Switch label="Automatic gain control" checked={prefs.autoGain} onChange={(v) => prefs.set('autoGain', v)} /></SettingRow>
       <h3>Camera</h3>
       <Field label="Camera">{(id) => <Select id={id} value={prefs.cameraDeviceId ?? ''} onChange={(e) => prefs.set('cameraDeviceId', e.target.value || null)}><option value="">System default</option>{options('videoinput')}</Select>}</Field>
+      <Field label="Camera quality">{(id) => <Select id={id} value={prefs.cameraPreset} onChange={(e) => prefs.set('cameraPreset', e.target.value as VideoPresetId)}>{VIDEO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select>}</Field>
       <div className="camera-preview">{capturing ? <video ref={preview} autoPlay muted playsInline /> : <Button onClick={() => setCapturing(true)}>Test video</Button>}</div>
     </Page>
   );

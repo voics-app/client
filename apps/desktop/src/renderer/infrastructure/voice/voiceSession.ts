@@ -23,7 +23,7 @@ import {
 } from '@shared/contracts/voice';
 import { reconnectDelay } from '@renderer/domain/backoff';
 import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '@renderer/domain/sdp';
-import { presetConstraints, type CaptureConstraints } from '@renderer/domain/screenPresets';
+import { presetConstraints, type CaptureConstraints } from '@renderer/domain/videoPresets';
 import type { ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
 import { useVoiceStore, type CallQuality } from '@renderer/application/stores/voiceStore';
 import { Listeners } from '../net/emitter';
