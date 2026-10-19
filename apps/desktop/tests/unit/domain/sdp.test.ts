@@ -52,6 +52,14 @@ describe('parseLocalOffer', () => {
     const parsed = parseLocalOffer(withSsrcs);
     expect(parsed.audio.ssrc).toBe(1111);
     expect(parsed.video).toMatchObject({ ssrc: 2222, rtxSsrc: 3333 });
+    expect(parsed.screen).toBeNull();
+  });
+
+  it('reads the screen share transceiver (the second video section) as its own stream', () => {
+    const screen = ['m=video 9 UDP/TLS/RTP/SAVPF 98 99', 'a=mid:2', 'a=ssrc-group:FID 4444 5555', 'a=ssrc:4444 cname:x', 'a=ssrc:5555 cname:x', 'a=sendrecv', 'a=rtpmap:98 VP9/90000', ''].join('\r\n');
+    const parsed = parseLocalOffer(OFFER + screen);
+    expect(parsed.video?.mid).toBe('1');
+    expect(parsed.screen).toEqual({ mid: '2', ssrc: 4444, rtxSsrc: 5555 });
   });
 });
 

@@ -28,6 +28,8 @@ export interface ParsedOffer {
   fingerprint: string;
   audio: AudioSection;
   video: VideoSection | null;
+  /** The screen share transceiver: the second video section, sent as its own stream. */
+  screen: { mid: string; ssrc: number | null; rtxSsrc: number | null } | null;
   audioLevelExtId: number | null;
   /** extmap URIs per mid, used to echo supported header extensions. */
   extmaps: Record<string, { id: number; uri: string }[]>;
@@ -94,7 +96,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): Parse
   const { session, media } = splitSections(sdp);
   const audioRaw = media.find((m) => m.kind === 'audio');
   if (!audioRaw) throw new Error('offer has no audio section');
-  const videoRaw = media.find((m) => m.kind === 'video');
+  const [videoRaw, screenRaw] = media.filter((m) => m.kind === 'video');
   const pick = (name: string) => attr(audioRaw.lines, name) ?? attr(session, name);
 
   const iceUfrag = pick('ice-ufrag');
@@ -119,6 +121,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): Parse
     fingerprint,
     audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus', ssrc: ssrcsOf(audioRaw.lines).ssrc },
     video: videoRaw ? parseVideo(videoRaw.lines, preferredVideoCodec) : null,
+    screen: screenRaw ? { mid: attr(screenRaw.lines, 'mid') ?? '2', ...ssrcsOf(screenRaw.lines) } : null,
     audioLevelExtId: audioLevel?.id ?? null,
     extmaps,
   };

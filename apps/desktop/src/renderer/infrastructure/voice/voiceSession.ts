@@ -305,7 +305,17 @@ export class VoiceSession implements VoiceSessionPort {
         ice_pwd: parsed.icePwd,
         fingerprint: parsed.fingerprint,
         setup: 'actpass',
-        ...(parsed.audio.ssrc ? { ssrcs: { audio: parsed.audio.ssrc, video: parsed.video?.ssrc ?? 0, rtx: parsed.video?.rtxSsrc ?? 0 } } : {}),
+        ...(parsed.audio.ssrc
+          ? {
+              ssrcs: {
+                audio: parsed.audio.ssrc,
+                video: parsed.video?.ssrc ?? 0,
+                rtx: parsed.video?.rtxSsrc ?? 0,
+                screen: parsed.screen?.ssrc ?? 0,
+                screen_rtx: parsed.screen?.rtxSsrc ?? 0,
+              },
+            }
+          : {}),
       },
       codecs,
     };
