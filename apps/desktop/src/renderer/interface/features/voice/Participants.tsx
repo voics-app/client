@@ -1,17 +1,15 @@
 import { ArrowsOut, CornersIn, CornersOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
 import type { VoiceState } from '@shared/contracts/rest';
-import { setUserVolume } from '../../app/voiceActions';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { useMenu } from '../../shared/ui/Menu';
-import { Slider } from '../../shared/ui/Form';
+import { UserContextMenu } from '../members/UserContextMenu';
 
 export interface Participant {
   state: VoiceState;
@@ -49,32 +47,10 @@ function MediaElement({ stream, muted, className, onReady }: { stream: MediaStre
   return <video ref={ref} className={className} autoPlay playsInline muted={muted} />;
 }
 
-function VolumePopover({ x, y, name, userId, volume, onClose }: { x: number; y: number; name: string; userId: string; volume: number; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    document.addEventListener('mousedown', onDown, true);
-    document.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown, true);
-      document.removeEventListener('keydown', onKey, true);
-    };
-  }, [onClose]);
-  return createPortal(
-    <div ref={ref} className="volume-pop glass" style={{ left: Math.min(x, window.innerWidth - 300), top: Math.min(y, window.innerHeight - 100) }} role="dialog" aria-label={`${name} volume`}>
-      <p>{name}</p>
-      <Slider label={`${name} volume`} value={volume} min={0} max={2} step={0.05} onChange={(v) => setUserVolume(userId, v)} format={(v) => `${Math.round(v * 100)}%`} />
-    </div>,
-    document.body,
-  );
-}
-
 export function VideoTile({ participant, stream, kind, focused, onFocus }: { participant: Participant; stream: MediaStream | null; kind: 'camera' | 'screen' | 'avatar'; focused?: boolean; onFocus?: () => void }) {
   const speaking = useVoiceStore((s) => s.speaking[participant.state.user_id] ?? 0);
-  const volume = useVoiceStore((s) => s.userVolumes[participant.state.user_id] ?? 1);
+  const channelGuildId = useGuildStore((s) => s.channels[participant.state.channel_id ?? '']?.guild_id);
+  const guildId = participant.state.guild_id ?? channelGuildId ?? null;
   const menu = useMenu();
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   const tileRef = useRef<HTMLDivElement>(null);
@@ -84,51 +60,52 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
   const live = kind === 'screen';
   const hasVideo = Boolean(stream) && kind !== 'avatar';
 
-  // Double-click toggles fullscreen, but not when the double-click lands on the tile's own tools or volume popover.
+  // Double-click toggles fullscreen, but not when the double-click lands on the tile's own tools.
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hasVideo || (e.target as HTMLElement).closest('.tile-tools, .volume-pop')) return;
+    if (!hasVideo || (e.target as HTMLElement).closest('.tile-tools')) return;
     fullscreen.toggle();
   };
 
   return (
-    <div
-      ref={tileRef}
-      className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
-      style={{ '--speak': speaking } as React.CSSProperties}
-      onContextMenu={participant.isSelf ? undefined : menu.openAt}
-      onDoubleClick={onDoubleClick}
-    >
-      {stream && hasVideo ? (
-        <MediaElement stream={stream} muted className="tile-video" onReady={setVideo} />
-      ) : (
-        <div className="tile-avatar">
-          <Avatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} size={focused ? 112 : 76} speaking={speaking} />
+    <>
+      <div
+        ref={tileRef}
+        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
+        style={{ '--speak': speaking } as React.CSSProperties}
+        onContextMenu={menu.openAt}
+        onDoubleClick={onDoubleClick}
+      >
+        {stream && hasVideo ? (
+          <MediaElement stream={stream} muted className="tile-video" onReady={setVideo} />
+        ) : (
+          <div className="tile-avatar">
+            <Avatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} size={focused ? 112 : 76} speaking={speaking} />
+          </div>
+        )}
+        <div className="tile-label">
+          <span className="tile-name">{participant.name}{live ? ' · screen' : ''}</span>
+          {muted && <MicrophoneSlash size={14} weight="fill" />}
+          {deaf && <SpeakerSlash size={14} weight="fill" />}
         </div>
-      )}
-      <div className="tile-label">
-        <span className="tile-name">{participant.name}{live ? ' · screen' : ''}</span>
-        {muted && <MicrophoneSlash size={14} weight="fill" />}
-        {deaf && <SpeakerSlash size={14} weight="fill" />}
-      </div>
-      {live && (
-        <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
-      )}
-      {hasVideo && (
-        <div className="tile-tools">
-          {onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
-          <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
-            {fullscreen.active ? <CornersIn size={16} /> : <CornersOut size={16} />}
-          </IconButton>
-          {video && 'requestPictureInPicture' in video && (
-            <IconButton label="Picture in picture" size="sm" onClick={() => void video.requestPictureInPicture().catch(() => undefined)}>
-              <PictureInPicture size={16} />
+        {live && (
+          <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
+        )}
+        {hasVideo && (
+          <div className="tile-tools">
+            {onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
+            <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
+              {fullscreen.active ? <CornersIn size={16} /> : <CornersOut size={16} />}
             </IconButton>
-          )}
-        </div>
-      )}
-      {menu.open && !participant.isSelf && (
-        <VolumePopover x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} name={participant.name} userId={participant.state.user_id} volume={volume} onClose={menu.close} />
-      )}
-    </div>
+            {video && 'requestPictureInPicture' in video && (
+              <IconButton label="Picture in picture" size="sm" onClick={() => void video.requestPictureInPicture().catch(() => undefined)}>
+                <PictureInPicture size={16} />
+              </IconButton>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Sibling of the tile so right-clicks inside the portaled menu do not bubble back into the tile. */}
+      <UserContextMenu userId={participant.state.user_id} name={participant.name} guildId={guildId} menu={menu} />
+    </>
   );
 }
