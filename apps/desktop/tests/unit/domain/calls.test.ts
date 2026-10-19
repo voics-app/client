@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { callerOf, dmCallOf, hasParticipants, isRingingFor, type DmCall } from '@renderer/domain/calls';
+import { callerOf, dmCallOf, hasParticipants, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
 import type { CallEvent } from '@shared/contracts/gateway';
 import type { VoiceState } from '@shared/contracts/rest';
 
@@ -19,6 +19,13 @@ describe('DM call ringing helpers', () => {
     expect(isRingingFor(call(), '1')).toBe(false);
     expect(isRingingFor(call({ voiceStates: [voice('1'), voice('2')] }), '2')).toBe(false);
     expect(isRingingFor(call({ ringing: [] }), '2')).toBe(false);
+  });
+
+  it('rings out for the caller only while alone in a call that rings someone else', () => {
+    expect(isRingingOut(call(), '1')).toBe(true);
+    expect(isRingingOut(call(), '2')).toBe(false);
+    expect(isRingingOut(call({ ringing: [] }), '1')).toBe(false);
+    expect(isRingingOut(call({ voiceStates: [voice('1'), voice('2')] }), '1')).toBe(false);
   });
 
   it('names the caller as the first participant who is not the user', () => {

@@ -99,6 +99,7 @@ async function launch(
     ws.on("framereceived", show("<"));
   });
   await page.addInitScript(recordPeers);
+  await page.addInitScript(recordAudioContexts);
   await page.reload();
   await page
     .getByLabel("Email")
@@ -120,6 +121,33 @@ async function launch(
     throw e;
   }
   return { app, page, log };
+}
+
+/** Records every AudioContext and how many oscillators it started (the ringtone is synthesised). */
+const recordAudioContexts = () => {
+  const contexts: { context: AudioContext; oscillators: number }[] = [];
+  (window as unknown as { __audioContexts: typeof contexts }).__audioContexts = contexts;
+  const Native = window.AudioContext;
+  window.AudioContext = class extends Native {
+    constructor(options?: AudioContextOptions) {
+      super(options);
+      const entry = { context: this as AudioContext, oscillators: 0 };
+      contexts.push(entry);
+      const create = this.createOscillator.bind(this);
+      this.createOscillator = () => {
+        entry.oscillators += 1;
+        return create();
+      };
+    }
+  };
+};
+
+async function audioContexts(page: Page): Promise<{ state: string; oscillators: number }[]> {
+  return page.evaluate(() =>
+    (window as unknown as { __audioContexts: { context: AudioContext; oscillators: number }[] }).__audioContexts.map(
+      ({ context, oscillators }) => ({ state: context.state, oscillators }),
+    ),
+  );
 }
 
 async function inbound(page: Page): Promise<Record<string, number>> {
@@ -231,6 +259,11 @@ test("alice calls bob in a DM", async () => {
       .catch(() => false);
     console.log(`--- bob sees a ring: ${bobRinging}`);
     expect(bobRinging, "bob sees a ring").toBe(true);
+    const ringtone = await audioContexts(bob.page);
+    console.log(`--- bob ringtone: ${JSON.stringify(ringtone)} alice: ${JSON.stringify(await audioContexts(alice.page))}`);
+    expect(ringtone.some((c) => c.state === "running" && c.oscillators > 0), "bob hears the ringtone").toBe(true);
+    const ringback = await audioContexts(alice.page);
+    expect(ringback.some((c) => c.state === "running" && c.oscillators > 0), "alice hears the ringback").toBe(true);
     await dump("alice alone");
 
     await bob.page.getByRole("button", { name: "Accept" }).click();
