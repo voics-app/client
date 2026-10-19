@@ -1,7 +1,6 @@
-import { cloneElement, useCallback, useRef, useState, type FocusEvent, type MouseEvent, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type MouseEvent, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-
-type Side = 'top' | 'right' | 'bottom' | 'left';
+import { placeTooltip, type Placement, type Rect, type Side } from './tooltipPlacement';
 
 interface Props {
   label: ReactNode;
@@ -17,31 +16,59 @@ interface TriggerProps {
   onBlur?: (e: FocusEvent<HTMLElement>) => void;
 }
 
-/** Glass tooltip positioned from the trigger rect. Triggered by hover and keyboard focus. */
+interface Shown {
+  rect: Rect;
+  side: Side;
+}
+
+/** Glass tooltip rendered in a body-level portal (so no overflow:hidden ancestor can clip it), clamped to the viewport.
+ * Triggered by hover and keyboard focus; dismissed on scroll or resize so it never floats detached from its trigger. */
 export function Tooltip({ label, side = 'top', children, delay = 350 }: Props) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [shown, setShown] = useState<Shown | null>(null);
+  const [placement, setPlacement] = useState<Placement | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelTimer = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
 
   const show = useCallback(
     (el: HTMLElement) => {
+      cancelTimer();
       timer.current = setTimeout(() => {
         const r = el.getBoundingClientRect();
-        const gap = 10;
-        const map: Record<Side, { x: number; y: number }> = {
-          top: { x: r.left + r.width / 2, y: r.top - gap },
-          bottom: { x: r.left + r.width / 2, y: r.bottom + gap },
-          left: { x: r.left - gap, y: r.top + r.height / 2 },
-          right: { x: r.right + gap, y: r.top + r.height / 2 },
-        };
-        setPos(map[side]);
+        setShown({ rect: { top: r.top, right: r.right, bottom: r.bottom, left: r.left, width: r.width, height: r.height }, side });
       }, delay);
     },
-    [delay, side],
+    [cancelTimer, delay, side],
   );
   const hide = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    setPos(null);
-  }, []);
+    cancelTimer();
+    setShown(null);
+    setPlacement(null);
+  }, [cancelTimer]);
+
+  useLayoutEffect(() => {
+    const tip = tipRef.current;
+    if (!shown || !tip) return;
+    setPlacement(
+      placeTooltip(shown.rect, shown.side, { width: tip.offsetWidth, height: tip.offsetHeight }, { width: window.innerWidth, height: window.innerHeight }),
+    );
+  }, [shown]);
+
+  useEffect(() => {
+    if (!shown) return;
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      window.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+    };
+  }, [shown, hide]);
+
+  useEffect(() => () => cancelTimer(), [cancelTimer]);
 
   const own = children.props;
   const trigger = cloneElement(children, {
@@ -63,12 +90,18 @@ export function Tooltip({ label, side = 'top', children, delay = 350 }: Props) {
     },
   });
 
+  const placedSide = placement?.side ?? side;
   return (
     <>
       {trigger}
-      {pos &&
+      {shown &&
         createPortal(
-          <div className={`tooltip tooltip-${side} glass`} style={{ left: pos.x, top: pos.y }} role="tooltip">
+          <div
+            ref={tipRef}
+            className={`tooltip tooltip-${placedSide} glass`}
+            style={placement ? { left: placement.x, top: placement.y } : { left: 0, top: 0, visibility: 'hidden' }}
+            role="tooltip"
+          >
             {label}
           </div>,
           document.body,

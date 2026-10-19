@@ -9,6 +9,8 @@ export interface AudioSection {
   mid: string;
   payloadType: number;
   codec: 'opus';
+  /** SSRC the browser chose for our audio; the voice node must expect this one. */
+  ssrc: number | null;
 }
 
 export interface VideoSection {
@@ -16,6 +18,8 @@ export interface VideoSection {
   payloadType: number;
   rtxPayloadType: number | null;
   codec: string;
+  ssrc: number | null;
+  rtxSsrc: number | null;
 }
 
 export interface ParsedOffer {
@@ -24,6 +28,8 @@ export interface ParsedOffer {
   fingerprint: string;
   audio: AudioSection;
   video: VideoSection | null;
+  /** The screen share transceiver: the second video section, sent as its own stream. */
+  screen: { mid: string; ssrc: number | null; rtxSsrc: number | null } | null;
   audioLevelExtId: number | null;
   /** extmap URIs per mid, used to echo supported header extensions. */
   extmaps: Record<string, { id: number; uri: string }[]>;
@@ -60,6 +66,14 @@ function attr(lines: readonly string[], name: string): string | null {
   return line ? line.slice(prefix.length).trim() : null;
 }
 
+/** The primary SSRC of a section and, when present, its RTX partner from `a=ssrc-group:FID`. */
+function ssrcsOf(lines: readonly string[]): { ssrc: number | null; rtxSsrc: number | null } {
+  const fid = attr(lines, 'ssrc-group')?.split(' ');
+  if (fid && fid[0] === 'FID' && fid.length >= 3) return { ssrc: Number(fid[1]), rtxSsrc: Number(fid[2]) };
+  const first = lines.find((l) => l.startsWith('a=ssrc:'));
+  return { ssrc: first ? Number(first.slice('a=ssrc:'.length).split(' ')[0]) : null, rtxSsrc: null };
+}
+
 function rtpmaps(lines: readonly string[]): { pt: number; codec: string }[] {
   return lines
     .filter((l) => l.startsWith('a=rtpmap:'))
@@ -82,7 +96,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): Parse
   const { session, media } = splitSections(sdp);
   const audioRaw = media.find((m) => m.kind === 'audio');
   if (!audioRaw) throw new Error('offer has no audio section');
-  const videoRaw = media.find((m) => m.kind === 'video');
+  const [videoRaw, screenRaw] = media.filter((m) => m.kind === 'video');
   const pick = (name: string) => attr(audioRaw.lines, name) ?? attr(session, name);
 
   const iceUfrag = pick('ice-ufrag');
@@ -105,8 +119,9 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): Parse
     iceUfrag,
     icePwd,
     fingerprint,
-    audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus' },
+    audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus', ssrc: ssrcsOf(audioRaw.lines).ssrc },
     video: videoRaw ? parseVideo(videoRaw.lines, preferredVideoCodec) : null,
+    screen: screenRaw ? { mid: attr(screenRaw.lines, 'mid') ?? '2', ...ssrcsOf(screenRaw.lines) } : null,
     audioLevelExtId: audioLevel?.id ?? null,
     extmaps,
   };
@@ -127,6 +142,7 @@ function parseVideo(lines: readonly string[], preferred: string): VideoSection |
     payloadType: chosen.pt,
     rtxPayloadType: rtx ? Number(rtx[0]) : null,
     codec: chosen.codec.toUpperCase(),
+    ...ssrcsOf(lines),
   };
 }
 

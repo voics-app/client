@@ -39,9 +39,27 @@ describe('parseLocalOffer', () => {
     expect(parsed.iceUfrag).toBe('LoCa');
     expect(parsed.icePwd).toBe('localpasswordlocalpassword');
     expect(parsed.fingerprint).toMatch(/^sha-256 AA:BB/);
-    expect(parsed.audio).toEqual({ mid: '0', payloadType: 111, codec: 'opus' });
-    expect(parsed.video).toEqual({ mid: '1', payloadType: 98, rtxPayloadType: 99, codec: 'VP9' });
+    expect(parsed.audio).toEqual({ mid: '0', payloadType: 111, codec: 'opus', ssrc: null });
+    expect(parsed.video).toEqual({ mid: '1', payloadType: 98, rtxPayloadType: 99, codec: 'VP9', ssrc: null, rtxSsrc: null });
     expect(parsed.audioLevelExtId).toBe(1);
+  });
+
+  it('reads the SSRCs the browser chose, with the RTX partner from the FID group', () => {
+    const withSsrcs = OFFER.replace('a=mid:0', 'a=mid:0\r\na=ssrc:1111 cname:x').replace(
+      'a=mid:1',
+      'a=mid:1\r\na=ssrc-group:FID 2222 3333\r\na=ssrc:2222 cname:x\r\na=ssrc:3333 cname:x',
+    );
+    const parsed = parseLocalOffer(withSsrcs);
+    expect(parsed.audio.ssrc).toBe(1111);
+    expect(parsed.video).toMatchObject({ ssrc: 2222, rtxSsrc: 3333 });
+    expect(parsed.screen).toBeNull();
+  });
+
+  it('reads the screen share transceiver (the second video section) as its own stream', () => {
+    const screen = ['m=video 9 UDP/TLS/RTP/SAVPF 98 99', 'a=mid:2', 'a=ssrc-group:FID 4444 5555', 'a=ssrc:4444 cname:x', 'a=ssrc:5555 cname:x', 'a=sendrecv', 'a=rtpmap:98 VP9/90000', ''].join('\r\n');
+    const parsed = parseLocalOffer(OFFER + screen);
+    expect(parsed.video?.mid).toBe('1');
+    expect(parsed.screen).toEqual({ mid: '2', ssrc: 4444, rtxSsrc: 5555 });
   });
 });
 

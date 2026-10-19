@@ -1,3 +1,5 @@
+import { RouteQueue } from '@renderer/application/routeQueue';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { ChannelType, type Channel } from '@shared/contracts/rest';
@@ -25,7 +27,7 @@ export function openGuild(guildId: string): void {
 }
 
 /** Handles `/channels/<guild|@me>/<channel>` and `/invite/<code>` routes from deep links and notifications. */
-export function handleRoute(route: string): void {
+function applyRoute(route: string): void {
   const ui = useUiStore.getState();
   const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?/.exec(route);
   if (channel) {
@@ -36,6 +38,18 @@ export function handleRoute(route: string): void {
   }
   const invite = /^\/invite\/([\w-]+)/.exec(route);
   if (invite) ui.openDialog({ kind: 'joinGuild', code: invite[1] });
+}
+
+const routeQueue = new RouteQueue(() => useSessionStore.getState().status === 'ready', applyRoute);
+
+/** Deep links wait for sign-in: a signed-out user logs in first, then the route is applied. */
+export function handleRoute(route: string): void {
+  routeQueue.push(route);
+}
+
+/** Called when the session becomes ready to release a route received while signed out. */
+export function flushPendingRoute(): void {
+  routeQueue.flush();
 }
 
 export function channelIcon(type: number): 'text' | 'voice' | 'announcement' | 'forum' | 'stage' | 'thread' {

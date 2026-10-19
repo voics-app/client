@@ -76,6 +76,7 @@ export interface P2PDeps {
   /** Evaluated per connection so refreshed TURN credentials apply to new links. */
   iceServers?: () => PeerConnectionConfig['iceServers'];
   connectTimeoutMs?: number;
+  iceGatherTimeoutMs?: number;
 }
 
 interface Link {
@@ -96,9 +97,13 @@ interface Link {
   opened: Promise<void>;
   resolveOpen: () => void;
   rejectOpen: (error: Error) => void;
+  /** Resolves when ICE gathering finished (a null candidate). */
+  gathered: Promise<void>;
 }
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+/** How long an offer or answer waits for ICE gathering before it is sent with what it has. */
+const DEFAULT_ICE_GATHER_TIMEOUT_MS = 2_000;
 export const FILE_CHUNK_BYTES = 16 * 1024;
 /** Stop queueing above this many buffered bytes and resume once the channel drains below the low mark. */
 export const BUFFER_HIGH_BYTES = 1024 * 1024;
@@ -149,15 +154,12 @@ export class P2PService {
     const peers = await this.peerDevices(channel);
     if (peers.length === 0) throw new PrivateDeliveryError('peer_offline', 'Peer offline: no devices to reach.');
 
-    const open: Link[] = [];
-    const failures: string[] = [];
-    for (const peer of peers) {
-      try {
-        open.push(await this.ensureLink(channel.id, peer.userId, peer.deviceId));
-      } catch (error) {
-        failures.push(error instanceof Error ? error.message : String(error));
-      }
-    }
+    // Dialled together: an offline device costs one connect timeout, not one each.
+    const settled = await Promise.allSettled(peers.map((peer) => this.ensureLink(channel.id, peer.userId, peer.deviceId)));
+    const open = settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+    const failures = settled.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason instanceof Error ? result.reason.message : String(result.reason)] : [],
+    );
     if (open.length === 0) {
       const reason = usePrivacyStore.getState().p2p[channel.id]?.state === 'unverified' ? 'unverified_peer' : 'peer_offline';
       throw new PrivateDeliveryError(reason, failures[0] ?? 'Peer offline.');
@@ -263,6 +265,10 @@ export class P2PService {
       rejectOpen = reject;
     });
     opened.catch(() => undefined);
+    let resolveGathered!: () => void;
+    const gathered = new Promise<void>((resolve) => {
+      resolveGathered = resolve;
+    });
     const link: Link = {
       key: linkKey(channelId, peerDeviceId),
       channelId,
@@ -279,9 +285,12 @@ export class P2PService {
       opened,
       resolveOpen,
       rejectOpen,
+      gathered,
     };
+    // Candidates travel inside the offer/answer once gathering is done (see localSdp), not as one
+    // gateway frame each: trickling to every device of a peer ran into the gateway rate limit.
     pc.onicecandidate = (event) => {
-      if (event.candidate) this.sendSignal(link, 'ice', JSON.stringify(event.candidate.toJSON()), '');
+      if (!event.candidate) resolveGathered();
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed' || pc.connectionState === 'closed') this.closeLink(link.key, 'peer_offline');
@@ -298,7 +307,7 @@ export class P2PService {
     this.attachChannel(link, link.pc.createDataChannel('discordy', { ordered: true }));
     const offer = await link.pc.createOffer();
     await link.pc.setLocalDescription(offer);
-    const sdp = link.pc.localDescription?.sdp ?? offer.sdp ?? '';
+    const sdp = await this.localSdp(link, offer.sdp);
     const signature = await this.signFingerprint(crypto, channelId, this.deps.getSelf().deviceId, peerDeviceId, sdp);
     this.sendSignal(link, 'offer', JSON.stringify({ type: 'offer', sdp }), signature);
     return link;
@@ -322,7 +331,7 @@ export class P2PService {
     await this.flushIce(link);
     const answer = await link.pc.createAnswer();
     await link.pc.setLocalDescription(answer);
-    const sdp = link.pc.localDescription?.sdp ?? answer.sdp ?? '';
+    const sdp = await this.localSdp(link, answer.sdp);
     const signature = await this.signFingerprint(crypto, signal.channel_id, self.deviceId, signal.from_device_id, sdp);
     this.sendSignal(link, 'answer', JSON.stringify({ type: 'answer', sdp }), signature);
   }
@@ -341,6 +350,14 @@ export class P2PService {
     await this.flushIce(link);
   }
 
+  /** The local description with its gathered candidates, waiting a bounded time for gathering. */
+  private async localSdp(link: Link, fallback: string | undefined): Promise<string> {
+    const timeout = this.deps.iceGatherTimeoutMs ?? DEFAULT_ICE_GATHER_TIMEOUT_MS;
+    if (timeout > 0) await Promise.race([link.gathered, new Promise<void>((resolve) => setTimeout(resolve, timeout))]);
+    return link.pc.localDescription?.sdp ?? fallback ?? '';
+  }
+
+  /** Trickled candidates from peers that still send them one by one. */
   private async onIce(signal: P2PSignal): Promise<void> {
     const link = this.links.get(linkKey(signal.channel_id, signal.from_device_id));
     if (!link) return;

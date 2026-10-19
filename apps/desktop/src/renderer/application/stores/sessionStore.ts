@@ -27,6 +27,7 @@ export interface SessionState {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   default_delivery_mode: 'standard',
+  e2ee_calls_default: false,
   status: 'online',
   custom_status: null,
   delivery_overrides: {},

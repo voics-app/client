@@ -1,8 +1,9 @@
 /** Thin command facade over the voice engine so UI never imports engine classes directly. */
-import type { ScreenPresetId } from '@renderer/domain/screenPresets';
+import type { VideoPresetId } from '@renderer/domain/videoPresets';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { reportError } from './actions';
+import { openChannel } from './navigation';
 
 export type ShareResult = { ok: true } | { ok: false; reason: 'protected_content' | 'cancelled' | 'error'; message?: string };
 
@@ -12,9 +13,9 @@ export interface VoiceFacade {
   setMute(muted: boolean): Promise<void>;
   setDeaf(deafened: boolean): Promise<void>;
   setCamera(enabled: boolean): Promise<void>;
-  startScreenShare(options: { sourceId: string; audio: boolean; preset: ScreenPresetId }): Promise<ShareResult>;
+  startScreenShare(options: { sourceId: string; audio: boolean; preset: VideoPresetId }): Promise<ShareResult>;
   stopScreenShare(): Promise<void>;
-  setScreenPreset(preset: ScreenPresetId): Promise<void>;
+  setScreenPreset(preset: VideoPresetId): Promise<void>;
   setUserVolume(userId: string, volume: number): void;
 }
 
@@ -37,6 +38,12 @@ export async function joinVoiceChannel(guildId: string | null, channelId: string
   } catch (error) {
     reportError(error, 'Could not join voice');
   }
+}
+
+/** Joins a voice channel and switches to its call view. Clicking it again while connected just reopens the view. */
+export async function openVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
+  openChannel(channelId);
+  await joinVoiceChannel(guildId, channelId);
 }
 
 export async function leaveVoice(): Promise<void> {
@@ -62,7 +69,7 @@ export async function toggleCamera(): Promise<void> {
   await run(() => require()?.setCamera(!selfVideo));
 }
 
-export async function startShare(options: { sourceId: string; audio: boolean; preset: ScreenPresetId }): Promise<ShareResult> {
+export async function startShare(options: { sourceId: string; audio: boolean; preset: VideoPresetId }): Promise<ShareResult> {
   const f = require();
   if (!f) return { ok: false, reason: 'error', message: 'Voice is unavailable' };
   try {
@@ -76,7 +83,7 @@ export async function stopShare(): Promise<void> {
   await run(() => require()?.stopScreenShare());
 }
 
-export async function changePreset(preset: ScreenPresetId): Promise<void> {
+export async function changePreset(preset: VideoPresetId): Promise<void> {
   useVoiceStore.getState().setSelf({ streamPreset: preset });
   if (useVoiceStore.getState().selfStream) await run(() => require()?.setScreenPreset(preset));
 }

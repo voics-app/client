@@ -110,11 +110,12 @@ function sectionAnswer(
     const stream = `${source.userId}:${source.source}`;
     const track = `${source.source}-${source.ssrc}`;
     out.push(`a=msid:${stream} ${track}`);
-    if (offer.kind === 'video' && source.rtxSsrc > 0) {
-      out.push(`a=ssrc-group:FID ${source.ssrc} ${source.rtxSsrc}`);
-      out.push(`a=ssrc:${source.rtxSsrc} cname:${source.userId}`);
-    }
+    // Primary SSRC first: Chromium takes the first a=ssrc of a section as the media stream, so
+    // listing RTX first made the receiver treat retransmissions as the video and decode nothing.
+    const rtx = offer.kind === 'video' && source.rtxSsrc > 0;
+    if (rtx) out.push(`a=ssrc-group:FID ${source.ssrc} ${source.rtxSsrc}`);
     out.push(`a=ssrc:${source.ssrc} cname:${source.userId}`, `a=ssrc:${source.ssrc} msid:${stream} ${track}`);
+    if (rtx) out.push(`a=ssrc:${source.rtxSsrc} cname:${source.userId}`, `a=ssrc:${source.rtxSsrc} msid:${stream} ${track}`);
   }
   for (const [i, c] of remote.candidates.entries()) out.push(`a=candidate:${i + 1} 1 ${c.protocol} 2130706431 ${c.ip} ${c.port} typ host`);
   out.push('a=end-of-candidates');

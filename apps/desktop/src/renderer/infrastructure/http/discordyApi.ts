@@ -99,6 +99,9 @@ export class DiscordyApi implements ApiPort {
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
   }
+  sendFriendRequest(username: string) {
+    return this.post<void>('/users/@me/relationships', { username });
+  }
   putRelationship(userId: string, body: { type?: number; username?: string } = {}) {
     return this.put<void>(`/users/@me/relationships/${userId}`, body);
   }

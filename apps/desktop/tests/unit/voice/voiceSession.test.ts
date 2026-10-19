@@ -220,6 +220,7 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     setEpoch: vi.fn(),
     activate: vi.fn(),
     setPassthrough: vi.fn(),
+    bypass: vi.fn(),
     clear: vi.fn(),
     dispose: vi.fn(),
   });
@@ -243,6 +244,16 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 1 } }) });
     await vi.advanceTimersByTimeAsync(5);
     expect(closed).toHaveLength(1);
+  });
+
+  it('pipes clear media through every sender when the call is not E2EE', async () => {
+    const c = cryptor(true);
+    const session = makeSession({ cryptor: c });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(c.bypass).toHaveBeenCalledTimes(3);
+    expect(c.attachSender).not.toHaveBeenCalled();
   });
 
   it('attaches transforms and only reports e2ee once DAVE reports active keys', async () => {

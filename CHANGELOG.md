@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0
+
+Calls, privacy and servers catch up with Discord.
+
+- Invite links: `https://discordy.voics.nl/invite/<code>` opens the app (also on cold start and after sign-in) and joins the server after a confirmation.
+- Calls: incoming ringing with a selectable ringtone and volume, ringback for the caller, leaving the call when the app closes, fullscreen video tiles, the call view opens from the channel list.
+- Video: camera and screen share are separate streams; quality presets up to 4K for both, plus Source for the camera.
+- Text chat beside voice channels (on by default, switchable per channel).
+- Members: roles grouped in the member list, role editor and right-click menu with moderation and server nicknames.
+- Ephemeral and P2P messages reach the other side (MLS welcome ordering, non-trickle ICE).
+- Animated server icons and avatars; friends appear in the New DM picker immediately.
+
 ## 0.1.0
 
 Initial release: Electron shell, design system, auth, servers, messaging, three delivery modes, voice, video and screen share.

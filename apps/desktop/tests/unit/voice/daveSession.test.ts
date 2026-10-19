@@ -25,6 +25,7 @@ function setup(supported = true) {
     setEpoch: vi.fn(async (_generation: number, _secret: Uint8Array) => undefined),
     activate: vi.fn(),
     setPassthrough: vi.fn(),
+    bypass: vi.fn(),
     clear: vi.fn(),
     dispose: vi.fn(),
   };

@@ -1,6 +1,7 @@
 /** Browser composition of the voice stack and Watch Together (used by the app composition root). */
 import type { GatewayPort } from '@renderer/application/ports/gateway';
 import { createStreamSampler } from '@renderer/application/voice/blackFrame';
+import { cameraCaptureConstraints } from '@renderer/domain/videoPresets';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -18,6 +19,8 @@ export interface BrowserVoiceOptions {
   identityKeysOf?(userId: string): Promise<string[]>;
 }
 
+const LEGACY_ENCODED_STREAMS = !('RTCRtpScriptTransform' in globalThis);
+
 function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceOptions['identityKeysOf']): VoiceSession {
   const cryptor = new FrameCryptor();
   const bridge = window.discordy;
@@ -29,8 +32,10 @@ function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceO
     sessionId: params.sessionId,
     token: params.token,
     socketFactory: browserSocketFactory,
-    // `encodedInsertableStreams` enables the createEncodedStreams fallback on Chromium without RTCRtpScriptTransform.
-    createPeerConnection: () => new RTCPeerConnection({ bundlePolicy: 'max-bundle', encodedInsertableStreams: true } as RTCConfiguration),
+    // `encodedInsertableStreams` enables the createEncodedStreams fallback, needed only on Chromium without
+    // RTCRtpScriptTransform. With it set, every sender and receiver must be piped (FrameCryptor.bypass for clear calls).
+    createPeerConnection: () =>
+      new RTCPeerConnection({ bundlePolicy: 'max-bundle', ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration),
     cryptor,
     createDave: bridge
       ? (send, hooks) =>
@@ -50,9 +55,9 @@ export function createVoiceController(options: BrowserVoiceOptions): VoiceContro
     createSession: (params) => createVoiceSession(params, options.identityKeysOf),
     mic: createBrowserMicPipeline(),
     mixer: createBrowserMixer(),
-    openCamera: (deviceId) =>
+    openCamera: (deviceId, preset) =>
       navigator.mediaDevices.getUserMedia({
-        video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        video: { ...cameraCaptureConstraints(preset), deviceId: deviceId ? { exact: deviceId } : undefined },
         audio: false,
       }),
     screen: {

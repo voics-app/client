@@ -5,6 +5,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { DialogHost } from '../features/shell/DialogHost';
+import { IncomingCallHost } from '../features/calls/IncomingCall';
 import { Shell } from '../features/shell/Shell';
 import { SettingsHost } from '../features/settings/SettingsHost';
 import { Toasts } from '../shared/ui/Toasts';
@@ -12,7 +13,7 @@ import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
 import { useGlobalShortcuts } from './shortcuts';
 import { createRuntime, type Runtime } from './runtime';
-import { handleRoute } from './navigation';
+import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
 import { BRAND } from '@shared/brand';
 
@@ -65,7 +66,15 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => bridge?.app.onNavigate(handleRoute), []);
+  useEffect(() => {
+    const off = bridge?.app.onNavigate(handleRoute);
+    // Pull any link that launched the app before this listener existed (cold start).
+    void bridge?.app.takePendingRoute().then((route) => route && handleRoute(route));
+    return off;
+  }, []);
+  useEffect(() => {
+    if (status === 'ready') flushPendingRoute();
+  }, [status]);
 
   if (failure) return <Boot message={failure} />;
   if (!runtime) return <Boot message={`Starting ${BRAND.displayName}`} />;
@@ -81,6 +90,7 @@ export function App() {
       ) : (
         <>
           <Shell />
+          <IncomingCallHost />
           <DialogHost />
           <SettingsHost />
         </>

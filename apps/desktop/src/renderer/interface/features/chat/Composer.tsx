@@ -2,6 +2,7 @@ import { ArrowBendUpLeft, File as FileIcon, LockSimple, PaperPlaneRight, PlusCir
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
+import { useMentionStore } from '@renderer/application/stores/mentionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { maxFileBytes } from '@renderer/domain/privateAttachment';
@@ -97,6 +98,16 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   }, [commandSearch === null, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));
+
+  // Mentions chosen from a member context menu are inserted into the open composer of that channel.
+  const mentionRequest = useMentionStore((s) => s.request);
+  useEffect(() => {
+    if (!mentionRequest || mentionRequest.channelId !== channel.id) return;
+    mentionMap.current.set(mentionRequest.token, mentionRequest.wire);
+    insertAtCaret(`${mentionRequest.token} `);
+    useMentionStore.getState().consume(mentionRequest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- insertAtCaret reads the text of the current render
+  }, [mentionRequest, channel.id]);
 
   function insertAtCaret(value: string): void {
     const el = ref.current;

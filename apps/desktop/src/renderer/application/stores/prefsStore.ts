@@ -1,6 +1,8 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
+import type { VideoPresetId } from '@renderer/domain/videoPresets';
 
 export type ThemeId = 'dark' | 'oled' | 'light';
 export type AccentId = 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
@@ -23,6 +25,7 @@ export interface PrefsState {
   inputDeviceId: string | null;
   outputDeviceId: string | null;
   cameraDeviceId: string | null;
+  cameraPreset: VideoPresetId;
   inputVolume: number;
   outputVolume: number;
   inputMode: InputMode;
@@ -36,6 +39,8 @@ export interface PrefsState {
   notifyDesktop: boolean;
   notifyOnlyMentions: boolean;
   notifySounds: boolean;
+  ringtone: RingtoneId;
+  ringtoneVolume: number;
   flashTaskbar: boolean;
   mutedChannels: Record<string, boolean>;
   collapsedCategories: Record<string, boolean>;
@@ -67,6 +72,7 @@ export const DEFAULT_PREFS: PrefsData = {
   inputDeviceId: null,
   outputDeviceId: null,
   cameraDeviceId: null,
+  cameraPreset: '720p30',
   inputVolume: 1,
   outputVolume: 1,
   inputMode: 'vad',
@@ -80,6 +86,8 @@ export const DEFAULT_PREFS: PrefsData = {
   notifyDesktop: true,
   notifyOnlyMentions: false,
   notifySounds: true,
+  ringtone: DEFAULT_RINGTONE,
+  ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
   flashTaskbar: true,
   mutedChannels: {},
   collapsedCategories: {},

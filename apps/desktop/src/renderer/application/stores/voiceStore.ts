@@ -1,7 +1,7 @@
 /** Voice states for every guild/DM plus the local call connection. */
 import { create } from 'zustand';
 import type { VoiceState } from '@shared/contracts/rest';
-import type { ScreenPresetId } from '@renderer/domain/screenPresets';
+import type { VideoPresetId } from '@renderer/domain/videoPresets';
 
 export type CallStatus = 'idle' | 'requesting' | 'connecting' | 'connected' | 'reconnecting' | 'failed';
 
@@ -36,7 +36,7 @@ export interface VoiceStoreState {
   selfDeaf: boolean;
   selfVideo: boolean;
   selfStream: boolean;
-  streamPreset: ScreenPresetId;
+  streamPreset: VideoPresetId;
   speaking: Record<string, number>;
   remoteStreams: RemoteStream[];
   localCamera: MediaStream | null;

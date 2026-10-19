@@ -170,6 +170,14 @@ describe('dispatchRouter', () => {
     expect(useRelationshipStore.getState().byUser['2']).toBeUndefined();
   });
 
+  it('replaces a pending request with the friend entry on accept, for both sides', () => {
+    const { route } = setup();
+    route('RELATIONSHIP_ADD', { id: '2', type: 3, user: friend });
+    expect(useRelationshipStore.getState().byUser['2']?.type).toBe(3);
+    route('RELATIONSHIP_ADD', { id: '2', type: 1, user: friend });
+    expect(useRelationshipStore.getState().byUser['2']).toEqual({ id: '2', type: 1, user: friend });
+  });
+
   it('invalidates cached queries for bans and audit logs', () => {
     const { route, ctx } = setup();
     route('GUILD_BAN_ADD', { guild_id: '100', user: friend });

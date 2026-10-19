@@ -6,7 +6,7 @@
  */
 import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '@shared/contracts/gateway';
 import { SpeakingFlag, type MediaSinkWants } from '@shared/contracts/voice';
-import { presetConstraints } from '@renderer/domain/screenPresets';
+import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { usePrefsStore, type PrefsData } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -28,7 +28,7 @@ export interface VoiceControllerDeps {
   createSession(params: SessionParams): VoiceSessionPort;
   mic: MicPort;
   mixer: MixerPort;
-  openCamera(deviceId: string | null): Promise<MediaStream>;
+  openCamera(deviceId: string | null, preset: VideoPresetId): Promise<MediaStream>;
   screen: Omit<ScreenShareDeps, 'host'>;
   prefs?: { get(): PrefsData; subscribe(listener: (state: PrefsData, previous: PrefsData) => void): () => void };
   telemetryMs?: number;
@@ -92,6 +92,7 @@ export class VoiceController {
     this.disposers.push(
       prefs.subscribe((state, previous) => {
         if (DEVICE_KEYS.some((k) => state[k] !== previous[k])) void this.refreshDevices();
+        if (state.cameraPreset !== previous.cameraPreset) void this.applyCameraPreset();
       }),
     );
   }
@@ -142,6 +143,19 @@ export class VoiceController {
     useVoiceStore.getState().resetCall();
   }
 
+  /**
+   * Leaves synchronously while the window unloads, where `leave()`'s awaits never finish: tells the
+   * gateway first so the call does not linger with a ghost participant, then closes the session.
+   */
+  leaveOnUnload(): void {
+    if (!this.target) return;
+    this.deps.gateway.send(GatewayOp.VOICE_STATE_UPDATE, this.statePayload(null));
+    this.joinToken += 1;
+    this.clearWait();
+    this.closeSession();
+    this.target = null;
+  }
+
   /** Dispatch hook: gateway VOICE_SERVER_UPDATE (initial allocation or reallocation). */
   onVoiceServerUpdate(update: VoiceServerUpdate): void {
     const target = this.target;
@@ -189,7 +203,7 @@ export class VoiceController {
 
   private async restoreLocalMedia(session: VoiceSessionPort): Promise<void> {
     const camera = useVoiceStore.getState().localCamera?.getVideoTracks()[0];
-    if (camera) await session.setCameraTrack(camera, presetConstraints('720p30'));
+    if (camera) await session.setCameraTrack(camera, presetConstraints(this.prefs().cameraPreset));
     const screen = useVoiceStore.getState().localScreen?.getVideoTracks()[0];
     if (screen) {
       const options: ScreenTrackOptions = { constraints: presetConstraints(this.screenShare.currentPreset), contentHint: 'motion' };
@@ -294,13 +308,23 @@ export class VoiceController {
       this.sendState();
       return;
     }
-    const stream = await this.deps.openCamera(this.prefs().cameraDeviceId);
+    const { cameraDeviceId, cameraPreset } = this.prefs();
+    const stream = await this.deps.openCamera(cameraDeviceId, cameraPreset);
     const track = stream.getVideoTracks()[0];
     if (!track) throw new Error('camera produced no video track');
-    await this.session?.setCameraTrack(track, presetConstraints('720p30'));
+    await this.session?.setCameraTrack(track, presetConstraints(cameraPreset));
     useVoiceStore.getState().setLocalMedia({ localCamera: stream });
     useVoiceStore.getState().setSelf({ selfVideo: true });
     this.sendState();
+  }
+
+  /** Re-applies the camera quality preset to the live track and the sender. */
+  private async applyCameraPreset(): Promise<void> {
+    const track = useVoiceStore.getState().localCamera?.getVideoTracks()[0];
+    if (!track) return;
+    const preset = this.prefs().cameraPreset;
+    await track.applyConstraints(cameraCaptureConstraints(preset)).catch(() => undefined);
+    await this.session?.setCameraTrack(track, presetConstraints(preset));
   }
 
   private async stopCamera(): Promise<void> {

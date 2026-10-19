@@ -174,3 +174,13 @@
 .toast-title { font-weight: 600; font-size: var(--fs-small); }
 .toast-body { margin-top: 2px; font-size: var(--fs-meta); color: var(--fg-muted); }
 .toast-x { color: var(--fg-subtle); padding: 2px; border-radius: 6px; } .toast-x:hover { background: var(--hover); color: var(--fg); }
+
+/* Incoming DM call prompt (ringing) */
+.incoming-call { position: fixed; left: 50%; top: 20px; transform: translateX(-50%); z-index: var(--z-toast); display: flex; align-items: center; gap: 14px; width: min(420px, calc(100vw - 32px)); padding: 14px 16px; border-radius: var(--radius-panel); }
+.incoming-call-copy { flex: 1; min-width: 0; }
+.incoming-call-title { margin: 0; font-weight: 600; }
+.incoming-call-body { margin: 2px 0 0; opacity: 0.75; font-size: 0.9em; }
+.incoming-call-actions { display: flex; gap: 8px; }
+.incoming-call-actions button { padding: 8px 14px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; }
+.incoming-call-decline { background: var(--danger); color: #fff; }
+.incoming-call-accept { background: var(--success); color: #fff; }

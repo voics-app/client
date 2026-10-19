@@ -45,6 +45,8 @@ export interface CustomStatus {
 
 export interface UserSettings {
   default_delivery_mode: DeliveryMode;
+  /** Every call the user starts or joins is end-to-end encrypted (voice#8). */
+  e2ee_calls_default?: boolean;
   status?: PresenceStatus;
   custom_status?: CustomStatus | null;
   theme?: 'dark' | 'light' | 'oled';
@@ -97,6 +99,8 @@ export interface Channel {
   name?: string | null;
   topic?: string | null;
   nsfw?: boolean;
+  /** Voice channels only; absent or true means the channel chat accepts messages. */
+  text_chat_enabled?: boolean;
   last_message_id?: Snowflake | null;
   bitrate?: number;
   user_limit?: number;

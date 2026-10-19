@@ -1,10 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { dmCandidates } from '@renderer/application/dmCandidates';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
+import { inviteWebUrl, parseInviteCode } from '@renderer/domain/inviteLinks';
 import { ChannelType, type Invite } from '@shared/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
+import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -12,6 +16,7 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
@@ -56,11 +61,6 @@ function CreateGuildDialog() {
   );
 }
 
-function parseInviteCode(input: string): string {
-  const m = /(?:invite\/|discordy:\/\/invite\/|\/)?([\w-]{4,32})\/?$/.exec(input.trim());
-  return m?.[1] ?? input.trim();
-}
-
 function JoinGuildDialog({ initial }: { initial?: string }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
@@ -68,18 +68,41 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const [error, setError] = useState<string | null>(null);
   const close = useClose();
   const api = getRuntime().api;
-  const lookup = async (e: FormEvent) => {
-    e.preventDefault();
+  const lookupCode = async (raw: string) => {
     setBusy(true);
     setError(null);
     try {
-      setInvite(await api.invite(parseInviteCode(code)));
+      const found = await api.invite(parseInviteCode(raw));
+      const gid = found.guild?.id;
+      if (gid && useGuildStore.getState().guilds[gid]) {
+        // Already a member: no accept step, just go there.
+        close();
+        openGuild(gid);
+        useUiStore.getState().toast({ tone: 'info', title: `You are already in ${found.guild?.name ?? 'this server'}` });
+        return;
+      }
+      setInvite(found);
     } catch (err) {
-      setError(errorMessage(err));
+      const message = errorMessage(err);
+      setError(message);
+      // A link opened from outside the form has nowhere to show the field error.
+      if (initial) useUiStore.getState().toast({ tone: 'danger', title: 'Invite is invalid or has expired', body: message });
     } finally {
       setBusy(false);
     }
   };
+  const lookup = (e: FormEvent) => {
+    e.preventDefault();
+    void lookupCode(code);
+  };
+  const autoLooked = useRef(false);
+  useEffect(() => {
+    // StrictMode runs effects twice in dev; look the invite up once.
+    if (!initial || autoLooked.current) return;
+    autoLooked.current = true;
+    void lookupCode(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
@@ -96,7 +119,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       {invite ? (
         <div className="stack">
           <div className="invite-card">
-            <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square />
+            <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
             <div>
               <h3>{invite.guild?.name}</h3>
               <p>{invite.approximate_member_count ?? '?'} members · {invite.approximate_presence_count ?? '?'} online</p>
@@ -192,7 +215,8 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
     setBusy(false);
     if (created) setInvite(created);
   };
-  const link = invite ? `https://discordy.voics.nl/invite/${invite.code}` : '';
+  const apiUrl = useConnectionStore((c) => c.apiUrl);
+  const link = invite ? inviteWebUrl(invite.code, apiUrl) : '';
   return (
     <Modal open onClose={close} title={`Invite people to ${guild?.name ?? 'server'}`} description="Share this link so others can join.">
       <div className="stack">
@@ -230,13 +254,13 @@ function NewDmDialog() {
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const close = useClose();
-  const guilds = useGuildStore((s) => s.members);
+  const members = useGuildStore((s) => s.members);
   const channels = useGuildStore((s) => s.channels);
+  const relationships = useRelationshipStore((s) => s.byUser);
   const me = useSessionStore((s) => s.user?.id);
-  const people = new Map<string, { id: string; name: string; avatar: string | null }>();
-  for (const members of Object.values(guilds)) for (const m of Object.values(members)) if (m.user.id !== me && !m.user.bot) people.set(m.user.id, { id: m.user.id, name: displayName(m.user, m.nick), avatar: m.user.avatar });
-  for (const c of Object.values(channels)) for (const u of c.recipients ?? []) if (u.id !== me) people.set(u.id, { id: u.id, name: displayName(u), avatar: u.avatar });
-  const list = [...people.values()].filter((p) => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 30);
+  const list = dmCandidates({ meId: me, members, channels, relationships, displayName })
+    .filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 30);
   const create = async () => {
     setBusy(true);
     const channel = await attempt(() => getRuntime().api.openPrivateChannel(picked), 'Could not open conversation');
@@ -339,6 +363,7 @@ function ActiveDialog() {
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
     case 'customStatus': return <CustomStatusDialog />;
+    case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
 }

@@ -4,6 +4,7 @@
  * There is deliberately no plaintext or "fake encryption" fallback: when the
  * native crypto module is unavailable every send fails loudly.
  */
+import { privacyDebug } from './debugLog';
 import type { Channel, User } from '@shared/contracts/rest';
 import { GatewayOp, type E2EEContentType, type E2EEEnvelope, type E2EERecipient } from '@shared/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
@@ -53,6 +54,8 @@ interface KeyPackageMeta {
 
 export class EphemeralService {
   private chain: Promise<unknown> = Promise.resolve();
+  /** Envelopes for a group this device has not joined yet, replayed once its welcome is applied. */
+  private readonly awaitingWelcome = new Map<string, E2EEEnvelope[]>();
   private cryptoChecked = false;
 
   constructor(private readonly deps: EphemeralDeps) {}
@@ -108,13 +111,16 @@ export class EphemeralService {
   // ---- sending -----------------------------------------------------------------
 
   private async sendNow(channel: Channel, input: SendInput): Promise<ChatMessage> {
+    privacyDebug('ephemeral send: start', { channel: channel.id });
     const crypto = await this.requireCrypto();
+    privacyDebug('ephemeral send: crypto ready');
     const self = this.deps.getSelf();
     const author = this.selfUser();
     const channelId = channel.id;
 
     const membership = await this.ensureMembership(channel, crypto);
     const recipients = this.recipientsOf(membership, self.deviceId);
+    privacyDebug('ephemeral send: membership', { devices: Object.keys(membership).length, recipients: recipients.length });
     if (recipients.length === 0) {
       throw new PrivateDeliveryError('no_recipients', 'None of the other participants has a device that can receive encrypted messages yet.');
     }
@@ -130,6 +136,7 @@ export class EphemeralService {
       files: attached.map((a) => a.private),
     };
     const { ciphertextB64, epoch } = await crypto.encrypt(channelId, encodePayload(payload));
+    privacyDebug('ephemeral send: encrypted, relaying', { epoch });
     this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
 
     const message = buildPrivateMessage({ id, channel, author, payload, mode: 'ephemeral' });
@@ -167,6 +174,7 @@ export class EphemeralService {
     let membership = await this.deps.history.getState<Membership>(`mls-members:${channelId}`);
 
     if (!(await crypto.hasGroup(channelId))) {
+      privacyDebug('ephemeral: creating group', { channel: channelId });
       privacy.setGroup(channelId, 'establishing');
       const epoch = await crypto.createGroup(channelId);
       membership = { [self.deviceId]: self.userId };
@@ -245,6 +253,7 @@ export class EphemeralService {
     const missing = Object.entries(current).filter(([deviceId]) => !(deviceId in membership));
     if (missing.length === 0) return membership;
 
+    privacyDebug('ephemeral: claiming key packages', { missing: missing.length });
     const claimed: { deviceId: string; userId: string; packageB64: string }[] = [];
     for (const [deviceId, userId] of missing) {
       try {
@@ -254,6 +263,7 @@ export class EphemeralService {
         // A device without published key packages cannot join yet; it is retried on the next send.
       }
     }
+    privacyDebug('ephemeral: claimed key packages', { claimed: claimed.length });
     if (claimed.length === 0) return membership;
 
     const existingRecipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
@@ -280,6 +290,7 @@ export class EphemeralService {
 
   private async receiveNow(envelope: E2EEEnvelope): Promise<void> {
     const self = this.deps.getSelf();
+    privacyDebug('ephemeral receive', { type: envelope.content_type, channel: envelope.channel_id, forMe: envelope.recipients.some((r) => r.device_id === self.deviceId) });
     const entry = envelope.recipients.find((r) => r.device_id === self.deviceId) ?? envelope.recipients[0];
     if (!entry || envelope.sender_device_id === self.deviceId) {
       this.ack(envelope);
@@ -302,7 +313,16 @@ export class EphemeralService {
       }
       this.ack(envelope);
     } catch (error) {
-      if (envelope.content_type === 'commit' && /epoch/i.test(error instanceof Error ? error.message : String(error))) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (envelope.content_type !== 'welcome' && /unknown MLS group/i.test(reason)) {
+        // The welcome that adds this device can arrive after the group's first messages; keep them
+        // (unacknowledged) until it does.
+        privacyDebug('ephemeral receive: waiting for welcome', { channel: channelId });
+        this.awaitingWelcome.set(channelId, [...(this.awaitingWelcome.get(channelId) ?? []), envelope]);
+        privacy.setGroup(channelId, 'establishing');
+        return;
+      }
+      if (envelope.content_type === 'commit' && /epoch/i.test(reason)) {
         // Lost a commit race: the lowest epoch wins, so this stale commit can never apply. Drop it and
         // retry any removal that is still pending as the next committer in line.
         this.ack(envelope);
@@ -317,6 +337,9 @@ export class EphemeralService {
   private async handleWelcome(crypto: CryptoBridge, entry: E2EERecipient): Promise<void> {
     const { groupId, epoch } = await crypto.joinFromWelcome(entry.ciphertext_b64);
     usePrivacyStore.getState().setGroup(groupId, 'ready', epoch);
+    const waiting = this.awaitingWelcome.get(groupId) ?? [];
+    this.awaitingWelcome.delete(groupId);
+    for (const parked of waiting) void this.enqueue(() => this.receiveNow(parked));
     await this.deps.history.putState(`mls-members:${groupId}`, await this.currentDevices(groupId).catch(() => ({})));
     await this.noteKeyPackageClaimed();
   }

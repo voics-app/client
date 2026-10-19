@@ -18,6 +18,8 @@ import type { AuthResponse, ReadyPayload } from '@shared/contracts/rest';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { notifyIncoming } from './notifications';
+import { useUiStore } from '@renderer/application/stores/uiStore';
+import { DEVICE_UNREGISTERED_REASON } from '@renderer/domain/deliveryMode';
 import { BRAND } from '@shared/brand';
 
 export interface Runtime {
@@ -140,6 +142,9 @@ export function createRuntime(info: AppInfo): Runtime {
       if (!status.available) return null;
       identityUserId = userId;
       return { identityKeyB64: await privacy.initialiseIdentity() };
+    },
+    onDeviceRegistrationFailed: () => {
+      useUiStore.getState().toast({ tone: 'warning', title: 'Signed in without encrypted modes', body: DEVICE_UNREGISTERED_REASON });
     },
     onChange: (signedIn) => {
       queryClient.clear();

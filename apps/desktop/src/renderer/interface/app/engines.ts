@@ -44,6 +44,8 @@ export function registerEngines(runtime: Runtime): Engines {
     watch.detach();
   });
 
+  globalThis.addEventListener?.('beforeunload', () => voice.leaveOnUnload());
+
   registerVoice(toFacade(voice));
   engines = { voice, watch };
   return engines;

@@ -289,18 +289,23 @@ button.mode-badge:active { transform: scale(0.96); }
 .voice-stage { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 16px; gap: 16px; background: radial-gradient(1200px 500px at 50% -10%, color-mix(in oklch, var(--accent) 10%, transparent), transparent), var(--bg-0); }
 .voice-stage-head { display: flex; justify-content: space-between; align-items: center; } .voice-stage-head h1 { font-size: var(--fs-section); } .voice-stage-head p { color: var(--fg-muted); font-size: var(--fs-meta); }
 .stage-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; } .stage-focus { flex: 1; min-height: 0; } .stage-focus .tile { height: 100%; }
-.stage-tiles { flex: 1; min-height: 0; display: grid; gap: 12px; align-content: center; grid-auto-rows: minmax(0, 220px); } .stage-strip { flex: none; display: flex; gap: 10px; height: 120px; overflow-x: auto; } .stage-strip .stage-cell { width: 200px; flex: none; }
+.stage-tiles { flex: 1; min-height: 0; display: grid; gap: 12px; align-content: center; grid-auto-rows: minmax(0, 220px); } .stage-strip { flex: none; display: flex; gap: 10px; height: 192px; padding: 36px; overflow-x: auto; } .stage-strip .stage-cell { width: 200px; flex: none; }
 .stage-cell, .call-strip-cell { min-width: 0; min-height: 0; height: 100%; }
 .stage-controls { align-self: center; display: flex; gap: 6px; padding: 8px 12px; border-radius: 999px; }
 .tile { position: relative; width: 100%; height: 100%; min-height: 96px; border-radius: 18px; overflow: hidden; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--hairline); transition: box-shadow var(--dur-fast); --ring-bg: var(--bg-2); }
 .tile.is-speaking { box-shadow: inset 0 0 0 2.5px var(--accent), 0 0 calc(10px + var(--speak) * 22px) -2px var(--accent); }
+/* Avatar-only tiles have no video to clip, so the speaking ring and its glow may extend past the tile. */
+.tile.is-avatar { overflow: visible; }
+/* Fullscreen tile: the browser sizes the element to the screen, so only drop the rounded frame and fill it with black. */
+.tile:fullscreen { border-radius: 0; background: #000; box-shadow: none; } .tile:fullscreen .tile-video { object-fit: contain; }
 .tile-video { width: 100%; height: 100%; object-fit: contain; background: #000; } .tile.is-screen .tile-video { object-fit: contain; }
 .tile-avatar { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, var(--bg-3), var(--bg-2)); }
 .tile-label { position: absolute; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: oklch(0 0 0 / 0.55); color: white; font-size: var(--fs-meta); font-weight: 560; }
 .tile-live { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; background: var(--danger); color: white; }
 .tile-tools { position: absolute; right: 8px; top: 8px; display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: oklch(0 0 0 / 0.55); color: white; opacity: 0; transition: opacity var(--dur-fast); } .tile:hover .tile-tools, .tile:focus-within .tile-tools { opacity: 1; } .tile-tools .icon-btn { color: white; }
 .volume-pop { position: fixed; z-index: var(--z-toast); padding: 12px 16px; border-radius: 14px; width: 280px; } .volume-pop p { font-weight: 620; margin-bottom: 6px; }
-.call-strip { flex: none; display: flex; gap: 10px; padding: 12px 16px; height: 168px; overflow-x: auto; border-bottom: 1px solid var(--hairline); background: var(--bg-0); } .call-strip-cell { width: 240px; flex: none; }
+.member-panel-actions { display: flex; flex-wrap: wrap; gap: 6px; } .member-panel-empty { color: var(--fg-muted, inherit); font-size: var(--fs-small); }
+.call-strip { flex: none; display: flex; gap: 10px; padding: 36px; height: 216px; overflow-x: auto; border-bottom: 1px solid var(--hairline); background: var(--bg-0); } .call-strip-cell { width: 240px; flex: none; }
 
 /* Dialog bits */
 .invite-card { display: flex; align-items: center; gap: 16px; padding: 14px; border-radius: 14px; background: var(--bg-1); } .invite-card p { color: var(--fg-muted); font-size: var(--fs-small); }
@@ -408,3 +413,14 @@ button.mode-badge:active { transform: scale(0.96); }
 .component-multi, .component-entity { border: 0; margin: 0; padding: 0; min-width: 220px; display: flex; flex-direction: column; gap: 6px; } .component-multi legend { font-size: var(--fs-meta); color: var(--fg-muted); margin-bottom: 4px; }
 .component-multi-option { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small); } .component-multi-option small { color: var(--fg-subtle); }
 .interaction-modal { display: flex; flex-direction: column; gap: 14px; }
+
+/* Settings: a control with a button beside it (ringtone picker + Preview). */
+.setting-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.setting-inline > select {
+  flex: 1;
+  min-width: 0;
+}

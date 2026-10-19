@@ -31,6 +31,7 @@ function setup() {
     },
     now: () => 1_800_000_000_000,
     connectTimeoutMs: 200,
+    iceGatherTimeoutMs: 0,
   });
   return { service, gateway, crypto, connections };
 }
@@ -52,6 +53,18 @@ const signalFromBob = (over: Partial<P2PSignal>): P2PSignal => ({
 
 describe('P2PService dialling', () => {
   beforeEach(() => resetStores(dm('p2p')));
+
+  it('sends candidates inside the offer once gathering ends, never as separate ice frames', async () => {
+    const { service, gateway, connections } = setup();
+    void service.send(dm('p2p'), { content: 'hi' }).catch(() => undefined);
+    await tick();
+    const pc = connections[0]!;
+    pc.onicecandidate?.({ candidate: { toJSON: () => ({ candidate: 'candidate:1 1 udp 1 10.0.0.1 5000 typ host' }) } });
+    pc.onicecandidate?.({ candidate: null });
+    await tick();
+    const kinds = (gateway.ofOp(GatewayOp.P2P_SIGNAL) as unknown as P2PSignal[]).map((s) => s.kind);
+    expect(kinds).toEqual(['offer']);
+  });
 
   it('offers with a signed DTLS fingerprint, then sends over the data channel once the verified answer arrives', async () => {
     const { service, gateway, connections } = setup();

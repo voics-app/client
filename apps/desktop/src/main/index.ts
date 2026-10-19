@@ -1,12 +1,12 @@
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
 import { app } from 'electron';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';
 import { resolveConnection, resolveUpdateFeed } from './config';
 import { CryptoHost } from './cryptoHost';
-import { PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
+import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
 import { PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
 import { loadMainSettings } from './settings';
@@ -20,23 +20,22 @@ if (process.env.DISCORDY_USER_DATA_DIR) app.setPath('userData', process.env.DISC
 const env = process.env as Record<string, string | undefined>;
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
-let pendingRoute: string | null = null;
+const inbox = new DeepLinkInbox();
 
 function navigate(link: string | null): void {
   const route = link ? routeFromDeepLink(link) : null;
   if (!route) return;
-  if (mainWindow && !mainWindow.webContents.isLoading()) {
-    mainWindow.webContents.send(IpcChannel.appNavigate, route);
+  inbox.submit(route, (r) => mainWindow?.webContents.send(IpcChannel.appNavigate, r));
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
-  } else {
-    pendingRoute = route;
   }
 }
 
 function registerProtocol(): void {
   if (process.defaultApp && process.argv[1]) {
-    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [join(process.argv[1])]);
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1])]);
   } else {
     app.setAsDefaultProtocolClient(PROTOCOL);
   }
@@ -72,13 +71,10 @@ function bootstrap(): void {
     crypto: new CryptoHost(),
     pushToTalk,
     updater,
+    takePendingRoute: () => inbox.take(),
   });
 
   mainWindow = createMainWindow();
-  mainWindow.webContents.once('did-finish-load', () => {
-    if (pendingRoute) mainWindow?.webContents.send(IpcChannel.appNavigate, pendingRoute);
-    pendingRoute = null;
-  });
   mainWindow.on('close', (event) => {
     if (!quitting && process.platform !== 'linux' && env.DISCORDY_E2E !== '1') {
       event.preventDefault();
@@ -114,7 +110,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.setAppUserModelId(BRAND.appId);
   registerProtocol();
-  pendingRoute = routeFromDeepLink(findDeepLink(process.argv) ?? '');
+  navigate(findDeepLink(process.argv));
 
   void app.whenReady().then(() => {
     bootstrap();

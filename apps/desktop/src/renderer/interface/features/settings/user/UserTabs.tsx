@@ -5,6 +5,9 @@ import { usePrefsStore, DEFAULT_KEYBINDS, type AccentId, type ThemeId } from '@r
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
+import { RINGTONE_OPTIONS, type RingtoneId } from '@renderer/domain/ringtones';
+import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets';
+import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { keyLabel, uiohookKeycode } from '@renderer/domain/uiohookKeys';
 import type { DeliveryMode } from '@shared/contracts/rest';
 import type { UpdateStatus } from '@shared/ipc';
@@ -137,6 +140,10 @@ export function PrivacyTab() {
       {crypto && !crypto.available && (
         <p className="settings-warning" role="alert">Encrypted modes are unavailable on this install: {crypto.reason ?? 'the native crypto module did not load'}. Nothing is ever sent unencrypted in a private mode.</p>
       )}
+      <h3>Calls</h3>
+      <SettingRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted.">
+        <Switch label="Encrypt all my calls end-to-end" checked={settings.e2ee_calls_default === true} disabled={crypto !== null && !crypto.available} onChange={(v) => void attempt(() => getRuntime().privacy.sender.setE2eeCallsDefault(v), 'Could not update calls setting')} />
+      </SettingRow>
       <h3>Per-chat overrides</h3>
       {overrides.length === 0 ? <p className="setting-desc">No chats override your default. Change a chat's mode from its composer.</p> : (
         <ul className="manage-list">
@@ -286,6 +293,7 @@ export function VoiceTab() {
       <SettingRow title="Automatic gain control"><Switch label="Automatic gain control" checked={prefs.autoGain} onChange={(v) => prefs.set('autoGain', v)} /></SettingRow>
       <h3>Camera</h3>
       <Field label="Camera">{(id) => <Select id={id} value={prefs.cameraDeviceId ?? ''} onChange={(e) => prefs.set('cameraDeviceId', e.target.value || null)}><option value="">System default</option>{options('videoinput')}</Select>}</Field>
+      <Field label="Camera quality">{(id) => <Select id={id} value={prefs.cameraPreset} onChange={(e) => prefs.set('cameraPreset', e.target.value as VideoPresetId)}>{VIDEO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select>}</Field>
       <div className="camera-preview">{capturing ? <video ref={preview} autoPlay muted playsInline /> : <Button onClick={() => setCapturing(true)}>Test video</Button>}</div>
     </Page>
   );
@@ -354,6 +362,17 @@ export function AppearanceTab() {
   );
 }
 
+const preview = new Ringtone();
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Plays the ringtone for a few seconds on the chosen output device. */
+function previewRingtone(tone: RingtoneId, volume: number, outputDeviceId: string | null): void {
+  preview.stop();
+  if (previewTimer) clearTimeout(previewTimer);
+  preview.start(outputDeviceId, { tone, volume });
+  previewTimer = setTimeout(() => preview.stop(), 3_000);
+}
+
 export function NotificationsTab() {
   const prefs = usePrefsStore();
   return (
@@ -361,6 +380,17 @@ export function NotificationsTab() {
       <SettingRow title="Desktop notifications" description="Shown for mentions and direct messages."><Switch label="Desktop notifications" checked={prefs.notifyDesktop} onChange={(v) => prefs.set('notifyDesktop', v)} /></SettingRow>
       <SettingRow title="Only mentions"><Switch label="Only mentions" checked={prefs.notifyOnlyMentions} onChange={(v) => prefs.set('notifyOnlyMentions', v)} /></SettingRow>
       <SettingRow title="Notification sounds"><Switch label="Notification sounds" checked={prefs.notifySounds} onChange={(v) => prefs.set('notifySounds', v)} /></SettingRow>
+      <Field label="Ringtone">
+        {(id) => (
+          <div className="setting-inline">
+            <Select id={id} value={prefs.ringtone} onChange={(e) => prefs.set('ringtone', e.target.value as RingtoneId)}>
+              {RINGTONE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </Select>
+            <Button variant="secondary" onClick={() => previewRingtone(prefs.ringtone, prefs.ringtoneVolume, prefs.outputDeviceId)}>Preview</Button>
+          </div>
+        )}
+      </Field>
+      <Field label="Ringtone volume">{() => <Slider label="Ringtone volume" value={prefs.ringtoneVolume} min={0} max={1} step={0.05} onChange={(v) => prefs.set('ringtoneVolume', v)} format={(v) => `${Math.round(v * 100)}%`} />}</Field>
       <SettingRow title="Flash taskbar"><Switch label="Flash taskbar" checked={prefs.flashTaskbar} onChange={(v) => prefs.set('flashTaskbar', v)} /></SettingRow>
       <p className="setting-desc">Notifications for encrypted chats show only the sender's name; message text is never put in notification text for private modes.</p>
     </Page>

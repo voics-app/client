@@ -1,5 +1,5 @@
 /** Gateway protocol (P7): client <-> gateway, `wss://<gateway>/gateway?v=1&encoding=json`. */
-import type { DeliveryMode, PresenceStatus, Activity, Snowflake } from './rest';
+import type { DeliveryMode, PresenceStatus, Activity, Snowflake, VoiceState } from './rest';
 
 export const GatewayOp = {
   DISPATCH: 0,
@@ -18,6 +18,7 @@ export const GatewayOp = {
   P2P_SIGNAL: 22,
   VOICE_TELEMETRY: 23,
   WATCH_TOGETHER: 24,
+  CALL_DECLINE: 25,
 } as const;
 export type GatewayOp = (typeof GatewayOp)[keyof typeof GatewayOp];
 
@@ -201,4 +202,22 @@ export interface P2PSignalFailed {
 export interface ChannelDeliveryModeUpdate {
   channel_id: Snowflake;
   delivery_mode: DeliveryMode;
+}
+
+/** A DM or group DM call (CALL_CREATE / CALL_UPDATE). `ringing` lists the recipients not yet in it. */
+export interface CallEvent {
+  channel_id: Snowflake;
+  message_id: null;
+  region: string;
+  ringing: Snowflake[];
+  voice_states: VoiceState[];
+}
+
+export interface CallDeleteEvent {
+  channel_id: Snowflake;
+  message_id: null;
+}
+
+export interface CallDeclinePayload {
+  channel_id: Snowflake;
 }
