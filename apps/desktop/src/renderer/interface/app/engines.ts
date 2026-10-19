@@ -39,6 +39,7 @@ export function registerEngines(runtime: Runtime): Engines {
   const watch = createWatchTogetherService(runtime.gateway);
 
   runtime.hooks.onVoiceServerUpdate = (update) => voice.onVoiceServerUpdate(update);
+  runtime.hooks.onVoiceState = (state) => voice.onVoiceState(state);
   runtime.hooks.onSignedOut.push(() => {
     void voice.leave();
     watch.detach();

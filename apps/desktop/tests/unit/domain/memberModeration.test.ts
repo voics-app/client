@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Permission } from '@shared/contracts';
-import type { GuildMember, Role } from '@shared/contracts/rest';
+import type { Channel, GuildMember, Role } from '@shared/contracts/rest';
 import {
   assignableRoles,
   buildMemberSections,
   memberCapabilities,
+  moveTargets,
   outranks,
   rankOf,
   timeoutUntil,
@@ -117,6 +118,15 @@ describe('memberCapabilities', () => {
     expect(memberCapabilities({ ...base, perms, actor: admin, target, inVoice: false })).toMatchObject({ canServerMute: false, canServerDeafen: false });
   });
 
+  it('allows moving and disconnecting only for members in voice, without a hierarchy check', () => {
+    const perms = BigInt(Permission.MOVE_MEMBERS);
+    const mod = { userId: 'mod', roleIds: ['r-mod'] };
+    expect(memberCapabilities({ ...base, perms, actor: mod, target: admin, inVoice: true }).canMoveMembers).toBe(true);
+    expect(memberCapabilities({ ...base, perms, actor: mod, target: admin, inVoice: false }).canMoveMembers).toBe(false);
+    expect(memberCapabilities({ ...base, perms: 0n, actor: admin, target, inVoice: true }).canMoveMembers).toBe(false);
+    expect(memberCapabilities({ ...base, perms, actor: target, target, inVoice: true }).canMoveMembers).toBe(false);
+  });
+
   it('lets anyone edit their own nickname with CHANGE_NICKNAME, and not roles of themselves', () => {
     const self = memberCapabilities({ ...base, perms: BigInt(Permission.CHANGE_NICKNAME | Permission.MANAGE_ROLES), actor: target, target });
     expect(self).toMatchObject({ isSelf: true, canEditNickname: true, canManageRoles: false, canKick: false });
@@ -171,5 +181,23 @@ describe('timeoutUntil', () => {
     const now = Date.parse('2026-10-19T00:00:00Z');
     expect(timeoutUntil(60_000, now)).toBe('2026-10-19T00:01:00.000Z');
     expect(timeoutUntil(MAX_TIMEOUT_MS * 2, now)).toBe(new Date(now + MAX_TIMEOUT_MS).toISOString());
+  });
+});
+
+describe('moveTargets', () => {
+  const channel = (id: string, type: number, position: number, guild = GUILD) =>
+    ({ id, type, position, guild_id: guild, name: id }) as unknown as Channel;
+  const channels = [
+    channel('text', 0, 0),
+    channel('v2', 2, 2),
+    channel('v1', 2, 1),
+    channel('stage', 13, 3),
+    channel('elsewhere', 2, 0, 'g2'),
+    channel('category', 4, 0),
+  ];
+
+  it('lists the guild voice and stage channels in order, minus the current one', () => {
+    expect(moveTargets(channels, GUILD, 'v1').map((c) => c.id)).toEqual(['v2', 'stage']);
+    expect(moveTargets(channels, GUILD, null).map((c) => c.id)).toEqual(['v1', 'v2', 'stage']);
   });
 });

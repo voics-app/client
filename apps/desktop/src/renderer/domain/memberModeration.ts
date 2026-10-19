@@ -1,6 +1,6 @@
 /** Role hierarchy and member-section rules for the member list and the member context menu (P9). */
 import { Permission, type PermissionName } from "@shared/contracts/permissions";
-import type { GuildMember, Role } from "@shared/contracts/rest";
+import { ChannelType, type Channel, type GuildMember, type Role } from "@shared/contracts/rest";
 import { hasPermission } from "./permissions";
 
 export interface HierarchyMember {
@@ -68,6 +68,8 @@ export interface MemberCapabilities {
   canManageRoles: boolean;
   canServerMute: boolean;
   canServerDeafen: boolean;
+  /** Move to another voice channel, or disconnect (MOVE_MEMBERS; Discord has no hierarchy check). */
+  canMoveMembers: boolean;
   canTimeout: boolean;
   canKick: boolean;
   canBan: boolean;
@@ -104,6 +106,7 @@ export function memberCapabilities({
     canManageRoles: has("MANAGE_ROLES") && above,
     canServerMute: has("MUTE_MEMBERS") && inVoice && above,
     canServerDeafen: has("DEAFEN_MEMBERS") && inVoice && above,
+    canMoveMembers: has("MOVE_MEMBERS") && inVoice && !isSelf,
     canTimeout: has("MODERATE_MEMBERS") && above,
     canKick: has("KICK_MEMBERS") && above,
     canBan: has("BAN_MEMBERS") && above,
@@ -154,4 +157,21 @@ export const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60_000;
 
 export function timeoutUntil(ms: number, now: number = Date.now()): string {
   return new Date(now + Math.min(ms, MAX_TIMEOUT_MS)).toISOString();
+}
+
+/** Voice and stage channels of a guild a member can be moved to, in channel order, minus where they are. */
+export function moveTargets(
+  channels: readonly Channel[],
+  guildId: string,
+  currentChannelId: string | null | undefined,
+): Channel[] {
+  return channels
+    .filter(
+      (c) =>
+        c.guild_id === guildId &&
+        c.id !== currentChannelId &&
+        (c.type === ChannelType.GUILD_VOICE ||
+          c.type === ChannelType.GUILD_STAGE_VOICE),
+    )
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 }

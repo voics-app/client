@@ -5,10 +5,12 @@
  * `onVoiceServerUpdate`.
  */
 import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '@shared/contracts/gateway';
+import type { VoiceState } from '@shared/contracts/rest';
 import { SpeakingFlag, type MediaSinkWants } from '@shared/contracts/voice';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { usePrefsStore, type PrefsData } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { GatewayPort } from '@renderer/application/ports/gateway';
 import type { MicPort, MixerPort, ScreenTrackOptions, VoiceSessionPort } from './ports';
@@ -128,6 +130,11 @@ export class VoiceController {
   }
 
   async leave(): Promise<void> {
+    await this.teardown(true);
+  }
+
+  /** `announce` tells the gateway; a server-driven disconnect already left, so it stays quiet. */
+  private async teardown(announce: boolean): Promise<void> {
     this.joinToken += 1;
     const wasInCall = this.target !== null;
     const target = this.target;
@@ -137,10 +144,25 @@ export class VoiceController {
     this.closeSession();
     this.deps.mic.stop();
     this.target = null;
-    if (wasInCall && target) {
+    if (announce && wasInCall && target) {
       this.deps.gateway.send(GatewayOp.VOICE_STATE_UPDATE, this.statePayload(null));
     }
     useVoiceStore.getState().resetCall();
+  }
+
+  /**
+   * Dispatch hook: our own VOICE_STATE_UPDATE. `channel_id: null` while connected means a moderator
+   * disconnected us (a refused join arrives before any session exists and is left to the timeout).
+   */
+  onVoiceState(state: VoiceState): void {
+    const target = this.target;
+    const { user, sessionId } = useSessionStore.getState();
+    if (!target || !this.session || !user || state.user_id !== user.id) return;
+    if (state.channel_id !== null || state.session_id !== sessionId) return;
+    if ((state.guild_id ?? null) !== target.guildId) return;
+    void this.teardown(false).then(() =>
+      useUiStore.getState().toast({ tone: 'info', title: 'You were disconnected from voice' }),
+    );
   }
 
   /**
@@ -159,7 +181,15 @@ export class VoiceController {
   /** Dispatch hook: gateway VOICE_SERVER_UPDATE (initial allocation or reallocation). */
   onVoiceServerUpdate(update: VoiceServerUpdate): void {
     const target = this.target;
-    if (!target || update.channel_id !== target.channelId) return;
+    if (!target) return;
+    if (update.channel_id !== target.channelId) {
+      // A moderator moved us: the gateway re-homes the session and sends a token for the new
+      // channel. Only a connected call follows it, so a stale update for a channel we just left
+      // (while the next join is still waiting for its server) is still ignored.
+      if (!this.session || update.guild_id !== target.guildId) return;
+      this.target = { ...target, channelId: update.channel_id };
+      useVoiceStore.getState().setCall({ channelId: update.channel_id });
+    }
     const { user, sessionId } = useSessionStore.getState();
     if (!user || !sessionId) {
       this.fail('Not signed in to the gateway');

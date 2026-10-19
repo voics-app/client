@@ -25,6 +25,8 @@ import { useVoiceStore } from './stores/voiceStore';
 
 export interface DispatchContext {
   onVoiceServerUpdate(update: VoiceServerUpdate): void;
+  /** Every VOICE_STATE_UPDATE, after the store has applied it (the call reacts to its own). */
+  onVoiceState?(state: VoiceState): void;
   onIncomingMessage(message: ChatMessage): void;
   invalidate(queryKey: readonly unknown[]): void;
 }
@@ -163,7 +165,10 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     RELATIONSHIP_REMOVE: (d: { id: string }) => useRelationshipStore.getState().remove(d.id),
     SESSIONS_REPLACE: () => undefined,
 
-    VOICE_STATE_UPDATE: (d: VoiceState) => useVoiceStore.getState().upsertState(d),
+    VOICE_STATE_UPDATE: (d: VoiceState) => {
+      useVoiceStore.getState().upsertState(d);
+      ctx.onVoiceState?.(d);
+    },
     CALL_CREATE: (d: CallEvent) => useCallStore.getState().upsert(d),
     CALL_UPDATE: (d: CallEvent) => useCallStore.getState().upsert(d),
     CALL_DELETE: (d: CallDeleteEvent) => useCallStore.getState().remove(d.channel_id),
