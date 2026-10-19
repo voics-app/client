@@ -2,9 +2,11 @@ import { Hash, Megaphone, Phone, PushPin, Users, Television, ChatsCircle, At } f
 import { useEffect } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { typingUsers, useTypingStore } from '@renderer/application/stores/peopleStores';
+import { useCallStore } from '@renderer/application/stores/callStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { hasParticipants } from '@renderer/domain/calls';
 import { ChannelType } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { joinVoiceChannel } from '../../app/voiceActions';
@@ -49,6 +51,7 @@ export function ChatView({ channelId }: { channelId: string }) {
   const sidePanel = useUiStore((s) => s.sidePanel);
   const toggle = useUiStore((s) => s.toggleSidePanel);
   const inCall = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
+  const callInProgress = useCallStore((s) => hasParticipants(s.calls[channelId]));
   useSessionStore((s) => s.settings); // re-resolve the mode when account defaults or overrides change
   const mode = channel ? getRuntime().privacy.sender.resolveMode(channel) : 'standard';
 
@@ -74,7 +77,7 @@ export function ChatView({ channelId }: { channelId: string }) {
         <div className="channel-header-actions">
           <ModeBadge mode={mode} />
           {isDm && (
-            <IconButton label={inCall ? 'In call' : 'Start voice call'} active={inCall} disabled={inCall} onClick={() => void joinVoiceChannel(null, channel.id)}>
+            <IconButton label={inCall ? 'In call' : callInProgress ? 'Join call' : 'Start voice call'} active={inCall} disabled={inCall} onClick={() => void joinVoiceChannel(null, channel.id)}>
               <Phone size={20} weight={inCall ? 'fill' : 'regular'} />
             </IconButton>
           )}
