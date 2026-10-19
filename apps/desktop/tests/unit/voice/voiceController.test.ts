@@ -6,6 +6,7 @@ import type { SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/a
 import { DEFAULT_PREFS, type PrefsData } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { presetConstraints } from '@renderer/domain/videoPresets';
 
 class FakeSession implements VoiceSessionPort {
   region = 'eu';
@@ -55,6 +56,8 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
       return () => undefined;
     }),
   };
+  const cameraTrack = { getSettings: () => ({}), applyConstraints: vi.fn(async () => undefined) };
+  const openCamera = vi.fn(async () => ({ getVideoTracks: () => [cameraTrack], getTracks: () => [{ stop: vi.fn() }] }) as unknown as MediaStream);
   const mixer = {
     setStream: vi.fn(),
     setUserVolume: vi.fn(),
@@ -74,7 +77,7 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     },
     mic,
     mixer,
-    openCamera: vi.fn(async () => ({ getVideoTracks: () => [{ getSettings: () => ({}) }], getTracks: () => [{ stop: vi.fn() }] }) as unknown as MediaStream),
+    openCamera,
     screen: {
       capture: { listSources: vi.fn(async () => []), select: vi.fn(async () => undefined) },
       getDisplayMedia: vi.fn(),
@@ -92,6 +95,8 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     sessions,
     mic,
     mixer,
+    openCamera,
+    cameraTrack,
     emitLevel: (l: number, t: boolean) => level?.(l, t),
     changePrefs: (patch: Partial<PrefsData>) => {
       const previous = prefs;
@@ -238,6 +243,36 @@ describe('VoiceController', () => {
     await controller.setVideo(false);
     expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(null);
     expect(sent.at(-1)?.d.self_video).toBe(false);
+  });
+
+  it('opens the camera with the chosen quality preset and sends matching sender parameters', async () => {
+    const { controller, sessions, openCamera } = setup({ cameraPreset: '1440p60' });
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await controller.setVideo(true);
+    expect(openCamera).toHaveBeenCalledWith(null, '1440p60');
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(expect.anything(), presetConstraints('1440p60'));
+  });
+
+  it('re-applies the camera preset to the live track when it changes', async () => {
+    const { controller, sessions, cameraTrack, changePrefs } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await controller.setVideo(true);
+    changePrefs({ cameraPreset: '2160p60' });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(cameraTrack.applyConstraints).toHaveBeenLastCalledWith({ width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 60 } });
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(cameraTrack, presetConstraints('2160p60'));
+  });
+
+  it('does not touch the camera when the preset changes while it is off', async () => {
+    const { controller, sessions, cameraTrack, changePrefs } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    changePrefs({ cameraPreset: '2160p30' });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(cameraTrack.applyConstraints).not.toHaveBeenCalled();
+    expect(sessions[0]!.setCameraTrack).not.toHaveBeenCalled();
   });
 
   it('applies device preference changes: output device, volume and mic restart', async () => {

@@ -1,6 +1,6 @@
 /** Ports the voice application layer depends on. Implemented in infrastructure/voice and infrastructure/audio. */
 import type { MediaSinkWants } from '@shared/contracts/voice';
-import type { CaptureConstraints } from '@renderer/domain/screenPresets';
+import type { CaptureConstraints } from '@renderer/domain/videoPresets';
 import type { CallQuality } from '@renderer/application/stores/voiceStore';
 
 export type SessionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed';

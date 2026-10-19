@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { groupMessages } from '@renderer/domain/messageGrouping';
 import { playbackPosition } from '@renderer/domain/watchTogether';
-import { SCREEN_PRESETS, presetConstraints } from '@renderer/domain/screenPresets';
+import { VIDEO_PRESETS, cameraCaptureConstraints, presetConstraints } from '@renderer/domain/videoPresets';
 import { extractDtlsFingerprint, fingerprintSigningPayload } from '@renderer/domain/p2pIdentity';
 import { isUnread } from '@renderer/domain/unread';
 import { reconnectDelay } from '@renderer/domain/backoff';
@@ -44,14 +44,26 @@ describe('playbackPosition', () => {
   });
 });
 
-describe('screen presets', () => {
-  it('defines 720p30, 1080p60, 1440p60 and Source', () => {
-    expect(SCREEN_PRESETS.map((p) => p.id)).toEqual(['720p30', '1080p60', '1440p60', 'source']);
+describe('video presets', () => {
+  it('defines the camera and screen presets, keeping the persisted ids', () => {
+    expect(VIDEO_PRESETS.map((p) => p.id)).toEqual(['720p30', '1080p30', '1080p60', '1440p60', '2160p30', '2160p60', 'source']);
   });
 
   it('maps a preset to capture constraints', () => {
     expect(presetConstraints('1080p60')).toEqual({ width: 1920, height: 1080, frameRate: 60, maxBitrateKbps: 6000 });
+    expect(presetConstraints('2160p30')).toEqual({ width: 3840, height: 2160, frameRate: 30, maxBitrateKbps: 14000 });
     expect(presetConstraints('source').width).toBeUndefined();
+  });
+
+  it('raises the bitrate with the resolution and frame rate', () => {
+    const bitrates = ['720p30', '1080p30', '1080p60', '1440p60', '2160p30', '2160p60'].map((id) => presetConstraints(id as never).maxBitrateKbps);
+    expect(bitrates).toEqual([...bitrates].sort((a, b) => a - b));
+  });
+
+  it('builds camera constraints with ideal values only, and none for Source', () => {
+    expect(cameraCaptureConstraints('720p30')).toEqual({ width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } });
+    expect(cameraCaptureConstraints('2160p60')).toEqual({ width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 60 } });
+    expect(cameraCaptureConstraints('source')).toEqual({});
   });
 });
 

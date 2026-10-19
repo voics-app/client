@@ -1,6 +1,7 @@
 /** Browser composition of the voice stack and Watch Together (used by the app composition root). */
 import type { GatewayPort } from '@renderer/application/ports/gateway';
 import { createStreamSampler } from '@renderer/application/voice/blackFrame';
+import { cameraCaptureConstraints } from '@renderer/domain/videoPresets';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -54,9 +55,9 @@ export function createVoiceController(options: BrowserVoiceOptions): VoiceContro
     createSession: (params) => createVoiceSession(params, options.identityKeysOf),
     mic: createBrowserMicPipeline(),
     mixer: createBrowserMixer(),
-    openCamera: (deviceId) =>
+    openCamera: (deviceId, preset) =>
       navigator.mediaDevices.getUserMedia({
-        video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        video: { ...cameraCaptureConstraints(preset), deviceId: deviceId ? { exact: deviceId } : undefined },
         audio: false,
       }),
     screen: {

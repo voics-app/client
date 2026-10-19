@@ -2,7 +2,7 @@ import { AppWindow, Desktop, ShieldWarning, SpeakerHigh, Television } from '@pho
 import { useEffect, useState } from 'react';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { SCREEN_PRESETS, type ScreenPresetId } from '@renderer/domain/screenPresets';
+import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets';
 import type { CaptureSource } from '@shared/ipc';
 import { bridge } from '../../app/bridge';
 import { startShare } from '../../app/voiceActions';
@@ -90,7 +90,7 @@ export function ScreenPickerDialog() {
       <div className="picker-options">
         <div>
           <p className="setting-title">Quality</p>
-          <Segmented label="Quality preset" value={preset} onChange={(v: ScreenPresetId) => setSelf({ streamPreset: v })} options={SCREEN_PRESETS.map((p) => ({ value: p.id, label: p.label.replace(' · ', ' ') }))} />
+          <Segmented label="Quality preset" value={preset} onChange={(v: VideoPresetId) => setSelf({ streamPreset: v })} options={VIDEO_PRESETS.map((p) => ({ value: p.id, label: p.label.replace(' · ', ' ') }))} />
         </div>
         <div className="picker-audio">
           <div>

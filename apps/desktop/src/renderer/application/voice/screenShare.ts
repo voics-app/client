@@ -5,7 +5,7 @@
  * `protected_content` so the UI can suggest Watch Together. We never bypass DRM.
  */
 import type { CaptureSelection, CaptureSource } from '@shared/ipc';
-import { presetConstraints, type ScreenPresetId } from '@renderer/domain/screenPresets';
+import { presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { detectProtectedContent, type FrameSampler } from './blackFrame';
 import type { ScreenTrackOptions } from './ports';
@@ -32,14 +32,14 @@ export interface StartScreenShare {
   sourceId: string;
   /** Capture system audio (Windows WASAPI loopback). Ignored elsewhere. */
   audio: boolean;
-  preset: ScreenPresetId;
+  preset: VideoPresetId;
 }
 
-const hintFor = (preset: ScreenPresetId): 'detail' | 'motion' => (preset === '720p30' || preset === '1080p60' ? 'motion' : 'detail');
+const hintFor = (preset: VideoPresetId): 'detail' | 'motion' => (preset === '720p30' || preset === '1080p30' || preset === '1080p60' ? 'motion' : 'detail');
 
 export class ScreenShare {
   private stream: MediaStream | null = null;
-  private preset: ScreenPresetId = '1080p60';
+  private preset: VideoPresetId = '1080p60';
   private readonly endedListeners = new Set<() => void>();
 
   constructor(private readonly deps: ScreenShareDeps) {}
@@ -57,7 +57,7 @@ export class ScreenShare {
     return () => this.endedListeners.delete(listener);
   }
 
-  private videoConstraints(preset: ScreenPresetId): MediaTrackConstraints {
+  private videoConstraints(preset: VideoPresetId): MediaTrackConstraints {
     const c = presetConstraints(preset);
     if (c.width === undefined) return {};
     return {
@@ -108,7 +108,7 @@ export class ScreenShare {
     }
   }
 
-  async setPreset(preset: ScreenPresetId): Promise<void> {
+  async setPreset(preset: VideoPresetId): Promise<void> {
     this.preset = preset;
     useVoiceStore.getState().setSelf({ streamPreset: preset });
     const track = this.stream?.getVideoTracks()[0];
@@ -119,7 +119,7 @@ export class ScreenShare {
     await this.deps.host.applyParameters(constraints);
   }
 
-  get currentPreset(): ScreenPresetId {
+  get currentPreset(): VideoPresetId {
     return this.preset;
   }
 
