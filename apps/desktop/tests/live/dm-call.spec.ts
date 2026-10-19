@@ -224,16 +224,16 @@ test("alice calls bob in a DM", async () => {
     await openDm(alice.page, "bob");
     await alice.page.getByRole("button", { name: "Start voice call" }).click();
     await alice.page.waitForTimeout(6_000);
-    const bobRinging = /incoming|is calling|ringing|join call/i.test(
-      await bob.page.locator("body").innerText(),
-    );
+    const bobRinging = await bob.page
+      .getByRole("alertdialog", { name: /Incoming call from/ })
+      .waitFor({ timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
     console.log(`--- bob sees a ring: ${bobRinging}`);
+    expect(bobRinging, "bob sees a ring").toBe(true);
     await dump("alice alone");
 
-    await openDm(bob.page, "alice");
-    await bob.page
-      .getByRole("button", { name: /Start voice call|Join call/ })
-      .click();
+    await bob.page.getByRole("button", { name: "Accept" }).click();
     await bob.page.waitForTimeout(10_000);
     await dump("both joined");
 

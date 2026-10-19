@@ -14,7 +14,8 @@ import type {
   UserSettings,
   VoiceState,
 } from '@shared/contracts/rest';
-import type { MessageAck, TypingStart, VoiceServerUpdate } from '@shared/contracts/gateway';
+import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUpdate } from '@shared/contracts/gateway';
+import { useCallStore } from './stores/callStore';
 import { useGuildStore } from './stores/guildStore';
 import { useInteractionStore } from './stores/interactionStore';
 import { useMessageStore, type ChatMessage } from './stores/messageStore';
@@ -163,6 +164,9 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     SESSIONS_REPLACE: () => undefined,
 
     VOICE_STATE_UPDATE: (d: VoiceState) => useVoiceStore.getState().upsertState(d),
+    CALL_CREATE: (d: CallEvent) => useCallStore.getState().upsert(d),
+    CALL_UPDATE: (d: CallEvent) => useCallStore.getState().upsert(d),
+    CALL_DELETE: (d: CallDeleteEvent) => useCallStore.getState().remove(d.channel_id),
     INTERACTION_MODAL_CREATE: (d: ModalCreate) => {
       const store = useInteractionStore.getState();
       const applicationId = store.applicationOf[d.interaction_id];

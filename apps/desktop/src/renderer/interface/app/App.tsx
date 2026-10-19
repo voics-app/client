@@ -5,6 +5,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { DialogHost } from '../features/shell/DialogHost';
+import { IncomingCallHost } from '../features/calls/IncomingCall';
 import { Shell } from '../features/shell/Shell';
 import { SettingsHost } from '../features/settings/SettingsHost';
 import { Toasts } from '../shared/ui/Toasts';
@@ -81,6 +82,7 @@ export function App() {
       ) : (
         <>
           <Shell />
+          <IncomingCallHost />
           <DialogHost />
           <SettingsHost />
         </>
