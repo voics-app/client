@@ -7,7 +7,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { ChannelType } from '@shared/contracts/rest';
 import { isVoiceChannel, openChannel, openGuild } from '../../app/navigation';
-import { joinVoiceChannel, toggleDeafen, toggleMute } from '../../app/voiceActions';
+import { openVoiceChannel, toggleDeafen, toggleMute } from '../../app/voiceActions';
 import { displayName } from '../../shared/hooks/useNames';
 import { snappy } from '../../shared/ui/motion';
 
@@ -74,7 +74,7 @@ export function CommandPalette() {
         const label = dm ? (c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || 'DM') : (c.name ?? '');
         const guildName = c.guild_id ? guilds[c.guild_id]?.name : undefined;
         const voice = isVoiceChannel(c);
-        return { id: `c-${c.id}`, group: dm ? 'Direct messages' : 'Channels', label: dm ? label : `${voice ? '' : '#'}${label}`, hint: guildName, icon: dm ? <At size={18} /> : voice ? <SpeakerHigh size={18} /> : <Hash size={18} />, run: () => (voice ? void joinVoiceChannel(c.guild_id ?? null, c.id) : openChannel(c.id)) };
+        return { id: `c-${c.id}`, group: dm ? 'Direct messages' : 'Channels', label: dm ? label : `${voice ? '' : '#'}${label}`, hint: guildName, icon: dm ? <At size={18} /> : voice ? <SpeakerHigh size={18} /> : <Hash size={18} />, run: () => (voice ? void openVoiceChannel(c.guild_id ?? null, c.id) : openChannel(c.id)) };
       });
     return [...channelItems, ...guildItems, ...base];
   }, [open, channels, guilds, theme]);
