@@ -7,6 +7,7 @@ import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/Misc';
 import { VoiceStage } from './VoiceStage';
 import { useParticipants } from './Participants';
+import { VoiceTextChatPanel } from './VoiceTextChat';
 
 /** A voice channel's page: a stage while connected, otherwise a lobby with who is in the room. */
 export function VoiceChannelView({ channelId }: { channelId: string }) {
@@ -18,7 +19,13 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
   if (!channel) return null;
   const here = call.channelId === channelId && call.status !== 'idle';
 
-  if (here) return <VoiceStage channelId={channelId} guildId={guildId} />;
+  if (here)
+    return (
+      <div className="voice-call-split">
+        <VoiceStage channelId={channelId} guildId={guildId} />
+        <VoiceTextChatPanel channelId={channelId} />
+      </div>
+    );
   const alone = participants.filter((p) => p.state.user_id !== me).length === 0;
 
   return (

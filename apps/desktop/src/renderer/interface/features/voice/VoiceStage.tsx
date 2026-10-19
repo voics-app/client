@@ -9,6 +9,7 @@ import { leaveVoice, stopShare, toggleCamera, toggleMute } from '../../app/voice
 import { IconButton } from '../../shared/ui/IconButton';
 import { snappy } from '../../shared/ui/motion';
 import { VideoTile, streamKey, useParticipants, type Participant } from './Participants';
+import { VoiceChatToggle } from './VoiceTextChat';
 
 interface Tile {
   key: string;
@@ -64,6 +65,7 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
         ) : (
           call.status === 'connected' && <span className="e2ee-chip is-off">Standard transport encryption (DTLS-SRTP)</span>
         )}
+        <VoiceChatToggle channelId={channelId} />
       </header>
       <LayoutGroup>
         <div className={`stage-grid${focused ? ' has-focus' : ''}`}>
