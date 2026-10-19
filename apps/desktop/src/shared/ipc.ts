@@ -107,6 +107,8 @@ export interface DiscordyBridge {
     setBadgeCount(count: number): void;
     notify(request: NotificationRequest): void;
     onNavigate(listener: (route: string) => void): () => void;
+    /** Route of the deep link that launched the app, if it has not been delivered yet. */
+    takePendingRoute(): Promise<string | null>;
     flashFrame(): void;
   };
   session: {
@@ -137,6 +139,7 @@ export const IpcChannel = {
   appBadge: 'app:badge',
   appNotify: 'app:notify',
   appNavigate: 'app:navigate',
+  appTakePendingRoute: 'app:take-pending-route',
   appFlash: 'app:flash',
   sessionLoad: 'session:load',
   sessionSave: 'session:save',

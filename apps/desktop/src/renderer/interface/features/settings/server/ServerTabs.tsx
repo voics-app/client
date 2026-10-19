@@ -1,6 +1,7 @@
 import { Trash, Upload } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type ReactNode } from 'react';
+import { inviteWebUrl } from '@renderer/domain/inviteLinks';
 import { timestampOf } from '@renderer/domain/snowflake';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -164,6 +165,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
 
 export function ServerInvites({ guildId }: { guildId: string }) {
   const qc = useQueryClient();
+  const apiUrl = useConnectionStore((c) => c.apiUrl);
   const invites = useQuery({ queryKey: ['guild', guildId, 'invites'], queryFn: () => getRuntime().api.guildInvites(guildId) });
   return (
     <Page title="Invites" sub="Active invite links for this server.">
@@ -172,7 +174,7 @@ export function ServerInvites({ guildId }: { guildId: string }) {
           {invites.data?.map((i) => (
             <li key={i.code}>
               <div className="manage-copy"><strong className="mono">{i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
-              <Button size="sm" onClick={() => void copyText(`https://discordy.voics.nl/invite/${i.code}`, 'Invite link copied')}>Copy</Button>
+              <Button size="sm" onClick={() => void copyText(inviteWebUrl(i.code, apiUrl), 'Invite link copied')}>Copy</Button>
               <IconButton label="Revoke invite" tone="danger" onClick={() => void attempt(async () => { await getRuntime().api.deleteInvite(i.code); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'invites'] }); }, 'Could not revoke invite')}><Trash size={18} /></IconButton>
             </li>
           ))}

@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dmCandidates } from '@renderer/application/dmCandidates';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
+import { inviteWebUrl, parseInviteCode } from '@renderer/domain/inviteLinks';
 import { ChannelType, type Invite } from '@shared/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
+import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -59,11 +61,6 @@ function CreateGuildDialog() {
   );
 }
 
-function parseInviteCode(input: string): string {
-  const m = /(?:invite\/|discordy:\/\/invite\/|\/)?([\w-]{4,32})\/?$/.exec(input.trim());
-  return m?.[1] ?? input.trim();
-}
-
 function JoinGuildDialog({ initial }: { initial?: string }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
@@ -71,18 +68,41 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const [error, setError] = useState<string | null>(null);
   const close = useClose();
   const api = getRuntime().api;
-  const lookup = async (e: FormEvent) => {
-    e.preventDefault();
+  const lookupCode = async (raw: string) => {
     setBusy(true);
     setError(null);
     try {
-      setInvite(await api.invite(parseInviteCode(code)));
+      const found = await api.invite(parseInviteCode(raw));
+      const gid = found.guild?.id;
+      if (gid && useGuildStore.getState().guilds[gid]) {
+        // Already a member: no accept step, just go there.
+        close();
+        openGuild(gid);
+        useUiStore.getState().toast({ tone: 'info', title: `You are already in ${found.guild?.name ?? 'this server'}` });
+        return;
+      }
+      setInvite(found);
     } catch (err) {
-      setError(errorMessage(err));
+      const message = errorMessage(err);
+      setError(message);
+      // A link opened from outside the form has nowhere to show the field error.
+      if (initial) useUiStore.getState().toast({ tone: 'danger', title: 'Invite is invalid or has expired', body: message });
     } finally {
       setBusy(false);
     }
   };
+  const lookup = (e: FormEvent) => {
+    e.preventDefault();
+    void lookupCode(code);
+  };
+  const autoLooked = useRef(false);
+  useEffect(() => {
+    // StrictMode runs effects twice in dev; look the invite up once.
+    if (!initial || autoLooked.current) return;
+    autoLooked.current = true;
+    void lookupCode(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
@@ -195,7 +215,8 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
     setBusy(false);
     if (created) setInvite(created);
   };
-  const link = invite ? `https://discordy.voics.nl/invite/${invite.code}` : '';
+  const apiUrl = useConnectionStore((c) => c.apiUrl);
+  const link = invite ? inviteWebUrl(invite.code, apiUrl) : '';
   return (
     <Modal open onClose={close} title={`Invite people to ${guild?.name ?? 'server'}`} description="Share this link so others can join.">
       <div className="stack">

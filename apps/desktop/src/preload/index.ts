@@ -40,6 +40,7 @@ const bridge: DiscordyBridge = {
     setBadgeCount: (count) => ipcRenderer.send(IpcChannel.appBadge, count),
     notify: (request) => ipcRenderer.send(IpcChannel.appNotify, request),
     onNavigate: (listener) => subscribe<string>(IpcChannel.appNavigate, listener),
+    takePendingRoute: () => ipcRenderer.invoke(IpcChannel.appTakePendingRoute),
     flashFrame: () => ipcRenderer.send(IpcChannel.appFlash),
   },
   session: {
