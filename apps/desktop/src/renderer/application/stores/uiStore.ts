@@ -34,6 +34,7 @@ export type Dialog =
   | { kind: 'screenPicker' }
   | { kind: 'profile'; userId: string; guildId: string | null }
   | { kind: 'customStatus' }
+  | { kind: 'editNickname'; guildId: string; userId: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
 export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;

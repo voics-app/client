@@ -14,6 +14,7 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
@@ -341,6 +342,7 @@ function ActiveDialog() {
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
     case 'customStatus': return <CustomStatusDialog />;
+    case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
 }
