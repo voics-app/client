@@ -1,0 +1,5 @@
+/* Call view with the channel's text chat docked to the right. */
+.voice-call-split { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.voice-chat-panel { width: 340px; flex: none; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--hairline); background: var(--bg-1); }
+.voice-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--hairline); }
+.voice-chat-head h2 { font-size: var(--fs-section); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

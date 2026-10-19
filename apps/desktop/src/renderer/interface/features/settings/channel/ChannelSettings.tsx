@@ -12,6 +12,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Segmented, Switch, TextArea } from '../../../shared/ui/Form';
 import { Menu, useMenu } from '../../../shared/ui/Menu';
 import { ModeSwitcher } from '../../privacy/ModeSwitcher';
+import { VoiceTextChatSetting } from './VoiceTextChatSetting';
 import { ServerInvites } from '../server/ServerTabs';
 
 function TriState({ state, label, onChange }: { state: OverwriteState; label: string; onChange: (s: OverwriteState) => void }) {
@@ -136,6 +137,7 @@ function Overview({ channelId }: { channelId: string }) {
         </Field>
       )}
       <div className="perm-row"><div><p className="setting-title">Age-restricted channel</p></div><Switch label="Age-restricted" checked={nsfw} onChange={setNsfw} /></div>
+      <VoiceTextChatSetting channelId={channelId} />
       <div className="perm-row">
         <div><p className="setting-title">Delivery mode</p><p className="setting-desc">Ephemeral channels are end-to-end encrypted, limited to 100 members, and do not support bots or embeds.</p></div>
         <ModeSwitcher channel={channel} mode={mode} />

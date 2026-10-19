@@ -99,6 +99,8 @@ export interface Channel {
   name?: string | null;
   topic?: string | null;
   nsfw?: boolean;
+  /** Voice channels only; absent or true means the channel chat accepts messages. */
+  text_chat_enabled?: boolean;
   last_message_id?: Snowflake | null;
   bitrate?: number;
   user_limit?: number;
