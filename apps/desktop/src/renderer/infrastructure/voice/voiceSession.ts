@@ -300,7 +300,13 @@ export class VoiceSession implements VoiceSessionPort {
     }
     const select: SelectProtocol = {
       protocol: 'webrtc',
-      data: { ice_ufrag: parsed.iceUfrag, ice_pwd: parsed.icePwd, fingerprint: parsed.fingerprint, setup: 'actpass' },
+      data: {
+        ice_ufrag: parsed.iceUfrag,
+        ice_pwd: parsed.icePwd,
+        fingerprint: parsed.fingerprint,
+        setup: 'actpass',
+        ...(parsed.audio.ssrc ? { ssrcs: { audio: parsed.audio.ssrc, video: parsed.video?.ssrc ?? 0, rtx: parsed.video?.rtxSsrc ?? 0 } } : {}),
+      },
       codecs,
     };
     this.sendFrame(VoiceOp.SELECT_PROTOCOL, select);
@@ -316,6 +322,7 @@ export class VoiceSession implements VoiceSessionPort {
     }
     this.description = description;
     if (required && this.options.cryptor) this.attachSenderTransforms(description);
+    else this.bypassSenders();
     await this.applyAnswer(this.offerSdp, this.parsedOffer, description);
     if (required) this.beginDave(description);
     if (this.sources.size > 0) this.scheduleRenegotiation();
@@ -340,6 +347,12 @@ export class VoiceSession implements VoiceSessionPort {
     if (this.audioTransceiver) cryptor.attachSender(this.audioTransceiver.sender, 'audio', 'opus', this.options.userId);
     if (this.cameraTransceiver) cryptor.attachSender(this.cameraTransceiver.sender, 'video', codec, this.options.userId);
     if (this.screenTransceiver) cryptor.attachSender(this.screenTransceiver.sender, 'video', codec, this.options.userId);
+  }
+
+  private bypassSenders(): void {
+    for (const transceiver of [this.audioTransceiver, this.cameraTransceiver, this.screenTransceiver]) {
+      if (transceiver) this.options.cryptor?.bypass(transceiver.sender);
+    }
   }
 
   private beginDave(description: SessionDescription): void {
@@ -427,6 +440,8 @@ export class VoiceSession implements VoiceSessionPort {
     const stream = event.streams[0] ?? new MediaStream([event.track]);
     if (this.description?.e2ee) {
       this.options.cryptor?.attachReceiver(event.receiver, kindOf(source.source), source.source === 'audio' ? 'opus' : this.codecName(), source.userId);
+    } else {
+      this.options.cryptor?.bypass(event.receiver);
     }
     if (source.source === 'audio') this.remoteAudio.emit(source.userId, stream);
     else useVoiceStore.getState().setRemoteStream({ userId: source.userId, kind: source.source, stream });
@@ -531,7 +546,7 @@ export class VoiceSession implements VoiceSessionPort {
     if (cameraSsrc > 0) streams.push({ type: 'video', rid: camera?.rid ?? '100', quality: 100, ssrc: cameraSsrc, rtx_ssrc: camera?.rtx_ssrc ?? 0, active: true });
     if (screenSsrc > 0) streams.push({ type: 'screen', rid: screen?.rid ?? '100', quality: 100, ssrc: screenSsrc, rtx_ssrc: screen?.rtx_ssrc ?? 0, active: true });
     this.sendFrame(VoiceOp.VIDEO, {
-      audio_ssrc: ready.ssrc,
+      audio_ssrc: this.audioSsrc(),
       video_ssrc: cameraSsrc || screenSsrc,
       rtx_ssrc: 0,
       streams,
@@ -541,7 +556,12 @@ export class VoiceSession implements VoiceSessionPort {
   setSpeaking(flags: number): void {
     if (flags === this.lastSpeakingFlags) return;
     this.lastSpeakingFlags = flags;
-    this.sendFrame(VoiceOp.SPEAKING, { speaking: flags, ssrc: this.ready?.ssrc ?? 0 } satisfies Speaking);
+    this.sendFrame(VoiceOp.SPEAKING, { speaking: flags, ssrc: this.audioSsrc() } satisfies Speaking);
+  }
+
+  /** Our audio SSRC as the browser chose it (sent in SELECT_PROTOCOL), falling back to READY's. */
+  private audioSsrc(): number {
+    return this.parsedOffer?.audio.ssrc ?? this.ready?.ssrc ?? 0;
   }
 
   setSinkWants(wants: MediaSinkWants): void {

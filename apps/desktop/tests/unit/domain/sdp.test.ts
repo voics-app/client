@@ -39,9 +39,19 @@ describe('parseLocalOffer', () => {
     expect(parsed.iceUfrag).toBe('LoCa');
     expect(parsed.icePwd).toBe('localpasswordlocalpassword');
     expect(parsed.fingerprint).toMatch(/^sha-256 AA:BB/);
-    expect(parsed.audio).toEqual({ mid: '0', payloadType: 111, codec: 'opus' });
-    expect(parsed.video).toEqual({ mid: '1', payloadType: 98, rtxPayloadType: 99, codec: 'VP9' });
+    expect(parsed.audio).toEqual({ mid: '0', payloadType: 111, codec: 'opus', ssrc: null });
+    expect(parsed.video).toEqual({ mid: '1', payloadType: 98, rtxPayloadType: 99, codec: 'VP9', ssrc: null, rtxSsrc: null });
     expect(parsed.audioLevelExtId).toBe(1);
+  });
+
+  it('reads the SSRCs the browser chose, with the RTX partner from the FID group', () => {
+    const withSsrcs = OFFER.replace('a=mid:0', 'a=mid:0\r\na=ssrc:1111 cname:x').replace(
+      'a=mid:1',
+      'a=mid:1\r\na=ssrc-group:FID 2222 3333\r\na=ssrc:2222 cname:x\r\na=ssrc:3333 cname:x',
+    );
+    const parsed = parseLocalOffer(withSsrcs);
+    expect(parsed.audio.ssrc).toBe(1111);
+    expect(parsed.video).toMatchObject({ ssrc: 2222, rtxSsrc: 3333 });
   });
 });
 

@@ -70,7 +70,14 @@ export interface CodecDescriptor {
 
 export interface SelectProtocol {
   protocol: 'webrtc';
-  data: { ice_ufrag: string; ice_pwd: string; fingerprint: string; setup: 'actpass' };
+  data: {
+    ice_ufrag: string;
+    ice_pwd: string;
+    fingerprint: string;
+    setup: 'actpass';
+    /** SSRCs from the client's offer. Browsers pick their own, so the node uses these instead of READY's. */
+    ssrcs?: { audio: number; video: number; rtx: number };
+  };
   codecs: CodecDescriptor[];
 }
 
