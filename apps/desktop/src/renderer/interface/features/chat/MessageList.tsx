@@ -11,6 +11,7 @@ import { compareSnowflakes } from '@renderer/domain/snowflake';
 import { markChannelRead, reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { formatDay } from '../../shared/hooks/useNow';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Skeleton } from '../../shared/ui/Misc';
@@ -166,6 +167,8 @@ export function MessageList({ channelId }: { channelId: string }) {
     [channel, channelId],
   );
   const discard = useCallback((m: ChatMessage) => useMessageStore.getState().remove(channelId, m.id), [channelId]);
+
+  useRovingFocus(scrollRef, { selector: '.message', enabled: Boolean(timeline?.loaded) });
 
   if (!timeline?.loaded) {
     if (error) {

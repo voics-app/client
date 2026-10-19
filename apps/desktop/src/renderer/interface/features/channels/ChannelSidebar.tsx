@@ -1,5 +1,5 @@
 import { CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, Megaphone, Plugs, Plus, SpeakerHigh, UserPlus } from '@phosphor-icons/react';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
@@ -17,6 +17,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { GuildHeader } from './GuildHeader';
 import { ChannelContextMenuEntries } from './channelMenu';
 
@@ -141,10 +142,13 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
     return result;
   }, [channels, guildId]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRovingFocus(scrollRef, { selector: '.channel-main, .category-head > button' });
+
   return (
     <aside className="sidebar" aria-label="Channels">
       <GuildHeader guildId={guildId} />
-      <div className="sidebar-scroll">
+      <div ref={scrollRef} className="sidebar-scroll">
         {groups.map((g) => (
           <Category key={g.category?.id ?? 'loose'} category={g.category} guildId={guildId}>
             {g.children}

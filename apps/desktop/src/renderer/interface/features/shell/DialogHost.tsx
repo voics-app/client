@@ -20,6 +20,8 @@ import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
 
 function useClose() {
   return () => useUiStore.getState().openDialog(null);
@@ -313,6 +315,27 @@ function CustomStatusDialog() {
   );
 }
 
+function ShortcutsDialog() {
+  const close = useClose();
+  const keybinds = usePrefsStore((s) => s.keybinds).filter((k) => k.action !== 'markRead');
+  const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
+  return (
+    <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
+      <ul className="shortcut-list">
+        {rows.map((r) => (
+          <li key={`${r.keys}-${r.label}`} className="shortcut-row">
+            <span>{r.label}</span>
+            <kbd className="kbd">{r.keys}</kbd>
+          </li>
+        ))}
+      </ul>
+      <div className="row-end">
+        <Button variant="primary" data-autofocus onClick={close}>Done</Button>
+      </div>
+    </Modal>
+  );
+}
+
 function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
   const [busy, setBusy] = useState(false);
   const close = useClose();
@@ -363,6 +386,7 @@ function ActiveDialog() {
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
     case 'customStatus': return <CustomStatusDialog />;
+    case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
