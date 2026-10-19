@@ -9,7 +9,7 @@ import { isUnread } from '@renderer/domain/unread';
 import { Permission } from '@shared/contracts/permissions';
 import { ChannelType, type Channel } from '@shared/contracts/rest';
 import { channelIcon, openChannel } from '../../app/navigation';
-import { joinVoiceChannel } from '../../app/voiceActions';
+import { openVoiceChannel } from '../../app/voiceActions';
 import { markChannelRead } from '../../app/actions';
 import { can, useChannelPermissions, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
@@ -43,7 +43,7 @@ function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) 
   if (!can(perms, Permission.VIEW_CHANNEL)) return null;
 
   const select = () => {
-    if (isVoice) void joinVoiceChannel(channel.guild_id ?? null, channel.id);
+    if (isVoice) void openVoiceChannel(channel.guild_id ?? null, channel.id);
     else if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
     else openChannel(channel.id);
   };

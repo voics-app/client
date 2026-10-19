@@ -1,4 +1,4 @@
-import { ArrowsOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, CornersIn, CornersOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -6,6 +6,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
 import type { VoiceState } from '@shared/contracts/rest';
 import { setUserVolume } from '../../app/voiceActions';
+import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -76,16 +77,26 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
   const volume = useVoiceStore((s) => s.userVolumes[participant.state.user_id] ?? 1);
   const menu = useMenu();
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
+  const tileRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useFullscreen(tileRef);
   const muted = participant.state.self_mute || participant.state.mute;
   const deaf = participant.state.self_deaf || participant.state.deaf;
   const live = kind === 'screen';
   const hasVideo = Boolean(stream) && kind !== 'avatar';
 
+  // Double-click toggles fullscreen, but not when the double-click lands on the tile's own tools or volume popover.
+  const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!hasVideo || (e.target as HTMLElement).closest('.tile-tools, .volume-pop')) return;
+    fullscreen.toggle();
+  };
+
   return (
     <div
+      ref={tileRef}
       className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
       style={{ '--speak': speaking } as React.CSSProperties}
       onContextMenu={participant.isSelf ? undefined : menu.openAt}
+      onDoubleClick={onDoubleClick}
     >
       {stream && hasVideo ? (
         <MediaElement stream={stream} muted className="tile-video" onReady={setVideo} />
@@ -105,6 +116,9 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
       {hasVideo && (
         <div className="tile-tools">
           {onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
+          <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
+            {fullscreen.active ? <CornersIn size={16} /> : <CornersOut size={16} />}
+          </IconButton>
           {video && 'requestPictureInPicture' in video && (
             <IconButton label="Picture in picture" size="sm" onClick={() => void video.requestPictureInPicture().catch(() => undefined)}>
               <PictureInPicture size={16} />

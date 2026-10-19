@@ -3,6 +3,7 @@ import type { ScreenPresetId } from '@renderer/domain/screenPresets';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { reportError } from './actions';
+import { openChannel } from './navigation';
 
 export type ShareResult = { ok: true } | { ok: false; reason: 'protected_content' | 'cancelled' | 'error'; message?: string };
 
@@ -37,6 +38,12 @@ export async function joinVoiceChannel(guildId: string | null, channelId: string
   } catch (error) {
     reportError(error, 'Could not join voice');
   }
+}
+
+/** Joins a voice channel and switches to its call view. Clicking it again while connected just reopens the view. */
+export async function openVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
+  openChannel(channelId);
+  await joinVoiceChannel(guildId, channelId);
 }
 
 export async function leaveVoice(): Promise<void> {
