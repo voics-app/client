@@ -6,7 +6,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { CallRinger } from '@renderer/application/calls/callRinger';
 import { callerOf, isRingingFor, type DmCall } from '@renderer/domain/calls';
-import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
+import { OUTGOING_RINGBACK, Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { bridge } from '../../app/bridge';
 import { acceptCall, declineCall } from '../../app/callActions';
 import { displayName } from '../../shared/hooks/useNames';
@@ -14,6 +14,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 
 const ringer = new CallRinger({
   ringtone: new Ringtone(),
+  ringback: new Ringtone(OUTGOING_RINGBACK),
   settings: () => {
     const prefs = usePrefsStore.getState();
     return {

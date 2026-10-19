@@ -142,6 +142,19 @@ export class VoiceController {
     useVoiceStore.getState().resetCall();
   }
 
+  /**
+   * Leaves synchronously while the window unloads, where `leave()`'s awaits never finish: tells the
+   * gateway first so the call does not linger with a ghost participant, then closes the session.
+   */
+  leaveOnUnload(): void {
+    if (!this.target) return;
+    this.deps.gateway.send(GatewayOp.VOICE_STATE_UPDATE, this.statePayload(null));
+    this.joinToken += 1;
+    this.clearWait();
+    this.closeSession();
+    this.target = null;
+  }
+
   /** Dispatch hook: gateway VOICE_SERVER_UPDATE (initial allocation or reallocation). */
   onVoiceServerUpdate(update: VoiceServerUpdate): void {
     const target = this.target;

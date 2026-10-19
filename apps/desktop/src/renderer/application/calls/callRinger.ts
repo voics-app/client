@@ -2,9 +2,10 @@
  * Keeps the ringtone and the desktop notification in step with the calls ringing for the user.
  * The ringtone plays only while there is a ringing call and the user is neither deafened nor has
  * notification sounds turned off; a new ringing call notifies only when the window is unfocused.
+ * The caller hears a ringback while waiting alone in a call that rings someone else (not deafened).
  */
 import type { Snowflake } from '@shared/contracts/rest';
-import { callerOf, isRingingFor, type DmCall } from '@renderer/domain/calls';
+import { callerOf, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
 
 export interface RingerSettings {
   notifySounds: boolean;
@@ -16,6 +17,7 @@ export interface RingerSettings {
 
 export interface RingerDeps {
   ringtone: { start(outputDeviceId: string | null): void; stop(): void };
+  ringback: { start(outputDeviceId: string | null): void; stop(): void };
   settings(): RingerSettings;
   notify(call: DmCall, callerId: Snowflake | null): void;
 }
@@ -34,6 +36,10 @@ export class CallRinger {
     if (incoming.length === 0 || settings.deafened || !settings.notifySounds) this.deps.ringtone.stop();
     else this.deps.ringtone.start(settings.outputDeviceId);
 
+    const outgoing = userId !== null && Object.values(calls).some((call) => isRingingOut(call, userId));
+    if (!outgoing || incoming.length > 0 || settings.deafened) this.deps.ringback.stop();
+    else this.deps.ringback.start(settings.outputDeviceId);
+
     if (!userId || settings.focused || !settings.notifyDesktop) return;
     for (const call of fresh) this.deps.notify(call, callerOf(call, userId));
   }
@@ -41,5 +47,6 @@ export class CallRinger {
   stop(): void {
     this.ringingChannels = new Set();
     this.deps.ringtone.stop();
+    this.deps.ringback.stop();
   }
 }

@@ -15,9 +15,10 @@ const settings = (extra: Partial<RingerSettings> = {}): RingerSettings => ({
 
 function rig(initial: RingerSettings = settings()) {
   const ringtone = { start: vi.fn(), stop: vi.fn() };
+  const ringback = { start: vi.fn(), stop: vi.fn() };
   const notify = vi.fn();
-  const ringer = new CallRinger({ ringtone, settings: () => initial, notify });
-  return { ringer, ringtone, notify };
+  const ringer = new CallRinger({ ringtone, ringback, settings: () => initial, notify });
+  return { ringer, ringtone, ringback, notify };
 }
 
 describe('CallRinger', () => {
@@ -57,5 +58,23 @@ describe('CallRinger', () => {
     ringer.update({ '900': incoming }, '2');
     ringer.update({ '900': { ...incoming, ringing: [] } }, '2');
     expect(ringtone.stop).toHaveBeenCalled();
+  });
+
+  it('plays the ringback for the caller, not the ringtone', () => {
+    const { ringer, ringtone, ringback } = rig();
+    ringer.update({ '900': incoming }, '1');
+    expect(ringback.start).toHaveBeenCalledWith('speakers');
+    expect(ringtone.start).not.toHaveBeenCalled();
+  });
+
+  it('stops the ringback once the callee joins, and stays silent when deafened', () => {
+    const { ringer, ringback } = rig();
+    ringer.update({ '900': incoming }, '1');
+    ringer.update({ '900': { ...incoming, ringing: [], voiceStates: [...incoming.voiceStates, { user_id: '2', channel_id: '900' } as never] } }, '1');
+    expect(ringback.stop).toHaveBeenCalled();
+
+    const deafened = rig(settings({ deafened: true }));
+    deafened.ringer.update({ '900': incoming }, '1');
+    expect(deafened.ringback.start).not.toHaveBeenCalled();
   });
 });

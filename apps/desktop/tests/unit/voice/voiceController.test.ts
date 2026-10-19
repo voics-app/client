@@ -138,6 +138,18 @@ describe('VoiceController', () => {
     expect(sent.at(-1)?.d.channel_id).toBeNull();
   });
 
+  it('leaves synchronously when the window unloads, and only once', async () => {
+    const { controller, sessions, sent } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const before = sent.length;
+    controller.leaveOnUnload();
+    expect(sent.at(-1)).toMatchObject({ op: GatewayOp.VOICE_STATE_UPDATE, d: { channel_id: null } });
+    expect(sessions[0]?.close).toHaveBeenCalled();
+    controller.leaveOnUnload();
+    expect(sent).toHaveLength(before + 1);
+  });
+
   it('reallocates onto a new node, keeping the call target', async () => {
     const { controller, sessions } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });

@@ -1,11 +1,19 @@
 /**
- * Incoming-call ringtone synthesised with Web Audio (no audio asset): a dual tone burst, repeated
- * every cycle until stopped. Plays on the selected output device when the browser supports it.
+ * Call tones synthesised with Web Audio (no audio asset): a dual tone burst, repeated every cycle
+ * until stopped. Plays on the selected output device when the browser supports it.
  */
-const TONES_HZ = [440, 480] as const;
-const BURST_S = 1;
-const CYCLE_MS = 3_000;
-const TONE_GAIN = 0.12;
+export interface TonePattern {
+  tonesHz: readonly number[];
+  burstS: number;
+  cycleMs: number;
+  gain: number;
+}
+
+/** Incoming call: the callee's ringtone. */
+export const INCOMING_RING: TonePattern = { tonesHz: [440, 480], burstS: 1, cycleMs: 3_000, gain: 0.12 };
+
+/** Outgoing call: the caller's quieter ringback while the other side is being rung. */
+export const OUTGOING_RINGBACK: TonePattern = { tonesHz: [400, 450], burstS: 0.4, cycleMs: 2_000, gain: 0.05 };
 
 export interface RingtoneDeps {
   createContext(): AudioContext;
@@ -19,7 +27,10 @@ export class Ringtone {
   private context: AudioContext | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly deps: RingtoneDeps = browserRingtoneDeps) {}
+  constructor(
+    private readonly pattern: TonePattern = INCOMING_RING,
+    private readonly deps: RingtoneDeps = browserRingtoneDeps,
+  ) {}
 
   /** Starts ringing; a no-op while already ringing. `outputDeviceId` null means the system default. */
   start(outputDeviceId: string | null): void {
@@ -27,8 +38,8 @@ export class Ringtone {
     const context = this.deps.createContext();
     this.context = context;
     if (outputDeviceId) void context.setSinkId?.(outputDeviceId).catch(() => undefined);
-    ringBurst(context);
-    this.timer = setInterval(() => ringBurst(context), CYCLE_MS);
+    ringBurst(context, this.pattern);
+    this.timer = setInterval(() => ringBurst(context, this.pattern), this.pattern.cycleMs);
   }
 
   stop(): void {
@@ -40,20 +51,20 @@ export class Ringtone {
   }
 }
 
-function ringBurst(context: AudioContext): void {
+function ringBurst(context: AudioContext, { tonesHz, burstS, gain: level }: TonePattern): void {
   const at = context.currentTime;
   const gain = context.createGain();
   gain.gain.setValueAtTime(0, at);
-  gain.gain.linearRampToValueAtTime(TONE_GAIN, at + 0.05);
-  gain.gain.setValueAtTime(TONE_GAIN, at + BURST_S - 0.1);
-  gain.gain.linearRampToValueAtTime(0, at + BURST_S);
+  gain.gain.linearRampToValueAtTime(level, at + 0.05);
+  gain.gain.setValueAtTime(level, at + burstS - 0.1);
+  gain.gain.linearRampToValueAtTime(0, at + burstS);
   gain.connect(context.destination);
-  for (const frequency of TONES_HZ) {
+  for (const frequency of tonesHz) {
     const oscillator = context.createOscillator();
     oscillator.type = 'sine';
     oscillator.frequency.value = frequency;
     oscillator.connect(gain);
     oscillator.start(at);
-    oscillator.stop(at + BURST_S);
+    oscillator.stop(at + burstS);
   }
 }

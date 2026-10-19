@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
+import { INCOMING_RING, Ringtone } from '@renderer/infrastructure/audio/ringtone';
 
 function fakeContext() {
   const oscillators: Array<{ frequency: { value: number }; type: string }> = [];
@@ -24,7 +24,7 @@ describe('Ringtone', () => {
 
   it('plays a two-tone burst every cycle until stopped', () => {
     const { context, oscillators } = fakeContext();
-    const ringtone = new Ringtone({ createContext: () => context as unknown as AudioContext });
+    const ringtone = new Ringtone(INCOMING_RING, { createContext: () => context as unknown as AudioContext });
 
     ringtone.start(null);
     expect(oscillators.map((o) => o.frequency.value)).toEqual([440, 480]);
@@ -41,7 +41,7 @@ describe('Ringtone', () => {
 
   it('routes the tone to the chosen output device and starts once', () => {
     const { context } = fakeContext();
-    const ringtone = new Ringtone({ createContext: () => context as unknown as AudioContext });
+    const ringtone = new Ringtone(INCOMING_RING, { createContext: () => context as unknown as AudioContext });
 
     ringtone.start('speakers-1');
     ringtone.start('speakers-1');
