@@ -1,0 +1,84 @@
+# Builds the desktop installers for a release tag and publishes them to the update feed
+# (https://discordy-updates.voics.nl), which is also where the website's Download button points.
+#
+#   v1.2.3 tag -> Windows NSIS build (GitHub-hosted Windows runner, native crypto module included)
+#              -> GitHub Release assets
+#              -> discordy-updates bucket: Discordy-Setup-1.2.3.exe(.blockmap), latest.yml and the
+#                 stable Discordy-Setup-latest.exe the website links to (5-minute cache).
+#
+# electron-updater in installed clients reads latest.yml, so publishing it is what rolls the update out.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: client-release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build installer
+        run: pnpm dist:win
+      - name: Collect installer and update feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp apps/desktop/release/*.exe apps/desktop/release/*.exe.blockmap apps/desktop/release/latest.yml out/
+          ls -la out
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          test -f "out/Discordy-Setup-${version}.exe" || { echo "::error::installer name does not match version ${version}"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: out
+          retention-days: 14
+      - name: Attach to the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Discordy ${VERSION}" --notes "See CHANGELOG.md."
+          gh release upload "$TAG" out/* --clobber
+    outputs:
+      version: ${{ env.VERSION }}
+
+  publish:
+    name: Publish to the update feed
+    needs: [windows]
+    uses: discordy-voics/.github/.github/workflows/minio-publish.yml@main
+    with:
+      artifact: installer-windows
+      bucket: discordy-updates
+      short-cache: latest.yml
+      copies: Discordy-Setup-${{ needs.windows.outputs.version }}.exe:Discordy-Setup-latest.exe
