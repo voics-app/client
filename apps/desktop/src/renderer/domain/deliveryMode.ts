@@ -48,6 +48,14 @@ export function validateModeForChannel(mode: DeliveryMode, scope: ChannelScope):
   return null;
 }
 
+export const DEVICE_UNREGISTERED_REASON =
+  'Encrypted modes are unavailable on this device. Check Settings > Devices, then sign in again.';
+
+/** Encrypted modes need this device registered with the server; standard mode never does. */
+export function validateModeForDevice(mode: DeliveryMode, deviceRegistered: boolean): string | null {
+  return mode === 'standard' || deviceRegistered ? null : DEVICE_UNREGISTERED_REASON;
+}
+
 export function availableModes(scope: ChannelScope): DeliveryMode[] {
   return DELIVERY_MODES.filter((m) => validateModeForChannel(m, scope) === null);
 }
