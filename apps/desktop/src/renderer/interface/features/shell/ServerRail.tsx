@@ -10,7 +10,9 @@ import { isUnread } from '@renderer/domain/unread';
 import { ChannelType } from '@shared/contracts/rest';
 import { openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
-import { assetUrl, initialsOf } from '../../shared/ui/Avatar';
+import { assetCandidates } from '@renderer/domain/assets';
+import { AssetImage } from '../../shared/ui/AssetImage';
+import { initialsOf } from '../../shared/ui/Avatar';
 import { Count } from '../../shared/ui/Misc';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { snappy } from '../../shared/ui/motion';
@@ -58,7 +60,7 @@ function GuildButton({ guildId, active, onDragStart, onDrop }: { guildId: string
             setMenu({ x: e.clientX, y: e.clientY });
           }}
         >
-          {guild.icon ? <img src={assetUrl(cdn, 'icons', guild.id, guild.icon)} alt="" draggable={false} /> : <span>{initialsOf(guild.name).slice(0, 3)}</span>}
+          {guild.icon ? <AssetImage candidates={assetCandidates(cdn, 'icons', guild.id, guild.icon)} /> : <span>{initialsOf(guild.name).slice(0, 3)}</span>}
         </button>
       </Tooltip>
       {mentions > 0 && (

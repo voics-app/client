@@ -99,7 +99,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       {invite ? (
         <div className="stack">
           <div className="invite-card">
-            <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square />
+            <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
             <div>
               <h3>{invite.guild?.name}</h3>
               <p>{invite.approximate_member_count ?? '?'} members · {invite.approximate_presence_count ?? '?'} online</p>

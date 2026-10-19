@@ -1,6 +1,7 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 
 export type ThemeId = 'dark' | 'oled' | 'light';
 export type AccentId = 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
@@ -36,6 +37,8 @@ export interface PrefsState {
   notifyDesktop: boolean;
   notifyOnlyMentions: boolean;
   notifySounds: boolean;
+  ringtone: RingtoneId;
+  ringtoneVolume: number;
   flashTaskbar: boolean;
   mutedChannels: Record<string, boolean>;
   collapsedCategories: Record<string, boolean>;
@@ -80,6 +83,8 @@ export const DEFAULT_PREFS: PrefsData = {
   notifyDesktop: true,
   notifyOnlyMentions: false,
   notifySounds: true,
+  ringtone: DEFAULT_RINGTONE,
+  ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
   flashTaskbar: true,
   mutedChannels: {},
   collapsedCategories: {},

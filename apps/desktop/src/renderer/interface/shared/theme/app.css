@@ -413,3 +413,14 @@ button.mode-badge:active { transform: scale(0.96); }
 .component-multi, .component-entity { border: 0; margin: 0; padding: 0; min-width: 220px; display: flex; flex-direction: column; gap: 6px; } .component-multi legend { font-size: var(--fs-meta); color: var(--fg-muted); margin-bottom: 4px; }
 .component-multi-option { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small); } .component-multi-option small { color: var(--fg-subtle); }
 .interaction-modal { display: flex; flex-direction: column; gap: 14px; }
+
+/* Settings: a control with a button beside it (ringtone picker + Preview). */
+.setting-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.setting-inline > select {
+  flex: 1;
+  min-width: 0;
+}

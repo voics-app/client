@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { PresenceStatus } from '@shared/contracts/rest';
+import { assetCandidates, type AssetKind } from '@renderer/domain/assets';
 import { useConnectionStore } from '../../app/connectionStore';
+import { AssetImage } from './AssetImage';
 
 interface Props {
   id?: string;
@@ -11,6 +13,8 @@ interface Props {
   speaking?: number;
   bot?: boolean;
   square?: boolean;
+  /** CDN folder of `avatar`: user avatars by default, `icons` for guild icons. */
+  kind?: AssetKind;
 }
 
 function hueOf(seed: string): number {
@@ -26,12 +30,8 @@ export function initialsOf(name: string): string {
   return (parts.length > 1 ? first[0]! + parts[parts.length - 1]![0]! : first.slice(0, 2)).toUpperCase();
 }
 
-export function assetUrl(cdn: string, kind: 'avatars' | 'icons' | 'banners', id: string, hash: string): string {
-  return `${cdn}/${kind}/${id}/${hash}.png?size=128`;
-}
-
 /** Avatar with optional presence dot and the audio-driven speaking ring. */
-export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square }: Props) {
+export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square, kind = 'avatars' }: Props) {
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const h = hueOf(id ?? name ?? '');
   const style = {
@@ -42,11 +42,11 @@ export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot,
     '--speak': speaking,
     borderRadius: square ? Math.round(size * 0.3) : undefined,
   } as CSSProperties;
-  const src = avatar && id ? assetUrl(cdn, 'avatars', id, avatar) : null;
+  const candidates = avatar && id ? assetCandidates(cdn, kind, id, avatar) : null;
   return (
     <span className={`avatar${speaking > 0 ? ' is-speaking' : ''}`} style={style}>
       <span className="avatar-face" style={square ? { borderRadius: 'inherit' } : undefined}>
-        {src ? <img src={src} alt="" draggable={false} /> : <span aria-hidden="true">{initialsOf(name)}</span>}
+        {candidates ? <AssetImage candidates={candidates} /> : <span aria-hidden="true">{initialsOf(name)}</span>}
       </span>
       {bot && <span className="avatar-bot">BOT</span>}
       {status && status !== 'invisible' && <span className={`status-dot status-${status}`} role="img" aria-label={status} />}

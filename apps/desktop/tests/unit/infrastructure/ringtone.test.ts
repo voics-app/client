@@ -1,21 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { INCOMING_RING, Ringtone } from '@renderer/infrastructure/audio/ringtone';
+import { INCOMING_RING, RINGTONE_PATTERNS, Ringtone } from '@renderer/infrastructure/audio/ringtone';
 
 function fakeContext() {
   const oscillators: Array<{ frequency: { value: number }; type: string }> = [];
+  const gains: Array<{ gain: { linearRampToValueAtTime: ReturnType<typeof vi.fn> } }> = [];
   const context = {
     currentTime: 0,
     destination: {},
     setSinkId: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
-    createGain: () => ({ gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn() }),
+    createGain: () => {
+      const gain = { gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn() };
+      gains.push(gain);
+      return gain;
+    },
     createOscillator: () => {
       const osc = { type: 'sine', frequency: { value: 0 }, start: vi.fn(), stop: vi.fn(), connect: vi.fn() };
       oscillators.push(osc);
       return osc;
     },
   };
-  return { context, oscillators };
+  return { context, oscillators, gains };
 }
 
 describe('Ringtone', () => {
@@ -47,5 +52,15 @@ describe('Ringtone', () => {
     ringtone.start('speakers-1');
     expect(context.setSinkId).toHaveBeenCalledTimes(1);
     expect(context.setSinkId).toHaveBeenCalledWith('speakers-1');
+  });
+
+  it('plays the chosen ringtone at the chosen volume', () => {
+    const { context, oscillators, gains } = fakeContext();
+    const ringtone = new Ringtone(INCOMING_RING, { createContext: () => context as unknown as AudioContext });
+
+    ringtone.start(null, { tone: 'chime', volume: 0.5 });
+    expect(oscillators.map((o) => o.frequency.value)).toEqual([659, 784, 988]);
+    expect(oscillators.every((o) => o.type === 'triangle')).toBe(true);
+    expect(gains[0]?.gain.linearRampToValueAtTime).toHaveBeenCalledWith(RINGTONE_PATTERNS.chime.gain * 0.5, expect.any(Number));
   });
 });
