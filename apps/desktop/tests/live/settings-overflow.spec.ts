@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const BASE = process.env.LIVE_BASE ?? 'http://localhost:18000';
+const BASE = process.env.LIVE_BASE ?? 'http://127.0.0.1:18000';
 const USER_TABS = [
   'My account',
   'Profile',
