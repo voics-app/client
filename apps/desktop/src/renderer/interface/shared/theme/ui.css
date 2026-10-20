@@ -186,3 +186,9 @@
 .incoming-call-actions button { padding: 8px 14px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; }
 .incoming-call-decline { background: var(--danger); color: #fff; }
 .incoming-call-accept { background: var(--success); color: #fff; }
+.menu-sub { position: relative; }
+.menu-sub > .menu-item[aria-expanded='true'] { background: var(--accent-soft); }
+.menu-caret { margin-left: auto; color: var(--fg-subtle); }
+.menu-sub-panel { position: absolute; left: calc(100% - 4px); top: -6px; min-width: 190px; }
+.menu.has-sub { overflow: visible; }
+.menu-sub-panel.is-flipped { left: auto; right: calc(100% - 4px); }

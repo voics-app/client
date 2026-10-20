@@ -3,16 +3,10 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { parseMarkdown, type MarkdownNode } from '@renderer/domain/markdown';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { bridge } from '../../app/bridge';
+import { openExternalUrl as openLink } from '../../app/links';
 import { copyText } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
-
-function openLink(url: string): void {
-  if (!/^https?:\/\//i.test(url)) return;
-  if (bridge) void bridge.app.openExternal(url);
-  else window.open(url, '_blank', 'noopener,noreferrer');
-}
 
 function Spoiler({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false);
@@ -97,12 +91,12 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
           case 'channelMention':
             return <Mention key={i} kind={node.type} id={node.id} guildId={guildId} />;
           case 'customEmoji':
-            return <img key={i} className={`custom-emoji${big ? ' is-big' : ''}`} src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} alt={`:${node.name}:`} title={`:${node.name}:`} draggable={false} />;
+            return <img key={i} data-ctx="emoji" data-emoji-id={node.id} data-emoji-name={node.name} data-animated={node.animated ? 'true' : 'false'} data-src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} className={`custom-emoji${big ? ' is-big' : ''}`} src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} alt={`:${node.name}:`} title={`:${node.name}:`} draggable={false} />;
           case 'everyone':
             return <span key={i} className="mention mention-everyone">@{node.kind}</span>;
           case 'link':
             return (
-              <a key={i} href={node.url} onClick={(e) => { e.preventDefault(); openLink(node.url); }}>
+              <a key={i} href={node.url} data-ctx="link" data-url={node.url} onClick={(e) => { e.preventDefault(); openLink(node.url); }}>
                 {node.url}
               </a>
             );
