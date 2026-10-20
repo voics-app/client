@@ -530,6 +530,60 @@ export interface TurnCredentials {
   ttl: number;
 }
 
+/** 0 all messages, 1 only @mentions, 2 nothing; null inherits (guild level, then the server default). */
+export type NotificationLevel = 0 | 1 | 2;
+
+/** `end_time` null means until turned off; a past `end_time` is an expired mute and is ignored. */
+export interface MuteConfig {
+  end_time: string | null;
+}
+
+export interface ChannelNotificationOverride {
+  channel_id: Snowflake;
+  message_notifications: NotificationLevel | null;
+  muted: boolean;
+  mute_config: MuteConfig | null;
+}
+
+/** The user's notification settings for one guild; `guild_id` null is the user's DMs. */
+export interface GuildNotificationSettings {
+  guild_id: Snowflake | null;
+  message_notifications: NotificationLevel | null;
+  suppress_everyone: boolean;
+  suppress_roles: boolean;
+  muted: boolean;
+  mute_config: MuteConfig | null;
+  hide_muted_channels: boolean;
+  channel_overrides: ChannelNotificationOverride[];
+}
+
+export interface MuteConfigInput {
+  end_time?: string | null;
+  /** Seconds from now, or -1 for until turned off. */
+  selected_time_window?: number | null;
+}
+
+export interface GuildNotificationSettingsPatch {
+  message_notifications?: NotificationLevel | 3 | null;
+  suppress_everyone?: boolean;
+  suppress_roles?: boolean;
+  muted?: boolean;
+  mute_config?: MuteConfigInput | null;
+  hide_muted_channels?: boolean;
+  channel_overrides?: {
+    channel_id: Snowflake;
+    message_notifications?: NotificationLevel | 3 | null;
+    muted?: boolean;
+    mute_config?: MuteConfigInput | null;
+  }[];
+}
+
+export interface UserNote {
+  user_id: Snowflake;
+  note_user_id: Snowflake;
+  note: string;
+}
+
 export interface ReadyPayload {
   v: number;
   user: User;
@@ -539,6 +593,9 @@ export interface ReadyPayload {
   private_channels: Channel[];
   relationships: Relationship[];
   user_settings: UserSettings;
+  user_guild_settings?: GuildNotificationSettings[];
+  /** Private notes keyed by the noted user's id. */
+  notes?: Record<Snowflake, string>;
   read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;

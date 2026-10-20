@@ -16,6 +16,8 @@ import type {
   Emoji,
   Guild,
   GuildFull,
+  GuildNotificationSettings,
+  GuildNotificationSettingsPatch,
   GuildMember,
   Invite,
   Message,
@@ -23,6 +25,7 @@ import type {
   Relationship,
   Role,
   User,
+  UserNote,
   UserSettings,
   VoiceRegion,
 } from '@shared/contracts/rest';
@@ -99,6 +102,23 @@ export class DiscordyApi implements ApiPort {
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
   }
+  guildNotificationSettings(guildId: string | null) {
+    return this.get<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`);
+  }
+  updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch) {
+    return this.patch<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`, patch);
+  }
+  async userNote(userId: string) {
+    try {
+      return (await this.get<UserNote>(`/users/@me/notes/${userId}`)).note;
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) return '';
+      throw error;
+    }
+  }
+  putUserNote(userId: string, note: string) {
+    return note ? this.put<void>(`/users/@me/notes/${userId}`, { note }) : this.del<void>(`/users/@me/notes/${userId}`);
+  }
   sendFriendRequest(username: string) {
     return this.post<void>('/users/@me/relationships', { username });
   }
@@ -157,8 +177,8 @@ export class DiscordyApi implements ApiPort {
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
   }
-  ban(guildId: string, userId: string, reason?: string) {
-    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, {}, reason);
+  ban(guildId: string, userId: string, reason?: string, options: { delete_message_seconds?: number } = {}) {
+    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, options, reason);
   }
   unban(guildId: string, userId: string) {
     return this.del<void>(`/guilds/${guildId}/bans/${userId}`);

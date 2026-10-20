@@ -14,7 +14,7 @@ import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
 import { HttpClient } from '@renderer/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
-import type { AuthResponse, ReadyPayload } from '@shared/contracts/rest';
+import type { AuthResponse, ReadyPayload, VoiceState } from '@shared/contracts/rest';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { notifyIncoming } from './notifications';
@@ -37,6 +37,7 @@ export interface Runtime {
 
 export interface RuntimeHooks {
   onVoiceServerUpdate: (update: VoiceServerUpdate) => void;
+  onVoiceState?: (state: VoiceState) => void;
   onSignedIn: Array<() => void>;
   onSignedOut: Array<() => void>;
 }
@@ -93,6 +94,7 @@ export function createRuntime(info: AppInfo): Runtime {
 
   const dispatch = createDispatchRouter({
     onVoiceServerUpdate: (update) => hooks.onVoiceServerUpdate(update),
+    onVoiceState: (state) => hooks.onVoiceState?.(state),
     onIncomingMessage: notifyIncoming,
     invalidate: (key) => void queryClient.invalidateQueries({ queryKey: [...key] }),
   });

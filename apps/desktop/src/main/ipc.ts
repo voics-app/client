@@ -1,7 +1,7 @@
 /** IPC handlers: the only path from the sandboxed renderer to privileged APIs. */
 import type { BrowserWindow} from 'electron';
-import { Notification, app, ipcMain, shell } from 'electron';
-import { IpcChannel, type AppInfo, type ConnectionProfile, type NotificationRequest, type StoredSession, type CaptureSelection } from '../shared/ipc';
+import { Notification, ipcMain, shell } from 'electron';
+import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, type NotificationRequest, type StoredSession, type CaptureSelection } from '../shared/ipc';
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
 import type { CryptoHost } from './cryptoHost';
@@ -18,6 +18,7 @@ export interface IpcDeps {
   pushToTalk: PushToTalk;
   updater: Updater;
   takePendingRoute: () => string | null;
+  setActivity: (counts: ActivityCounts) => void;
 }
 
 function assertTrustedSender(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, deps: IpcDeps): void {
@@ -47,8 +48,8 @@ export function registerIpc(deps: IpcDeps): void {
   handle(IpcChannel.appOpenExternal, async (url: string) => {
     if (typeof url === 'string' && /^https:\/\//.test(url)) await shell.openExternal(url);
   });
-  on(IpcChannel.appBadge, (count: number) => {
-    app.setBadgeCount(Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0);
+  on(IpcChannel.appActivity, (counts: ActivityCounts) => {
+    deps.setActivity({ mentions: Number(counts?.mentions), unread: Number(counts?.unread) });
   });
   on(IpcChannel.appFlash, () => deps.window()?.flashFrame(true));
   on(IpcChannel.appNotify, (req: NotificationRequest) => {

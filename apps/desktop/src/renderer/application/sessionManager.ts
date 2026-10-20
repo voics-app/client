@@ -4,6 +4,7 @@ import type { StoredSession } from '@shared/ipc';
 import type { ApiPort } from './ports/api';
 import { useGuildStore } from './stores/guildStore';
 import { useMessageStore } from './stores/messageStore';
+import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
@@ -131,6 +132,8 @@ export class SessionManager {
     usePresenceStore.getState().reset();
     useReadStateStore.getState().reset();
     useRelationshipStore.getState().hydrate([]);
+    useNotificationSettingsStore.getState().reset();
+    useUserNotesStore.getState().reset();
     useVoiceStore.getState().resetCall();
     useSessionStore.getState().reset();
   }

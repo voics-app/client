@@ -1,4 +1,5 @@
 import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, Eye, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
+import { isMentioned } from '@renderer/domain/notificationPolicy';
 import { memo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
@@ -18,6 +19,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { AttachmentView } from './AttachmentView';
 import { useEmojiPopover } from './EmojiPopover';
+import { UserMenuTarget } from '../members/UserContextMenu';
 import { MarkdownView } from './MarkdownView';
 import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
@@ -45,7 +47,7 @@ function EmbedView({ embed }: { embed: Embed }) {
   );
 }
 
-function ReplyPreview({ message }: { message: ChatMessage }) {
+function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
   if (!message.message_reference) return null;
   return (
@@ -53,8 +55,10 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
       <span className="reply-hook" aria-hidden="true" />
       {ref ? (
         <>
-          <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
-          <span className="reply-name">{displayName(ref.author)}</span>
+          <UserMenuTarget userId={ref.author.id} name={displayName(ref.author)} guildId={guildId} user={ref.author}>
+            <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
+            <span className="reply-name">{displayName(ref.author)}</span>
+          </UserMenuTarget>
           <span className="reply-text">{ref.content || 'Click to see attachment'}</span>
         </>
       ) : (
@@ -126,6 +130,7 @@ export interface MessageItemProps {
 
 export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard }: MessageItemProps) {
   const me = useSessionStore((s) => s.user?.id);
+  const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const perms = useChannelPermissions(message.channel_id);
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
   const setEditing = useUiStore((s) => s.setEditing);
@@ -177,7 +182,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
 
   const failed = message.localState === 'failed';
   const sending = message.localState === 'sending';
-  const mentionsMe = me ? message.mentions.some((u) => u.id === me) || message.mention_everyone : false;
+  const mentionsMe = me ? isMentioned(message, { meId: me, myRoleIds: myRoles ?? [] }) && !!message.guild_id : false;
   const ephemeral = ((message.flags ?? 0) & MessageFlag.EPHEMERAL) !== 0;
   const system = message.type !== 0 && message.type !== 19 && message.type !== 20;
 
@@ -202,14 +207,16 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
       onMouseLeave={() => setHover(false)}
       onContextMenu={menu.openAt}
     >
-      {startsGroup && <ReplyPreview message={message} />}
+      {startsGroup && <ReplyPreview message={message} guildId={guildId} />}
       {startsGroup && <InteractionHeader message={message} />}
       <div className="message-row">
         <div className="message-gutter">
           {startsGroup ? (
-            <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
-              <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
-            </button>
+            <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
+              <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
+                <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
+              </button>
+            </UserMenuTarget>
           ) : (
             <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
           )}
@@ -217,9 +224,11 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
         <div className="message-main">
           {startsGroup && (
             <header className="message-head">
-              <button type="button" className="message-author" style={color ? { color } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
-                {name}
-              </button>
+              <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
+                <button type="button" className="message-author" style={color ? { color } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
+                  {name}
+                </button>
+              </UserMenuTarget>
               {message.deliveryMode === 'ephemeral' && (
                 <Tooltip label="Delivered end-to-end encrypted. Stored only on your devices."><span className="message-mode mode-ephemeral" tabIndex={0}><LockKey size={12} weight="fill" /></span></Tooltip>
               )}

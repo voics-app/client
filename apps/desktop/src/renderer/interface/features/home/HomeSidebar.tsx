@@ -1,9 +1,9 @@
 import { At, Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, RelationshipType } from '@shared/contracts/rest';
+import { ChannelType, RelationshipType, type User } from '@shared/contracts/rest';
 import { timestampOf } from '@renderer/domain/snowflake';
 import { isUnread } from '@renderer/domain/unread';
 import { openChannel } from '../../app/navigation';
@@ -11,7 +11,17 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
+import { UserMenuTarget } from '../members/UserContextMenu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+
+function DmMenu({ peer, name, children }: { peer: User | undefined; name: string; children: ReactNode }) {
+  if (!peer) return <>{children}</>;
+  return (
+    <UserMenuTarget userId={peer.id} name={name} guildId={null} user={peer}>
+      {children}
+    </UserMenuTarget>
+  );
+}
 
 export function HomeSidebar() {
   const channels = useGuildStore((s) => s.channels);
@@ -55,6 +65,7 @@ export function HomeSidebar() {
             const first = peers[0];
             return (
               <li key={c.id}>
+                <DmMenu peer={peers.length === 1 ? first : undefined} name={name}>
                 <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
                   {peers.length === 1 && first ? <Avatar id={first.id} name={name} avatar={first.avatar} size={34} status={presence[first.id]?.status ?? 'offline'} /> : <span className="group-avatar"><At size={18} /></span>}
                   <span className="dm-name">{name}</span>
@@ -62,6 +73,7 @@ export function HomeSidebar() {
                   {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
                   <Count value={read?.mentionCount ?? 0} tone="danger" />
                 </button>
+                </DmMenu>
               </li>
             );
           })}
