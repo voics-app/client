@@ -14,6 +14,8 @@ import type {
   Device,
   Emoji,
   Guild,
+  GuildNotificationSettings,
+  GuildNotificationSettingsPatch,
   GuildFull,
   GuildMember,
   Invite,
@@ -66,6 +68,13 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  /** `guildId` null addresses the user's DMs (`@me`). */
+  guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
+  updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;
+  /** The private note about a user; resolves '' when there is none. */
+  userNote(userId: string): Promise<string>;
+  /** An empty note deletes it. */
+  putUserNote(userId: string, note: string): Promise<void>;
   sendFriendRequest(username: string): Promise<void>;
   putRelationship(userId: string, body?: { type?: number; username?: string }): Promise<void>;
   deleteRelationship(userId: string): Promise<void>;
