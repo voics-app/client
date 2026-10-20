@@ -69,7 +69,7 @@ export async function launch(name: string, opts: LaunchOptions = {}): Promise<In
   const ops: Instance["ops"] = [];
   const dataDir = opts.dataDir ?? newDataDir();
   const app = await electron.launch({
-    args: [resolve(__dirname, "../..")],
+    args: [resolve(__dirname, "../.."), ...(opts.chromiumArgs ?? [])],
     env: {
       ...process.env,
       DISCORDY_USER_DATA_DIR: dataDir,

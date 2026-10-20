@@ -124,6 +124,44 @@ describe('EphemeralService sending', () => {
   });
 });
 
+describe('EphemeralService duplicate identity keys', () => {
+  it('adds only one device per identity key (re-registered rows share a signature key)', async () => {
+    const { service, api, crypto } = setup();
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '2'
+        ? [
+            { device_id: '20', identity_key_b64: 'key-bob' },
+            { device_id: '22', identity_key_b64: 'key-bob' },
+          ]
+        : [
+            { device_id: '10', identity_key_b64: 'key-self' },
+            { device_id: '9', identity_key_b64: 'key-self' },
+          ],
+    );
+    await service.send(dm(), { content: 'hi' });
+    expect(crypto.addMembers).toHaveBeenCalledTimes(1);
+    expect(crypto.addMembers).toHaveBeenCalledWith('500', ['pkg:2:22']);
+  });
+
+  it('skips devices whose identity key is already a group member', async () => {
+    const { service, api, crypto, advance } = setup();
+    await service.send(dm(), { content: 'one' });
+    crypto.memberKeys.mockResolvedValue(['key-self', 'key-bob']);
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '2'
+        ? [
+            { device_id: '20', identity_key_b64: 'key-bob' },
+            { device_id: '23', identity_key_b64: 'key-bob' },
+          ]
+        : [{ device_id: '10', identity_key_b64: 'key-self' }],
+    );
+    advance(120_000);
+    crypto.addMembers.mockClear();
+    await service.send(dm(), { content: 'two' });
+    expect(crypto.addMembers).not.toHaveBeenCalled();
+  });
+});
+
 describe('EphemeralService receiving', () => {
   it('joins on a welcome and acknowledges it', async () => {
     const { service, gateway, crypto } = setup();

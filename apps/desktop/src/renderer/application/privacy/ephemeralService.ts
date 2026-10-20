@@ -48,6 +48,8 @@ export interface EphemeralDeps {
 }
 
 interface KeyPackageMeta {
+  /** Device row the packages were uploaded for; a fresh sign-in registers a new row that has none yet. */
+  deviceId?: string;
   uploadedAt: number;
   claimsSinceUpload: number;
 }
@@ -70,7 +72,7 @@ export class EphemeralService {
   async start(): Promise<void> {
     if (!this.deps.crypto || !(await this.deps.crypto.status()).available) return;
     const meta = await this.deps.history.getState<KeyPackageMeta>('keypackages');
-    const stale = !meta || this.deps.now() - meta.uploadedAt > KEY_PACKAGE_MAX_AGE_MS;
+    const stale = !meta || meta.deviceId !== this.deps.getSelf().deviceId || this.deps.now() - meta.uploadedAt > KEY_PACKAGE_MAX_AGE_MS;
     if (stale) await this.uploadKeyPackages(KEY_PACKAGE_BATCH);
   }
 
@@ -248,23 +250,59 @@ export class EphemeralService {
     return result;
   }
 
+  /**
+   * Devices to add: one group of device rows per identity key. A device keeps one identity key across
+   * sign-ins while every sign-in registers a new device row, so several rows can share a signature key
+   * and OpenMLS rejects a commit adding them all (DuplicateSignatureKey). Keys already in the group and
+   * the local key are skipped; rows of a key already in the group are returned as aliases.
+   * Rows of one key are listed newest first.
+   */
+  private async devicesToAdd(
+    channelId: string,
+    crypto: CryptoBridge,
+    membership: Membership,
+  ): Promise<{ missing: { userId: string; rows: string[] }[]; aliases: Membership }> {
+    const self = this.deps.getSelf();
+    const inGroup = new Set(await crypto.memberKeys(channelId));
+    inGroup.add(self.identityKeyB64);
+    const byKey = new Map<string, { userId: string; rows: string[] }>();
+    const aliases: Membership = {};
+    for (const userId of participantsOf(channelId, self.userId)) {
+      const devices = [...(await this.deps.devices.devices(userId))].sort((a, b) => (BigInt(b.device_id) > BigInt(a.device_id) ? 1 : -1));
+      for (const device of devices) {
+        if (device.device_id === self.deviceId || device.device_id in membership) continue;
+        if (inGroup.has(device.identity_key_b64)) {
+          aliases[device.device_id] = userId;
+          continue;
+        }
+        const entry = byKey.get(device.identity_key_b64) ?? { userId, rows: [] };
+        entry.rows.push(device.device_id);
+        byKey.set(device.identity_key_b64, entry);
+      }
+    }
+    return { missing: [...byKey.values()], aliases };
+  }
+
   private async addMissingDevices(channelId: string, crypto: CryptoBridge, membership: Membership): Promise<Membership> {
-    const current = await this.currentDevices(channelId);
-    const missing = Object.entries(current).filter(([deviceId]) => !(deviceId in membership));
-    if (missing.length === 0) return membership;
+    const { missing, aliases } = await this.devicesToAdd(channelId, crypto, membership);
+    if (missing.length === 0) return { ...membership, ...aliases };
 
     privacyDebug('ephemeral: claiming key packages', { missing: missing.length });
-    const claimed: { deviceId: string; userId: string; packageB64: string }[] = [];
-    for (const [deviceId, userId] of missing) {
-      try {
-        const { package_b64 } = await this.deps.api.claimKeyPackage(userId, deviceId);
-        claimed.push({ deviceId, userId, packageB64: package_b64 });
-      } catch {
-        // A device without published key packages cannot join yet; it is retried on the next send.
+    const claimed: { deviceId: string; userId: string; packageB64: string; rows: string[] }[] = [];
+    for (const { userId, rows } of missing) {
+      // Any row of the device can supply the package (they share one engine); try the newest first.
+      for (const deviceId of rows) {
+        try {
+          const { package_b64 } = await this.deps.api.claimKeyPackage(userId, deviceId);
+          claimed.push({ deviceId, userId, packageB64: package_b64, rows });
+          break;
+        } catch {
+          // This row has no published key packages; try its siblings, else retry on the next send.
+        }
       }
     }
     privacyDebug('ephemeral: claimed key packages', { claimed: claimed.length });
-    if (claimed.length === 0) return membership;
+    if (claimed.length === 0) return { ...membership, ...aliases };
 
     const existingRecipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
     const { commitB64, welcomeB64, epoch } = await crypto.addMembers(
@@ -280,10 +318,10 @@ export class EphemeralService {
       id(),
       'welcome',
       epoch,
-      claimed.map((c) => ({ user_id: c.userId, device_id: c.deviceId, ciphertext_b64: welcomeB64 })),
+      claimed.flatMap((c) => c.rows.map((row) => ({ user_id: c.userId, device_id: row, ciphertext_b64: welcomeB64 }))),
     );
     usePrivacyStore.getState().setGroup(channelId, 'ready', epoch);
-    return { ...membership, ...Object.fromEntries(claimed.map((c) => [c.deviceId, c.userId])) };
+    return { ...membership, ...aliases, ...Object.fromEntries(claimed.flatMap((c) => c.rows.map((row) => [row, c.userId]))) };
   }
 
   // ---- receiving -----------------------------------------------------------------
@@ -389,7 +427,7 @@ export class EphemeralService {
     const crypto = await this.requireCrypto();
     const packages = await crypto.generateKeyPackages(count);
     await this.deps.api.uploadKeyPackages(this.deps.getSelf().deviceId, packages);
-    await this.deps.history.putState('keypackages', { uploadedAt: this.deps.now(), claimsSinceUpload: 0 } satisfies KeyPackageMeta);
+    await this.deps.history.putState('keypackages', { deviceId: this.deps.getSelf().deviceId, uploadedAt: this.deps.now(), claimsSinceUpload: 0 } satisfies KeyPackageMeta);
   }
 
   // ---- helpers -----------------------------------------------------------------------
