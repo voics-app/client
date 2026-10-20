@@ -136,7 +136,7 @@ function MaskedLink({ url, children }: { url: string; children: ReactNode }) {
       <Modal
         open={confirming}
         onClose={() => setConfirming(false)}
-        title="Leaving Discordy"
+        title="You are leaving the app"
         description="This link will take you to an external website."
         footer={
           <>
