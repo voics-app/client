@@ -78,6 +78,17 @@ test('every user and server settings tab fits without horizontal scroll', async 
   const check = async (scope: string, tab: string) => {
     await page.locator('.settings-nav').getByRole('button', { name: tab, exact: true }).click();
     await page.waitForTimeout(800);
+    // Real device names are long ("Microphone (Realtek(R) Audio) - Headset Earphone ..."); select a long
+    // option in every dropdown so a select can't push its column out of the pane.
+    await page.evaluate(() => {
+      for (const select of Array.from(document.querySelectorAll('select'))) {
+        const option = document.createElement('option');
+        option.value = '__long__';
+        option.textContent = 'Microphone (Realtek(R) High Definition Audio with a very long vendor device name) - Headset Earphone';
+        select.appendChild(option);
+        select.value = '__long__';
+      }
+    });
     for (const width of WIDTHS) {
       await app.evaluate(({ BrowserWindow }, w) => BrowserWindow.getAllWindows()[0]?.setSize(w, 800), width);
       await page.waitForTimeout(500);

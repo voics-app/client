@@ -91,12 +91,12 @@
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; background: var(--bg-1); border-top: 1px solid var(--hairline); }
 
 /* Forms */
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-label { font-size: var(--fs-caption); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-muted); }
 .field-hint { font-size: var(--fs-meta); color: var(--fg-subtle); }
 .field-error { font-size: var(--fs-meta); color: var(--danger); }
 .input-shell, .select-shell {
-  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: var(--radius-control);
+  min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: var(--radius-control);
   background: var(--bg-0); box-shadow: inset 0 0 0 1px var(--hairline);
   transition: box-shadow var(--dur-fast) var(--ease-out);
 }
@@ -105,7 +105,7 @@
 .input-leading { color: var(--fg-subtle); display: grid; }
 .input, .select { flex: 1; min-width: 0; height: 38px; border: 0; background: transparent; outline: none; font-size: var(--fs-ui); }
 .input::placeholder, .textarea::placeholder { color: var(--fg-subtle); }
-.select { appearance: none; cursor: pointer; padding-right: 16px; }
+.select { appearance: none; cursor: pointer; padding-right: 16px; width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .select option { background: var(--bg-2); color: var(--fg); }
 .select-shell::after { content: ''; width: 6px; height: 6px; border-right: 1.5px solid var(--fg-subtle); border-bottom: 1.5px solid var(--fg-subtle); transform: rotate(45deg) translateY(-2px); pointer-events: none; margin-left: -12px; }
 .textarea { width: 100%; min-height: 80px; padding: 10px 12px; resize: vertical; border: 0; border-radius: var(--radius-control); background: var(--bg-0); box-shadow: inset 0 0 0 1px var(--hairline); outline: none; }
