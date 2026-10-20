@@ -4,6 +4,7 @@ import type { CryptoBridge } from '@shared/ipc';
 import type { ApiPort } from '../ports/api';
 import type { GatewayPort } from '../ports/gateway';
 import { useGuildStore } from '../stores/guildStore';
+import { usePrivacyStore } from '../stores/privacyStore';
 import { AttachmentService } from './attachmentService';
 import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';
@@ -96,11 +97,17 @@ export class PrivateMessaging {
     void this.ephemeral.reconcileMembership(event.channel_id).catch(() => undefined);
   }
 
+  /** The relay refused one of our envelopes: say so instead of leaving the message looking delivered. */
+  private showRejection(rejection: { channel_id: string; reason: string }): void {
+    usePrivacyStore.getState().setGroup(rejection.channel_id, 'error', undefined, `The relay rejected a message (${rejection.reason}).`);
+  }
+
   /** Feed gateway DISPATCH events (P2P_SIGNAL_FAILED, CHANNEL_DELIVERY_MODE_UPDATE). */
   handleDispatch(event: string, data: unknown): void {
     if (event === 'P2P_SIGNAL_FAILED') this.p2p.handleSignalFailed(data as P2PSignalFailed);
     else if (event === 'GUILD_MEMBER_REMOVE' || event === 'GUILD_BAN_ADD') this.dropGuildMember(data as { guild_id: string; user?: { id: string } });
     else if (event === 'CHANNEL_RECIPIENT_REMOVE') this.dropRecipient(data as { channel_id: string; user?: { id: string } });
+    else if (event === 'E2EE_ENVELOPE_REJECTED') this.showRejection(data as { channel_id: string; reason: string });
     else if (event === 'USER_DEVICES_UPDATE') void this.ephemeral.reconcileAll().catch(() => undefined);
     else if (event === 'CHANNEL_DELIVERY_MODE_UPDATE') {
       const update = data as ChannelDeliveryModeUpdate;
