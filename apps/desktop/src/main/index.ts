@@ -10,7 +10,9 @@ import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deep
 import { PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
 import { loadMainSettings } from './settings';
-import { createTray } from './tray';
+import { AttentionPresenter } from './attention/presenter';
+import { createElectronAttentionPort } from './attention/electronAdapter';
+import { createTray, type TrayHandle } from './tray';
 import { Updater } from './updater';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
@@ -20,6 +22,7 @@ if (process.env.DISCORDY_USER_DATA_DIR) app.setPath('userData', process.env.DISC
 const env = process.env as Record<string, string | undefined>;
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
+let trayHandle: TrayHandle | null = null;
 const inbox = new DeepLinkInbox();
 
 function navigate(link: string | null): void {
@@ -62,8 +65,16 @@ function bootstrap(): void {
   if (settings.pushToTalkKeycode !== null) pushToTalk.configure(settings.pushToTalkKeycode);
   const updater = new Updater(updateFeedUrl, (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
 
+  const attention = new AttentionPresenter(
+    createElectronAttentionPort(getWindow, () => trayHandle),
+    BRAND.displayName,
+    () => trayHandle?.baseBitmap ?? null,
+    process.platform,
+  );
+
   registerIpc({
     window: getWindow,
+    setActivity: (counts) => attention.apply(counts),
     info,
     setConnection: (profile) => {
       connection = profile;
@@ -83,7 +94,7 @@ function bootstrap(): void {
   });
 
   if (env.DISCORDY_E2E !== '1') {
-    createTray(getWindow, () => {
+    trayHandle = createTray(getWindow, () => {
       quitting = true;
       app.quit();
     });

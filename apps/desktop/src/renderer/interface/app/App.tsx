@@ -11,6 +11,7 @@ import { SettingsHost } from '../features/settings/SettingsHost';
 import { Toasts } from '../shared/ui/Toasts';
 import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
+import { useActivityReporting } from './activity';
 import { useGlobalShortcuts } from './shortcuts';
 import { createRuntime, type Runtime } from './runtime';
 import { flushPendingRoute, handleRoute } from './navigation';
@@ -48,6 +49,7 @@ export function App() {
   const status = useSessionStore((s) => s.status);
   useAppearance();
   useGlobalShortcuts();
+  useActivityReporting();
 
   useEffect(() => {
     let alive = true;
