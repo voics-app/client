@@ -4,6 +4,7 @@ import type {
   Channel,
   Emoji,
   GuildFull,
+  GuildNotificationSettings,
   GuildMember,
   Message,
   ModalCreate,
@@ -20,6 +21,7 @@ import { useCallStore } from './stores/callStore';
 import { useGuildStore } from './stores/guildStore';
 import { useInteractionStore } from './stores/interactionStore';
 import { useMessageStore, type ChatMessage } from './stores/messageStore';
+import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
@@ -60,6 +62,8 @@ function hydrateReady(ready: ReadyPayload): void {
   const guilds = (ready.guilds as Array<GuildFull | { id: string; unavailable?: boolean }>).filter(isFullGuild);
   useGuildStore.getState().hydrate(guilds, ready.private_channels, ready.user_settings?.guild_positions);
   useRelationshipStore.getState().hydrate(ready.relationships ?? []);
+  useNotificationSettingsStore.getState().hydrate(ready.user_guild_settings ?? []);
+  useUserNotesStore.getState().hydrate(ready.notes ?? {});
   useReadStateStore.getState().hydrate(ready.read_state ?? []);
   const presences = [...(ready.presences ?? []), ...guilds.flatMap((g) => g.presences ?? [])];
   usePresenceStore.getState().setMany(Object.fromEntries(presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
@@ -166,6 +170,8 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
       if (d.id === meId()) useSessionStore.getState().setUser(d);
     },
     USER_SETTINGS_UPDATE: (d: Partial<UserSettings>) => useSessionStore.getState().setSettings(d),
+    USER_GUILD_SETTINGS_UPDATE: (d: GuildNotificationSettings) => useNotificationSettingsStore.getState().upsert(d),
+    USER_NOTE_UPDATE: (d: { id: string; note: string }) => useUserNotesStore.getState().set(d.id, d.note),
     RELATIONSHIP_ADD: (d: Relationship) => useRelationshipStore.getState().upsert(d),
     RELATIONSHIP_REMOVE: (d: { id: string }) => useRelationshipStore.getState().remove(d.id),
     SESSIONS_REPLACE: () => undefined,
