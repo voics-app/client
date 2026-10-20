@@ -18,6 +18,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { AttachmentView } from './AttachmentView';
 import { useEmojiPopover } from './EmojiPopover';
+import { UserMenuTarget } from '../members/UserContextMenu';
 import { MarkdownView } from './MarkdownView';
 import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
@@ -45,7 +46,7 @@ function EmbedView({ embed }: { embed: Embed }) {
   );
 }
 
-function ReplyPreview({ message }: { message: ChatMessage }) {
+function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
   if (!message.message_reference) return null;
   return (
@@ -53,8 +54,10 @@ function ReplyPreview({ message }: { message: ChatMessage }) {
       <span className="reply-hook" aria-hidden="true" />
       {ref ? (
         <>
-          <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
-          <span className="reply-name">{displayName(ref.author)}</span>
+          <UserMenuTarget userId={ref.author.id} name={displayName(ref.author)} guildId={guildId} user={ref.author}>
+            <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
+            <span className="reply-name">{displayName(ref.author)}</span>
+          </UserMenuTarget>
           <span className="reply-text">{ref.content || 'Click to see attachment'}</span>
         </>
       ) : (
@@ -202,14 +205,16 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
       onMouseLeave={() => setHover(false)}
       onContextMenu={menu.openAt}
     >
-      {startsGroup && <ReplyPreview message={message} />}
+      {startsGroup && <ReplyPreview message={message} guildId={guildId} />}
       {startsGroup && <InteractionHeader message={message} />}
       <div className="message-row">
         <div className="message-gutter">
           {startsGroup ? (
-            <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
-              <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
-            </button>
+            <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
+              <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
+                <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
+              </button>
+            </UserMenuTarget>
           ) : (
             <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
           )}
@@ -217,9 +222,11 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
         <div className="message-main">
           {startsGroup && (
             <header className="message-head">
-              <button type="button" className="message-author" style={color ? { color } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
-                {name}
-              </button>
+              <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
+                <button type="button" className="message-author" style={color ? { color } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
+                  {name}
+                </button>
+              </UserMenuTarget>
               {message.deliveryMode === 'ephemeral' && (
                 <Tooltip label="Delivered end-to-end encrypted. Stored only on your devices."><span className="message-mode mode-ephemeral" tabIndex={0}><LockKey size={12} weight="fill" /></span></Tooltip>
               )}

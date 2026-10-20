@@ -1,6 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
+import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -11,23 +13,28 @@ import {
   moveTargets,
   rankOf,
   timeoutUntil,
-  toggleRoleId,
   TIMEOUT_PRESETS,
   type MemberCapabilities,
 } from '@renderer/domain/memberModeration';
-import type { GuildMember } from '@shared/contracts/rest';
+import {
+  friendAction,
+  userMenuGroups,
+  type UserMenuItemId,
+} from '@renderer/domain/userMenuModel';
+import { RelationshipType, type GuildMember, type User } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
-import { setUserVolume } from '../../app/voiceActions';
+import { joinVoiceChannel, setUserVolume } from '../../app/voiceActions';
 import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
-import { Menu, type MenuEntry, type useMenu } from '../../shared/ui/Menu';
+import { RolePills, setMemberRole } from './RolePills';
+import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 
 export type MenuState = ReturnType<typeof useMenu>;
 
-type Panel = 'roles' | 'volume' | 'timeout' | 'move';
+type Panel = 'roles' | 'volume' | 'timeout' | 'move' | 'note';
 type MemberPatch = Partial<
   Pick<GuildMember, 'nick' | 'mute' | 'deaf' | 'communication_disabled_until'>
 > & { channel_id?: string | null };
@@ -82,11 +89,14 @@ export function UserContextMenu({
   name,
   guildId,
   menu,
+  user,
 }: {
   userId: string;
   name: string;
   guildId: string | null;
   menu: MenuState;
+  /** Known account data when the surface has it (DM recipient, friend, message author). */
+  user?: User;
 }) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [panelAt, setPanelAt] = useState({ x: 0, y: 0 });
@@ -98,11 +108,20 @@ export function UserContextMenu({
   const actorRoles = useGuildStore((s) =>
     guildId && me ? s.members[guildId]?.[me]?.roles : undefined,
   );
-  const voice = useVoiceStore((s) =>
-    guildId ? s.states[guildId]?.[userId] : undefined,
-  );
+  const voice = useVoiceStore((s) => {
+    if (guildId) return s.states[guildId]?.[userId];
+    for (const scope of Object.values(s.states)) if (scope[userId]) return scope[userId];
+    return undefined;
+  });
+  const relationship = useRelationshipStore((s) => s.byUser[userId]);
+  const note = useLocalPeopleStore((s) => s.notes[userId] ?? '');
+  const locallyMuted = useLocalPeopleStore((s) => userId in s.mutedUsers);
+  const targetUser = user ?? member?.user ?? relationship?.user;
+  const isBot = Boolean(targetUser?.bot);
+  const blocked = relationship?.type === RelationshipType.BLOCKED;
   const volume = useVoiceStore((s) => s.userVolumes[userId] ?? 1);
   const channels = useGuildStore((s) => s.channels);
+  const viewChannelId = useUiStore((s) => s.view.channelId);
   const perms = useGuildPermissions(guildId);
   const self = me === userId;
 
@@ -165,19 +184,35 @@ export function UserContextMenu({
     useMentionStore.getState().requestMention(channelId, name, userId);
   };
 
+  const call = async () => {
+    const channel = await attempt(
+      () => getRuntime().api.openPrivateChannel([userId]),
+      'Could not open conversation',
+    );
+    if (!channel) return;
+    useGuildStore.getState().upsertChannel(channel);
+    openChannel(channel.id);
+    await attempt(() => joinVoiceChannel(null, channel.id), 'Could not start call');
+  };
+
+  const relate = async (fn: () => Promise<unknown>, title: string) => {
+    await attempt(fn, title);
+  };
+
+  const toggleLocalMute = () => {
+    const people = useLocalPeopleStore.getState();
+    const current = useVoiceStore.getState().userVolumes[userId] ?? 1;
+    if (userId in people.mutedUsers) {
+      setUserVolume(userId, people.mutedUsers[userId] ?? 1);
+      people.unmuteLocal(userId);
+    } else {
+      people.muteLocal(userId, current > 0 ? current : 1);
+      setUserVolume(userId, 0);
+    }
+  };
+
   const setRole = (roleId: string, enabled: boolean) => {
-    const current = useGuildStore.getState().members[guildId ?? '']?.[userId];
-    if (!guildId || !current) return;
-    const roles = toggleRoleId(current.roles, roleId, enabled);
-    void attempt(async () => {
-      if (enabled)
-        await getRuntime().api.addMemberRole(guildId, userId, roleId);
-      else await getRuntime().api.removeMemberRole(guildId, userId, roleId);
-      return true;
-    }, 'Could not update roles').then((ok) => {
-      if (ok)
-        useGuildStore.getState().upsertMember(guildId, { ...current, roles });
-    });
+    if (guildId) void setMemberRole(guildId, userId, roleId, enabled);
   };
 
   const kick = () =>
@@ -195,97 +230,96 @@ export function UserContextMenu({
     });
 
   const ban = () =>
-    useUiStore.getState().openDialog({
-      kind: 'confirm',
-      title: `Ban ${name}?`,
-      body: 'They will be removed and cannot rejoin until unbanned.',
-      confirmLabel: 'Ban',
-      danger: true,
-      onConfirm: async () =>
-        void (await attempt(
-          () => getRuntime().api.ban(guildId ?? '', userId),
-          'Could not ban',
-        )),
-    });
+    guildId && useUiStore.getState().openDialog({ kind: 'ban', guildId, userId, name });
 
   const item = (
     label: string,
     onSelect: () => void,
     danger = false,
-  ): MenuEntry => ({ kind: 'item', label, onSelect, danger });
-  const groups: MenuEntry[][] = [
-    [
-      item('Profile', () =>
-        useUiStore.getState().openDialog({ kind: 'profile', userId, guildId }),
-      ),
-      ...(self
-        ? []
-        : [item('Mention', mention), item('Message', () => void message())]),
-      item('Copy user ID', () => void copyText(userId, 'User ID copied')),
-    ],
-    [
-      ...(caps.canEditNickname
-        ? [
-            item(
-              self ? 'Edit Server Profile' : 'Change nickname',
-              () =>
-                guildId &&
-                useUiStore
-                  .getState()
-                  .openDialog({ kind: 'editNickname', guildId, userId }),
-            ),
-          ]
-        : []),
-      ...(caps.canManageRoles ? [item('Roles', () => openPanel('roles'))] : []),
-      ...(self ? [] : [item('User volume', () => openPanel('volume'))]),
-    ],
-    [
-      ...(caps.canServerMute && guildId
-        ? [
-            item(
-              member?.mute ? 'Remove server mute' : 'Server mute',
-              () =>
-                void patchMember(
-                  guildId,
-                  userId,
-                  { mute: !member?.mute },
-                  'Could not update mute',
-                ),
-            ),
-          ]
-        : []),
-      ...(caps.canServerDeafen && guildId
-        ? [
-            item(
-              member?.deaf ? 'Remove server deafen' : 'Server deafen',
-              () =>
-                void patchMember(
-                  guildId,
-                  userId,
-                  { deaf: !member?.deaf },
-                  'Could not update deafen',
-                ),
-            ),
-          ]
-        : []),
-      ...(caps.canMoveMembers && guildId
-        ? [
-            item('Move to', () => openPanel('move')),
-            item('Disconnect', () => void moveMember(guildId, userId, null)),
-          ]
-        : []),
-      ...(caps.canTimeout ? [item('Timeout', () => openPanel('timeout'))] : []),
-    ],
-    [
-      ...(caps.canKick ? [item(`Kick ${name}`, kick, true)] : []),
-      ...(caps.canBan ? [item(`Ban ${name}`, ban, true)] : []),
-    ],
-  ];
-  const entries: MenuEntry[] = groups
-    .filter((g) => g.length > 0)
-    .flatMap((g, i) =>
-      i === 0 ? g : [{ kind: 'separator' } satisfies MenuEntry, ...g],
-    );
+    checked = false,
+  ): MenuEntry => ({ kind: 'item', label, onSelect, danger, checked });
+  const entryFor = (id: UserMenuItemId): MenuEntry => {
+    switch (id) {
+      case 'profile':
+        return item('Profile', () =>
+          useUiStore.getState().openDialog({ kind: 'profile', userId, guildId }),
+        );
+      case 'mention':
+        return item('Mention', mention);
+      case 'message':
+        return item('Message', () => void message());
+      case 'call':
+        return item('Call', () => void call());
+      case 'note':
+        return item(note ? 'Edit note' : 'Add note', () => openPanel('note'));
+      case 'friend': {
+        const action = friendAction(relationship?.type, self, isBot);
+        if (action === 'remove')
+          return item('Remove friend', () => void relate(() => getRuntime().api.deleteRelationship(userId), 'Could not remove friend'));
+        if (action === 'accept')
+          return item('Accept friend request', () => void relate(() => getRuntime().api.putRelationship(userId), 'Could not accept request'));
+        if (action === 'pending')
+          return { kind: 'item', label: 'Friend request sent', disabled: true, onSelect: () => undefined };
+        return item('Add friend', () =>
+          void relate(
+            () => getRuntime().api.putRelationship(userId, targetUser?.username ? { username: targetUser.username } : undefined),
+            'Could not send request',
+          ),
+        );
+      }
+      case 'block':
+        return blocked
+          ? item('Unblock', () => void relate(() => getRuntime().api.deleteRelationship(userId), 'Could not unblock'))
+          : item('Block', () => void relate(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), 'Could not block'), true);
+      case 'localMute':
+        return item('Mute', toggleLocalMute, false, locallyMuted);
+      case 'volume':
+        return item('User volume', () => openPanel('volume'));
+      case 'nickname':
+        return item(self ? 'Edit Server Profile' : 'Change nickname', () =>
+          guildId && useUiStore.getState().openDialog({ kind: 'editNickname', guildId, userId }),
+        );
+      case 'roles':
+        return item('Roles', () => openPanel('roles'));
+      case 'serverMute':
+        return item(member?.mute ? 'Remove server mute' : 'Server mute', () =>
+          void patchMember(guildId ?? '', userId, { mute: !member?.mute }, 'Could not update mute'),
+        );
+      case 'serverDeafen':
+        return item(member?.deaf ? 'Remove server deafen' : 'Server deafen', () =>
+          void patchMember(guildId ?? '', userId, { deaf: !member?.deaf }, 'Could not update deafen'),
+        );
+      case 'moveTo':
+        return item('Move to', () => openPanel('move'));
+      case 'disconnect':
+        return item('Disconnect', () => void moveMember(guildId ?? '', userId, null));
+      case 'timeout':
+        return item('Timeout', () => openPanel('timeout'));
+      case 'kick':
+        return item(`Kick ${name}`, kick, true);
+      case 'ban':
+        return item(`Ban ${name}`, ban, true);
+      case 'copyId':
+        return item('Copy user ID', () => void copyText(userId, 'User ID copied'));
+    }
+  };
+  const groups = userMenuGroups({
+    caps,
+    inGuild: Boolean(guildId && guild),
+    inVoice: Boolean(voice?.channel_id),
+    canMention: Boolean(viewChannelId),
+    relationship: relationship?.type,
+    isBot,
+    hasVoiceAudio: true,
+  });
+  const showRoles = Boolean(guildId && member && member.roles.some((r) => r !== guildId));
+  const entries: MenuEntry[] = groups.flatMap((g, i) => [
+    ...(i === 0 ? [] : [{ kind: 'separator' } satisfies MenuEntry]),
+    ...g.map(entryFor),
+    ...(i === 0 && showRoles && guildId
+      ? [{ kind: 'content', node: <RolePills guildId={guildId} userId={userId} /> } satisfies MenuEntry]
+      : []),
+  ]);
 
   const actorRank =
     guild && me
@@ -327,6 +361,19 @@ export function UserContextMenu({
               label={role.name}
             />
           ))}
+        </Panel>
+      )}
+      {panel === 'note' && (
+        <Panel x={panelAt.x} y={panelAt.y} label={`Note about ${name}`}>
+          <textarea
+            className='input'
+            aria-label={`Note about ${name}`}
+            rows={4}
+            maxLength={256}
+            defaultValue={note}
+            placeholder='Click to add a note (only visible to you)'
+            onChange={(e) => useLocalPeopleStore.getState().setNote(userId, e.target.value)}
+          />
         </Panel>
       )}
       {panel === 'volume' && (
@@ -434,5 +481,45 @@ function Panel({
       {children}
     </div>,
     document.body,
+  );
+}
+
+/** Binds the shared user menu to any element: spread `bind` on the trigger, render `node` beside it. */
+export function useUserMenu(args: { userId: string; name: string; guildId: string | null; user?: User }) {
+  const menu = useMenu();
+  return {
+    bind: { onContextMenu: menu.openAt },
+    open: menu.openAt,
+    node: <UserContextMenu {...args} menu={menu} />,
+  };
+}
+
+/**
+ * Wraps any user-bearing element (name, avatar, mention, row) so right-click opens the shared menu.
+ * Renders with `display: contents`, so layout is unaffected.
+ */
+export function UserMenuTarget({
+  userId,
+  name,
+  guildId,
+  user,
+  as: Tag = 'span',
+  children,
+}: {
+  userId: string;
+  name: string;
+  guildId: string | null | undefined;
+  user?: User;
+  as?: ElementType;
+  children: ReactNode;
+}) {
+  const { bind, node } = useUserMenu({ userId, name, guildId: guildId ?? null, user });
+  return (
+    <>
+      <Tag className='user-menu-target' data-user-id={userId} {...bind}>
+        {children}
+      </Tag>
+      {node}
+    </>
   );
 }
