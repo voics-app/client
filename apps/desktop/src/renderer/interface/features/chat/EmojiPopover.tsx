@@ -10,7 +10,7 @@ interface Anchor {
 }
 
 /** Floating emoji picker anchored to a trigger. Returns the element to render plus an `open` opener. */
-export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: PickedEmoji) => void): { node: ReactNode; open: (el: HTMLElement, up?: boolean) => void } {
+export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: PickedEmoji) => void): { node: ReactNode; open: (el: HTMLElement, up?: boolean) => void; openAt: (x: number, y: number, up?: boolean) => void; isOpen: boolean } {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const close = useCallback(() => setAnchor(null), []);
 
@@ -33,6 +33,8 @@ export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: 
     setAnchor({ x: Math.min(r.right, window.innerWidth - 12), y: up ? r.top - 8 : r.bottom + 8, up });
   }, []);
 
+  const openAt = useCallback((x: number, y: number, up = false) => setAnchor({ x: Math.min(x + 320, window.innerWidth - 12), y, up }), []);
+
   const node = anchor
     ? createPortal(
         <div className="emoji-popover" style={{ left: anchor.x, top: anchor.y, transform: `translate(-100%, ${anchor.up ? '-100%' : '0'})` }}>
@@ -47,5 +49,5 @@ export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: 
         document.body,
       )
     : null;
-  return { node, open };
+  return { node, open, openAt, isOpen: anchor !== null };
 }

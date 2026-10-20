@@ -68,7 +68,7 @@ function MediaAttachment({ attachment: original, channelId }: { attachment: Atta
   const isImage = attachment.content_type?.startsWith('image/');
   const isVideo = attachment.content_type?.startsWith('video/');
   const isAudio = attachment.content_type?.startsWith('audio/');
-  if (isImage) return <img className="attachment-image" src={attachment.proxy_url ?? attachment.url} alt={attachment.description ?? attachment.filename} loading="lazy" onError={onError} style={{ aspectRatio: attachment.width && attachment.height ? `${attachment.width} / ${attachment.height}` : undefined }} />;
+  if (isImage) return <img className="attachment-image" data-ctx="image" data-src={attachment.proxy_url ?? attachment.url} data-open={attachment.url} data-filename={attachment.filename} src={attachment.proxy_url ?? attachment.url} alt={attachment.description ?? attachment.filename} loading="lazy" onError={onError} style={{ aspectRatio: attachment.width && attachment.height ? `${attachment.width} / ${attachment.height}` : undefined }} />;
   if (isVideo) return <video className="attachment-image" src={attachment.url} controls preload="metadata" onError={onError} />;
   if (isAudio) return <audio src={attachment.url} controls preload="none" onError={onError} />;
   const local = attachment.url.startsWith('blob:');
