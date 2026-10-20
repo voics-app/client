@@ -5,7 +5,10 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { isChannelMuted } from '@renderer/domain/mute';
+import { isMentioned, levelFromPrefs, shouldNotify } from '@renderer/domain/notificationPolicy';
+import { summarizeActivity } from '@renderer/domain/unread';
 import { toPlainText, parseMarkdown } from '@renderer/domain/markdown';
+import { ChannelType } from '@shared/contracts/rest';
 import { bridge } from './bridge';
 
 function activeChannelId(): string | null {
@@ -17,22 +20,30 @@ export function totalMentions(): number {
   return Object.values(useReadStateStore.getState().byChannel).reduce((sum, r) => sum + r.mentionCount, 0);
 }
 
-/** Desktop notification, taskbar flash and badge for an incoming message. */
+/** Current unread/mention totals over every text channel the viewer can see. */
+export function currentActivity(): { mentions: number; unread: number } {
+  const channels = Object.values(useGuildStore.getState().channels).filter((c) => c.type === ChannelType.GUILD_TEXT || c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM);
+  return summarizeActivity(channels, useReadStateStore.getState().byChannel, usePrefsStore.getState().mutedChannels);
+}
+
+/** Desktop notification and taskbar flash for an incoming message, following the notification rules. */
 export function notifyIncoming(message: ChatMessage): void {
   const me = useSessionStore.getState().user;
   if (!me || message.author.id === me.id) return;
   const prefs = usePrefsStore.getState();
-  bridge?.app.setBadgeCount(totalMentions());
-  const channel0 = useGuildStore.getState().channels[message.channel_id];
-  if (isChannelMuted(prefs, { id: message.channel_id, parent_id: channel0?.parent_id }, Date.now())) return;
-  const level = prefs.notifyLevels[message.channel_id] ?? (channel0?.parent_id ? prefs.notifyLevels[channel0.parent_id] : undefined) ?? 'all';
-  if (level === 'none') return;
-  const focused = document.hasFocus() && activeChannelId() === message.channel_id;
-  if (focused) return;
-  const mentioned = message.mentions.some((u) => u.id === me.id) || message.mention_everyone || !message.guild_id;
-  if ((prefs.notifyOnlyMentions || level === 'mentions') && !mentioned) return;
-  if (!prefs.notifyDesktop || !mentioned) return;
-  const channel = channel0;
+  const channel = useGuildStore.getState().channels[message.channel_id];
+  const level = prefs.notifyLevels[message.channel_id] ?? (channel?.parent_id ? prefs.notifyLevels[channel.parent_id] : undefined) ?? levelFromPrefs(prefs.notifyOnlyMentions);
+  const myRoleIds = (message.guild_id ? useGuildStore.getState().members[message.guild_id]?.[me.id]?.roles : undefined) ?? [];
+  const mentioned = isMentioned(message, { meId: me.id, myRoleIds });
+  const notify = shouldNotify({
+    mentioned,
+    level,
+    muted: isChannelMuted(prefs, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now()),
+    viewingChannel: document.hasFocus() && activeChannelId() === message.channel_id,
+    desktopEnabled: prefs.notifyDesktop,
+    doNotDisturb: useSessionStore.getState().settings.status === 'dnd',
+  });
+  if (!notify) return;
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
   const body = toPlainText(parseMarkdown(message.content)).slice(0, 180) || 'Sent an attachment';
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;

@@ -1,4 +1,5 @@
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
+import { isMentioned } from '@renderer/domain/notificationPolicy';
 import type {
   Channel,
   Emoji,
@@ -42,6 +43,10 @@ interface ReactionEvent {
 
 const meId = () => useSessionStore.getState().user?.id ?? null;
 
+function viewerRoleIds(guildId: string | null | undefined, me: string): readonly string[] {
+  return (guildId ? useGuildStore.getState().members[guildId]?.[me]?.roles : undefined) ?? [];
+}
+
 /** READY lists guilds as `{id, unavailable: true}` placeholders (as Discord does); the full guild
  * follows in its own GUILD_CREATE. Only complete guilds are hydrated here. */
 function isFullGuild(guild: GuildFull | { id: string; unavailable?: boolean }): guild is GuildFull {
@@ -72,7 +77,7 @@ function receiveMessage(message: Message, ctx: DispatchContext): void {
   const me = meId();
   if (message.author.id === me) {
     useReadStateStore.getState().markRead(message.channel_id, message.id);
-  } else if (me && (message.mentions.some((u) => u.id === me) || message.mention_everyone || !message.guild_id)) {
+  } else if (me && isMentioned(message, { meId: me, myRoleIds: viewerRoleIds(message.guild_id, me) })) {
     useReadStateStore.getState().addMention(message.channel_id);
   }
   ctx.onIncomingMessage(message);

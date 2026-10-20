@@ -9,7 +9,7 @@ import { isUnread } from '@renderer/domain/unread';
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
 import { isChannelMuted } from '@renderer/domain/mute';
 import { Permission } from '@shared/contracts/permissions';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { ChannelType, type Channel, type VoiceState } from '@shared/contracts/rest';
 import { channelIcon, openChannel } from '../../app/navigation';
 import { openVoiceChannel } from '../../app/voiceActions';
 import { markChannelRead } from '../../app/actions';
@@ -20,10 +20,29 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+import { useUserMenu } from '../members/UserContextMenu';
 import { GuildHeader } from './GuildHeader';
 import { CategoryContextMenuEntries, ChannelContextMenuEntries } from './channelMenu';
 
 const ICONS = { text: Hash, voice: SpeakerHigh, announcement: Megaphone, forum: ChatsCircle, stage: SpeakerHigh, thread: Hash };
+
+export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | null; state: VoiceState; speaking: number }) {
+  const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[state.user_id] : undefined)) ?? state.member;
+  const user = member?.user;
+  const name = user ? displayName(user, member?.nick) : state.user_id;
+  const openDialog = useUiStore((s) => s.openDialog);
+  const { bind, node } = useUserMenu({ userId: state.user_id, name, guildId, user });
+  return (
+    <li className="occupant" {...bind} onClick={() => openDialog({ kind: 'profile', userId: state.user_id, guildId })}>
+      <Avatar id={state.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking} />
+      <span>{name}</span>
+      {(state.self_mute || state.mute) && <span className="occupant-flag" title="Muted">M</span>}
+      {state.self_video && <span className="occupant-flag" title="Camera on">V</span>}
+      {state.self_stream && <span className="occupant-live">LIVE</span>}
+      {node}
+    </li>
+  );
+}
 
 function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) {
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
@@ -83,20 +102,9 @@ function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) 
       </div>
       {occupants.length > 0 && (
         <ul className="voice-occupants">
-          {occupants.map((v) => {
-            const member = v.member ?? useGuildStore.getState().members[channel.guild_id ?? '']?.[v.user_id];
-            const user = member?.user;
-            const name = user ? displayName(user, member?.nick) : v.user_id;
-            return (
-              <li key={v.user_id} className="occupant">
-                <Avatar id={v.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking[v.user_id] ?? 0} />
-                <span>{name}</span>
-                {(v.self_mute || v.mute) && <span className="occupant-flag" title="Muted">M</span>}
-                {v.self_video && <span className="occupant-flag" title="Camera on">V</span>}
-                {v.self_stream && <span className="occupant-live">LIVE</span>}
-              </li>
-            );
-          })}
+          {occupants.map((v) => (
+            <VoiceOccupant key={v.user_id} guildId={channel.guild_id ?? null} state={v} speaking={speaking[v.user_id] ?? 0} />
+          ))}
         </ul>
       )}
       <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} />

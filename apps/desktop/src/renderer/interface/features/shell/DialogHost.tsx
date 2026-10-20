@@ -16,6 +16,7 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { BanDialog } from '../members/BanDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
@@ -318,7 +319,7 @@ function CustomStatusDialog() {
 
 function ShortcutsDialog() {
   const close = useClose();
-  const keybinds = usePrefsStore((s) => s.keybinds).filter((k) => k.action !== 'markRead');
+  const keybinds = usePrefsStore((s) => s.keybinds);
   const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
   return (
     <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
@@ -425,6 +426,7 @@ function ActiveDialog() {
     case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'notifications': return <NotificationSettingsDialog dialog={dialog} />;
+    case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
 }

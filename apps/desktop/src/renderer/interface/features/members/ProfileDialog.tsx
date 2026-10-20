@@ -12,6 +12,8 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
+import { RolePills } from './RolePills';
+import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
 import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
 
@@ -51,13 +53,12 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
   const close = () => useUiStore.getState().openDialog(null);
   const me = useSessionStore((s) => s.user);
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[userId] : undefined));
-  const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const status = usePresenceStore((s) => s.byUser[userId]?.status ?? 'offline');
   const relationship = useRelationshipStore((s) => s.byUser[userId]);
   const query = useQuery({ queryKey: ['user', userId], queryFn: () => getRuntime().api.user(userId), initialData: member?.user as User | undefined, staleTime: 60_000 });
   const user = query.data;
   const isMe = me?.id === userId;
-  const roles = guild && member ? guild.roles.filter((r) => member.roles.includes(r.id) && r.id !== guild.id).sort((a, b) => b.position - a.position) : [];
+  const note = useLocalPeopleStore((s) => s.notes[userId] ?? '');
 
   const message = async () => {
     const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
@@ -96,20 +97,22 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                 ) : (
                   <Button icon={<UserPlus size={16} />} onClick={addFriend}>Add friend</Button>
                 )}
-                <Button variant="ghost" icon={<Prohibit size={16} />} onClick={block}>Block</Button>
+                <Button variant="ghost" icon={<Prohibit size={16} />} onClick={relationship?.type === RelationshipType.BLOCKED ? removeFriend : block}>{relationship?.type === RelationshipType.BLOCKED ? 'Unblock' : 'Block'}</Button>
               </div>
             )}
             {user.bio && (
               <section className="profile-section"><h4>About me</h4><p className="selectable">{user.bio}</p></section>
             )}
-            {roles.length > 0 && (
+            {guildId && member && (
               <section className="profile-section">
                 <h4>Roles</h4>
-                <ul className="role-chips">
-                  {roles.map((r) => (
-                    <li key={r.id}><span className="role-dot" style={{ background: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : 'var(--fg-subtle)' }} />{r.name}</li>
-                  ))}
-                </ul>
+                <RolePills guildId={guildId} userId={userId} editable />
+              </section>
+            )}
+            {!isMe && (
+              <section className="profile-section">
+                <h4>Note</h4>
+                <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onChange={(e) => useLocalPeopleStore.getState().setNote(userId, e.target.value)} />
               </section>
             )}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}

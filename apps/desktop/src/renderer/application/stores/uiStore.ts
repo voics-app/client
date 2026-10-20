@@ -37,6 +37,7 @@ export type Dialog =
   | { kind: 'customStatus' }
   | { kind: 'shortcuts' }
   | { kind: 'editNickname'; guildId: string; userId: string }
+  | { kind: 'ban'; guildId: string; userId: string; name: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
 export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;

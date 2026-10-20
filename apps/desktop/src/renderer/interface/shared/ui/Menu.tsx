@@ -8,7 +8,8 @@ export type MenuEntry =
   | { kind: 'item'; label: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; checked?: boolean; onSelect: () => void }
   | { kind: 'separator' }
   | { kind: 'label'; label: string }
-  | { kind: 'submenu'; label: string; icon?: ReactNode; entries: MenuEntry[] };
+  | { kind: 'submenu'; label: string; icon?: ReactNode; entries: MenuEntry[] }
+  | { kind: 'content'; node: ReactNode };
 
 function SubmenuItem({ entry, onClose }: { entry: Extract<MenuEntry, { kind: 'submenu' }>; onClose: () => void }) {
   const [open, setOpen] = useState(false);
@@ -137,6 +138,12 @@ export function Menu({ open, x, y, entries, onClose, minWidth = 200 }: Props) {
           {entries.map((entry, i) => {
             if (entry.kind === 'separator') return <div key={i} className="menu-sep" role="separator" />;
             if (entry.kind === 'submenu') return <SubmenuItem key={i} entry={entry} onClose={onClose} />;
+            if (entry.kind === 'content')
+              return (
+                <div key={i} className="menu-content">
+                  {entry.node}
+                </div>
+              );
             if (entry.kind === 'label')
               return (
                 <div key={i} className="menu-label">
