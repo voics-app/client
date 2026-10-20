@@ -8,6 +8,7 @@ import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import {
   assignableRoles,
   memberCapabilities,
+  moveTargets,
   rankOf,
   timeoutUntil,
   toggleRoleId,
@@ -26,10 +27,10 @@ import { Menu, type MenuEntry, type useMenu } from '../../shared/ui/Menu';
 
 export type MenuState = ReturnType<typeof useMenu>;
 
-type Panel = 'roles' | 'volume' | 'timeout';
+type Panel = 'roles' | 'volume' | 'timeout' | 'move';
 type MemberPatch = Partial<
   Pick<GuildMember, 'nick' | 'mute' | 'deaf' | 'communication_disabled_until'>
->;
+> & { channel_id?: string | null };
 
 const NO_CAPABILITIES: MemberCapabilities = {
   isSelf: false,
@@ -38,6 +39,7 @@ const NO_CAPABILITIES: MemberCapabilities = {
   canManageRoles: false,
   canServerMute: false,
   canServerDeafen: false,
+  canMoveMembers: false,
   canTimeout: false,
   canKick: false,
   canBan: false,
@@ -55,6 +57,20 @@ async function patchMember(
     title,
   );
   if (updated) useGuildStore.getState().upsertMember(guildId, updated);
+}
+
+/** Server-side voice move/disconnect; the gateway then announces the new voice state. */
+async function moveMember(
+  guildId: string,
+  userId: string,
+  channelId: string | null,
+): Promise<void> {
+  await patchMember(
+    guildId,
+    userId,
+    { channel_id: channelId },
+    channelId ? 'Could not move member' : 'Could not disconnect member',
+  );
 }
 
 /**
@@ -86,6 +102,7 @@ export function UserContextMenu({
     guildId ? s.states[guildId]?.[userId] : undefined,
   );
   const volume = useVoiceStore((s) => s.userVolumes[userId] ?? 1);
+  const channels = useGuildStore((s) => s.channels);
   const perms = useGuildPermissions(guildId);
   const self = me === userId;
 
@@ -251,6 +268,12 @@ export function UserContextMenu({
             ),
           ]
         : []),
+      ...(caps.canMoveMembers && guildId
+        ? [
+            item('Move to', () => openPanel('move')),
+            item('Disconnect', () => void moveMember(guildId, userId, null)),
+          ]
+        : []),
       ...(caps.canTimeout ? [item('Timeout', () => openPanel('timeout'))] : []),
     ],
     [
@@ -274,6 +297,10 @@ export function UserContextMenu({
       : -1;
   const roleOptions =
     guild && guildId ? assignableRoles(guild.roles, guildId, actorRank) : [];
+  const moveOptions =
+    guildId && panel === 'move'
+      ? moveTargets(Object.values(channels), guildId, voice?.channel_id)
+      : [];
   const timedOut = member?.communication_disabled_until
     ? new Date(member.communication_disabled_until).getTime() > Date.now()
     : false;
@@ -313,6 +340,28 @@ export function UserContextMenu({
             onChange={(v) => setUserVolume(userId, v)}
             format={(v) => `${Math.round(v * 100)}%`}
           />
+        </Panel>
+      )}
+      {panel === 'move' && guildId && (
+        <Panel x={panelAt.x} y={panelAt.y} label={`Move ${name}`}>
+          {moveOptions.length === 0 && (
+            <p className='member-panel-empty'>No other voice channels.</p>
+          )}
+          <div className='member-panel-actions'>
+            {moveOptions.map((channel) => (
+              <Button
+                key={channel.id}
+                size='sm'
+                variant='ghost'
+                onClick={() => {
+                  setPanel(null);
+                  void moveMember(guildId, userId, channel.id);
+                }}
+              >
+                {channel.name ?? channel.id}
+              </Button>
+            ))}
+          </div>
         </Panel>
       )}
       {panel === 'timeout' && guildId && (

@@ -166,6 +166,62 @@ describe('VoiceController', () => {
     expect(useVoiceStore.getState().call.status).toBe('reconnecting');
   });
 
+  describe('moderator move and disconnect', () => {
+    const selfState = { guild_id: 'g1', channel_id: null, user_id: 'me', session_id: 'sess', deaf: false, mute: false, self_deaf: false, self_mute: false, self_video: false, suppress: false };
+
+    it('follows a server-driven move: new token, new target, no gateway echo', async () => {
+      const { controller, sessions, sent } = setup();
+      await controller.join({ guildId: 'g1', channelId: 'c1' });
+      controller.onVoiceServerUpdate(update);
+      const before = sent.length;
+      controller.onVoiceServerUpdate({ ...update, channel_id: 'c2', token: 'tok2' });
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0]!.close).toHaveBeenCalled();
+      expect(useVoiceStore.getState().call).toMatchObject({ channelId: 'c2' });
+      expect(sent).toHaveLength(before);
+      await controller.leave();
+      expect(sent.at(-1)?.d).toMatchObject({ guild_id: null, channel_id: null });
+    });
+
+    it('ignores an update for another guild or for a channel while no session exists yet', async () => {
+      const { controller, sessions } = setup();
+      await controller.join({ guildId: 'g1', channelId: 'c1' });
+      controller.onVoiceServerUpdate({ ...update, channel_id: 'c2' });
+      expect(sessions).toHaveLength(0);
+      controller.onVoiceServerUpdate(update);
+      controller.onVoiceServerUpdate({ ...update, guild_id: 'other', channel_id: 'c2' });
+      expect(sessions).toHaveLength(1);
+      expect(useVoiceStore.getState().call.channelId).toBe('c1');
+    });
+
+    it('leaves quietly when a moderator disconnects us', async () => {
+      const { controller, sessions, sent, mic } = setup();
+      await controller.join({ guildId: 'g1', channelId: 'c1' });
+      controller.onVoiceServerUpdate(update);
+      const before = sent.length;
+      controller.onVoiceState(selfState);
+      await vi.advanceTimersByTimeAsync(5);
+      expect(sessions[0]!.close).toHaveBeenCalled();
+      expect(mic.stop).toHaveBeenCalled();
+      expect(sent).toHaveLength(before);
+      expect(useVoiceStore.getState().call.status).toBe('idle');
+    });
+
+    it('does not react to other users, other sessions, other scopes or a refused join', async () => {
+      const { controller, sessions } = setup();
+      await controller.join({ guildId: 'g1', channelId: 'c1' });
+      controller.onVoiceState(selfState);
+      expect(useVoiceStore.getState().call.status).toBe('connecting');
+      controller.onVoiceServerUpdate(update);
+      controller.onVoiceState({ ...selfState, user_id: 'someone' });
+      controller.onVoiceState({ ...selfState, session_id: 'other-device' });
+      controller.onVoiceState({ ...selfState, guild_id: 'g2' });
+      controller.onVoiceState({ ...selfState, channel_id: 'c1' });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(sessions[0]!.close).not.toHaveBeenCalled();
+    });
+  });
+
   it('reports e2ee only as the session reports it', async () => {
     const { controller, sessions } = setup();
     await controller.join({ guildId: null, channelId: 'dm1' });
