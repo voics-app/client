@@ -3,11 +3,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
+import { applyMute, applyUnmute } from '@renderer/domain/mute';
+import { recordReaction, type QuickEmoji } from '@renderer/domain/quickReactions';
 
 export type ThemeId = 'dark' | 'oled' | 'light';
 export type AccentId = 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
 export type Density = 'cozy' | 'compact';
 export type InputMode = 'vad' | 'ptt';
+/** Device-local notification level for a channel or category until server-side settings exist (api#28). */
+export type NotifyLevel = 'all' | 'mentions' | 'none';
 
 export interface Keybind {
   id: string;
@@ -43,14 +47,23 @@ export interface PrefsState {
   ringtoneVolume: number;
   flashTaskbar: boolean;
   mutedChannels: Record<string, boolean>;
+  /** Epoch ms at which a timed mute ends; absent means until turned back on. */
+  muteUntil: Record<string, number>;
+  notifyLevels: Record<string, NotifyLevel>;
+  recentReactions: QuickEmoji[];
   collapsedCategories: Record<string, boolean>;
   keybinds: Keybind[];
   set<K extends keyof PrefsData>(key: K, value: PrefsData[K]): void;
   patch(values: Partial<PrefsData>): void;
   toggleMap(key: 'mutedChannels' | 'collapsedCategories', id: string): void;
+  muteFor(ids: string[], ms: number | null): void;
+  unmute(ids: string[]): void;
+  setCollapsed(ids: string[], collapsed: boolean): void;
+  setNotifyLevel(id: string, level: NotifyLevel): void;
+  recordReaction(emoji: QuickEmoji): void;
 }
 
-export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap'>;
+export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap' | 'muteFor' | 'unmute' | 'setCollapsed' | 'setNotifyLevel' | 'recordReaction'>;
 
 export const DEFAULT_KEYBINDS: Keybind[] = [
   { id: 'palette', action: 'palette', keys: 'Ctrl+K' },
@@ -90,6 +103,9 @@ export const DEFAULT_PREFS: PrefsData = {
   ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
   flashTaskbar: true,
   mutedChannels: {},
+  muteUntil: {},
+  notifyLevels: {},
+  recentReactions: [],
   collapsedCategories: {},
   keybinds: DEFAULT_KEYBINDS,
 };
@@ -117,10 +133,15 @@ function browserStorage() {
 
 export const usePrefsStore = create<PrefsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_PREFS,
       set: (key, value) => set({ [key]: value } as Partial<PrefsState>),
       patch: (values) => set(values),
+      muteFor: (ids, ms) => set(applyMute(get(), ids, ms, Date.now())),
+      unmute: (ids) => set(applyUnmute(get(), ids)),
+      setCollapsed: (ids, collapsed) => set((s) => ({ collapsedCategories: { ...s.collapsedCategories, ...Object.fromEntries(ids.map((id) => [id, collapsed])) } })),
+      setNotifyLevel: (id, level) => set((s) => ({ notifyLevels: { ...s.notifyLevels, [id]: level } })),
+      recordReaction: (emoji) => set((s) => ({ recentReactions: recordReaction(s.recentReactions, emoji) })),
       toggleMap: (key, id) => set((s) => ({ [key]: { ...s[key], [id]: !s[key][id] } }) as Partial<PrefsState>),
     }),
     {

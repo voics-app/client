@@ -5,6 +5,7 @@ import { VoiceController, type VoiceControllerDeps } from '@renderer/application
 import type { SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
 import { DEFAULT_PREFS, type PrefsData } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { presetConstraints } from '@renderer/domain/videoPresets';
 
@@ -278,6 +279,30 @@ describe('VoiceController', () => {
     const stream = {} as MediaStream;
     sessions[0]!.audio.forEach((l) => l('u2', stream));
     expect(mixer.setStream).toHaveBeenCalledWith('u2', stream);
+  });
+
+  it('plays a new remote stream at full volume by default (no stored volume, no stored mute)', async () => {
+    const { controller, sessions, mixer } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    sessions[0]!.audio.forEach((l) => l('u9', {} as MediaStream));
+    expect(mixer.setUserVolume).not.toHaveBeenCalled();
+    expect(mixer.setStream).toHaveBeenCalledTimes(1);
+    expect(useVoiceStore.getState().userVolumes.u9).toBeUndefined();
+  });
+
+  it('keeps a persisted local mute across sessions and leaves everyone else audible', async () => {
+    useLocalPeopleStore.setState({ mutedUsers: { u2: 1 } });
+    const { controller, sessions, mixer } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    sessions[0]!.audio.forEach((l) => {
+      l('u2', {} as MediaStream);
+      l('u3', {} as MediaStream);
+    });
+    expect(mixer.setUserVolume).toHaveBeenCalledTimes(1);
+    expect(mixer.setUserVolume).toHaveBeenCalledWith('u2', 0);
+    useLocalPeopleStore.setState({ mutedUsers: {} });
   });
 
   it('publishes telemetry every five seconds', async () => {
