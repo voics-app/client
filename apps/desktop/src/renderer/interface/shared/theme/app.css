@@ -4,7 +4,10 @@
 .stack.grow, .grow { flex: 1; min-width: 0; }
 .row-end { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
 .row-start { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* minmax(0, 1fr): a plain 1fr never shrinks below its content, so a long device name pushed the second
+   column out and caused horizontal scroll in settings. Narrow panes stack the columns. */
+.two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .two-col { grid-template-columns: minmax(0, 1fr); } }
 .link-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-text); font-size: var(--fs-meta); padding: 4px 6px; border-radius: 6px; }
 .link-btn:hover { background: var(--accent-soft); }
 .confirm-body { color: var(--fg-muted); font-size: var(--fs-ui); margin-bottom: 8px; }
