@@ -7,7 +7,8 @@ import { snappy } from './motion';
 export type MenuEntry =
   | { kind: 'item'; label: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; checked?: boolean; onSelect: () => void }
   | { kind: 'separator' }
-  | { kind: 'label'; label: string };
+  | { kind: 'label'; label: string }
+  | { kind: 'content'; node: ReactNode };
 
 interface Props {
   open: boolean;
@@ -78,6 +79,12 @@ export function Menu({ open, x, y, entries, onClose, minWidth = 200 }: Props) {
         >
           {entries.map((entry, i) => {
             if (entry.kind === 'separator') return <div key={i} className="menu-sep" role="separator" />;
+            if (entry.kind === 'content')
+              return (
+                <div key={i} className="menu-content">
+                  {entry.node}
+                </div>
+              );
             if (entry.kind === 'label')
               return (
                 <div key={i} className="menu-label">

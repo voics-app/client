@@ -1,4 +1,5 @@
 import { Check, Copy } from '@phosphor-icons/react';
+import { UserMenuTarget } from '../members/UserContextMenu';
 import { Fragment, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { parseMarkdown, type MarkdownNode } from '@renderer/domain/markdown';
@@ -57,7 +58,7 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
     const user = member?.user;
     return `@${member?.nick ?? user?.global_name ?? user?.username ?? 'unknown-user'}`;
   });
-  return (
+  const button = (
     <button
       type="button"
       className={`mention mention-${kind}`}
@@ -65,6 +66,13 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
     >
       {label}
     </button>
+  );
+  return kind === 'userMention' ? (
+    <UserMenuTarget userId={id} name={label.replace(/^@/, '')} guildId={guildId}>
+      {button}
+    </UserMenuTarget>
+  ) : (
+    button
   );
 }
 

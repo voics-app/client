@@ -157,8 +157,8 @@ export class DiscordyApi implements ApiPort {
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
   }
-  ban(guildId: string, userId: string, reason?: string) {
-    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, {}, reason);
+  ban(guildId: string, userId: string, reason?: string, options: { delete_message_seconds?: number } = {}) {
+    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, options, reason);
   }
   unban(guildId: string, userId: string) {
     return this.del<void>(`/guilds/${guildId}/bans/${userId}`);

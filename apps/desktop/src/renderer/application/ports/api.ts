@@ -86,7 +86,7 @@ export interface ApiPort {
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   bans(guildId: string): Promise<Ban[]>;
-  ban(guildId: string, userId: string, reason?: string): Promise<void>;
+  ban(guildId: string, userId: string, reason?: string, options?: { delete_message_seconds?: number }): Promise<void>;
   unban(guildId: string, userId: string): Promise<void>;
   auditLog(guildId: string, query?: { limit?: number; before?: string }): Promise<AuditLog>;
   emojis(guildId: string): Promise<Emoji[]>;

@@ -16,6 +16,7 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { BanDialog } from '../members/BanDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
@@ -388,6 +389,7 @@ function ActiveDialog() {
     case 'customStatus': return <CustomStatusDialog />;
     case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
+    case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
 }
