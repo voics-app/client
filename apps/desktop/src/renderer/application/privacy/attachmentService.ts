@@ -5,7 +5,6 @@
  */
 import type { Attachment } from '@shared/contracts/rest';
 import {
-  ATTACHMENTS_BUCKET,
   checkOutgoingFiles,
   privateRefOf,
   sanitizeFileName,
@@ -20,10 +19,8 @@ import { useTransferStore } from '../stores/transferStore';
 import { AttachmentError, decryptFile, encryptFile, type AttachmentFailure, type EncryptedFile } from './attachmentCipher';
 
 export interface AttachmentDeps {
-  api: Pick<ApiPort, 'createAttachmentSlots' | 'upload'>;
+  api: Pick<ApiPort, 'createAttachmentSlots' | 'refreshAttachmentUrls' | 'upload'>;
   fetchBytes: (url: string) => Promise<Uint8Array>;
-  /** Public CDN origin of the active connection profile. */
-  cdnBase: () => string;
   createObjectUrl?: (blob: Blob) => string;
 }
 
@@ -132,7 +129,11 @@ export class AttachmentService {
     this.track(ref.id, { state: 'downloading', loaded: 0, total: ref.size });
     let ciphertext: Uint8Array;
     try {
-      ciphertext = await this.deps.fetchBytes(`${this.deps.cdnBase().replace(/\/$/, '')}/${ATTACHMENTS_BUCKET}/${ref.source.object_key}`);
+      // The bucket is private: the server signs a short-lived download URL for members of the chat.
+      const { refreshed_urls: signed } = await this.deps.api.refreshAttachmentUrls(channelId, [ref.source.object_key]);
+      const url = signed[0]?.refreshed;
+      if (!url) throw new Error('the server returned no download link');
+      ciphertext = await this.deps.fetchBytes(url);
     } catch (error) {
       throw this.fail([ref.id], 'download_failed', `Download failed: ${error instanceof Error ? error.message : String(error)}`);
     }
