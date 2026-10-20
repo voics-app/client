@@ -349,8 +349,8 @@ export class EphemeralService {
     const self = this.deps.getSelf();
     const channelId = envelope.channel_id;
     const payload = decodePayload(plaintextB64, { channelId, mode: 'ephemeral', messageId: envelope.message_id });
-    const participants = participantsOf(channelId, self.userId).filter((id) => id !== self.userId);
-    const senderUserId = await this.deps.devices.ownerOf(participants, envelope.sender_device_id);
+    // Includes our own user: another device of ours is a legitimate sender (multi-device mirroring).
+    const senderUserId = await this.deps.devices.ownerOf(participantsOf(channelId, self.userId), envelope.sender_device_id);
     if (!senderUserId) return false;
 
     const channel = useGuildStore.getState().channels[channelId] ?? { id: channelId, guild_id: null };

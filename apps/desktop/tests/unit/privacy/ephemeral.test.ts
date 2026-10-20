@@ -162,6 +162,24 @@ describe('EphemeralService receiving', () => {
     expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toHaveLength(1);
   });
 
+  it('accepts a message from another device of our own user (multi-device mirror)', async () => {
+    const { service, gateway, api, encryptFake } = setup();
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '1'
+        ? [
+            { device_id: '10', identity_key_b64: 'key-self' },
+            { device_id: '11', identity_key_b64: 'key-self-2' },
+          ]
+        : [{ device_id: '20', identity_key_b64: 'key-bob' }],
+    );
+    const payload = { v: 1, content: 'from my other device', nonce: '77', timestamp: '2026-10-17T10:00:00.000Z' };
+    await service.handleEnvelope(envelope({ message_id: '77', sender_device_id: '11', ciphertext: encryptFake(utf8ToB64(JSON.stringify(payload))) }));
+    const shown = useMessageStore.getState().timelines['500']?.byId['77'];
+    expect(shown?.content).toBe('from my other device');
+    expect(shown?.author.id).toBe('1');
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['77'] }]);
+  });
+
   it('uploads a key package batch on start and not again within a day', async () => {
     const { service, api, crypto } = setup();
     await service.start();
