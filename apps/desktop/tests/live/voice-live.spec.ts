@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const BASE = process.env.LIVE_BASE ?? 'http://localhost:18000';
+const BASE = process.env.LIVE_BASE ?? 'http://127.0.0.1:18000';
 
 test('bob joins a voice channel through the real client', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'discordy-live-'));

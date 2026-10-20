@@ -5,6 +5,7 @@ import type { Channel, Message } from '@shared/contracts/rest';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { MessageSender } from '@renderer/application/privacy/messageSender';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
+import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -196,6 +197,12 @@ describe('PrivateMessaging facade', () => {
     const { pm } = facade();
     pm.handleDispatch('CHANNEL_DELIVERY_MODE_UPDATE', { channel_id: '500', delivery_mode: 'p2p' });
     expect(useGuildStore.getState().channels['500']?.delivery_mode).toBe('p2p');
+  });
+
+  it('shows a relay rejection on the channel instead of staying silent', () => {
+    const { pm } = facade();
+    pm.handleDispatch('E2EE_ENVELOPE_REJECTED', { channel_id: '500', message_id: '9', reason: 'recipient_not_allowed' });
+    expect(usePrivacyStore.getState().groups['500']).toMatchObject({ state: 'error', detail: expect.stringContaining('recipient_not_allowed') });
   });
 
   it('without a crypto module, ephemeral sends fail and nothing is relayed', async () => {
