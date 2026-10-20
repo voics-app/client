@@ -5,6 +5,7 @@ import { useUiStore } from '@renderer/application/stores/uiStore';
 import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@renderer/domain/rovingFocus';
 import { fixedShortcutAction, type FixedShortcutAction } from '@renderer/domain/shortcutCatalog';
 import { isTextChannel, openChannel, openGuild } from './navigation';
+import { markChannelRead, markGuildRead } from './actions';
 import { toggleDeafen, toggleMute } from './voiceActions';
 
 export function describeEvent(e: KeyboardEvent): string {
@@ -41,11 +42,18 @@ function toggleShortcutsDialog(): void {
   ui.openDialog(ui.dialog?.kind === 'shortcuts' ? null : { kind: 'shortcuts' });
 }
 
-const ACTIONS: Record<Keybind['action'], () => void> = {
+/** Esc marks the open channel read; Shift+Esc marks the whole open server. */
+function markCurrentRead(shift = false): void {
+  const { view } = useUiStore.getState();
+  if (shift && view.kind === 'guild') markGuildRead(view.guildId);
+  else if (view.channelId) markChannelRead(view.channelId);
+}
+
+const ACTIONS: Record<Keybind['action'], (shift?: boolean) => void> = {
   palette: () => useUiStore.getState().openPalette(!useUiStore.getState().paletteOpen),
   toggleMute: () => void toggleMute(),
   toggleDeafen: () => void toggleDeafen(),
-  markRead: () => undefined,
+  markRead: markCurrentRead,
   search: () => useUiStore.getState().openPalette(true),
   upload: () => document.querySelector<HTMLButtonElement>('button[aria-label="Attach files"]')?.click(),
   prevChannel: () => adjacentChannel(-1),
@@ -74,6 +82,16 @@ export function handleContextMenuKey(e: KeyboardEvent, doc: Document = document)
   return true;
 }
 
+/** Esc belongs to whatever overlay is open (dialog, palette, menu, popover) before it marks anything read. */
+function overlayOpen(): boolean {
+  const ui = useUiStore.getState();
+  return ui.dialog !== null || ui.paletteOpen || document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]') !== null;
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.matches('input, textarea, select, [contenteditable="true"]');
+}
+
 /** Registers the user-configurable in-app shortcuts plus the fixed navigation ones. Global (out-of-focus) push-to-talk lives in the main process. */
 export function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -86,10 +104,11 @@ export function useGlobalShortcuts(): void {
         FIXED[fixed]();
         return;
       }
-      const bind = usePrefsStore.getState().keybinds.find((k) => k.keys === described && k.action !== 'markRead');
+      const bind = usePrefsStore.getState().keybinds.find((k) => k.keys === described || (k.action === 'markRead' && e.shiftKey && described === `Shift+${k.keys}`));
       if (!bind) return;
+      if (bind.action === 'markRead' && (e.defaultPrevented || isTypingTarget(e.target) || overlayOpen())) return;
       e.preventDefault();
-      ACTIONS[bind.action]();
+      ACTIONS[bind.action](bind.keys !== described);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

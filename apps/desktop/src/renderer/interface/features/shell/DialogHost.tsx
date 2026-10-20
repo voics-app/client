@@ -317,7 +317,7 @@ function CustomStatusDialog() {
 
 function ShortcutsDialog() {
   const close = useClose();
-  const keybinds = usePrefsStore((s) => s.keybinds).filter((k) => k.action !== 'markRead');
+  const keybinds = usePrefsStore((s) => s.keybinds);
   const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
   return (
     <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
