@@ -1,8 +1,10 @@
 /** Main window with hardened web preferences, navigation guards and CSP. */
-import { BrowserWindow, nativeTheme, session, shell } from 'electron';
+import { BrowserWindow, app, nativeTheme, session, shell } from 'electron';
 import { join } from 'node:path';
 import type { ConnectionProfile } from '../shared/ipc';
+import { BRAND } from '../shared/brand';
 import { buildCsp } from './csp';
+import { configureSpellcheck, installTextContextMenu } from './textMenu';
 
 const ALLOWED_PERMISSIONS = new Set(['media', 'display-capture', 'notifications', 'clipboard-sanitized-write', 'fullscreen']);
 
@@ -61,6 +63,11 @@ export function createMainWindow(): BrowserWindow {
     if (/^https:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  // The title carries the unread/mention count and is owned by the attention presenter, not the page.
+  window.on('page-title-updated', (event) => event.preventDefault());
+  window.setTitle(BRAND.displayName);
+  installTextContextMenu(window.webContents);
+  configureSpellcheck(window.webContents, app.getLocale());
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());
 
   if (process.env.ELECTRON_RENDERER_URL) void window.loadURL(process.env.ELECTRON_RENDERER_URL);

@@ -1,4 +1,5 @@
 import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, Eye, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
+import { isMentioned } from '@renderer/domain/notificationPolicy';
 import { memo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
@@ -129,6 +130,7 @@ export interface MessageItemProps {
 
 export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard }: MessageItemProps) {
   const me = useSessionStore((s) => s.user?.id);
+  const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const perms = useChannelPermissions(message.channel_id);
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
   const setEditing = useUiStore((s) => s.setEditing);
@@ -180,7 +182,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
 
   const failed = message.localState === 'failed';
   const sending = message.localState === 'sending';
-  const mentionsMe = me ? message.mentions.some((u) => u.id === me) || message.mention_everyone : false;
+  const mentionsMe = me ? isMentioned(message, { meId: me, myRoleIds: myRoles ?? [] }) && !!message.guild_id : false;
   const ephemeral = ((message.flags ?? 0) & MessageFlag.EPHEMERAL) !== 0;
   const system = message.type !== 0 && message.type !== 19 && message.type !== 20;
 
