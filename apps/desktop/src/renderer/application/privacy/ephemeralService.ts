@@ -99,6 +99,20 @@ export class EphemeralService {
     return this.enqueue(() => this.reconcileNow(channelId, attempt));
   }
 
+  /**
+   * A member was added to an existing group DM: commits an MLS Add for their devices and relays the
+   * commit and welcome now, instead of at the next send. Only the adding client calls this, so there
+   * is no commit race; a channel without an MLS group yet is left alone (its first send creates it).
+   */
+  syncMembership(channelId: string): Promise<void> {
+    return this.enqueue(async () => {
+      const crypto = await this.requireCrypto();
+      const channel = useGuildStore.getState().channels[channelId];
+      if (!channel || !(await crypto.hasGroup(channelId))) return;
+      await this.ensureMembership(channel, crypto);
+    });
+  }
+
   /** Reconciles every channel that has an MLS group, optionally limited to one guild. */
   async reconcileAll(guildId?: string): Promise<void> {
     const crypto = this.deps.crypto;
