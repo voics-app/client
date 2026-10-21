@@ -8,7 +8,7 @@ import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
 import { systemMessageText } from '@renderer/domain/dmModel';
 import { MessageFlag } from '@shared/contracts/rest';
-import { attempt } from '../../app/actions';
+import { attempt, jumpToMessage } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
@@ -28,7 +28,10 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
   if (!message.message_reference) return null;
   return (
-    <div className="reply-preview">
+    <div
+      className={`reply-preview${message.message_reference?.message_id ? ' is-link' : ''}`}
+      onClick={() => message.message_reference?.message_id && jumpToMessage(message.channel_id, message.message_reference.message_id)}
+    >
       <span className="reply-hook" aria-hidden="true" />
       {ref ? (
         <>
@@ -103,11 +106,11 @@ export interface MessageItemProps {
   guildId: string | null | undefined;
   onRetry: (message: ChatMessage) => void;
   onDiscard: (message: ChatMessage) => void;
-  /** The message a search result jumped to. */
-  highlighted?: boolean;
+  /** Briefly highlighted after a jump to this message. */
+  flash?: boolean;
 }
 
-export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard, highlighted }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard, flash }: MessageItemProps) {
   const me = useSessionStore((s) => s.user?.id);
   const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
@@ -142,7 +145,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
 
   return (
     <div
-      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}${interactions.visible ? ' is-toolbar-open' : ''}${highlighted ? ' is-jump-target' : ''}`}
+      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}${interactions.visible ? ' is-toolbar-open' : ''}${flash ? ' is-flash' : ''}`}
       data-message-id={message.id}
       {...interactions.rootProps}
     >

@@ -89,6 +89,7 @@ export class Ringtone {
     if (this.context) return;
     const context = this.deps.createContext();
     this.context = context;
+    if (context.state === 'suspended') void context.resume().catch(() => undefined);
     if (outputDeviceId) void context.setSinkId?.(outputDeviceId).catch(() => undefined);
     const pattern = options.tone ? RINGTONE_PATTERNS[options.tone] : this.pattern;
     const level = pattern.gain * clampVolume(options.volume ?? 1);

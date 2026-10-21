@@ -1,7 +1,7 @@
 import { ChannelType, type Channel } from '@shared/contracts/rest';
 import { timestampOf } from './snowflake';
 import { item, sep, tidy, type MenuModel } from './menuModel';
-import { MUTE_DURATIONS } from './mute';
+import { MUTE_DURATIONS } from './notificationSettings';
 
 /** channelId -> last_message_id at the moment the DM was closed (empty string when it had none). */
 export type ClosedDms = Record<string, string>;

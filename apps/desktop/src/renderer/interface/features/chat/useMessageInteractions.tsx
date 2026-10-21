@@ -1,7 +1,6 @@
 import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { useCallback, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -10,7 +9,7 @@ import type { MenuItemModel } from '@renderer/domain/menuModel';
 import { buildMessageMenu, buildToolbar, type MessageTarget } from '@renderer/domain/messageMenuModel';
 import { parseApiEmoji, quickReactions, type QuickEmoji } from '@renderer/domain/quickReactions';
 import { Permission } from '@shared/contracts/permissions';
-import { attempt, copyText } from '../../app/actions';
+import { attempt, copyText, markMessageUnread } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { openExternalUrl } from '../../app/links';
 import { addEmojiToGuild, copyImage, saveImage, searchGoogle, speakText, speechSupported } from '../../app/messageActions';
@@ -57,11 +56,7 @@ function EmojiGlyph({ emoji }: { emoji: QuickEmoji }) {
 
 /** Marks the channel unread from this message by moving the read marker to the message before it. */
 export function markUnreadFrom(channelId: string, messageId: string): void {
-  const ids = useMessageStore.getState().timelines[channelId]?.ids ?? [];
-  const i = ids.indexOf(messageId);
-  const prev = i > 0 ? (ids[i - 1] ?? null) : null;
-  useReadStateStore.getState().setLastRead(channelId, prev);
-  if (prev) void getRuntime().api.ack(channelId, prev).catch(() => undefined);
+  markMessageUnread(channelId, messageId);
 }
 
 export interface MessageInteractions {

@@ -181,6 +181,14 @@ button.mode-badge:active { transform: scale(0.96); }
 .new-divider { color: var(--danger); } .new-divider::after { background: color-mix(in oklch, var(--danger) 60%, transparent); } .new-divider::before { display: none; }
 .new-divider span { padding: 1px 8px; border-radius: 4px; background: var(--danger); color: white; order: 2; }
 .new-divider::after { order: 1; }
+.unread-bar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; gap: 12px; padding: 4px 16px; background: var(--accent); color: var(--accent-fg); font-size: var(--fs-meta); font-weight: 600; border-radius: 0 0 8px 8px; animation: pop-in 180ms var(--ease-out); }
+.unread-bar-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unread-bar-action { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; color: inherit; font-weight: 650; } .unread-bar-action:hover { background: color-mix(in oklch, currentColor 18%, transparent); }
+.reply-preview.is-link { cursor: pointer; } .reply-preview.is-link:hover .reply-text { text-decoration: underline; }
+.pin-card.is-link { cursor: pointer; } .pin-card.is-link:hover { background: color-mix(in oklch, var(--fg) 4%, transparent); }
+.message.is-flash { animation: message-flash 2.2s var(--ease-out); }
+@keyframes message-flash { 0%, 55% { background: color-mix(in oklch, var(--accent) 22%, transparent); box-shadow: inset 3px 0 0 var(--accent); } 100% { background: transparent; box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .message.is-flash { animation: none; background: color-mix(in oklch, var(--accent) 22%, transparent); } }
 .jump-bottom { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: var(--fs-meta); font-weight: 600; animation: pop-in 180ms var(--ease-out); }
 
 .message { position: relative; padding: 2px 16px 2px 16px; --ring-bg: var(--bg-1); }
@@ -464,6 +472,14 @@ button.mode-badge:active { transform: scale(0.96); }
 .role-add-list button:hover, .role-add-list button:focus-visible { background: var(--bg-4, rgba(255,255,255,.1)); }
 .occupant { cursor: pointer; }
 
+.override-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.override-row { display: flex; align-items: center; gap: 8px; } .override-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox { max-height: 70vh; overflow-y: auto; } .inbox-group h4 { margin: 4px 0; color: var(--fg-muted); font-size: var(--fs-meta); text-transform: uppercase; letter-spacing: 0.04em; }
+.inbox-group ul { display: flex; flex-direction: column; gap: 4px; }
+.inbox-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; background: var(--bg-3); } .inbox-item:hover { background: color-mix(in oklch, var(--fg) 8%, var(--bg-3)); }
+.inbox-meta { font-size: var(--fs-meta); color: var(--fg-muted); } .inbox-meta time { margin-left: 6px; color: var(--fg-subtle); }
+.inbox-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titlebar-icon { -webkit-app-region: no-drag; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: var(--fg-muted); } .titlebar-icon:hover { background: color-mix(in oklch, var(--fg) 8%, transparent); color: var(--fg); }
 /* Media grid, tiles, spoilers, players, previews, lightbox, embeds (client#54, messages#12) */
 .media-grid { display: block; max-width: min(440px, 100%); }
 .media-grid.is-multi { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: min(440px, 100%); border-radius: 12px; overflow: hidden; }
@@ -553,6 +569,4 @@ button.mode-badge:active { transform: scale(0.96); }
 .search-line mark { background: color-mix(in oklch, var(--warning) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
 .search-skeleton { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; }
 .search-pager { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-caption); color: var(--fg-muted); }
-.message.is-jump-target { animation: jump-flash 2.5s ease-out; }
-@keyframes jump-flash { 0%, 55% { background: color-mix(in oklch, var(--accent) 22%, transparent); box-shadow: inset 3px 0 0 var(--accent); } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
-@media (prefers-reduced-motion: reduce) { .message.is-jump-target { animation: none; background: color-mix(in oklch, var(--accent) 16%, transparent); } .search-box { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .search-box { transition: none; } }

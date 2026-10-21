@@ -1,11 +1,14 @@
-import { CaretDoubleUp, Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, CaretDoubleUp, Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { isGuildMuted, MUTE_DURATIONS, scopeKey } from '@renderer/domain/notificationSettings';
 import { Permission } from '@shared/contracts/permissions';
 import { ChannelType } from '@shared/contracts/rest';
 import { attempt, deleteGuild, leaveGuild, markGuildRead } from '../../app/actions';
+import { muteGuild } from '../../app/notificationActions';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';
 
@@ -13,8 +16,10 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
   const perms = useGuildPermissions(guildId);
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const me = useSessionStore((s) => s.user?.id);
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const ui = useUiStore.getState();
   if (!guild) return [];
+  const muted = isGuildMuted(settings, Date.now());
   const isOwner = guild.owner_id === me;
   const firstChannel = Object.values(useGuildStore.getState().channels).find((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT);
   const categoryIds = Object.values(useGuildStore.getState().channels)
@@ -22,6 +27,15 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
     .map((c) => c.id);
   const entries: MenuEntry[] = [
     { kind: 'item', label: 'Mark as read', icon: <Check size={16} />, onSelect: () => markGuildRead(guildId) },
+    muted
+      ? { kind: 'item', label: 'Unmute server', icon: <BellRinging size={16} />, onSelect: () => void muteGuild(guildId, undefined) }
+      : {
+          kind: 'submenu',
+          label: 'Mute server',
+          icon: <BellSlash size={16} />,
+          entries: MUTE_DURATIONS.map((d) => ({ kind: 'item' as const, label: d.label, onSelect: () => void muteGuild(guildId, d.seconds) })),
+        },
+    { kind: 'item', label: 'Notification settings', icon: <BellRinging size={16} />, onSelect: () => ui.openDialog({ kind: 'guildNotifications', guildId }) },
     {
       kind: 'item',
       label: 'Collapse all categories',

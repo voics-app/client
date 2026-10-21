@@ -16,16 +16,15 @@ export interface Timeline {
   ids: string[];
   byId: Record<string, ChatMessage>;
   hasMoreBefore: boolean;
+  /** True while the timeline is a window in the past (jumped to a message): newer messages exist on the server. */
+  hasMoreAfter: boolean;
   loaded: boolean;
-  /** A window around an old message (search jump): newer messages are not appended until the latest is reloaded. */
-  detached?: boolean;
 }
 
 export interface MessageState {
   timelines: Record<string, Timeline>;
-  setHistory(channelId: string, messages: ChatMessage[], options: { prepend: boolean; hasMoreBefore: boolean }): void;
-  /** Replaces the timeline with a window that does not reach the present. */
-  setWindow(channelId: string, messages: ChatMessage[], options: { hasMoreBefore: boolean }): void;
+  /** `prepend` adds older messages, `append` newer ones; neither replaces the window. */
+  setHistory(channelId: string, messages: ChatMessage[], options: { prepend: boolean; hasMoreBefore: boolean; append?: boolean; hasMoreAfter?: boolean }): void;
   receive(message: ChatMessage): void;
   addOptimistic(message: ChatMessage): void;
   failOptimistic(channelId: string, nonce: string, error: string): void;
@@ -38,7 +37,7 @@ export interface MessageState {
   reset(): void;
 }
 
-const emptyTimeline = (): Timeline => ({ ids: [], byId: {}, hasMoreBefore: true, loaded: false });
+const emptyTimeline = (): Timeline => ({ ids: [], byId: {}, hasMoreBefore: true, hasMoreAfter: false, loaded: false });
 const emojiKey = (e: Emoji) => (e.id ? `${e.name}:${e.id}` : (e.name ?? ''));
 
 function sortIds(ids: string[], byId: Record<string, ChatMessage>): string[] {
@@ -62,30 +61,29 @@ function mapMessage(t: Timeline, id: string, fn: (m: ChatMessage) => ChatMessage
 
 export const useMessageStore = create<MessageState>((set) => ({
   timelines: {},
-  setHistory: (channelId, messages, { prepend, hasMoreBefore }) =>
+  setHistory: (channelId, messages, { prepend, hasMoreBefore, append = false, hasMoreAfter = false }) =>
     set((s) =>
       updateTimeline(s, channelId, (t) => {
-        const byId = { ...(prepend ? t.byId : Object.fromEntries(Object.entries(t.byId).filter(([, m]) => m.localState))) };
+        const keep = prepend || append;
+        const byId = { ...(keep ? t.byId : Object.fromEntries(Object.entries(t.byId).filter(([, m]) => m.localState))) };
         for (const m of messages) byId[m.id] = m;
-        const base = prepend ? t.ids : t.ids.filter((id) => byId[id]?.localState);
-        return { ids: sortIds([...base, ...messages.map((m) => m.id)], byId), byId, hasMoreBefore, loaded: true, detached: prepend ? t.detached : false };
-      }),
-    ),
-  setWindow: (channelId, messages, { hasMoreBefore }) =>
-    set((s) =>
-      updateTimeline(s, channelId, () => {
-        const byId = Object.fromEntries(messages.map((m) => [m.id, m]));
-        return { ids: sortIds(messages.map((m) => m.id), byId), byId, hasMoreBefore, loaded: true, detached: true };
+        const base = keep ? t.ids : t.ids.filter((id) => byId[id]?.localState);
+        return {
+          ids: sortIds([...base, ...messages.map((m) => m.id)], byId),
+          byId,
+          hasMoreBefore: append ? t.hasMoreBefore : hasMoreBefore,
+          hasMoreAfter: prepend ? t.hasMoreAfter : hasMoreAfter,
+          loaded: true,
+        };
       }),
     ),
   receive: (message) =>
     set((s) =>
       updateTimeline(s, message.channel_id, (t) => {
-        // A detached window shows old history; the live message appears once the latest is reloaded.
-        if (t.detached && !t.byId[message.id]) return t;
         const byId = { ...t.byId };
         let ids = t.ids;
         const nonce = message.nonce != null ? String(message.nonce) : null;
+        if (t.hasMoreAfter && !byId[message.id] && !(nonce && byId[nonce]?.localState)) return t;
         if (nonce && byId[nonce]?.localState) {
           delete byId[nonce];
           ids = ids.filter((id) => id !== nonce);

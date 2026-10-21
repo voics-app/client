@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { jumpToMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { gentle } from '../../shared/ui/motion';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -24,7 +25,7 @@ function PinsPanel({ channelId }: { channelId: string }) {
       {pins.data?.length === 0 && <EmptyState icon={<PushPin size={32} weight="light" />} title="No pinned messages" body="Pin important messages so they are easy to find." />}
       <ul className="pin-list">
         {pins.data?.map((m) => (
-          <li key={m.id} className="pin-card">
+          <li key={m.id} className="pin-card is-link" onClick={() => jumpToMessage(channelId, m.id)} title="Jump to message">
             <header><Avatar id={m.author.id} name={displayName(m.author)} avatar={m.author.avatar} size={22} /><strong>{displayName(m.author)}</strong><time>{new Date(m.timestamp).toLocaleDateString()}</time></header>
             <MarkdownView source={m.content} guildId={m.guild_id} />
           </li>

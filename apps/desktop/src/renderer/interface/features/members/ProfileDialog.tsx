@@ -6,14 +6,15 @@ import { usePresenceStore, useRelationshipStore } from '@renderer/application/st
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { RelationshipType, type User } from '@shared/contracts/rest';
-import { attempt, copyText } from '../../app/actions';
+import { attempt, copyText, reportError } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { RolePills } from './RolePills';
-import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
+import { useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { saveUserNote } from '@renderer/application/notificationSync';
 import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
 
@@ -58,7 +59,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
   const query = useQuery({ queryKey: ['user', userId], queryFn: () => getRuntime().api.user(userId), initialData: member?.user as User | undefined, staleTime: 60_000 });
   const user = query.data;
   const isMe = me?.id === userId;
-  const note = useLocalPeopleStore((s) => s.notes[userId] ?? '');
+  const note = useUserNotesStore((s) => s.byUser[userId] ?? '');
 
   const message = async () => {
     const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
@@ -112,7 +113,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
             {!isMe && (
               <section className="profile-section">
                 <h4>Note</h4>
-                <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onChange={(e) => useLocalPeopleStore.getState().setNote(userId, e.target.value)} />
+                <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))} />
               </section>
             )}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}

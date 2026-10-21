@@ -110,3 +110,56 @@ export function withMute(
   const rest = settings.channel_overrides.filter((o) => o.channel_id !== channelId);
   return { ...settings, channel_overrides: next.message_notifications === null && !muted ? rest : [...rest, next] };
 }
+
+export interface ChannelRef {
+  id: string;
+  parent_id?: string | null;
+}
+
+/** Muted by the guild, by the channel itself, or by its category. */
+export function isChannelMutedDeep(settings: GuildNotificationSettings | undefined, channel: ChannelRef, now: number): boolean {
+  if (isChannelMuted(settings, channel.id, now)) return true;
+  return !!channel.parent_id && isChannelMuted(settings, channel.parent_id, now);
+}
+
+/** Channel override, else its category's, else the guild level, else the server default. */
+export function effectiveLevelDeep(
+  settings: GuildNotificationSettings | undefined,
+  channel: ChannelRef,
+  guildDefault: NotificationLevel,
+): NotificationLevel {
+  const own = channelOverride(settings, channel.id)?.message_notifications;
+  if (own != null) return own;
+  const parent = channel.parent_id ? channelOverride(settings, channel.parent_id)?.message_notifications : null;
+  return parent ?? settings?.message_notifications ?? guildDefault;
+}
+
+/** The server's `default_message_notifications` as a level (anything but "only mentions" means all). */
+export function serverDefaultLevel(value: number | undefined): NotificationLevel {
+  return value === 1 ? 1 : 0;
+}
+
+export const NOTIFICATION_LEVELS: { value: NotificationLevel; label: string }[] = [
+  { value: 0, label: 'All messages' },
+  { value: 1, label: 'Only @mentions' },
+  { value: 2, label: 'Nothing' },
+];
+
+/** Optimistic local result of setting a notification level (`null` inherits) on the guild or one channel. */
+export function withLevel(settings: GuildNotificationSettings, channelId: string | null, level: NotificationLevel | null): GuildNotificationSettings {
+  if (channelId === null) return { ...settings, message_notifications: level };
+  const existing = channelOverride(settings, channelId);
+  const next: ChannelNotificationOverride = {
+    channel_id: channelId,
+    message_notifications: level,
+    muted: existing?.muted ?? false,
+    mute_config: existing?.mute_config ?? null,
+  };
+  const rest = settings.channel_overrides.filter((o) => o.channel_id !== channelId);
+  return { ...settings, channel_overrides: level === null && !next.muted ? rest : [...rest, next] };
+}
+
+/** Channel overrides that still change something (a level, or a mute that has not expired). */
+export function activeOverrides(settings: GuildNotificationSettings | undefined, now: number): ChannelNotificationOverride[] {
+  return (settings?.channel_overrides ?? []).filter((o) => o.message_notifications !== null || isMuteActive(o.muted, o.mute_config, now));
+}

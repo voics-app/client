@@ -15,13 +15,15 @@ export interface MentionContext {
   myRoleIds: readonly string[];
   /** Suppress @everyone / @here pings (per-server setting). */
   suppressEveryone?: boolean;
+  /** Suppress mentions of the viewer's roles (per-server setting). */
+  suppressRoles?: boolean;
 }
 
 /** DMs, direct @user mentions, mentions of one of the viewer's roles, and @everyone/@here (unless suppressed). */
 export function isMentioned(message: PolicyMessage, ctx: MentionContext): boolean {
   if (!message.guild_id) return true;
   if (message.mentions.some((u) => u.id === ctx.meId)) return true;
-  if (message.mention_roles?.some((r) => ctx.myRoleIds.includes(r))) return true;
+  if (!ctx.suppressRoles && message.mention_roles?.some((r) => ctx.myRoleIds.includes(r))) return true;
   return message.mention_everyone && !ctx.suppressEveryone;
 }
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { usePrefsStore, DEFAULT_PREFS } from '@renderer/application/stores/prefsStore';
@@ -11,6 +12,16 @@ import { ALL_PERMISSIONS, Permission } from '@shared/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 import { selectionWithin, targetFromElement } from '@renderer/interface/features/chat/contextTarget';
+
+vi.mock('@renderer/interface/app/runtime', () => ({
+  getRuntime: () => ({
+    api: {
+      // The server echoes the optimistic state the client just wrote.
+      updateGuildNotificationSettings: async (guildId: string | null) => useNotificationSettingsStore.getState().byScope[guildId ?? '@me'],
+      ack: async () => undefined,
+    },
+  }),
+}));
 
 const G = 'g1';
 const user = (id: string) => ({ id, username: id, global_name: null, avatar: null });
@@ -68,6 +79,7 @@ const menuLabels = () => screen.getAllByRole('menuitem').map((el) => (el.textCon
 
 beforeEach(() => {
   usePrefsStore.setState({ ...DEFAULT_PREFS });
+  useNotificationSettingsStore.getState().reset();
   seed();
 });
 afterEach(cleanup);
@@ -152,13 +164,13 @@ describe('message right-click menu', () => {
     expect(menuLabels()).toEqual(expect.arrayContaining(['Edit Message', 'Delete Message']));
   });
 
-  it('Mark Unread moves the read marker to the previous message', () => {
+  it('Mark Unread moves the read marker to just before the message', () => {
     useReadStateStore.setState({ byChannel: { c1: { lastReadId: '50', mentionCount: 0 } } });
-    renderMessage();
+    renderMessage(message({ id: '300' }));
     fireEvent.contextMenu(root());
     fireEvent.click(screen.getByRole('menuitem', { name: 'Mark Unread' }));
-    // No previous message in the (empty) timeline: the marker is cleared so the whole channel counts unread.
-    expect(useReadStateStore.getState().byChannel.c1?.lastReadId).toBeNull();
+    // The marker lands just before the message, so it and everything after count as unread.
+    expect(useReadStateStore.getState().byChannel.c1?.lastReadId).toBe('299');
   });
 
   it('a link inside the message opens a link menu first', () => {
@@ -255,9 +267,9 @@ describe('channel sidebar', () => {
     fireEvent.contextMenu(screen.getByText('Text'));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Mute Category' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'For 1 hour' }));
-    const s = usePrefsStore.getState();
-    expect(s.mutedChannels.cat1).toBe(true);
-    expect(s.muteUntil.cat1).toBeGreaterThan(Date.now() + 59 * 60_000);
+    const o = useNotificationSettingsStore.getState().byScope[G]!.channel_overrides.find((x) => x.channel_id === 'cat1')!;
+    expect(o.muted).toBe(true);
+    expect(Date.parse(o.mute_config!.end_time!)).toBeGreaterThan(Date.now() + 59 * 60_000);
     // muted category dims its channels
     expect(document.querySelectorAll('.channel-row.is-muted')).toHaveLength(3);
   });

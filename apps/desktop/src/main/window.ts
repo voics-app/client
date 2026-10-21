@@ -51,6 +51,8 @@ export function createMainWindow(): BrowserWindow {
       allowRunningInsecureContent: false,
       spellcheck: true,
       backgroundThrottling: false,
+      // Ringtone and sound effects are synthesised with Web Audio and must start without a click.
+      autoplayPolicy: 'no-user-gesture-required',
     },
   });
 
