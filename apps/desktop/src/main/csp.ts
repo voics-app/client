@@ -25,7 +25,7 @@ export function buildCsp(profile: ConnectionProfile, devServer: string | null): 
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     `img-src 'self' data: blob: https: ${local ? 'http://localhost:* http://127.0.0.1:*' : ''}`.trim(),
-    "media-src 'self' blob: https: mediastream:",
+    `media-src ${["'self'", 'blob:', 'https:', 'mediastream:', ...(local ? ['http://localhost:*', 'http://127.0.0.1:*'] : [])].join(' ')}`,
     `connect-src ${[...new Set(connect)].join(' ')}`,
     'frame-src https://www.youtube-nocookie.com https://player.vimeo.com',
     "object-src 'none'",
