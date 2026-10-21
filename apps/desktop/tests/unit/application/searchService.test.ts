@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Channel, Message, MessageSearchResponse } from '@shared/contracts/rest';
 import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSearchStore } from '@renderer/application/stores/searchStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
 
 function msg(id: string, content: string, hit = false): Message {
   return {
@@ -107,28 +105,5 @@ describe('SearchService', () => {
     release({ total_results: 5, messages: [] });
     await first;
     expect(useSearchStore.getState()).toMatchObject({ total: 1, submitted: 'new' });
-  });
-});
-
-describe('jump support in the stores', () => {
-  it('a detached window ignores live messages until the latest is reloaded', () => {
-    const store = useMessageStore.getState();
-    store.reset();
-    store.setWindow('c1', [msg('100', 'old') as never], { hasMoreBefore: true });
-    expect(useMessageStore.getState().timelines.c1!.detached).toBe(true);
-    store.receive(msg('900', 'live') as never);
-    expect(useMessageStore.getState().timelines.c1!.ids).toEqual(['100']);
-    store.setHistory('c1', [msg('900', 'live') as never], { prepend: false, hasMoreBefore: true });
-    expect(useMessageStore.getState().timelines.c1).toMatchObject({ detached: false, ids: ['900'] });
-  });
-
-  it('repeated jumps to the same message get a fresh nonce', () => {
-    const ui = useUiStore.getState();
-    ui.jumpTo('c1', 'm1');
-    const first = useUiStore.getState().jump!.nonce;
-    ui.jumpTo('c1', 'm1');
-    expect(useUiStore.getState().jump!.nonce).toBe(first + 1);
-    ui.clearJump();
-    expect(useUiStore.getState().jump).toBeNull();
   });
 });

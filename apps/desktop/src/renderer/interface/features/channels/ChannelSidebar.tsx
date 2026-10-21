@@ -7,7 +7,8 @@ import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
 import { isUnread } from '@renderer/domain/unread';
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
-import { isChannelMuted } from '@renderer/domain/mute';
+import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { Permission } from '@shared/contracts/permissions';
 import { ChannelType, type Channel, type VoiceState } from '@shared/contracts/rest';
 import { channelIcon, openChannel } from '../../app/navigation';
@@ -46,9 +47,8 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
 
 function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) {
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
-  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
-  const muteUntil = usePrefsStore((s) => s.muteUntil);
-  const muted = isChannelMuted({ mutedChannels, muteUntil }, channel, Date.now());
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
+  const muted = isChannelMutedDeep(settings, channel, Date.now());
   const perms = useChannelPermissions(channel.id);
   const speaking = useVoiceStore((s) => s.speaking);
   const voiceStates = useVoiceStore((s) => s.states);
@@ -115,8 +115,7 @@ function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) 
 function Category({ category, children, guildId, siblings }: { category: Channel | null; children: Channel[]; guildId: string; siblings: string[] }) {
   const collapsed = usePrefsStore((s) => (category ? s.collapsedCategories[category.id] : false));
   const toggle = usePrefsStore((s) => s.toggleMap);
-  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
-  const muteUntil = usePrefsStore((s) => s.muteUntil);
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const reads = useReadStateStore((s) => s.byChannel);
   const voiceStates = useVoiceStore((s) => s.states);
   const openDialog = useUiStore((s) => s.openDialog);
@@ -133,15 +132,16 @@ function Category({ category, children, guildId, siblings }: { category: Channel
       const read = reads[c.id];
       return {
         id: c.id,
-        muted: isChannelMuted({ mutedChannels, muteUntil }, c, now),
+        muted: isChannelMutedDeep(settings, c, now),
         unread: !isVoice && isUnread(c.last_message_id, read?.lastReadId),
         mentions: read?.mentionCount ?? 0,
         occupied: isVoice && usersInChannel(voiceStates, c.guild_id, c.id).length > 0,
       };
     });
-  }, [children, reads, mutedChannels, muteUntil, voiceStates]);
+  }, [children, reads, settings, voiceStates]);
   const shown = visibleChannelIds(facts, Boolean(collapsed), activeId);
-  const visible = children.filter((c) => shown.has(c.id));
+  const hideMuted = Boolean(settings?.hide_muted_channels);
+  const visible = children.filter((c) => shown.has(c.id) && !(hideMuted && c.id !== activeId && facts.find((f) => f.id === c.id)?.muted));
   const hasUnread = facts.some((f) => (f.unread && !f.muted) || f.mentions > 0);
   const entries = category
     ? CategoryContextMenuEntries(category, children, siblings, perms, { guildId, openDialog, openSettings, hasUnread, markRead: () => children.forEach((c) => markChannelRead(c.id)) })

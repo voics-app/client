@@ -3,7 +3,7 @@ import { hasActivity, isPrivateChannel, offscreenMentions, visibleChannelIds, ty
 import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
 import { idsOf, tidy, item, sep } from '@renderer/domain/menuModel';
 import { buildMessageMenu, buildToolbar, type MessageMenuContext } from '@renderer/domain/messageMenuModel';
-import { applyMute, applyUnmute, isChannelMuted, isIdMuted, MUTE_DURATIONS } from '@renderer/domain/mute';
+import { emptySettings, isChannelMutedDeep, MUTE_DURATIONS, withMute } from '@renderer/domain/notificationSettings';
 import { DEFAULT_QUICK_REACTIONS, parseApiEmoji, quickReactions, recordReaction } from '@renderer/domain/quickReactions';
 import type { Channel } from '@shared/contracts/rest';
 
@@ -129,17 +129,17 @@ describe('quick reactions', () => {
 describe('mute durations', () => {
   it('lists Discord durations', () => expect(MUTE_DURATIONS.map((d) => d.id)).toEqual(['15m', '1h', '3h', '8h', '24h', 'forever']));
   it('expires timed mutes and keeps forever mutes', () => {
-    const s = applyMute({ mutedChannels: {}, muteUntil: {} }, ['a', 'b'], 60_000, 1000);
-    expect(isIdMuted(s, 'a', 1000 + 59_999)).toBe(true);
-    expect(isIdMuted(s, 'a', 1000 + 60_000)).toBe(false);
-    const f = applyMute(s, ['a'], null, 5000);
-    expect(isIdMuted(f, 'a', 10 ** 15)).toBe(true);
-    expect(isIdMuted(applyUnmute(f, ['a']), 'a', 0)).toBe(false);
+    const s = withMute(emptySettings('g'), 'a', 60, 1000);
+    expect(isChannelMutedDeep(s, { id: 'a' }, 1000 + 59_999)).toBe(true);
+    expect(isChannelMutedDeep(s, { id: 'a' }, 1000 + 60_000)).toBe(false);
+    const f = withMute(s, 'a', null, 5000);
+    expect(isChannelMutedDeep(f, { id: 'a' }, 10 ** 15)).toBe(true);
+    expect(isChannelMutedDeep(withMute(f, 'a', undefined, 0), { id: 'a' }, 0)).toBe(false);
   });
   it('a muted category mutes its channels', () => {
-    const s = applyMute({ mutedChannels: {}, muteUntil: {} }, ['cat'], null, 0);
-    expect(isChannelMuted(s, { id: 'c', parent_id: 'cat' }, 1)).toBe(true);
-    expect(isChannelMuted(s, { id: 'c', parent_id: 'other' }, 1)).toBe(false);
+    const s = withMute(emptySettings('g'), 'cat', null, 0);
+    expect(isChannelMutedDeep(s, { id: 'c', parent_id: 'cat' }, 1)).toBe(true);
+    expect(isChannelMutedDeep(s, { id: 'c', parent_id: 'other' }, 1)).toBe(false);
   });
 });
 

@@ -3,7 +3,6 @@ import { Compass, House, Plus } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { isUnread } from '@renderer/domain/unread';
@@ -12,7 +11,8 @@ import { openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
 import { assetCandidates } from '@renderer/domain/assets';
 import { AssetImage } from '../../shared/ui/AssetImage';
-import { isChannelMuted } from '@renderer/domain/mute';
+import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { initialsOf } from '../../shared/ui/Avatar';
 import { Count } from '../../shared/ui/Misc';
 import { Tooltip } from '../../shared/ui/Tooltip';
@@ -23,19 +23,19 @@ import { GuildContextMenu } from '../channels/GuildMenu';
 export function useGuildActivity(guildId: string): { unread: boolean; mentions: number } {
   const channels = useGuildStore((s) => s.channels);
   const reads = useReadStateStore((s) => s.byChannel);
-  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
-  const muteUntil = usePrefsStore((s) => s.muteUntil);
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   return useMemo(() => {
     let unread = false;
     let mentions = 0;
     for (const c of Object.values(channels)) {
       if (c.guild_id !== guildId || c.type !== ChannelType.GUILD_TEXT) continue;
       const r = reads[c.id];
+      const muted = isChannelMutedDeep(settings, c, Date.now());
       mentions += r?.mentionCount ?? 0;
-      if (!isChannelMuted({ mutedChannels, muteUntil }, c, Date.now()) && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
+      if (!muted && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
     }
     return { unread, mentions };
-  }, [channels, reads, mutedChannels, muteUntil, guildId]);
+  }, [channels, reads, settings, guildId]);
 }
 
 function GuildButton({ guildId, active, onDragStart, onDrop }: { guildId: string; active: boolean; onDragStart: () => void; onDrop: () => void }) {

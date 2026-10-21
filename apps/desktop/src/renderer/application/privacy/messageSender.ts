@@ -1,11 +1,15 @@
+import { compareSnowflakes } from '@renderer/domain/snowflake';
 /** Routes outgoing messages by effective delivery mode (P11) and owns the per-chat / account mode switches. */
 import { ApiErrorCode, type Channel, type CreateMessageBody, type DeliveryMode } from '@shared/contracts/rest';
 import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { useMentionInboxStore } from '../stores/mentionInboxStore';
+import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
+import { inboxEntryOf } from '@renderer/domain/mentionInbox';
+import { scopeKey } from '@renderer/domain/notificationSettings';
 import { useUploadStore } from '../stores/uploadStore';
-import { compareSnowflakes } from '@renderer/domain/snowflake';
 import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
@@ -32,6 +36,21 @@ export interface MessageSenderDeps {
 
 function isModeConflict(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: number }).code === ApiErrorCode.DELIVERY_MODE_CONFLICT;
+}
+
+/** Feeds the Mentions inbox from freshly loaded history. */
+function collectMentions(channel: Channel, messages: ChatMessage[]): void {
+  const me = useSessionStore.getState().user?.id;
+  if (!me || !channel.guild_id) return;
+  const settings = useNotificationSettingsStore.getState().byScope[scopeKey(channel.guild_id)];
+  const ctx = {
+    meId: me,
+    myRoleIds: useGuildStore.getState().members[channel.guild_id]?.[me]?.roles ?? [],
+    suppressEveryone: settings?.suppress_everyone,
+    suppressRoles: settings?.suppress_roles,
+  };
+  const entries = messages.flatMap((m) => inboxEntryOf(m, ctx) ?? []);
+  if (entries.length > 0) useMentionInboxStore.getState().addMany(entries);
 }
 
 export class MessageSender {
@@ -118,30 +137,44 @@ export class MessageSender {
     for (const message of [...local, ...remote]) merged.set(message.id, message);
     const hasMore = mode === 'standard' ? remote.length >= HISTORY_PAGE_SIZE : local.length >= HISTORY_PAGE_SIZE;
     store.setHistory(channel.id, [...merged.values()], { prepend, hasMoreBefore: hasMore });
+    collectMentions(channel, [...merged.values()]);
+  }
+
+  /**
+   * Replaces the timeline with the window around `messageId` (jump to a link, reply, pin, search hit or first
+   * unread). Standard chats ask the server; private chats only have their local store, so they get the page
+   * ending at that message. Either way the window is detached from the present (`hasMoreAfter`).
+   */
+  async loadAround(channel: Channel, messageId: string): Promise<void> {
+    const mode = this.resolveMode(channel);
+    const store = useMessageStore.getState();
+    if (mode === 'standard') {
+      const remote = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
+      if (remote.length === 0) return;
+      const newest = remote.reduce((m, x) => (compareSnowflakes(x.id, m) > 0 ? x.id : m), remote[0]!.id);
+      const last = channel.last_message_id;
+      store.setHistory(channel.id, remote, { prepend: false, hasMoreBefore: true, hasMoreAfter: !last || compareSnowflakes(newest, last) < 0 });
+      return;
+    }
+    const known = store.timelines[channel.id]?.byId[messageId];
+    const sortKey = (known ? Date.parse(known.timestamp) : Date.now()) + 1;
+    const local = await this.deps.history.list(channel.id, sortKey, HISTORY_PAGE_SIZE);
+    store.setHistory(channel.id, local, { prepend: false, hasMoreBefore: local.length >= HISTORY_PAGE_SIZE, hasMoreAfter: true });
+  }
+
+  /** Extends a detached (jumped-to) window towards the present. */
+  async loadNewer(channel: Channel): Promise<void> {
+    const t = useMessageStore.getState().timelines[channel.id];
+    if (!t || !t.hasMoreAfter || this.resolveMode(channel) !== 'standard') return;
+    const newest = [...t.ids].reverse().find((id) => !t.byId[id]?.localState);
+    if (!newest) return;
+    const remote = await this.deps.api.messages(channel.id, { after: newest, limit: HISTORY_PAGE_SIZE });
+    useMessageStore.getState().setHistory(channel.id, remote, { prepend: false, append: true, hasMoreBefore: true, hasMoreAfter: remote.length >= HISTORY_PAGE_SIZE });
   }
 
   /** The local (encrypted store) messages of a chat, oldest first: the search corpus of private chats. */
   localMessages(channelId: string, limit = 1000): Promise<ChatMessage[]> {
     return this.deps.history.list(channelId, null, limit);
-  }
-
-  /**
-   * Replaces the timeline with the messages around `messageId` (search jump). Standard chats ask the
-   * server; private chats only have their local store, so they get the page ending at that message.
-   */
-  async loadAround(channel: Channel, messageId: string): Promise<void> {
-    const mode = this.resolveMode(channel);
-    const store = useMessageStore.getState();
-    let messages: ChatMessage[];
-    if (mode === 'standard') {
-      const around = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
-      messages = [...around].sort((a, b) => compareSnowflakes(a.id, b.id));
-    } else {
-      const known = store.timelines[channel.id]?.byId[messageId];
-      const sortKey = (known ? Date.parse(known.timestamp) : Date.now()) + 1;
-      messages = await this.deps.history.list(channel.id, sortKey, HISTORY_PAGE_SIZE);
-    }
-    store.setWindow(channel.id, messages, { hasMoreBefore: messages.length >= HISTORY_PAGE_SIZE });
   }
 
   // ---- internals --------------------------------------------------------------------
@@ -153,6 +186,8 @@ export class MessageSender {
   }
 
   private async sendStandard(channel: Channel, input: SendInput): Promise<ChatMessage | null> {
+    // A jumped-to window has a gap to the present; reload the latest page so the sent message lands in order.
+    if (useMessageStore.getState().timelines[channel.id]?.hasMoreAfter) await this.loadHistory(channel);
     const user = useSessionStore.getState().user;
     if (!user) throw new Error('Not signed in');
     const nonce = generateLocalId(this.deps.now());

@@ -1,6 +1,7 @@
 import { RouteQueue } from '@renderer/application/routeQueue';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { ChannelType, type Channel } from '@shared/contracts/rest';
 
@@ -29,9 +30,10 @@ export function openGuild(guildId: string): void {
 /** Handles `/channels/<guild|@me>/<channel>` and `/invite/<code>` routes from deep links and notifications. */
 function applyRoute(route: string): void {
   const ui = useUiStore.getState();
-  const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?/.exec(route);
+  const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?(?:\/(\d+))?/.exec(route);
   if (channel) {
-    const [, scope, channelId] = channel;
+    const [, scope, channelId, messageId] = channel;
+    if (channelId && messageId) useReadNavStore.getState().requestJump(channelId, messageId);
     if (scope === '@me') ui.navigate({ kind: 'home', channelId: channelId ?? null });
     else ui.navigate({ kind: 'guild', guildId: scope!, channelId: channelId ?? null });
     return;

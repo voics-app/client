@@ -6,7 +6,6 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { ChannelType } from '@shared/contracts/rest';
 import { displayName } from '../shared/hooks/useNames';
-import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
 let service: SearchService | null = null;
@@ -67,9 +66,4 @@ export async function rerunSearch(channelId: string, offset = 0): Promise<void> 
   await submitSearch(channelId, useSearchStore.getState().submitted, offset);
 }
 
-/** Opens the chat of a result and scrolls the message into view, loading history around it when needed. */
-export function jumpToMessage(channelId: string, messageId: string): void {
-  const ui = useUiStore.getState();
-  if (ui.view.channelId !== channelId) openChannel(channelId);
-  ui.jumpTo(channelId, messageId);
-}
+export { jumpToMessage } from './actions';

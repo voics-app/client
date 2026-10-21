@@ -1,15 +1,16 @@
 import { Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
 import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { buildDmMenu, visibleDms } from '@renderer/domain/dmModel';
-import { isIdMuted, muteDuration } from '@renderer/domain/mute';
+import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@renderer/domain/notificationSettings';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Channel, type PresenceStatus } from '@shared/contracts/rest';
 import { isUnread } from '@renderer/domain/unread';
 import { markChannelRead } from '../../app/actions';
+import { muteChannel } from '../../app/notificationActions';
 import { closeDm, leaveGroupDm } from '../../app/dmActions';
 import { openChannel } from '../../app/navigation';
 import { displayName } from '../../shared/hooks/useNames';
@@ -24,18 +25,17 @@ import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 function DmRow({ channel: c, name, unread, mentions, active, status }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null }) {
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
-  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
-  const muteUntil = usePrefsStore((s) => s.muteUntil);
+  const muted = useNotificationSettingsStore((s) => isChannelMuted(s.byScope[DM_SCOPE], c.id, Date.now()));
   const group = c.type === ChannelType.GROUP_DM;
   const peer = group ? undefined : (c.recipients ?? [])[0];
-  const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted: isIdMuted({ mutedChannels, muteUntil }, c.id, Date.now()), hasPeer: Boolean(peer) });
+  const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted, hasPeer: Boolean(peer) });
   const entries = toMenuEntries(model, (it) => {
     switch (it.id) {
       case 'markRead': return markChannelRead(c.id);
       case 'profile': return peer ? openDialog({ kind: 'profile', userId: peer.id, guildId: null }) : undefined;
       case 'settings': return openDialog({ kind: 'groupDm', channelId: c.id });
-      case 'unmute': return usePrefsStore.getState().unmute([c.id]);
-      case 'muteFor': return usePrefsStore.getState().muteFor([c.id], muteDuration(it.arg ?? 'forever')?.ms ?? null);
+      case 'unmute': return void muteChannel(null, c.id, undefined);
+      case 'muteFor': return void muteChannel(null, c.id, MUTE_DURATIONS.find((d) => d.id === it.arg)?.seconds ?? null);
       case 'close': return closeDm(c.id);
       case 'leave':
         return openDialog({ kind: 'confirm', title: `Leave ${name}?`, body: 'You will stop receiving messages from this group.', confirmLabel: 'Leave group', danger: true, onConfirm: () => leaveGroupDm(c.id) });

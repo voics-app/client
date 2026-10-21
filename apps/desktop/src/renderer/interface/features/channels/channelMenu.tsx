@@ -1,13 +1,15 @@
 import { BellRinging, BellSlash, CaretDoubleUp, CaretDown, Check, Copy, CopySimple, Gear, Hash, Link, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import type { Dialog, SettingsTarget } from '@renderer/application/stores/uiStore';
 import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
 import type { MenuItemModel } from '@renderer/domain/menuModel';
-import { isIdMuted, muteDuration } from '@renderer/domain/mute';
+import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@renderer/domain/notificationSettings';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
+import { muteChannel } from '../../app/notificationActions';
 import { getRuntime } from '../../app/runtime';
 import { can } from '../../shared/hooks/usePermissions';
 import type { MenuEntry } from '../../shared/ui/Menu';
@@ -36,15 +38,15 @@ const ICONS = {
   collapseAll: <CaretDoubleUp size={16} />,
 };
 
-function muteNow(): { mutedChannels: Record<string, boolean>; muteUntil: Record<string, number> } {
-  const p = usePrefsStore.getState();
-  return { mutedChannels: p.mutedChannels, muteUntil: p.muteUntil };
+/** Whether this channel or category has its own active mute (the guild mute is handled by the server menu). */
+function ownMute(channel: Channel): boolean {
+  const settings = useNotificationSettingsStore.getState().byScope[scopeKey(channel.guild_id)];
+  return isChannelMuted(settings && { ...settings, muted: false }, channel.id, Date.now());
 }
 
-function applyMuteChoice(ids: string[], it: MenuItemModel): void {
-  const prefs = usePrefsStore.getState();
-  if (it.id === 'unmute') prefs.unmute(ids);
-  else if (it.id === 'muteFor') prefs.muteFor(ids, muteDuration(it.arg ?? 'forever')?.ms ?? null);
+function applyMuteChoice(channel: Channel, it: MenuItemModel): void {
+  if (it.id === 'unmute') void muteChannel(channel.guild_id ?? null, channel.id, undefined);
+  else if (it.id === 'muteFor') void muteChannel(channel.guild_id ?? null, channel.id, MUTE_DURATIONS.find((d) => d.id === it.arg)?.seconds ?? null);
 }
 
 /** Context menu for a channel row. Not a hook: reads store state at open time. */
@@ -54,7 +56,7 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
     canInvite: can(perms, Permission.CREATE_INSTANT_INVITE),
     canManage: can(perms, Permission.MANAGE_CHANNELS),
     hasUnread: h.hasUnread,
-    muted: isIdMuted(muteNow(), channel.id, Date.now()),
+    muted: ownMute(channel),
   });
   return toMenuEntries(
     model,
@@ -65,7 +67,7 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
         case 'copyLink': return void copyText(channelLink(channel.guild_id, channel.id), 'Channel link copied');
         case 'mute':
         case 'muteFor':
-        case 'unmute': return applyMuteChoice([channel.id], it);
+        case 'unmute': return applyMuteChoice(channel, it);
         case 'notifications': return h.openDialog({ kind: 'notifications', targetId: channel.id, name: channel.name ?? 'channel' });
         case 'edit': return h.openSettings({ kind: 'channel', channelId: channel.id, tab: 'overview' });
         case 'duplicate':
@@ -97,7 +99,7 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
   const model = buildCategoryMenu({
     canManage: can(perms, Permission.MANAGE_CHANNELS),
     hasUnread: h.hasUnread,
-    muted: isIdMuted(muteNow(), category.id, Date.now()),
+    muted: ownMute(category),
     collapsed,
     hasOtherCategories: siblings.length > 1,
   });
@@ -110,7 +112,7 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
         case 'collapseAll': return usePrefsStore.getState().setCollapsed(siblings, true);
         case 'mute':
         case 'muteFor':
-        case 'unmute': return applyMuteChoice([category.id], it);
+        case 'unmute': return applyMuteChoice(category, it);
         case 'notifications': return h.openDialog({ kind: 'notifications', targetId: category.id, name: category.name ?? 'category', category: true });
         case 'edit': return h.openSettings({ kind: 'channel', channelId: category.id, tab: 'overview' });
         case 'create': return h.openDialog({ kind: 'createChannel', guildId: h.guildId, parentId: category.id });

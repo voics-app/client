@@ -315,8 +315,8 @@ export class DiscordyApi implements ApiPort {
   unpin(channelId: string, messageId: string) {
     return this.del<void>(`/channels/${channelId}/pins/${messageId}`);
   }
-  ack(channelId: string, messageId: string) {
-    return this.post<void>(`/channels/${channelId}/messages/${messageId}/ack`);
+  ack(channelId: string, messageId: string, options?: { manual?: boolean; mentionCount?: number }) {
+    return this.post<void>(`/channels/${channelId}/messages/${messageId}/ack`, options?.manual ? { manual: true, mention_count: options.mentionCount ?? 0 } : undefined);
   }
   createAttachmentSlots(channelId: string, files: { filename: string; file_size: number }[]) {
     return this.post<{ attachments: AttachmentUploadSlot[] }>(`/channels/${channelId}/attachments`, {

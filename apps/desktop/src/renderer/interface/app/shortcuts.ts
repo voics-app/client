@@ -71,6 +71,10 @@ const FIXED: Record<FixedShortcutAction, () => void> = {
   prevServer: () => adjacentServer(-1),
   nextServer: () => adjacentServer(1),
   showShortcuts: toggleShortcutsDialog,
+  inbox: () => {
+    const ui = useUiStore.getState();
+    ui.openDialog(ui.dialog?.kind === 'inbox' ? null : { kind: 'inbox' });
+  },
 };
 
 /**
