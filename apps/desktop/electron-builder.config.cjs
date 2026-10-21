@@ -18,7 +18,11 @@ module.exports = {
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
+    // Data is kept by default; build/installer.nsh adds an opt-in checkbox and a /DELETEDATA flag.
     deleteAppDataOnUninstall: false,
+    include: 'build/installer.nsh',
+    // NSIS 3.0.4 emits warning 6020 for the uninstaller-only pass; electron-builder would fail the build on it.
+    warningsAsErrors: false,
     shortcutName: brand.shortName,
   },
   mac: { category: 'public.app-category.social-networking', target: ['dmg'], icon: 'build/icon.png' },
