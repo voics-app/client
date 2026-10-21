@@ -1,3 +1,5 @@
+import { ChannelNotificationDialog, GuildNotificationDialog } from '../notifications/NotificationDialogs';
+import { MentionsInbox } from '../notifications/MentionsInbox';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dmCandidates } from '@renderer/application/dmCandidates';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -21,8 +23,7 @@ import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
-import { usePrefsStore, type NotifyLevel } from '@renderer/application/stores/prefsStore';
-import { isIdMuted } from '@renderer/domain/mute';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
 
 function useClose() {
@@ -338,41 +339,6 @@ function ShortcutsDialog() {
   );
 }
 
-const NOTIFY_OPTIONS: { value: NotifyLevel; label: string }[] = [
-  { value: 'all', label: 'All messages' },
-  { value: 'mentions', label: 'Only mentions' },
-  { value: 'none', label: 'Nothing' },
-];
-
-/**
- * Per channel/category notification level. Stored on this device until the server exposes
- * notification settings (api#28); the level is honoured by desktop notifications.
- */
-function NotificationSettingsDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'notifications' }> }) {
-  const close = useClose();
-  const level = usePrefsStore((s) => s.notifyLevels[dialog.targetId] ?? 'all');
-  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
-  const muteUntil = usePrefsStore((s) => s.muteUntil);
-  const muted = isIdMuted({ mutedChannels, muteUntil }, dialog.targetId, Date.now());
-  return (
-    <Modal open onClose={close} title={`Notification settings: ${dialog.category ? '' : '#'}${dialog.name}`} width={420}>
-      <div className="stack">
-        <Field label="Notify me for">{() => <Segmented label="Notification level" value={level} options={NOTIFY_OPTIONS} onChange={(v) => usePrefsStore.getState().setNotifyLevel(dialog.targetId, v)} />}</Field>
-        {muted && (
-          <p className="confirm-body">
-            This {dialog.category ? 'category' : 'channel'} is muted.{' '}
-            <button type="button" className="link-btn" onClick={() => usePrefsStore.getState().unmute([dialog.targetId])}>Unmute</button>
-          </p>
-        )}
-        <p className="confirm-body">These settings apply on this device.</p>
-        <div className="row-end">
-          <Button variant="primary" onClick={close} data-autofocus>Done</Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
   const [busy, setBusy] = useState(false);
   const close = useClose();
@@ -425,7 +391,9 @@ function ActiveDialog() {
     case 'customStatus': return <CustomStatusDialog />;
     case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
-    case 'notifications': return <NotificationSettingsDialog dialog={dialog} />;
+    case 'notifications': return <ChannelNotificationDialog dialog={dialog} />;
+    case 'guildNotifications': return <GuildNotificationDialog guildId={dialog.guildId} />;
+    case 'inbox': return <MentionsInbox />;
     case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }

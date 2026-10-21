@@ -1,4 +1,4 @@
-import { MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
+import { Tray, MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { BRAND } from '@shared/brand';
@@ -9,6 +9,7 @@ const isMac = navigator.userAgent.includes('Mac');
 export function Titlebar() {
   const gateway = useSessionStore((s) => s.gateway);
   const open = useUiStore((s) => s.openPalette);
+  const openDialog = useUiStore((s) => s.openDialog);
   const offline = gateway !== 'ready' && gateway !== 'idle';
   return (
     <header className={`titlebar${isMac ? ' is-mac' : ''}`}>
@@ -22,6 +23,9 @@ export function Titlebar() {
         <kbd className="kbd">Ctrl K</kbd>
       </button>
       <div className="titlebar-end">
+        <button type="button" className="titlebar-icon" aria-label="Mentions inbox (Ctrl+I)" title="Mentions (Ctrl+I)" onClick={() => openDialog({ kind: 'inbox' })}>
+          <Tray size={16} />
+        </button>
         {offline && (
           <span className="net-pill" role="status">
             <WifiSlash size={14} /> {gateway === 'closed' ? 'Disconnected' : 'Reconnecting'}

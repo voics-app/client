@@ -11,7 +11,7 @@ export function formatBadgeCount(count: number): string {
 }
 
 export interface ActivitySummary {
-  /** Total unread mentions across all channels. */
+  /** Total unread mentions across all channels (mentions still count in muted ones, as in Discord). */
   mentions: number;
   /** Number of unmuted channels with unread messages. */
   unread: number;

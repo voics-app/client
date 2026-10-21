@@ -5,6 +5,10 @@ import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { useMentionInboxStore } from '../stores/mentionInboxStore';
+import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
+import { inboxEntryOf } from '@renderer/domain/mentionInbox';
+import { scopeKey } from '@renderer/domain/notificationSettings';
 import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
@@ -23,6 +27,21 @@ export interface MessageSenderDeps {
 
 function isModeConflict(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: number }).code === ApiErrorCode.DELIVERY_MODE_CONFLICT;
+}
+
+/** Feeds the Mentions inbox from freshly loaded history. */
+function collectMentions(channel: Channel, messages: ChatMessage[]): void {
+  const me = useSessionStore.getState().user?.id;
+  if (!me || !channel.guild_id) return;
+  const settings = useNotificationSettingsStore.getState().byScope[scopeKey(channel.guild_id)];
+  const ctx = {
+    meId: me,
+    myRoleIds: useGuildStore.getState().members[channel.guild_id]?.[me]?.roles ?? [],
+    suppressEveryone: settings?.suppress_everyone,
+    suppressRoles: settings?.suppress_roles,
+  };
+  const entries = messages.flatMap((m) => inboxEntryOf(m, ctx) ?? []);
+  if (entries.length > 0) useMentionInboxStore.getState().addMany(entries);
 }
 
 export class MessageSender {
@@ -109,6 +128,7 @@ export class MessageSender {
     for (const message of [...local, ...remote]) merged.set(message.id, message);
     const hasMore = mode === 'standard' ? remote.length >= HISTORY_PAGE_SIZE : local.length >= HISTORY_PAGE_SIZE;
     store.setHistory(channel.id, [...merged.values()], { prepend, hasMoreBefore: hasMore });
+    collectMentions(channel, [...merged.values()]);
   }
 
   /** Replaces the timeline with the window around `messageId` (jump to a link, reply, pin or search hit). */

@@ -1,17 +1,13 @@
-/** Device-local per-user data: private notes and local voice mute (previous volume is kept to restore). */
+/** Device-local per-user data: local voice mute (previous volume is kept to restore). Notes are synced (notificationSettingsStore). */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface LocalPeopleState {
-  notes: Record<string, string>;
   /** userId -> volume before the local mute. */
   mutedUsers: Record<string, number>;
-  setNote(userId: string, note: string): void;
   muteLocal(userId: string, previousVolume: number): void;
   unmuteLocal(userId: string): void;
 }
-
-const MAX_NOTE = 256;
 
 function storage(): Storage {
   try {
@@ -33,14 +29,7 @@ function storage(): Storage {
 export const useLocalPeopleStore = create<LocalPeopleState>()(
   persist(
     (set) => ({
-      notes: {},
       mutedUsers: {},
-      setNote: (userId, note) =>
-        set((s) => {
-          const trimmed = note.slice(0, MAX_NOTE);
-          const { [userId]: _old, ...rest } = s.notes;
-          return { notes: trimmed ? { ...rest, [userId]: trimmed } : rest };
-        }),
       muteLocal: (userId, previousVolume) => set((s) => ({ mutedUsers: { ...s.mutedUsers, [userId]: previousVolume } })),
       unmuteLocal: (userId) =>
         set((s) => {

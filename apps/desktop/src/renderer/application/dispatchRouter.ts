@@ -1,5 +1,7 @@
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
+import { inboxEntryOf } from '@renderer/domain/mentionInbox';
 import { isMentioned } from '@renderer/domain/notificationPolicy';
+import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
 import type {
   Channel,
   Emoji,
@@ -20,6 +22,7 @@ import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUp
 import { useCallStore } from './stores/callStore';
 import { useGuildStore } from './stores/guildStore';
 import { useInteractionStore } from './stores/interactionStore';
+import { useMentionInboxStore } from './stores/mentionInboxStore';
 import { useMessageStore, type ChatMessage } from './stores/messageStore';
 import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from './stores/peopleStores';
@@ -81,8 +84,15 @@ function receiveMessage(message: Message, ctx: DispatchContext): void {
   const me = meId();
   if (message.author.id === me) {
     useReadStateStore.getState().markRead(message.channel_id, message.id);
-  } else if (me && isMentioned(message, { meId: me, myRoleIds: viewerRoleIds(message.guild_id, me) })) {
-    useReadStateStore.getState().addMention(message.channel_id);
+  } else if (me) {
+    const settings = useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)];
+    const channel = useGuildStore.getState().channels[message.channel_id];
+    const ctx = { meId: me, myRoleIds: viewerRoleIds(message.guild_id, me), suppressEveryone: settings?.suppress_everyone, suppressRoles: settings?.suppress_roles };
+    if (isMentioned(message, ctx) && !isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now())) {
+      useReadStateStore.getState().addMention(message.channel_id);
+    }
+    const entry = inboxEntryOf(message, ctx);
+    if (entry) useMentionInboxStore.getState().add(entry);
   }
   ctx.onIncomingMessage(message);
 }

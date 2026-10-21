@@ -2,6 +2,8 @@ import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
+import { useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { saveUserNote } from '@renderer/application/notificationSync';
 import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -22,7 +24,7 @@ import {
   type UserMenuItemId,
 } from '@renderer/domain/userMenuModel';
 import { RelationshipType, type GuildMember, type User } from '@shared/contracts/rest';
-import { attempt, copyText } from '../../app/actions';
+import { attempt, copyText, reportError } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { joinVoiceChannel, setUserVolume } from '../../app/voiceActions';
@@ -114,7 +116,7 @@ export function UserContextMenu({
     return undefined;
   });
   const relationship = useRelationshipStore((s) => s.byUser[userId]);
-  const note = useLocalPeopleStore((s) => s.notes[userId] ?? '');
+  const note = useUserNotesStore((s) => s.byUser[userId] ?? '');
   const locallyMuted = useLocalPeopleStore((s) => userId in s.mutedUsers);
   const targetUser = user ?? member?.user ?? relationship?.user;
   const isBot = Boolean(targetUser?.bot);
@@ -372,7 +374,7 @@ export function UserContextMenu({
             maxLength={256}
             defaultValue={note}
             placeholder='Click to add a note (only visible to you)'
-            onChange={(e) => useLocalPeopleStore.getState().setNote(userId, e.target.value)}
+            onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))}
           />
         </Panel>
       )}
