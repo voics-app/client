@@ -247,6 +247,16 @@ export interface Message {
   application_id?: Snowflake;
   components?: MessageComponent[];
   interaction_metadata?: InteractionMetadata;
+  /** Search results only: true for the match, absent for its context messages. */
+  hit?: boolean;
+}
+
+/** `GET /guilds/{id}/messages/search` and `GET /channels/{id}/messages/search`. */
+export interface MessageSearchResponse {
+  total_results: number;
+  /** One group per hit, oldest first; the hit carries `hit: true`. */
+  messages: Message[][];
+  index_building?: boolean;
 }
 
 export const MessageFlag = {

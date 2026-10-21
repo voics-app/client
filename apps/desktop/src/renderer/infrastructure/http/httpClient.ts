@@ -28,7 +28,8 @@ export interface HttpClientOptions {
 
 export interface RequestOptions {
   body?: unknown;
-  query?: Record<string, string | number | boolean | undefined | null>;
+  /** Array values are sent as repeated keys. */
+  query?: Record<string, string | number | boolean | string[] | undefined | null>;
   auth?: boolean;
   headers?: Record<string, string>;
   reason?: string;
@@ -54,7 +55,11 @@ export class HttpClient {
 
   private url(path: string, query?: RequestOptions['query']): string {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== null) params.set(k, String(v));
+    for (const [k, v] of Object.entries(query ?? {})) {
+      if (v === undefined || v === null) continue;
+      if (Array.isArray(v)) for (const item of v) params.append(k, item);
+      else params.set(k, String(v));
+    }
     const qs = params.toString();
     return `${this.baseUrl}/api/v1${path}${qs ? `?${qs}` : ''}`;
   }

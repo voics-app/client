@@ -1,4 +1,5 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
+import type { SearchParams } from '@renderer/domain/messageSearch';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -20,6 +21,7 @@ import type {
   GuildMember,
   Invite,
   Message,
+  MessageSearchResponse,
   PermissionOverwrite,
   Relationship,
   Role,
@@ -118,6 +120,8 @@ export interface ApiPort {
   deleteInvite(code: string): Promise<void>;
 
   messages(channelId: string, query?: MessageQuery): Promise<Message[]>;
+  /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
+  searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
   editMessage(channelId: string, messageId: string, patch: { content: string }): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
