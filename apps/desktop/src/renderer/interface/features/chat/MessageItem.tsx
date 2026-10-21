@@ -7,7 +7,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
 import { systemMessageText } from '@renderer/domain/dmModel';
-import { MessageFlag, type Embed } from '@shared/contracts/rest';
+import { MessageFlag } from '@shared/contracts/rest';
 import { attempt } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
@@ -16,35 +16,13 @@ import { displayName, useRoleColor } from '../../shared/hooks/useNames';
 import { formatTime } from '../../shared/hooks/useNow';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Tooltip } from '../../shared/ui/Tooltip';
-import { AttachmentView } from './AttachmentView';
+import { MessageAttachments, UploadProgress } from './AttachmentView';
+import { MessageEmbeds } from './EmbedView';
 import { useMessageInteractions } from './useMessageInteractions';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { MarkdownView } from './MarkdownView';
 import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
-
-function EmbedView({ embed }: { embed: Embed }) {
-  const color = embed.color ? `#${embed.color.toString(16).padStart(6, '0')}` : 'var(--accent)';
-  return (
-    <div className="embed" style={{ borderLeftColor: color }}>
-      {embed.author && <p className="embed-author">{embed.author.name}</p>}
-      {embed.title && <p className="embed-title">{embed.url ? <a href={embed.url} data-ctx="link" data-url={embed.url} target="_blank" rel="noreferrer">{embed.title}</a> : embed.title}</p>}
-      {embed.description && <p className="embed-desc">{embed.description}</p>}
-      {embed.fields && (
-        <div className="embed-fields">
-          {embed.fields.map((f, i) => (
-            <div key={i} className={f.inline ? 'is-inline' : ''}>
-              <p className="embed-field-name">{f.name}</p>
-              <p>{f.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-      {embed.image && <img className="embed-image" data-ctx="image" data-src={embed.image.url} data-open={embed.image.url} data-filename={embed.image.url.split('/').pop()?.split('?')[0] ?? 'image'} src={embed.image.url} alt="" loading="lazy" />}
-      {embed.footer && <p className="embed-footer">{embed.footer.text}</p>}
-    </div>
-  );
-}
 
 function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
@@ -207,8 +185,9 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               {message.edited_timestamp && <span className="edited">(edited)</span>}
             </>
           )}
-          {message.attachments.length > 0 && <div className="attachments">{message.attachments.map((a) => <AttachmentView key={a.id} attachment={a} channelId={message.channel_id} />)}</div>}
-          {message.embeds.map((e, i) => <EmbedView key={i} embed={e} />)}
+          {message.attachments.length > 0 && <MessageAttachments attachments={message.attachments} channelId={message.channel_id} />}
+          {sending && message.nonce != null && <UploadProgress nonce={String(message.nonce)} />}
+          <MessageEmbeds message={message} />
           <MessageComponents message={message} />
           <Reactions message={message} />
           {ephemeral && (

@@ -15,6 +15,8 @@ export interface SendInput {
   replyTo?: string | null;
   /** Private modes encrypt these on this device first; only ciphertext ever leaves it. */
   files?: File[];
+  /** Per file, in the same order: alt text for standard chats. */
+  fileOptions?: { description?: string }[];
 }
 
 export interface PrivatePayload {

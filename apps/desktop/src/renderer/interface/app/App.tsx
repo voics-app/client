@@ -9,6 +9,7 @@ import { IncomingCallHost } from '../features/calls/IncomingCall';
 import { Shell } from '../features/shell/Shell';
 import { SettingsHost } from '../features/settings/SettingsHost';
 import { Toasts } from '../shared/ui/Toasts';
+import { Lightbox } from '../features/chat/Lightbox';
 import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
 import { useActivityReporting } from './activity';
@@ -95,6 +96,7 @@ export function App() {
           <IncomingCallHost />
           <DialogHost />
           <SettingsHost />
+          <Lightbox />
         </>
       )}
       <CommandPalette />

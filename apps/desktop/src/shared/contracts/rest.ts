@@ -185,10 +185,18 @@ export interface Attachment {
   proxy_url?: string;
   height?: number | null;
   width?: number | null;
+  /** AttachmentFlag bits (IS_SPOILER). */
+  flags?: number;
 }
+
+export const AttachmentFlag = {
+  IS_SPOILER: 1 << 3,
+} as const;
 
 export interface EmbedMedia {
   url: string;
+  /** Signed media-proxy URL on the CDN host; load this instead of `url`. */
+  proxy_url?: string;
   width?: number;
   height?: number;
 }
@@ -200,12 +208,12 @@ export interface Embed {
   url?: string;
   timestamp?: string;
   color?: number;
-  footer?: { text: string; icon_url?: string };
+  footer?: { text: string; icon_url?: string; proxy_icon_url?: string };
   image?: EmbedMedia;
   thumbnail?: EmbedMedia;
   video?: EmbedMedia;
   provider?: { name?: string; url?: string };
-  author?: { name: string; url?: string; icon_url?: string };
+  author?: { name: string; url?: string; icon_url?: string; proxy_icon_url?: string };
   fields?: { name: string; value: string; inline?: boolean }[];
 }
 
@@ -261,6 +269,7 @@ export interface MessageSearchResponse {
 }
 
 export const MessageFlag = {
+  SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,
 } as const;
@@ -543,7 +552,7 @@ export const ApiErrorCode = {
 export interface CreateMessageBody {
   content: string;
   nonce: string;
-  attachments?: { id: string; filename: string; uploaded_filename: string }[];
+  attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];
   message_reference?: MessageReference;
   embeds?: Embed[];
 }

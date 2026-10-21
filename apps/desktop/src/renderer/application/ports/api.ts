@@ -141,7 +141,7 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
-  editMessage(channelId: string, messageId: string, patch: { content: string }): Promise<Message>;
+  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
   removeReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
@@ -152,7 +152,7 @@ export interface ApiPort {
   createAttachmentSlots(channelId: string, files: { filename: string; file_size: number }[]): Promise<{ attachments: AttachmentUploadSlot[] }>;
   /** Fresh signed download URLs for attachments of a channel, given their object keys or earlier URLs. */
   refreshAttachmentUrls(channelId: string, urls: string[]): Promise<{ refreshed_urls: { original: string; refreshed: string }[] }>;
-  upload(url: string, file: Blob): Promise<void>;
+  upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;
 

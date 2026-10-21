@@ -1,6 +1,8 @@
 /** Side-effecting actions behind the message menus. Each reports failure with a toast. */
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { isLinkPreview, SUPPRESS_EMBEDS_FLAG } from '@renderer/domain/media';
 import { attempt } from './actions';
 import { googleSearchUrl, openExternalUrl } from './links';
 import { getRuntime } from './runtime';
@@ -94,4 +96,14 @@ export async function addEmojiToGuild(guildId: string, name: string, url: string
     if (guild) useGuildStore.getState().patchGuild({ id: guildId, emojis: [...(guild.emojis ?? []), created] });
     useUiStore.getState().toast({ tone: 'success', title: `Added :${created.name}: to the server` });
   }
+}
+
+/** The hover "x" on a link preview: hides every preview of the message for everyone. Rolled back if the server refuses. */
+export async function suppressEmbeds(message: ChatMessage): Promise<void> {
+  const store = useMessageStore.getState();
+  const before = { embeds: message.embeds, flags: message.flags };
+  const flags = (message.flags ?? 0) | SUPPRESS_EMBEDS_FLAG;
+  store.patch(message.channel_id, message.id, { embeds: message.embeds.filter((embed) => !isLinkPreview(embed)), flags });
+  const updated = await attempt(() => getRuntime().api.editMessage(message.channel_id, message.id, { flags }), 'Could not remove previews');
+  if (!updated) store.patch(message.channel_id, message.id, before);
 }
