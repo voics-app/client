@@ -7,6 +7,8 @@ export class ApiError extends Error {
     readonly code: number,
     message: string,
     readonly errors?: Record<string, unknown>,
+    /** Present on a 60008 login answer. */
+    readonly ticket?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -124,7 +126,7 @@ export class HttpClient {
 function errorFromResponse(status: number, text: string): ApiError {
   const envelope = parseEnvelope(text);
   const message = envelope?.message || `Request failed with HTTP ${status}`;
-  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors);
+  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors, envelope?.ticket);
 }
 
 function parseEnvelope(text: string): Partial<ApiErrorBody> | null {

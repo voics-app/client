@@ -35,6 +35,7 @@ export interface User {
   bot?: boolean;
   email?: string;
   mfa_enabled?: boolean;
+  verified?: boolean;
 }
 
 export interface CustomStatus {
@@ -492,6 +493,28 @@ export interface ApiErrorBody {
   code: number;
   message: string;
   errors?: Record<string, unknown>;
+  /** Login answered 60008: the ticket completes the login with a second factor. */
+  ticket?: string;
+  retry_after?: number;
+}
+
+export interface TotpEnrollment {
+  secret: string;
+  otpauth_uri: string;
+}
+
+export interface BackupCode {
+  /** Plaintext, present only right after generation. */
+  code?: string;
+  consumed: boolean;
+}
+
+export interface AccountChange {
+  username?: string;
+  email?: string;
+  new_password?: string;
+  /** The current password; required for the three fields above. */
+  password: string;
 }
 
 export const ApiErrorCode = {

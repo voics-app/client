@@ -64,6 +64,13 @@ export class SessionManager {
     await this.adopt(auth);
   }
 
+  /** Completes a login that answered 60008 with the ticket and a TOTP or backup code. */
+  async loginMfa(body: { ticket: string; code: string }): Promise<void> {
+    this.deps.runtime.setTokens({ access: null, refresh: null });
+    const auth = await this.deps.runtime.api.loginMfa(body);
+    await this.adopt(auth);
+  }
+
   async register(body: { email: string; username: string; password: string }): Promise<void> {
     this.deps.runtime.setTokens({ access: null, refresh: null });
     const auth = await this.deps.runtime.api.register(body);

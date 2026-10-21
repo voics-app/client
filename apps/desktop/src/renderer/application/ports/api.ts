@@ -4,7 +4,10 @@ import type {
   ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
+  AccountChange,
   AuthResponse,
+  BackupCode,
+  TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
@@ -53,6 +56,18 @@ export interface ApiPort {
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
+  loginMfa(body: { ticket: string; code: string }): Promise<AuthResponse>;
+  forgotPassword(email: string): Promise<void>;
+  resetPassword(token: string, password: string): Promise<void>;
+  verifyEmail(token: string): Promise<void>;
+  resendVerification(): Promise<void>;
+  changeAccount(change: AccountChange): Promise<User>;
+  enableTotp(password: string): Promise<TotpEnrollment>;
+  verifyTotp(code: string): Promise<BackupCode[]>;
+  disableTotp(password: string, code: string): Promise<void>;
+  backupCodes(password: string, regenerate: boolean): Promise<BackupCode[]>;
+  disableAccount(password: string): Promise<void>;
+  deleteAccount(password: string): Promise<void>;
 
   registerDevice(body: { name: string; identity_key_b64: string }): Promise<{ device_id: string }>;
   uploadKeyPackages(deviceId: string, packages: string[]): Promise<void>;
