@@ -12,6 +12,9 @@ function setup() {
     createAttachmentSlots: vi.fn(async (_c: string, files: { filename: string; file_size: number }[]) => ({
       attachments: files.map((_f, i) => ({ id: `s${i}`, upload_url: `https://cdn.test/put/${i}`, upload_filename: `attachments/500/u${i}/blob.bin` })),
     })),
+    refreshAttachmentUrls: vi.fn(async (_c: string, urls: string[]) => ({
+      refreshed_urls: urls.map((original) => ({ original, refreshed: `https://cdn.test/cdn/${original}?ex=ff&is=1&hm=00` })),
+    })),
     upload: vi.fn(async (url: string, blob: Blob) => {
       stored.set(url, new Uint8Array(await blob.arrayBuffer()));
     }),
@@ -23,7 +26,6 @@ function setup() {
   const service = new AttachmentService({
     api,
     fetchBytes,
-    cdnBase: () => 'https://cdn.test',
     createObjectUrl: (blob) => `blob:test/${blob.size}-${Math.random().toString(16).slice(2)}`,
   });
   return { service, api, stored, fetchBytes };
@@ -75,16 +77,16 @@ describe('AttachmentService receiving', () => {
     const receiver = new AttachmentService({
       api: ctx.api,
       fetchBytes: ctx.fetchBytes,
-      cdnBase: () => 'https://cdn.test',
       createObjectUrl: () => 'blob:receiver/1',
     });
     return { ...ctx, att: att!, receiver };
   }
 
-  it('downloads from the CDN base, decrypts, verifies and returns a blob url', async () => {
-    const { receiver, att, fetchBytes } = await sentAttachment();
+  it('asks the server for a signed link, downloads it, decrypts, verifies and returns a blob url', async () => {
+    const { receiver, att, fetchBytes, api } = await sentAttachment();
     await expect(receiver.resolve(att, '500')).resolves.toBe('blob:receiver/1');
-    expect(fetchBytes).toHaveBeenCalledWith('https://cdn.test/discordy-attachments/attachments/500/u0/blob.bin');
+    expect(api.refreshAttachmentUrls).toHaveBeenCalledWith('500', ['attachments/500/u0/blob.bin']);
+    expect(fetchBytes).toHaveBeenCalledWith('https://cdn.test/cdn/attachments/500/u0/blob.bin?ex=ff&is=1&hm=00');
     expect(useTransferStore.getState().transfers['m1:0']?.state).toBe('done');
   });
 
@@ -92,6 +94,13 @@ describe('AttachmentService receiving', () => {
     const { receiver, att, fetchBytes } = await sentAttachment();
     await Promise.all([receiver.resolve(att, '500'), receiver.resolve(att, '500')]);
     expect(fetchBytes).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails the download clearly when the server refuses to sign the link', async () => {
+    const { receiver, att, api, fetchBytes } = await sentAttachment();
+    api.refreshAttachmentUrls.mockRejectedValueOnce(new Error('403'));
+    await expect(receiver.resolve(att, '500')).rejects.toMatchObject({ reason: 'download_failed' });
+    expect(fetchBytes).not.toHaveBeenCalled();
   });
 
   it('refuses tampered ciphertext with an integrity error', async () => {

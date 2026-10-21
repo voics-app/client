@@ -5,6 +5,11 @@ import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/inte
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { acceptFiles, charsRemaining, formatCountdown, lastOwnEditable, MAX_MESSAGE_LENGTH, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@renderer/domain/composerLimits';
+import { searchShortcodes } from '@renderer/domain/emojiShortcodes';
+import { useDraftStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
+import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { maxFileBytes } from '@renderer/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
 import { Permission } from '@shared/contracts/permissions';
@@ -20,7 +25,6 @@ import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
 
-const MAX_FILES = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
 const COMMAND_REFRESH_MS = 60_000;
@@ -47,8 +51,17 @@ function activeToken(text: string, caret: number): { trigger: '@' | '#' | ':'; q
   return { trigger, query: m[3]!.toLowerCase(), start: caret - m[3]!.length - 1 };
 }
 
+/** Remounted per channel so each channel starts from its own draft. */
 export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
-  const [text, setText] = useState('');
+  return <ComposerInner key={channel.id} channel={channel} mode={mode} />;
+}
+
+function initialDraft(channelId: string, standard: boolean) {
+  return standard ? (useDraftStore.getState().drafts[channelId] ?? null) : null;
+}
+
+function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
   const [caret, setCaret] = useState(0);
   const [selected, setSelected] = useState(0);
@@ -57,12 +70,19 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const [commandValues, setCommandValues] = useState<OptionValues>({});
   const [running, setRunning] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const textRef = useRef(text);
+  textRef.current = text;
   const fileInput = useRef<HTMLInputElement>(null);
   const mentionMap = useRef(new Map<string, string>());
   const lastTyping = useRef(0);
   const perms = useChannelPermissions(channel.id);
   const replyTo = useUiStore((s) => s.replyTo[channel.id]);
   const setReplyTo = useUiStore((s) => s.setReplyTo);
+  const editing = useUiStore((s) => s.editing);
+  const setEditing = useUiStore((s) => s.setEditing);
+  const me = useSessionStore((s) => s.user?.id ?? null);
+  const lastSent = useSlowmodeStore((s) => s.lastSent[channel.id]);
+  const [now, setNow] = useState(() => Date.now());
   const members = useGuildStore((s) => (channel.guild_id ? s.members[channel.guild_id] : undefined));
   const guild = useGuildStore((s) => (channel.guild_id ? s.guilds[channel.guild_id] : undefined));
   const channels = useGuildStore((s) => s.channels);
@@ -74,6 +94,35 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
   const standard = mode === 'standard';
   const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
   const canAttach = !channel.guild_id || can(perms, Permission.ATTACH_FILES);
+
+  const slowmodeBypass = !channel.guild_id || can(perms, Permission.MANAGE_CHANNELS) || can(perms, Permission.MANAGE_MESSAGES);
+  const slowmodeLeft = standard && !slowmodeBypass ? slowmodeRemaining(channel.rate_limit_per_user, lastSent, now) : 0;
+  const remainingChars = charsRemaining(text);
+  const tooLong = remainingChars < 0;
+
+  useEffect(() => {
+    if (slowmodeLeft <= 0) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [slowmodeLeft > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Per-channel draft (text and reply target), kept on this device for standard-mode channels only.
+  useEffect(() => {
+    const draft = initialDraft(channel.id, standard);
+    if (draft?.replyTo && !useUiStore.getState().replyTo[channel.id]) setReplyTo(channel.id, draft.replyTo);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!standard) return;
+    const id = setTimeout(() => useDraftStore.getState().setDraft(channel.id, text, replyTo ?? null), 300);
+    return () => clearTimeout(id);
+  }, [text, replyTo, standard, channel.id]);
+  useEffect(
+    () => () => {
+      // Flush on unmount so a fast channel switch never loses the last keystrokes.
+      if (mode === 'standard') useDraftStore.getState().setDraft(channel.id, textRef.current, useUiStore.getState().replyTo[channel.id] ?? null);
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const canUseCommands = standard && (!channel.guild_id || can(perms, Permission.USE_APPLICATION_COMMANDS));
   const commandSearch = canUseCommands && !command ? slashQuery(text) : null;
@@ -169,10 +218,12 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
         .slice(0, 8)
         .map<Suggestion>((c) => ({ kind: 'channel', key: c.id, label: c.name ?? '', insert: `#${c.name}`, mention: { token: `#${c.name}`, wire: `<#${c.id}>` } }));
     }
-    return (guild ? guild.emojis : [])
+    const custom = (guild ? guild.emojis : [])
       .filter((e) => e.id && e.name && e.name.toLowerCase().includes(token.query))
       .slice(0, 8)
-      .map<Suggestion>((e) => ({ kind: 'emoji', key: e.id!, label: `:${e.name}:`, insert: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}> ` }));
+      .map<Suggestion>((e) => ({ kind: 'emoji', key: e.id!, label: `:${e.name}:`, insert: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>` }));
+    const unicode = searchShortcodes(token.query, 8).map<Suggestion>((m) => ({ kind: 'emoji', key: `u:${m.name}`, label: `${m.emoji} :${m.name}:`, insert: m.emoji }));
+    return [...custom, ...unicode].slice(0, 8);
   }, [token, members, guild, channels, channel.guild_id, perms, commandSearch, catalogue, appNames]);
 
   useEffect(() => setSelected(0), [token?.trigger, token?.query, commandSearch]);
@@ -204,11 +255,11 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
         return;
       }
       const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
-      const ok = incoming.filter((f) => f.size <= limit && (mode === 'standard' || f.size > 0));
-      if (ok.length < incoming.length) reportError(new Error(`Files must be between 1 byte and ${Math.round(limit / 1048576)} MB.`), 'File not attached');
-      setFiles((prev) => [...prev, ...ok].slice(0, MAX_FILES));
+      const { accepted, problems } = acceptFiles(files, incoming, limit, mode === 'standard');
+      if (problems.length > 0) reportError(new Error(problems.join(' ')), 'File not attached');
+      if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
     },
-    [canAttach, mode],
+    [canAttach, mode, files],
   );
 
   const runCommand = async () => {
@@ -230,6 +281,11 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
     if (command) return runCommand();
     let content = text.trim();
     if (!content && files.length === 0) return;
+    if (tooLong) {
+      reportError(new Error(`Messages are limited to ${MAX_MESSAGE_LENGTH} characters. Remove ${-remainingChars} to send.`), 'Message too long');
+      return;
+    }
+    if (slowmodeLeft > 0) return;
     for (const [tok, wire] of mentionMap.current) content = content.split(tok).join(wire);
     const input = { content, files: files.length > 0 ? files : undefined, replyTo: replyTo?.id ?? null };
     const draft = { text, files };
@@ -237,9 +293,11 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
     setFiles([]);
     setReplyTo(channel.id, null);
     mentionMap.current.clear();
+    if (standard) useSlowmodeStore.getState().markSent(channel.id);
     try {
       await getRuntime().privacy.sender.send(channel, input);
     } catch (e) {
+      if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
       if (!useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
       setText((current) => current || draft.text);
       setFiles((current) => (current.length > 0 ? current : draft.files));
@@ -273,6 +331,12 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
     if (pasted.length > 0) {
       e.preventDefault();
       addFiles(pasted);
+      return;
+    }
+    const pastedText = e.clipboardData.getData('text/plain');
+    if (canAttach && shouldPasteAsFile(pastedText)) {
+      e.preventDefault();
+      addFiles([new File([pastedText], 'message.txt', { type: 'text/plain' })]);
     }
   };
 
@@ -340,15 +404,27 @@ export function Composer({ channel, mode }: { channel: Channel; mode: DeliveryMo
                 if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); accept(suggestions[selected]!); return; }
                 if (e.key === 'Escape') { setCaret(0); return; }
               }
+              if (e.key === 'ArrowUp' && !text && files.length === 0 && !command && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const timeline = useMessageStore.getState().timelines[channel.id];
+                const last = lastOwnEditable(timeline ? timeline.ids.map((id) => timeline.byId[id]!).filter(Boolean) : [], me);
+                if (last) { e.preventDefault(); setEditing({ channelId: channel.id, messageId: last.id }); return; }
+              }
               if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); wrapSelection('**'); return; }
               if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') { e.preventDefault(); wrapSelection('*'); return; }
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); }
-              if (e.key === 'Escape' && replyTo) setReplyTo(channel.id, null);
+              if (e.key === 'Escape') {
+                if (editing?.channelId === channel.id) setEditing(null);
+                else if (replyTo) setReplyTo(channel.id, null);
+              }
             }}
           />
+          {showCounter(remainingChars) && (
+            <span className={`composer-counter${tooLong ? ' is-over' : ''}`} role="status" aria-label={`${remainingChars} characters remaining`}>{remainingChars}</span>
+          )}
+          {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
-          <IconButton label="Send message" tone="accent" active={Boolean(text.trim() || files.length || command)} disabled={!canSend || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
+          <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
           </IconButton>
         </div>

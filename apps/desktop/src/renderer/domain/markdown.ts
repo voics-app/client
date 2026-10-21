@@ -8,7 +8,16 @@ export type MarkdownNode =
   | { type: 'userMention' | 'roleMention' | 'channelMention'; id: string }
   | { type: 'customEmoji'; name: string; id: string; animated: boolean }
   | { type: 'everyone'; kind: 'everyone' | 'here' }
-  | { type: 'link'; url: string };
+  | { type: 'link'; url: string; label?: MarkdownNode[] }
+  | { type: 'heading'; level: 1 | 2 | 3; children: MarkdownNode[] }
+  | { type: 'subtext'; children: MarkdownNode[] }
+  | { type: 'list'; ordered: boolean; start: number; items: MarkdownNode[][] }
+  | { type: 'timestamp'; unix: number; style: TimestampStyle };
+
+export type TimestampStyle = 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R';
+
+/** Nesting guard: deeper structures are kept as literal text so hostile input cannot blow the stack. */
+const MAX_DEPTH = 8;
 
 type Rule = {
   pattern: RegExp;
@@ -16,9 +25,85 @@ type Rule = {
   build: (m: RegExpExecArray) => MarkdownNode;
 };
 
+let depth = 0;
+
 const wrap =
   (type: 'bold' | 'italic' | 'underline' | 'strike' | 'spoiler' | 'quote') =>
   (m: RegExpExecArray): MarkdownNode => ({ type, children: parseMarkdown(m[1] ?? '') });
+
+/** Labels of masked links are plain content: nested links would hide the real destination. */
+function stripLinks(nodes: MarkdownNode[]): MarkdownNode[] {
+  return nodes.map((n): MarkdownNode => {
+    if (n.type === 'link') return { type: 'text', text: n.label ? toPlainText(n.label) : n.url };
+    if ('children' in n) return { ...n, children: stripLinks(n.children) } as MarkdownNode;
+    return n;
+  });
+}
+
+const LIST_LINE = /^( {0,16})([-*]|(\d{1,9})\.) +(\S.*)$/;
+
+interface ListLine {
+  indent: number;
+  ordered: boolean;
+  number: number;
+  content: string;
+}
+
+function buildList(lines: ListLine[], from: number, indent: number): { node: MarkdownNode; next: number } {
+  const first = lines[from]!;
+  const items: MarkdownNode[][] = [];
+  let i = from;
+  while (i < lines.length && lines[i]!.indent === indent && lines[i]!.ordered === first.ordered) {
+    const item: MarkdownNode[] = parseMarkdown(lines[i]!.content);
+    i += 1;
+    if (i < lines.length && lines[i]!.indent > indent) {
+      const nested = buildList(lines, i, lines[i]!.indent);
+      item.push(nested.node);
+      i = nested.next;
+    }
+    items.push(item);
+  }
+  return { node: { type: 'list', ordered: first.ordered, start: first.ordered ? first.number : 1, items }, next: i };
+}
+
+/** Block-level constructs that only start at the beginning of a line. */
+function parseBlock(rest: string): { node: MarkdownNode; length: number } | null {
+  const heading = /^(#{1,3}) +([^\n]*\S)[ \t]*(?:\n|$)/.exec(rest);
+  if (heading) {
+    return { node: { type: 'heading', level: heading[1]!.length as 1 | 2 | 3, children: parseMarkdown(heading[2]!) }, length: heading[0].length };
+  }
+  const sub = /^-# +([^\n]*\S)[ \t]*(?:\n|$)/.exec(rest);
+  if (sub) return { node: { type: 'subtext', children: parseMarkdown(sub[1]!) }, length: sub[0].length };
+
+  if (rest.startsWith('>>> ')) {
+    return { node: { type: 'quote', children: parseMarkdown(rest.slice(4)) }, length: rest.length };
+  }
+  if (rest.startsWith('> ')) {
+    const lines: string[] = [];
+    let length = 0;
+    for (const line of rest.split('\n')) {
+      if (!line.startsWith('> ')) break;
+      lines.push(line.slice(2));
+      length += line.length + 1;
+    }
+    return { node: { type: 'quote', children: parseMarkdown(lines.join('\n')) }, length: Math.min(length, rest.length) };
+  }
+
+  if (LIST_LINE.test(rest.split('\n', 1)[0]!)) {
+    const lines: ListLine[] = [];
+    for (const line of rest.split('\n')) {
+      const m = LIST_LINE.exec(line);
+      if (!m) break;
+      lines.push({ indent: m[1]!.length, ordered: m[3] !== undefined, number: m[3] ? Number(m[3]) : 1, content: m[4]! });
+    }
+    const base = Math.min(...lines.map((l) => l.indent));
+    const normalised = lines.map((l) => ({ ...l, indent: l.indent === base ? base : Math.max(l.indent, base + 1) }));
+    const built = buildList(normalised, 0, base);
+    const used = rest.split('\n').slice(0, built.next).join('\n').length;
+    return { node: built.node, length: Math.min(used + 1, rest.length) };
+  }
+  return null;
+}
 
 const RULES: Rule[] = [
   {
@@ -26,13 +111,24 @@ const RULES: Rule[] = [
     build: (m) => ({ type: 'codeblock', lang: m[1] ?? null, text: m[2] ?? '' }),
   },
   { pattern: /^`([^`]+)`/, build: (m) => ({ type: 'code', text: m[1] ?? '' }) },
-  { pattern: /^> ([^\n]*)/, lineStart: true, build: wrap('quote') },
   { pattern: /^<@&(\d+)>/, build: (m) => ({ type: 'roleMention', id: m[1]! }) },
   { pattern: /^<@!?(\d+)>/, build: (m) => ({ type: 'userMention', id: m[1]! }) },
   { pattern: /^<#(\d+)>/, build: (m) => ({ type: 'channelMention', id: m[1]! }) },
   {
     pattern: /^<(a?):(\w{2,32}):(\d+)>/,
     build: (m) => ({ type: 'customEmoji', animated: m[1] === 'a', name: m[2]!, id: m[3]! }),
+  },
+  {
+    pattern: /^<t:(-?\d{1,13})(?::([tTdDfFR]))?>/,
+    build: (m) => ({ type: 'timestamp', unix: Number(m[1]), style: (m[2] ?? 'f') as TimestampStyle }),
+  },
+  {
+    pattern: /^<(https?:\/\/[^\s<>]+)>/,
+    build: (m) => ({ type: 'link', url: m[1]! }),
+  },
+  {
+    pattern: /^\[([^\]\n]{1,300})\]\(<?(https?:\/\/[^\s<>()]+(?:\([^\s<>()]*\)[^\s<>()]*)*)>?\)/,
+    build: (m) => ({ type: 'link', url: m[2]!, label: stripLinks(parseMarkdown(m[1]!)) }),
   },
   { pattern: /^@(everyone|here)\b/, build: (m) => ({ type: 'everyone', kind: m[1] as 'everyone' | 'here' }) },
   {
@@ -48,6 +144,16 @@ const RULES: Rule[] = [
 ];
 
 export function parseMarkdown(source: string): MarkdownNode[] {
+  if (depth >= MAX_DEPTH) return source ? [{ type: 'text', text: source }] : [];
+  depth += 1;
+  try {
+    return parseLevel(source);
+  } finally {
+    depth -= 1;
+  }
+}
+
+function parseLevel(source: string): MarkdownNode[] {
   const nodes: MarkdownNode[] = [];
   let text = '';
   let i = 0;
@@ -61,6 +167,21 @@ export function parseMarkdown(source: string): MarkdownNode[] {
     const atLineStart = i === 0 || source[i - 1] === '\n';
     const previous = source[i - 1];
     let matched = false;
+    const escaped = /^\\([!-/:-@[-`{-~])/.exec(rest);
+    if (escaped) {
+      text += escaped[1];
+      i += 2;
+      continue;
+    }
+    if (atLineStart && !rest.startsWith('```')) {
+      const block = parseBlock(rest);
+      if (block) {
+        flush();
+        nodes.push(block.node);
+        i += block.length;
+        continue;
+      }
+    }
     for (const rule of RULES) {
       if (rule.lineStart && !atLineStart) continue;
       if (rule.pattern.source.startsWith('^_') && previous && /\w/.test(previous)) continue;
@@ -100,7 +221,11 @@ export function toPlainText(nodes: readonly MarkdownNode[], resolve: (node: Mark
         case 'codeblock':
           return n.text;
         case 'link':
-          return n.url;
+          return n.label ? toPlainText(n.label, resolve) : n.url;
+        case 'timestamp':
+          return new Date(n.unix * 1000).toLocaleString();
+        case 'list':
+          return n.items.map((item) => `• ${toPlainText(item, resolve)}`).join('\n');
         case 'customEmoji':
           return `:${n.name}:`;
         case 'everyone':
