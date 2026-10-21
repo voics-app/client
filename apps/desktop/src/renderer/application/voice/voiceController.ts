@@ -9,6 +9,7 @@ import type { VoiceState } from '@shared/contracts/rest';
 import { SpeakingFlag, type MediaSinkWants } from '@shared/contracts/voice';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { usePrefsStore, type PrefsData } from '@renderer/application/stores/prefsStore';
+import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -220,7 +221,9 @@ export class VoiceController {
       }),
       session.onE2ee((active) => useVoiceStore.getState().setCall({ e2ee: active })),
       session.onRemoteAudio((userId, stream) => {
-        const volume = useVoiceStore.getState().userVolumes[userId];
+        // A local mute outlives the session (it is persisted); the in-memory volume does not, so honour it here.
+        const muted = userId in useLocalPeopleStore.getState().mutedUsers;
+        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : undefined);
         if (volume !== undefined) this.deps.mixer.setUserVolume(userId, volume);
         this.deps.mixer.setStream(userId, stream);
       }),

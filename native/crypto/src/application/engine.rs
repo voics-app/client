@@ -121,6 +121,24 @@ impl<S: SecureStore> CryptoEngine<S> {
                     .map_err(mls_err)
             })
             .collect::<Result<Vec<_>, _>>()?;
+        // One leaf per signature key: skip packages of devices already in the group and
+        // repeated packages of the same device (OpenMLS rejects both as DuplicateSignatureKey).
+        let mut seen: Vec<Vec<u8>> = group.members().map(|m| m.signature_key).collect();
+        let packages: Vec<_> = packages
+            .into_iter()
+            .filter(|kp| {
+                let key = kp.leaf_node().signature_key().as_slice().to_vec();
+                if seen.contains(&key) {
+                    false
+                } else {
+                    seen.push(key);
+                    true
+                }
+            })
+            .collect();
+        if packages.is_empty() {
+            return Err(CryptoError::Mls("no new members to add".into()));
+        }
         let (commit, welcome, _group_info) = group
             .add_members(&self.provider, &signer, &packages)
             .map_err(mls_err)?;
@@ -343,6 +361,20 @@ mod tests {
         let a = alice.export_secret(b"channel-42", "dave-media", b"", 32).unwrap();
         let b = bob.export_secret(b"channel-42", "dave-media", b"", 32).unwrap();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn add_members_skips_duplicate_signature_keys() {
+        let mut alice = engine("alice:1");
+        let mut bob = engine("bob:2");
+        let packages = bob.generate_key_packages(2).unwrap();
+        alice.create_group(b"g").unwrap();
+        let added = alice.add_members(b"g", &packages).unwrap();
+        bob.join_from_welcome(&added.welcome).unwrap();
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
+        let again = bob.generate_key_packages(1).unwrap();
+        assert!(alice.add_members(b"g", &again).is_err());
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
     }
 
     #[test]

@@ -40,7 +40,7 @@ export class PrivateMessaging {
     const now = deps.now ?? Date.now;
     const devices = new DeviceDirectory(deps.api, now);
     const history = new LocalHistory(() => deps.crypto);
-    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes, cdnBase: deps.cdnUrl });
+    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes });
     this.ephemeral = new EphemeralService({
       gateway: deps.gateway,
       api: deps.api,
