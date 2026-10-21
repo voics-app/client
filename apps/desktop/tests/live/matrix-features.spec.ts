@@ -48,15 +48,15 @@ for (const mode of ["standard", "ephemeral", "p2p"] as const satisfies readonly 
     await setMode(a.access_token, dmId, mode);
     await alice.page.waitForTimeout(3_000);
     const name = `body-${stamp()}.png`;
-    const imagesBefore = await bob.page.locator("img.attachment-image").count();
+    const imagesBefore = await bob.page.locator("img.media-tile-media").count();
     // 1x1 PNG: an image proves the bytes arrived intact (the CSP forbids fetching blob: URLs from the page).
     const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
     await alice.page.locator('input[type="file"]').setInputFiles({ name, mimeType: "image/png", buffer: png });
     await alice.page.getByRole("textbox", { name: /^Message / }).press("Enter");
     // The image is not labelled with the file name in the DOM, and earlier tests leave their images in the
     // chat: the one just sent is the newest.
-    await expect(bob.page.locator("img.attachment-image")).toHaveCount(imagesBefore + 1, { timeout: 40_000 });
-    const image = bob.page.locator("img.attachment-image").last();
+    await expect(bob.page.locator("img.media-tile-media")).toHaveCount(imagesBefore + 1, { timeout: 40_000 });
+    const image = bob.page.locator("img.media-tile-media").last();
     await expect(image).toBeVisible();
     await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth), { timeout: 15_000 }).toBe(1);
     if (mode !== "standard") expect(await image.getAttribute("src")).toMatch(/^blob:/);

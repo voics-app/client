@@ -171,7 +171,7 @@ describe('message right-click menu', () => {
 
   it('an image attachment opens an image menu', () => {
     renderMessage(message({ attachments: [{ id: 'a1', filename: 'cat.png', size: 1, url: 'https://cdn.test/cat.png', content_type: 'image/png' }] } as never));
-    fireEvent.contextMenu(document.querySelector('img.attachment-image')!);
+    fireEvent.contextMenu(document.querySelector('img.media-tile-media')!);
     expect(menuLabels().slice(0, 4)).toEqual(['Copy Image', 'Save Image', 'Open Original', 'Copy Link']);
   });
 

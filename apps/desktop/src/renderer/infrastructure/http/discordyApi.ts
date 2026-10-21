@@ -243,7 +243,7 @@ export class DiscordyApi implements ApiPort {
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
   }
-  editMessage(channelId: string, messageId: string, patch: { content: string }) {
+  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);
   }
   deleteMessage(channelId: string, messageId: string) {
@@ -275,8 +275,8 @@ export class DiscordyApi implements ApiPort {
   refreshAttachmentUrls(channelId: string, urls: string[]) {
     return this.post<{ refreshed_urls: { original: string; refreshed: string }[] }>(`/channels/${channelId}/attachments/refresh-urls`, { attachment_urls: urls });
   }
-  upload(url: string, file: Blob) {
-    return this.http.upload(url, file);
+  upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal) {
+    return this.http.upload(url, file, onProgress, signal);
   }
 
   voiceRegions() {

@@ -1,4 +1,4 @@
-import { ArrowBendUpLeft, File as FileIcon, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
@@ -24,6 +24,7 @@ import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
+import { ComposerFiles, type Descriptions } from './ComposerFiles';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -63,6 +64,7 @@ function initialDraft(channelId: string, standard: boolean) {
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
+  const [descriptions, setDescriptions] = useState<Descriptions>(new Map());
   const [caret, setCaret] = useState(0);
   const [selected, setSelected] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -287,10 +289,16 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     }
     if (slowmodeLeft > 0) return;
     for (const [tok, wire] of mentionMap.current) content = content.split(tok).join(wire);
-    const input = { content, files: files.length > 0 ? files : undefined, replyTo: replyTo?.id ?? null };
-    const draft = { text, files };
+    const input = {
+      content,
+      files: files.length > 0 ? files : undefined,
+      fileOptions: files.map((f) => ({ description: descriptions.get(f) })),
+      replyTo: replyTo?.id ?? null,
+    };
+    const draft = { text, files, descriptions };
     setText('');
     setFiles([]);
+    setDescriptions(new Map());
     setReplyTo(channel.id, null);
     mentionMap.current.clear();
     if (standard) useSlowmodeStore.getState().markSent(channel.id);
@@ -298,9 +306,11 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       await getRuntime().privacy.sender.send(channel, input);
     } catch (e) {
       if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
-      if (!useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
+      const cancelled = e instanceof Error && e.name === 'UploadCancelled';
+      if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
       setText((current) => current || draft.text);
       setFiles((current) => (current.length > 0 ? current : draft.files));
+      setDescriptions((current) => (current.size > 0 ? current : draft.descriptions));
     }
   };
 
@@ -367,17 +377,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
             <IconButton label="Cancel reply" size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
           </div>
         )}
-        {files.length > 0 && (
-          <ul className="composer-files">
-            {files.map((f, i) => (
-              <li key={`${f.name}-${i}`}>
-                {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt="" onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)} /> : <FileIcon size={26} weight="light" />}
-                <span>{f.name}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}><X size={12} /></button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ComposerFiles files={files} descriptions={descriptions} allowDescriptions={standard} onChange={(next, nextDescriptions) => { setFiles(next); setDescriptions(nextDescriptions); }} />
         {command && (
           <SlashCommandPanel entry={command} values={commandValues} channel={channel} busy={running} onChange={setCommandValues} onRun={() => void runCommand()} onCancel={() => { setCommand(null); ref.current?.focus(); }} />
         )}

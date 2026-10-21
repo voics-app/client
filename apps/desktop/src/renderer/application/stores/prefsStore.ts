@@ -53,6 +53,11 @@ export interface PrefsState {
   recentReactions: QuickEmoji[];
   collapsedCategories: Record<string, boolean>;
   keybinds: Keybind[];
+  /** Show previews of links in messages (Standard chats). */
+  linkPreviews: boolean;
+  /** Playback volume of the audio and video players, remembered across messages. */
+  mediaVolume: number;
+  mediaMuted: boolean;
   set<K extends keyof PrefsData>(key: K, value: PrefsData[K]): void;
   patch(values: Partial<PrefsData>): void;
   toggleMap(key: 'mutedChannels' | 'collapsedCategories', id: string): void;
@@ -108,6 +113,9 @@ export const DEFAULT_PREFS: PrefsData = {
   recentReactions: [],
   collapsedCategories: {},
   keybinds: DEFAULT_KEYBINDS,
+  linkPreviews: true,
+  mediaVolume: 1,
+  mediaMuted: false,
 };
 
 function memoryStorage() {
