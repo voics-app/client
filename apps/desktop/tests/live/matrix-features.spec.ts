@@ -43,21 +43,24 @@ for (const mode of ["standard", "ephemeral", "p2p"] as const satisfies readonly 
 
   test(`${mode}: attachment content is actually readable by the peer`, async () => {
     test.setTimeout(120_000);
-    // Standard and Ephemeral files are fetched from the attachments bucket with an unsigned URL, and
-    // the bucket does not allow anonymous reads, so the download answers 403 (open owner decision,
-    // see docs#10). P2P streams the bytes over the data channel and is unaffected.
-    test.fail(mode !== "p2p" && !process.env.LIVE_ATTACHMENT_DOWNLOADS_FIXED, "attachment download answers 403 (unsigned URL, private bucket)");
+    // Standard files download from a signed, expiring CDN URL; Ephemeral recipients ask the server for one.
+    // P2P streams the bytes over the data channel.
     await setMode(a.access_token, dmId, mode);
     await alice.page.waitForTimeout(3_000);
     const name = `body-${stamp()}.png`;
+    const imagesBefore = await bob.page.locator("img.attachment-image").count();
     // 1x1 PNG: an image proves the bytes arrived intact (the CSP forbids fetching blob: URLs from the page).
     const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
     await alice.page.locator('input[type="file"]').setInputFiles({ name, mimeType: "image/png", buffer: png });
     await alice.page.getByRole("textbox", { name: /^Message / }).press("Enter");
-    const image = bob.page.locator(".message", { hasText: name }).locator("img.attachment-image").or(bob.page.locator("img.attachment-image").last());
-    await expect(image.first()).toBeVisible({ timeout: 40_000 });
-    await expect.poll(() => image.first().evaluate((el) => (el as HTMLImageElement).naturalWidth), { timeout: 15_000 }).toBe(1);
-    if (mode !== "standard") expect(await image.first().getAttribute("src")).toMatch(/^blob:/);
+    // The image is not labelled with the file name in the DOM, and earlier tests leave their images in the
+    // chat: the one just sent is the newest.
+    await expect(bob.page.locator("img.attachment-image")).toHaveCount(imagesBefore + 1, { timeout: 40_000 });
+    const image = bob.page.locator("img.attachment-image").last();
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth), { timeout: 15_000 }).toBe(1);
+    if (mode !== "standard") expect(await image.getAttribute("src")).toMatch(/^blob:/);
+    else expect(await image.getAttribute("src")).toMatch(/\/attachments\/\d+\/\d+\/body-.*\.png\?ex=[0-9a-f]+&is=[0-9a-f]+&hm=[0-9a-f]{64}$/);
   });
 
   test(`${mode}: edit, reaction and delete behave per mode`, async () => {

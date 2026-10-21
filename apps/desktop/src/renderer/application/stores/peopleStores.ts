@@ -83,6 +83,8 @@ export interface ReadStateState {
   markRead(channelId: string, messageId: string): void;
   /** Sets the marker to exactly this message, even backwards (Mark Unread, MESSAGE_ACK from the server). */
   setPosition(channelId: string, messageId: string, mentionCount?: number): void;
+  /** Moves the read marker unconditionally (mark unread from a message). */
+  setLastRead(channelId: string, messageId: string | null): void;
   addMention(channelId: string): void;
   reset(): void;
 }
@@ -97,6 +99,8 @@ export const useReadStateStore = create<ReadStateState>((set) => ({
     })),
   setPosition: (channelId, messageId, mentionCount = 0) =>
     set((s) => ({ byChannel: { ...s.byChannel, [channelId]: { lastReadId: messageId, mentionCount } } })),
+  setLastRead: (channelId, messageId) =>
+    set((s) => ({ byChannel: { ...s.byChannel, [channelId]: { lastReadId: messageId, mentionCount: s.byChannel[channelId]?.mentionCount ?? 0 } } })),
   addMention: (channelId) =>
     set((s) => {
       const current = s.byChannel[channelId] ?? { lastReadId: null, mentionCount: 0 };

@@ -129,6 +129,8 @@ export interface ApiPort {
   /** `manual` sets the read marker to exactly this message, even backwards (Mark Unread). */
   ack(channelId: string, messageId: string, options?: { manual?: boolean; mentionCount?: number }): Promise<void>;
   createAttachmentSlots(channelId: string, files: { filename: string; file_size: number }[]): Promise<{ attachments: AttachmentUploadSlot[] }>;
+  /** Fresh signed download URLs for attachments of a channel, given their object keys or earlier URLs. */
+  refreshAttachmentUrls(channelId: string, urls: string[]): Promise<{ refreshed_urls: { original: string; refreshed: string }[] }>;
   upload(url: string, file: Blob): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;

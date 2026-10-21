@@ -272,6 +272,9 @@ export class DiscordyApi implements ApiPort {
       files: files.map((f, i) => ({ ...f, id: String(i) })),
     });
   }
+  refreshAttachmentUrls(channelId: string, urls: string[]) {
+    return this.post<{ refreshed_urls: { original: string; refreshed: string }[] }>(`/channels/${channelId}/attachments/refresh-urls`, { attachment_urls: urls });
+  }
   upload(url: string, file: Blob) {
     return this.http.upload(url, file);
   }
