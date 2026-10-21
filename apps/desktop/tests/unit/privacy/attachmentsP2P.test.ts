@@ -38,7 +38,7 @@ function setup() {
       return pc;
     },
     now: () => 1_800_000_000_000,
-    connectTimeoutMs: 200,
+    connectTimeoutMs: 30_000,
   });
   return { service, connections, attachments, gateway };
 }

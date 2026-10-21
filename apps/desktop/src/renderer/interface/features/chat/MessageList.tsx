@@ -342,7 +342,7 @@ export function MessageList({ channelId }: { channelId: string }) {
           </button>
         </div>
       )}
-      {!atBottom && (
+      {(!atBottom || timeline?.hasMoreAfter) && (
         <button type="button" className="jump-bottom glass" onClick={() => void jumpToPresent()}>
           <ArrowDown size={14} weight="bold" /> Jump to present
         </button>

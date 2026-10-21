@@ -1,4 +1,4 @@
-import { Hash, Megaphone, Phone, PushPin, Users, Television, ChatsCircle, At } from '@phosphor-icons/react';
+import { Hash, Megaphone, Phone, PushPin, Users, Television, ChatsCircle, At, Gear } from '@phosphor-icons/react';
 import { useEffect } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { typingUsers, useTypingStore } from '@renderer/application/stores/peopleStores';
@@ -16,6 +16,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { ModeBadge } from '../privacy/ModeBadge';
 import { CallStrip } from '../voice/CallStrip';
+import { SearchBar } from '../search/SearchBar';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 
@@ -67,7 +68,7 @@ export function ChatView({ channelId }: { channelId: string }) {
       <header className="channel-header">
         <div className="channel-header-title">
           {isDm ? (
-            peers.length === 1 ? <Avatar id={peers[0]!.id} name={displayName(peers[0]!)} avatar={peers[0]!.avatar} size={26} /> : <At size={22} className="channel-header-icon" />
+            channel.type === ChannelType.GROUP_DM ? <Avatar id={channel.id} name={title} avatar={channel.icon ?? null} size={26} kind="channel-icons" /> : peers.length === 1 ? <Avatar id={peers[0]!.id} name={displayName(peers[0]!)} avatar={peers[0]!.avatar} size={26} /> : <At size={22} className="channel-header-icon" />
           ) : (
             <Icon size={22} className="channel-header-icon" />
           )}
@@ -76,6 +77,7 @@ export function ChatView({ channelId }: { channelId: string }) {
         </div>
         <div className="channel-header-actions">
           <ModeBadge mode={mode} />
+          <SearchBar channelId={channelId} />
           {isDm && (
             <IconButton label={inCall ? 'In call' : callInProgress ? 'Join call' : 'Start voice call'} active={inCall} disabled={inCall} onClick={() => void joinVoiceChannel(null, channel.id)}>
               <Phone size={20} weight={inCall ? 'fill' : 'regular'} />
@@ -83,6 +85,7 @@ export function ChatView({ channelId }: { channelId: string }) {
           )}
           <IconButton label="Pinned messages" active={sidePanel?.kind === 'pins'} onClick={() => toggle('pins')}><PushPin size={20} /></IconButton>
           <IconButton label="Watch Together" active={sidePanel?.kind === 'watch'} onClick={() => toggle('watch')}><Television size={20} /></IconButton>
+          {channel.type === ChannelType.GROUP_DM && <IconButton label="Group settings" onClick={() => useUiStore.getState().openDialog({ kind: 'groupDm', channelId })}><Gear size={20} /></IconButton>}
           {!isDm && <IconButton label="Member list" active={sidePanel?.kind === 'members'} onClick={() => toggle('members')}><Users size={20} /></IconButton>}
         </div>
       </header>

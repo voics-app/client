@@ -13,7 +13,10 @@ import { Segmented } from '../../shared/ui/Form';
 import { ConnectionPicker } from './ConnectionPicker';
 import { BRAND } from '@shared/brand';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot' | 'reset';
+
+/** Discord's code for "two-factor required"; the answer carries a ticket for the second step. */
+const MFA_REQUIRED = 60008;
 
 const POINTS = [
   { icon: GlobeHemisphereWest, title: 'Standard', body: 'Servers, history and bots, like you expect.', tone: 'standard' },
@@ -21,18 +24,42 @@ const POINTS = [
   { icon: Plugs, title: 'Peer-to-peer', body: 'Straight between devices. Zero server copy.', tone: 'p2p' },
 ] as const;
 
+const HEADINGS: Record<Mode, string> = {
+  login: 'Welcome back',
+  register: 'Create your account',
+  forgot: 'Forgot your password?',
+  reset: 'Choose a new password',
+};
+
+const SUBMIT: Record<Mode, string> = {
+  login: 'Sign in',
+  register: 'Create account',
+  forgot: 'Email me a reset code',
+  reset: 'Change password',
+};
+
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [totp, setTotp] = useState('');
-  const [needsTotp, setNeedsTotp] = useState(false);
+  const [code, setCode] = useState('');
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showConnection, setShowConnection] = useState(false);
   const fatal = useSessionStore((s) => s.fatalError);
+
+  const canSubmit = ticket
+    ? Boolean(code.trim())
+    : mode === 'forgot'
+      ? Boolean(email)
+      : mode === 'reset'
+        ? Boolean(resetToken && password)
+        : Boolean(email && password && (mode !== 'register' || username));
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,7 +68,17 @@ export function AuthScreen() {
     setFieldErrors({});
     const { session } = getRuntime();
     try {
-      if (mode === 'login') await session.login({ email: email.trim(), password, totp: needsTotp ? totp.trim() : undefined });
+      if (mode === 'forgot') {
+        await getRuntime().api.forgotPassword(email.trim());
+        setNotice('If that address has an account, a reset code is on its way. Paste it below.');
+        setMode('reset');
+      } else if (mode === 'reset') {
+        await getRuntime().api.resetPassword(resetToken.trim(), password);
+        setPassword('');
+        setNotice('Password changed. Sign in with the new one.');
+        setMode('login');
+      } else if (mode === 'login' && ticket) await session.loginMfa({ ticket, code: code.trim() });
+      else if (mode === 'login') await session.login({ email: email.trim(), password });
       else await session.register({ email: email.trim(), username: username.trim(), password });
     } catch (err) {
       if (err instanceof ApiError && err.errors) {
@@ -52,7 +89,11 @@ export function AuthScreen() {
         }
         setFieldErrors(flat);
       }
-      if (err instanceof ApiError && /totp|two-factor|mfa/i.test(err.message)) setNeedsTotp(true);
+      if (err instanceof ApiError && err.code === MFA_REQUIRED && err.ticket) {
+        setTicket(err.ticket);
+        setError(null);
+        return;
+      }
       setError(errorMessage(err));
     } finally {
       setBusy(false);
@@ -81,32 +122,45 @@ export function AuthScreen() {
       <main className="auth-panel">
         <div className="auth-card-shell">
           <form className="auth-card" onSubmit={submit} noValidate>
-            <Segmented label="Mode" value={mode} onChange={(m) => { setMode(m); setError(null); setNeedsTotp(false); }} options={[{ value: 'login', label: 'Sign in' }, { value: 'register', label: 'Create account' }]} />
-            <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+            <Segmented label="Mode" value={mode} onChange={(m) => { setMode(m); setError(null); setNotice(null); setTicket(null); setCode(''); }} options={[{ value: 'login', label: 'Sign in' }, { value: 'register', label: 'Create account' }]} />
+            <h2>{HEADINGS[mode]}</h2>
+            {notice && <p className="auth-notice" role="status">{notice}</p>}
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div key={mode} className="stack" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+                {ticket ? (
+                  <Field label="Authenticator or backup code" error={fieldErrors.code} hint="Open your authenticator app, or enter one of your backup codes.">
+                    {(id) => <Input id={id} autoComplete="one-time-code" data-autofocus value={code} onChange={(e) => setCode(e.target.value)} invalid={Boolean(fieldErrors.code)} />}
+                  </Field>
+                ) : (<>
+                {mode !== 'reset' && (
                 <Field label="Email" error={fieldErrors.email}>
                   {(id) => <Input id={id} type="email" autoComplete="email" data-autofocus value={email} onChange={(e) => setEmail(e.target.value)} invalid={Boolean(fieldErrors.email)} />}
                 </Field>
+                )}
+                {mode === 'reset' && (
+                  <Field label="Reset code" error={fieldErrors.token} hint="From the email we sent you.">
+                    {(id) => <Input id={id} autoComplete="off" data-autofocus value={resetToken} onChange={(e) => setResetToken(e.target.value)} invalid={Boolean(fieldErrors.token)} />}
+                  </Field>
+                )}
                 {mode === 'register' && (
                   <Field label="Username" error={fieldErrors.username} hint="Lowercase letters, numbers, dots and underscores.">
                     {(id) => <Input id={id} autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} invalid={Boolean(fieldErrors.username)} />}
                   </Field>
                 )}
-                <Field label="Password" error={fieldErrors.password} hint={mode === 'register' ? 'At least 8 characters.' : undefined}>
+                {mode !== 'forgot' && (
+                <Field label={mode === 'reset' ? 'New password' : 'Password'} error={fieldErrors.password} hint={mode === 'login' ? undefined : 'At least 8 characters.'}>
                   {(id) => <Input id={id} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} invalid={Boolean(fieldErrors.password)} />}
                 </Field>
-                {needsTotp && (
-                  <Field label="Authenticator code">
-                    {(id) => <Input id={id} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={totp} onChange={(e) => setTotp(e.target.value)} />}
-                  </Field>
                 )}
+                </>)}
               </motion.div>
             </AnimatePresence>
             {(error || fatal) && <p className="auth-error" role="alert">{error ?? fatal}</p>}
-            <Button type="submit" variant="primary" size="lg" block loading={busy} trailing={<ArrowRight size={16} weight="bold" />} disabled={!email || !password || (mode === 'register' && !username)}>
-              {mode === 'login' ? 'Sign in' : 'Create account'}
+            <Button type="submit" variant="primary" size="lg" block loading={busy} trailing={<ArrowRight size={16} weight="bold" />} disabled={!canSubmit}>
+              {SUBMIT[mode]}
             </Button>
+            {mode === 'login' && !ticket && <button type="button" className="link-btn" onClick={() => { setMode('forgot'); setError(null); setNotice(null); }}>Forgot password?</button>}
+            {(mode === 'forgot' || mode === 'reset' || ticket) && <button type="button" className="link-btn" onClick={() => { setMode('login'); setTicket(null); setCode(''); setError(null); setNotice(null); }}>Back to sign in</button>}
             <p className="auth-foot">
               <ShieldCheck size={14} /> Your session is stored in the OS keychain.
               <button type="button" className="link-btn" onClick={() => setShowConnection(true)}>Connection</button>

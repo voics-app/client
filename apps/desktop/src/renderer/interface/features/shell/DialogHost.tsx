@@ -21,6 +21,7 @@ import { InteractionModal } from '../chat/InteractionModal';
 import { BanDialog } from '../members/BanDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
+import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
@@ -386,6 +387,7 @@ function ActiveDialog() {
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
     case 'newDm': return <NewDmDialog />;
+    case 'groupDm': return <GroupDmDialog channelId={dialog.channelId} />;
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
     case 'customStatus': return <CustomStatusDialog />;

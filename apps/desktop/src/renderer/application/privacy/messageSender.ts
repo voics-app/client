@@ -9,6 +9,7 @@ import { useMentionInboxStore } from '../stores/mentionInboxStore';
 import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
 import { inboxEntryOf } from '@renderer/domain/mentionInbox';
 import { scopeKey } from '@renderer/domain/notificationSettings';
+import { useUploadStore } from '../stores/uploadStore';
 import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
@@ -16,6 +17,14 @@ import type { P2PService } from './p2pService';
 import { PrivateDeliveryError, generateLocalId, type SendInput } from './types';
 
 export const HISTORY_PAGE_SIZE = 50;
+
+/** The user cancelled the upload of a message being sent; nothing was sent. */
+export class UploadCancelled extends Error {
+  constructor() {
+    super('Upload cancelled');
+    this.name = 'UploadCancelled';
+  }
+}
 
 export interface MessageSenderDeps {
   api: ApiPort;
@@ -131,14 +140,26 @@ export class MessageSender {
     collectMentions(channel, [...merged.values()]);
   }
 
-  /** Replaces the timeline with the window around `messageId` (jump to a link, reply, pin or search hit). */
+  /**
+   * Replaces the timeline with the window around `messageId` (jump to a link, reply, pin, search hit or first
+   * unread). Standard chats ask the server; private chats only have their local store, so they get the page
+   * ending at that message. Either way the window is detached from the present (`hasMoreAfter`).
+   */
   async loadAround(channel: Channel, messageId: string): Promise<void> {
-    if (this.resolveMode(channel) !== 'standard') return;
-    const remote = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
-    if (remote.length === 0) return;
-    const newest = remote.reduce((m, x) => (compareSnowflakes(x.id, m) > 0 ? x.id : m), remote[0]!.id);
-    const last = channel.last_message_id;
-    useMessageStore.getState().setHistory(channel.id, remote, { prepend: false, hasMoreBefore: true, hasMoreAfter: !last || compareSnowflakes(newest, last) < 0 });
+    const mode = this.resolveMode(channel);
+    const store = useMessageStore.getState();
+    if (mode === 'standard') {
+      const remote = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
+      if (remote.length === 0) return;
+      const newest = remote.reduce((m, x) => (compareSnowflakes(x.id, m) > 0 ? x.id : m), remote[0]!.id);
+      const last = channel.last_message_id;
+      store.setHistory(channel.id, remote, { prepend: false, hasMoreBefore: true, hasMoreAfter: !last || compareSnowflakes(newest, last) < 0 });
+      return;
+    }
+    const known = store.timelines[channel.id]?.byId[messageId];
+    const sortKey = (known ? Date.parse(known.timestamp) : Date.now()) + 1;
+    const local = await this.deps.history.list(channel.id, sortKey, HISTORY_PAGE_SIZE);
+    store.setHistory(channel.id, local, { prepend: false, hasMoreBefore: local.length >= HISTORY_PAGE_SIZE, hasMoreAfter: true });
   }
 
   /** Extends a detached (jumped-to) window towards the present. */
@@ -149,6 +170,11 @@ export class MessageSender {
     if (!newest) return;
     const remote = await this.deps.api.messages(channel.id, { after: newest, limit: HISTORY_PAGE_SIZE });
     useMessageStore.getState().setHistory(channel.id, remote, { prepend: false, append: true, hasMoreBefore: true, hasMoreAfter: remote.length >= HISTORY_PAGE_SIZE });
+  }
+
+  /** The local (encrypted store) messages of a chat, oldest first: the search corpus of private chats. */
+  localMessages(channelId: string, limit = 1000): Promise<ChatMessage[]> {
+    return this.deps.history.list(channelId, null, limit);
   }
 
   // ---- internals --------------------------------------------------------------------
@@ -191,12 +217,16 @@ export class MessageSender {
         content: input.content,
         nonce,
         message_reference: optimistic.message_reference,
-        attachments: await this.uploadFiles(channel.id, input.files ?? []),
+        attachments: await this.uploadFiles(channel.id, nonce, input),
       };
       const sent = await this.deps.api.sendMessage(channel.id, body);
       useMessageStore.getState().receive({ ...sent, nonce });
       return sent;
     } catch (error) {
+      if (error instanceof UploadCancelled) {
+        useMessageStore.getState().remove(channel.id, nonce);
+        throw error;
+      }
       if (isModeConflict(error)) return this.retryPrivately(channel, nonce, input);
       useMessageStore.getState().failOptimistic(channel.id, nonce, error instanceof Error ? error.message : 'Failed to send');
       throw error;
@@ -213,14 +243,38 @@ export class MessageSender {
     return this.sendPrivate(fresh, mode, input);
   }
 
-  private async uploadFiles(channelId: string, files: File[]) {
+  /** Uploads the files with a progress bar the user can cancel; cancelling removes the unsent message. */
+  private async uploadFiles(channelId: string, nonce: string, input: SendInput) {
+    const files = input.files ?? [];
     if (files.length === 0) return undefined;
-    const { attachments: slots } = await this.deps.api.createAttachmentSlots(
-      channelId,
-      files.map((f) => ({ filename: f.name, file_size: f.size })),
-    );
-    await Promise.all(slots.map((slot, i) => this.deps.api.upload(slot.upload_url, files[i]!)));
-    return slots.map((slot, i) => ({ id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename }));
+    const controller = new AbortController();
+    const uploads = useUploadStore.getState();
+    const total = files.reduce((sum, f) => sum + f.size, 0);
+    uploads.begin(nonce, total, () => controller.abort());
+    try {
+      const { attachments: slots } = await this.deps.api.createAttachmentSlots(
+        channelId,
+        files.map((f) => ({ filename: f.name, file_size: f.size })),
+      );
+      const loaded = files.map(() => 0);
+      await Promise.all(
+        slots.map((slot, i) =>
+          this.deps.api.upload(slot.upload_url, files[i]!, (done) => {
+            loaded[i] = done;
+            useUploadStore.getState().progress(nonce, loaded.reduce((sum, n) => sum + n, 0));
+          }, controller.signal),
+        ),
+      );
+      return slots.map((slot, i) => {
+        const description = input.fileOptions?.[i]?.description?.trim();
+        return { id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename, ...(description ? { description } : {}) };
+      });
+    } catch (error) {
+      if (controller.signal.aborted) throw new UploadCancelled();
+      throw error;
+    } finally {
+      useUploadStore.getState().end(nonce);
+    }
   }
 
   private requireStandard(channel: Channel, verb: string): void {

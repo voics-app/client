@@ -86,3 +86,7 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 - Code signing certificates for Windows and macOS (installers are unsigned).
 - A STUN/TURN server for P2P across restrictive NATs. The gateway READY payload carries `turn` (coturn REST credentials, 1h TTL); the client builds `iceServers` from it (plus a derived STUN entry) and re-identifies at 80% of the TTL to refresh them.
 - The generated `@discordy-voics/contracts` package, once published, replaces `apps/desktop/src/shared/contracts`.
+
+## Git hooks
+
+Tests run locally, not in CI. Install [lefthook](https://github.com/evilmartians/lefthook) once and run `make hooks` (or `lefthook install`) to enable the pre-push hook in `lefthook.yml`: it runs this repository's lint and unit tests before every push. CI repeats only the slim gate on pull requests. Skip once with `LEFTHOOK=0 git push`.

@@ -15,6 +15,7 @@ const cryptoMethods: CryptoMethod[] = [
   'verify',
   'generateKeyPackages',
   'hasGroup',
+  'deleteGroup',
   'createGroup',
   'addMembers',
   'memberKeys',

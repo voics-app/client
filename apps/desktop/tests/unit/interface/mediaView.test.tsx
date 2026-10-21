@@ -1,0 +1,177 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ALL_PERMISSIONS } from '@shared/contracts/permissions';
+import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
+import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useUploadStore } from '@renderer/application/stores/uploadStore';
+import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
+
+const editMessage = vi.fn(async () => ({}));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { editMessage } }) }));
+
+const G = 'g1';
+const user = (id: string) => ({ id, username: id, global_name: null, avatar: null });
+const image = (id: string, extra: object = {}) => ({ id, filename: `${id}.png`, content_type: 'image/png', size: 10, url: `http://cdn/attachments/1/${id}/${id}.png?ex=ffffffffff&is=1&hm=ab`, width: 40, height: 30, ...extra });
+
+const message = (over: Partial<ChatMessage> = {}): ChatMessage =>
+  ({
+    id: 'm1',
+    channel_id: 'c1',
+    guild_id: G,
+    author: user('bob'),
+    content: 'hi',
+    timestamp: '2026-01-01T00:00:00Z',
+    edited_timestamp: null,
+    mention_everyone: false,
+    mentions: [],
+    mention_roles: [],
+    attachments: [],
+    embeds: [],
+    pinned: false,
+    type: 0,
+    ...over,
+  }) as unknown as ChatMessage;
+
+const renderMessage = (m: ChatMessage) => render(<MessageItem message={m} startsGroup guildId={G} onRetry={() => undefined} onDiscard={() => undefined} />);
+
+const linkEmbed = {
+  type: 'link' as const,
+  url: 'https://site.example/post',
+  title: 'A post',
+  description: 'About things',
+  provider: { name: 'Site' },
+  thumbnail: { url: 'https://img.example/t.png', proxy_url: 'http://cdn/external/abc?ex=ffffffffff&is=1&hm=ab', width: 20, height: 10 },
+};
+
+function seed(me: string, perms = ALL_PERMISSIONS) {
+  useSessionStore.setState({ user: user(me) } as never);
+  useGuildStore.setState({
+    guilds: { [G]: { id: G, name: 'Guild', owner_id: 'owner', roles: [{ id: G, name: '@everyone', color: 0, hoist: false, position: 0, permissions: perms.toString(), managed: false, mentionable: false }] } } as never,
+    members: { [G]: { [me]: { user: user(me), roles: [], joined_at: '', deaf: false, mute: false } } } as never,
+    channels: { c1: { id: 'c1', guild_id: G, type: 0, name: 'general', position: 0 } } as never,
+  });
+}
+
+beforeEach(() => {
+  editMessage.mockClear();
+  usePrefsStore.setState({ ...DEFAULT_PREFS });
+  useLightboxStore.getState().close();
+  useUploadStore.setState({ uploads: {} });
+  seed('alice');
+});
+afterEach(cleanup);
+
+describe('attachments', () => {
+  it('blurs spoilers until clicked, then opens the viewer on the next click', () => {
+    renderMessage(message({ attachments: [image('a', { filename: 'SPOILER_a.png' })] as never }));
+    const tile = screen.getByRole('button', { name: /Spoiler: a\.png/ });
+    expect(tile.className).toContain('is-spoiler');
+    expect(screen.getByText('Spoiler')).toBeTruthy();
+    fireEvent.click(tile);
+    expect(useLightboxStore.getState().items).toEqual([]);
+    const opened = screen.getByRole('button', { name: 'Open a.png' });
+    expect(opened.className).not.toContain('is-spoiler');
+    fireEvent.click(opened);
+    expect(useLightboxStore.getState().items).toHaveLength(1);
+  });
+
+  it('honours the server spoiler flag and shows alt text', () => {
+    renderMessage(message({ attachments: [image('a', { flags: 8 }), image('b', { description: 'a red cat' })] as never }));
+    expect(screen.getByRole('button', { name: /Spoiler: a\.png/ })).toBeTruthy();
+    expect(screen.getByAltText('a red cat')).toBeTruthy();
+    expect(screen.getByText('ALT')).toBeTruthy();
+  });
+
+  it('lays several images out in a grid and opens the clicked one with its siblings', () => {
+    renderMessage(message({ attachments: [image('a'), image('b'), image('c')] as never }));
+    expect(document.querySelector('.media-grid')?.getAttribute('data-count')).toBe('3');
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Open b.png' }));
+    const { items, index } = useLightboxStore.getState();
+    expect(items.map((i) => i.filename)).toEqual(['a.png', 'b.png', 'c.png']);
+    expect(index).toBe(1);
+  });
+
+  it('keeps files out of the grid and shows a PDF card', () => {
+    renderMessage(message({ attachments: [image('a'), { id: 'p', filename: 'doc.pdf', content_type: 'application/pdf', size: 2048, url: 'http://cdn/doc.pdf' }] as never }));
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(1);
+    expect(screen.getByText(/PDF · 2\.0 KB/)).toBeTruthy();
+  });
+
+  it('shows upload progress with a working cancel for a message being sent', () => {
+    const abort = vi.fn();
+    useUploadStore.getState().begin('n1', 1000, abort);
+    useUploadStore.getState().progress('n1', 250);
+    renderMessage(message({ id: 'n1', nonce: 'n1', localState: 'sending' } as never));
+    expect(screen.getByRole('status', { name: /Uploading, 25 percent/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/ }));
+    expect(abort).toHaveBeenCalledOnce();
+  });
+});
+
+describe('link embeds', () => {
+  it('load media only from the signed proxy URL', () => {
+    renderMessage(message({ embeds: [linkEmbed] as never }));
+    const srcs = [...document.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    expect(srcs).toContain(linkEmbed.thumbnail.proxy_url);
+    expect(srcs.some((s) => s?.includes('img.example'))).toBe(false);
+    expect(screen.getByText('A post')).toBeTruthy();
+    expect(screen.getByText('Site')).toBeTruthy();
+  });
+
+  it('never loads a remote image that has no proxy URL', () => {
+    renderMessage(message({ embeds: [{ ...linkEmbed, thumbnail: { url: 'https://img.example/t.png' } }] as never }));
+    expect([...document.querySelectorAll('img')].some((img) => img.getAttribute('src')?.includes('img.example'))).toBe(false);
+  });
+
+  it('plays an allow-listed video in a sandboxed iframe only after a click', () => {
+    renderMessage(message({ embeds: [{ type: 'video', url: 'https://youtu.be/x', title: 'Clip', provider: { name: 'YouTube' }, video: { url: 'https://www.youtube.com/embed/x', width: 640, height: 360 } }] as never }));
+    expect(document.querySelector('iframe')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Play Clip' }));
+    const frame = document.querySelector('iframe')!;
+    expect(frame.getAttribute('src')).toBe('https://www.youtube.com/embed/x');
+    expect(frame.getAttribute('sandbox')).toContain('allow-scripts');
+    expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
+  });
+
+  it('does not play a video on an unknown host without a proxy URL', () => {
+    renderMessage(message({ embeds: [{ type: 'video', url: 'https://evil.example/', title: 'Clip', video: { url: 'https://evil.example/player' } }] as never }));
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play Clip' })).toBeNull();
+  });
+
+  it('can be hidden in settings, but bot embeds stay', () => {
+    usePrefsStore.setState({ linkPreviews: false });
+    renderMessage(message({ embeds: [linkEmbed, { type: 'rich', title: 'Bot embed' }] as never }));
+    expect(screen.queryByText('A post')).toBeNull();
+    expect(screen.getByText('Bot embed')).toBeTruthy();
+  });
+
+  it('lets the author remove previews with the x, which sends SUPPRESS_EMBEDS', async () => {
+    seed('bob', 0n);
+    useSessionStore.setState({ user: user('bob') } as never);
+    const m = message({ embeds: [linkEmbed] as never });
+    useMessageStore.getState().receive(m as never);
+    renderMessage(m);
+    fireEvent.click(screen.getByRole('button', { name: /Remove all link previews/ }));
+    await waitFor(() => expect(editMessage).toHaveBeenCalledWith('c1', 'm1', { flags: 4 }));
+  });
+
+  it('offers no x to someone who neither wrote the message nor moderates', () => {
+    seed('carol', 0n);
+    renderMessage(message({ embeds: [linkEmbed] as never }));
+    expect(screen.queryByRole('button', { name: /Remove all link previews/ })).toBeNull();
+  });
+
+  it('offers the x to a moderator and not in private chats', () => {
+    renderMessage(message({ embeds: [linkEmbed] as never }));
+    expect(screen.getByRole('button', { name: /Remove all link previews/ })).toBeTruthy();
+    cleanup();
+    renderMessage(message({ embeds: [linkEmbed], deliveryMode: 'ephemeral' } as never));
+    expect(screen.queryByRole('button', { name: /Remove all link previews/ })).toBeNull();
+  });
+});
