@@ -160,7 +160,11 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     MESSAGE_REACTION_ADD: (d: ReactionEvent) => messages().reactionAdd(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE: (d: ReactionEvent) => messages().reactionRemove(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE_ALL: (d: { channel_id: string; message_id: string }) => messages().reactionClear(d.channel_id, d.message_id),
-    MESSAGE_ACK: (d: MessageAck) => useReadStateStore.getState().markRead(d.channel_id, d.message_id),
+    MESSAGE_ACK: (d: MessageAck) => {
+      // The server echoes the resulting marker; with a mention count it is authoritative (it may be a backwards Mark Unread).
+      if (d.mention_count !== undefined) useReadStateStore.getState().setPosition(d.channel_id, d.message_id, d.mention_count);
+      else useReadStateStore.getState().markRead(d.channel_id, d.message_id);
+    },
     TYPING_START: (d: TypingStart) => {
       if (d.user_id !== meId()) useTypingStore.getState().start(d.channel_id, d.user_id);
     },

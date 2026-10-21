@@ -1,4 +1,4 @@
-import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, Eye, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowClockwise, ChatTeardropText, Copy, DotsThree, Envelope, Eye, LinkSimple, LockKey, PencilSimple, Plugs, PushPin, Smiley, Trash, WarningCircle } from '@phosphor-icons/react';
 import { isMentioned } from '@renderer/domain/notificationPolicy';
 import { memo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -7,7 +7,8 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
 import { MessageFlag, type Embed } from '@shared/contracts/rest';
-import { attempt, copyText } from '../../app/actions';
+import { BRAND } from '@shared/brand';
+import { attempt, copyText, jumpToMessage, markMessageUnread } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
@@ -51,7 +52,10 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
   if (!message.message_reference) return null;
   return (
-    <div className="reply-preview">
+    <div
+      className={`reply-preview${message.message_reference?.message_id ? ' is-link' : ''}`}
+      onClick={() => message.message_reference?.message_id && jumpToMessage(message.channel_id, message.message_reference.message_id)}
+    >
       <span className="reply-hook" aria-hidden="true" />
       {ref ? (
         <>
@@ -126,9 +130,11 @@ export interface MessageItemProps {
   guildId: string | null | undefined;
   onRetry: (message: ChatMessage) => void;
   onDiscard: (message: ChatMessage) => void;
+  /** Briefly highlighted after a jump to this message. */
+  flash?: boolean;
 }
 
-export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard, flash }: MessageItemProps) {
   const me = useSessionStore((s) => s.user?.id);
   const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const perms = useChannelPermissions(message.channel_id);
@@ -173,7 +179,13 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
     ...(standard && channel?.guild_id && can(perms, Permission.CREATE_PUBLIC_THREADS)
       ? [{ kind: 'item', label: 'Create thread', icon: <ChatTeardropText size={16} />, onSelect: () => void attempt(async () => { const t = await getRuntime().api.createThread(message.channel_id, { name: message.content.slice(0, 40) || 'Thread', message_id: message.id }); useGuildStore.getState().upsertChannel(t); setSidePanel({ kind: 'thread', threadId: t.id }); }, 'Could not create thread') } satisfies MenuEntry]
       : []),
+    ...(!message.localState && standard
+      ? [{ kind: 'item', label: 'Mark unread', icon: <Envelope size={16} />, onSelect: () => markMessageUnread(message.channel_id, message.id) } satisfies MenuEntry]
+      : []),
     { kind: 'item', label: 'Copy text', icon: <Copy size={16} />, onSelect: () => void copyText(message.content, 'Message copied') },
+    ...(!message.localState
+      ? [{ kind: 'item', label: 'Copy message link', icon: <LinkSimple size={16} />, onSelect: () => void copyText(`${BRAND.protocolScheme}://channels/${message.guild_id ?? '@me'}/${message.channel_id}/${message.id}`, 'Message link copied') } satisfies MenuEntry]
+      : []),
     { kind: 'item', label: 'Copy message ID', icon: <Copy size={16} />, onSelect: () => void copyText(message.id, 'Message ID copied') },
     ...((isMine || canManage) && (standard || isMine)
       ? [{ kind: 'separator' } satisfies MenuEntry, { kind: 'item', label: 'Delete message', icon: <Trash size={16} />, danger: true, onSelect: remove } satisfies MenuEntry]
@@ -201,7 +213,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
 
   return (
     <div
-      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}`}
+      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}${flash ? ' is-flash' : ''}`}
       data-message-id={message.id}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

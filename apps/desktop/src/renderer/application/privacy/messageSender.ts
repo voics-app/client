@@ -1,3 +1,4 @@
+import { compareSnowflakes } from '@renderer/domain/snowflake';
 /** Routes outgoing messages by effective delivery mode (P11) and owns the per-chat / account mode switches. */
 import { ApiErrorCode, type Channel, type CreateMessageBody, type DeliveryMode } from '@shared/contracts/rest';
 import type { ApiPort } from '../ports/api';
@@ -110,6 +111,26 @@ export class MessageSender {
     store.setHistory(channel.id, [...merged.values()], { prepend, hasMoreBefore: hasMore });
   }
 
+  /** Replaces the timeline with the window around `messageId` (jump to a link, reply, pin or search hit). */
+  async loadAround(channel: Channel, messageId: string): Promise<void> {
+    if (this.resolveMode(channel) !== 'standard') return;
+    const remote = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
+    if (remote.length === 0) return;
+    const newest = remote.reduce((m, x) => (compareSnowflakes(x.id, m) > 0 ? x.id : m), remote[0]!.id);
+    const last = channel.last_message_id;
+    useMessageStore.getState().setHistory(channel.id, remote, { prepend: false, hasMoreBefore: true, hasMoreAfter: !last || compareSnowflakes(newest, last) < 0 });
+  }
+
+  /** Extends a detached (jumped-to) window towards the present. */
+  async loadNewer(channel: Channel): Promise<void> {
+    const t = useMessageStore.getState().timelines[channel.id];
+    if (!t || !t.hasMoreAfter || this.resolveMode(channel) !== 'standard') return;
+    const newest = [...t.ids].reverse().find((id) => !t.byId[id]?.localState);
+    if (!newest) return;
+    const remote = await this.deps.api.messages(channel.id, { after: newest, limit: HISTORY_PAGE_SIZE });
+    useMessageStore.getState().setHistory(channel.id, remote, { prepend: false, append: true, hasMoreBefore: true, hasMoreAfter: remote.length >= HISTORY_PAGE_SIZE });
+  }
+
   // ---- internals --------------------------------------------------------------------
 
   private async sendPrivate(channel: Channel, mode: Exclude<DeliveryMode, 'standard'>, input: SendInput): Promise<ChatMessage> {
@@ -119,6 +140,8 @@ export class MessageSender {
   }
 
   private async sendStandard(channel: Channel, input: SendInput): Promise<ChatMessage | null> {
+    // A jumped-to window has a gap to the present; reload the latest page so the sent message lands in order.
+    if (useMessageStore.getState().timelines[channel.id]?.hasMoreAfter) await this.loadHistory(channel);
     const user = useSessionStore.getState().user;
     if (!user) throw new Error('Not signed in');
     const nonce = generateLocalId(this.deps.now());

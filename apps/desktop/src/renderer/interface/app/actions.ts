@@ -1,10 +1,13 @@
 /** UI-facing commands: wrap API calls with consistent error toasts. */
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
+import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { idBefore } from '@renderer/domain/unread';
 import { ChannelType } from '@shared/contracts/rest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
 export function errorMessage(error: unknown): string {
@@ -63,4 +66,27 @@ export async function copyText(text: string, label = 'Copied'): Promise<void> {
   } catch {
     reportError(new Error('Clipboard is unavailable.'), 'Could not copy');
   }
+}
+
+/** Opens the channel and scrolls to (and flashes) the message, loading history around it when it is not in memory. */
+export function jumpToMessage(channelId: string, messageId: string): void {
+  useReadNavStore.getState().requestJump(channelId, messageId);
+  const ui = useUiStore.getState();
+  if (ui.view.channelId !== channelId) openChannel(channelId);
+}
+
+/** Scrolls to the first unread message (the one after the marker captured for this visit). */
+export function jumpToFirstUnread(channelId: string): void {
+  const anchor = useReadNavStore.getState().anchors[channelId] ?? useReadStateStore.getState().byChannel[channelId]?.lastReadId;
+  if (anchor) useReadNavStore.getState().requestJump(channelId, anchor, 'firstAfter');
+}
+
+/** Mark Unread: the read marker moves to just before the message, locally and on the server (all devices). */
+export function markMessageUnread(channelId: string, messageId: string): void {
+  const marker = idBefore(messageId);
+  useReadStateStore.getState().setPosition(channelId, marker, 0);
+  useReadNavStore.getState().setAnchor(channelId, marker);
+  void getRuntime()
+    .api.ack(channelId, marker, { manual: true, mentionCount: 0 })
+    .catch((e) => reportError(e, 'Could not mark unread'));
 }

@@ -1,14 +1,16 @@
-import { ArrowDown, ChatCircleDots, WarningCircle } from '@phosphor-icons/react';
+import { ArrowDown, ArrowUp, ChatCircleDots, WarningCircle } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { PENDING_TTL_MS, useInteractionStore, type PendingInteraction } from '@renderer/application/stores/interactionStore';
 import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
+import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
 import { groupMessages } from '@renderer/domain/messageGrouping';
-import { compareSnowflakes } from '@renderer/domain/snowflake';
-import { markChannelRead, reportError } from '../../app/actions';
+import { firstUnreadMessageId, isUnread, unreadBar } from '@renderer/domain/unread';
+import { jumpToFirstUnread, markChannelRead, reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { formatDay } from '../../shared/hooks/useNow';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
@@ -27,7 +29,14 @@ type Row =
 
 const BOTTOM_THRESHOLD = 80;
 
-function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadId: string | null, me: string | undefined, pending: PendingInteraction[]): Row[] {
+function formatSince(ms: number | null): string {
+  if (ms === null) return 'you were last here';
+  const d = new Date(ms);
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
+function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadId: string | null, pending: PendingInteraction[]): Row[] {
   const grouped = groupMessages(
     messages.map((m) => ({ id: m.id, authorId: m.author.id, timestamp: Date.parse(m.timestamp), breaksGroup: m.type !== 0 || Boolean(m.message_reference) || Boolean(m.interaction_metadata), message: m })),
   );
@@ -35,7 +44,7 @@ function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadI
   if (!hasMoreBefore) rows.push({ kind: 'start', key: 'start' });
   for (const g of grouped) {
     if (g.startsDay) rows.push({ kind: 'day', key: `day-${g.message.id}`, label: formatDay(g.message.timestamp) });
-    if (firstUnreadId && g.message.id === firstUnreadId && g.message.message.author.id !== me) rows.push({ kind: 'new', key: 'new' });
+    if (firstUnreadId && g.message.id === firstUnreadId) rows.push({ kind: 'new', key: 'new' });
     rows.push({ kind: 'message', key: g.message.id, message: g.message.message, startsGroup: g.startsGroup || (firstUnreadId === g.message.id) });
   }
   for (const p of pending) rows.push({ kind: 'thinking', key: `thinking-${p.id}`, pending: p });
@@ -65,15 +74,19 @@ export function MessageList({ channelId }: { channelId: string }) {
   const [atBottom, setAtBottom] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [firstUnread, setFirstUnread] = useState<string | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const anchor = useReadNavStore((s) => s.anchors[channelId] ?? null);
+  const barDismissed = useReadNavStore((s) => s.barDismissed[channelId] ?? false);
+  const jump = useReadNavStore((s) => (s.jump?.channelId === channelId ? s.jump : null));
+  const lastRead = useReadStateStore((s) => s.byChannel[channelId]?.lastReadId ?? null);
+  const jumping = useRef<number | null>(null);
   const pendingPrepend = useRef<number | null>(null);
 
   // Capture the read marker once per channel visit so the "New" divider stays put while reading.
   useEffect(() => {
-    const lastRead = useReadStateStore.getState().byChannel[channelId]?.lastReadId ?? null;
-    const ids = useMessageStore.getState().timelines[channelId]?.ids ?? [];
-    setFirstUnread(lastRead ? (ids.find((id) => compareSnowflakes(id, lastRead) > 0) ?? null) : null);
-  }, [channelId, timeline?.loaded]);
+    useReadNavStore.getState().captureAnchor(channelId, useReadStateStore.getState().byChannel[channelId]?.lastReadId ?? null);
+    return () => useReadNavStore.getState().releaseAnchor(channelId);
+  }, [channelId]);
 
   const load = useCallback(async () => {
     if (!channel) return;
@@ -86,11 +99,17 @@ export function MessageList({ channelId }: { channelId: string }) {
   }, [channel]);
 
   useEffect(() => {
-    if (!timeline?.loaded) void load();
-  }, [timeline?.loaded, load]);
+    if (!timeline?.loaded && !jump) void load();
+  }, [timeline?.loaded, load, jump]);
 
   const messages = useMemo(() => (timeline ? timeline.ids.map((id) => timeline.byId[id]).filter((m): m is ChatMessage => Boolean(m)) : []), [timeline]);
-  const rows = useMemo(() => buildRows(messages, timeline?.hasMoreBefore ?? true, firstUnread, me, pending ?? []), [messages, timeline?.hasMoreBefore, firstUnread, me, pending]);
+  const markers = useMemo(() => messages.filter((m) => !m.localState).map((m) => ({ id: m.id, authorId: m.author.id })), [messages]);
+  const firstUnread = useMemo(() => firstUnreadMessageId(markers, anchor, me), [markers, anchor, me]);
+  const rows = useMemo(() => buildRows(messages, timeline?.hasMoreBefore ?? true, firstUnread, pending ?? []), [messages, timeline?.hasMoreBefore, firstUnread, pending]);
+  const bar = useMemo(() => {
+    if (!anchor || barDismissed || !isUnread(channel?.last_message_id, lastRead)) return null;
+    return unreadBar(markers, anchor, me, timeline?.hasMoreBefore ?? false);
+  }, [anchor, barDismissed, channel?.last_message_id, lastRead, markers, me, timeline?.hasMoreBefore]);
 
   useEffect(() => {
     if (!pending || pending.length === 0) return;
@@ -140,12 +159,82 @@ export function MessageList({ channelId }: { channelId: string }) {
     }
   }, [channel, loadingOlder, timeline, virtualizer]);
 
+  const loadingNewer = useRef(false);
+  const loadNewer = useCallback(async () => {
+    if (!channel || loadingNewer.current) return;
+    loadingNewer.current = true;
+    try {
+      await getRuntime().privacy.sender.loadNewer(channel);
+    } catch (e) {
+      reportError(e, 'Could not load newer messages');
+    } finally {
+      loadingNewer.current = false;
+    }
+  }, [channel]);
+
+  /** "Jump to present": reload the latest page when the window is detached, then pin to the bottom. */
+  const jumpToPresent = useCallback(async () => {
+    if (timeline?.hasMoreAfter && channel) {
+      try {
+        await getRuntime().privacy.sender.loadHistory(channel);
+      } catch (e) {
+        reportError(e, 'Could not load messages');
+        return;
+      }
+    }
+    setAtBottom(true);
+    requestAnimationFrame(scrollToEnd);
+  }, [channel, timeline?.hasMoreAfter, scrollToEnd]);
+
+  // Jump to a message (reply, pin, link, search hit, first unread): load the window around it when it is not in memory, then scroll and flash.
+  useEffect(() => {
+    if (!jump || !channel || jumping.current === jump.id) return;
+    const ids = timeline?.ids ?? [];
+    const target = jump.mode === 'message' ? (ids.includes(jump.messageId) ? jump.messageId : null) : firstUnreadMessageId(markers, jump.messageId, me);
+    if (!target) {
+      jumping.current = jump.id;
+      const wanted = jump;
+      void (async () => {
+        try {
+          await getRuntime().privacy.sender.loadAround(channel, wanted.messageId);
+        } catch (e) {
+          reportError(e, 'Could not load that message');
+        }
+        const t = useMessageStore.getState().timelines[channelId];
+        const found =
+          wanted.mode === 'message'
+            ? Boolean(t?.ids.includes(wanted.messageId))
+            : Boolean(t && firstUnreadMessageId(t.ids.map((id) => ({ id, authorId: t.byId[id]?.author.id ?? '' })), wanted.messageId, me));
+        if (!found) {
+          useReadNavStore.getState().consumeJump(wanted.id);
+          useUiStore.getState().toast({ tone: 'info', title: 'That message is no longer available' });
+          if (!t?.loaded) void load();
+        } else {
+          jumping.current = null; // the timeline changed: the effect re-runs with the target in memory
+        }
+      })();
+      return;
+    }
+    const index = rows.findIndex((r) => r.kind === 'message' && r.message.id === target);
+    if (index < 0) return;
+    useReadNavStore.getState().consumeJump(jump.id);
+    jumping.current = null;
+    setAtBottom(false);
+    virtualizer.scrollToIndex(index, { align: 'center' });
+    setFlashId(target);
+    const timer = window.setTimeout(() => setFlashId((v) => (v === target ? null : v)), 2200);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump, channel, timeline?.ids, rows]);
+
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD;
+    const bottom = near && !timeline?.hasMoreAfter;
     setAtBottom(bottom);
     if (el.scrollTop < 200) void loadOlder();
+    if (near && timeline?.hasMoreAfter) void loadNewer();
     if (bottom && document.hasFocus()) markChannelRead(channelId);
   };
 
@@ -225,15 +314,36 @@ export function MessageList({ channelId }: { channelId: string }) {
                   </div>
                 )}
                 {row.kind === 'thinking' && <ThinkingRow pending={row.pending} />}
-                {row.kind === 'message' && <MessageItem message={row.message} startsGroup={row.startsGroup} guildId={channel?.guild_id} onRetry={retry} onDiscard={discard} />}
+                {row.kind === 'message' && <MessageItem message={row.message} flash={flashId === row.message.id} startsGroup={row.startsGroup} guildId={channel?.guild_id} onRetry={retry} onDiscard={discard} />}
               </div>
             );
           })}
         </div>
         {timeline.ids.length === 0 && !timeline.hasMoreBefore && null}
       </div>
+      {bar && (
+        <div className="unread-bar" role="status">
+          <span className="unread-bar-text">
+            {bar.count}
+            {bar.more ? '+' : ''} new {bar.count === 1 && !bar.more ? 'message' : 'messages'} since {formatSince(bar.sinceMs)}
+          </span>
+          <button type="button" className="unread-bar-action" onClick={() => jumpToFirstUnread(channelId)}>
+            <ArrowUp size={12} weight="bold" /> Jump to first unread
+          </button>
+          <button
+            type="button"
+            className="unread-bar-action"
+            onClick={() => {
+              markChannelRead(channelId);
+              useReadNavStore.getState().dismissBar(channelId);
+            }}
+          >
+            Mark as read
+          </button>
+        </div>
+      )}
       {!atBottom && (
-        <button type="button" className="jump-bottom glass" onClick={scrollToEnd}>
+        <button type="button" className="jump-bottom glass" onClick={() => void jumpToPresent()}>
           <ArrowDown size={14} weight="bold" /> Jump to present
         </button>
       )}

@@ -81,6 +81,8 @@ export interface ReadStateState {
   byChannel: Record<string, ReadState>;
   hydrate(entries: { id: string; last_message_id: string | null; mention_count: number }[]): void;
   markRead(channelId: string, messageId: string): void;
+  /** Sets the marker to exactly this message, even backwards (Mark Unread, MESSAGE_ACK from the server). */
+  setPosition(channelId: string, messageId: string, mentionCount?: number): void;
   addMention(channelId: string): void;
   reset(): void;
 }
@@ -93,6 +95,8 @@ export const useReadStateStore = create<ReadStateState>((set) => ({
     set((s) => ({
       byChannel: { ...s.byChannel, [channelId]: { lastReadId: maxSnowflake(s.byChannel[channelId]?.lastReadId, messageId), mentionCount: 0 } },
     })),
+  setPosition: (channelId, messageId, mentionCount = 0) =>
+    set((s) => ({ byChannel: { ...s.byChannel, [channelId]: { lastReadId: messageId, mentionCount } } })),
   addMention: (channelId) =>
     set((s) => {
       const current = s.byChannel[channelId] ?? { lastReadId: null, mentionCount: 0 };

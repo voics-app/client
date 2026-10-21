@@ -126,7 +126,8 @@ export interface ApiPort {
   pins(channelId: string): Promise<Message[]>;
   pin(channelId: string, messageId: string): Promise<void>;
   unpin(channelId: string, messageId: string): Promise<void>;
-  ack(channelId: string, messageId: string): Promise<void>;
+  /** `manual` sets the read marker to exactly this message, even backwards (Mark Unread). */
+  ack(channelId: string, messageId: string, options?: { manual?: boolean; mentionCount?: number }): Promise<void>;
   createAttachmentSlots(channelId: string, files: { filename: string; file_size: number }[]): Promise<{ attachments: AttachmentUploadSlot[] }>;
   upload(url: string, file: Blob): Promise<void>;
 

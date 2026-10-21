@@ -15,10 +15,11 @@ export function routeFromDeepLink(link: string): string | null {
   }
   if (url.protocol !== `${PROTOCOL}:`) return null;
   const parts = [url.hostname, ...url.pathname.split('/')].filter(Boolean);
-  const [kind, a, b] = parts;
+  const [kind, a, b, c] = parts;
   if (kind === 'invite' && a && INVITE.test(a) && parts.length === 2) return `/invite/${a}`;
-  if (kind === 'channels' && a && b && (a === '@me' || ID.test(a)) && ID.test(b) && parts.length === 3) {
-    return `/channels/${a}/${b}`;
+  if (kind === 'channels' && a && b && (a === '@me' || ID.test(a)) && ID.test(b)) {
+    if (parts.length === 3) return `/channels/${a}/${b}`;
+    if (parts.length === 4 && c && ID.test(c)) return `/channels/${a}/${b}/${c}`;
   }
   return null;
 }
