@@ -152,13 +152,13 @@ describe('message right-click menu', () => {
     expect(menuLabels()).toEqual(expect.arrayContaining(['Edit Message', 'Delete Message']));
   });
 
-  it('Mark Unread moves the read marker to the previous message', () => {
+  it('Mark Unread moves the read marker to just before the message', () => {
     useReadStateStore.setState({ byChannel: { c1: { lastReadId: '50', mentionCount: 0 } } });
-    renderMessage();
+    renderMessage(message({ id: '300' }));
     fireEvent.contextMenu(root());
     fireEvent.click(screen.getByRole('menuitem', { name: 'Mark Unread' }));
-    // No previous message in the (empty) timeline: the marker is cleared so the whole channel counts unread.
-    expect(useReadStateStore.getState().byChannel.c1?.lastReadId).toBeNull();
+    // The marker lands just before the message, so it and everything after count as unread.
+    expect(useReadStateStore.getState().byChannel.c1?.lastReadId).toBe('299');
   });
 
   it('a link inside the message opens a link menu first', () => {

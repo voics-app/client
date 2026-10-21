@@ -86,7 +86,11 @@ export function markMessageUnread(channelId: string, messageId: string): void {
   const marker = idBefore(messageId);
   useReadStateStore.getState().setPosition(channelId, marker, 0);
   useReadNavStore.getState().setAnchor(channelId, marker);
-  void getRuntime()
-    .api.ack(channelId, marker, { manual: true, mentionCount: 0 })
-    .catch((e) => reportError(e, 'Could not mark unread'));
+  try {
+    void getRuntime()
+      .api.ack(channelId, marker, { manual: true, mentionCount: 0 })
+      .catch((e) => reportError(e, 'Could not mark unread'));
+  } catch {
+    /* runtime not started (signed out): the local marker still moved */
+  }
 }
