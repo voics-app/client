@@ -5,7 +5,10 @@ import type {
   ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
+  AccountChange,
   AuthResponse,
+  BackupCode,
+  TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
@@ -60,6 +63,42 @@ export class DiscordyApi implements ApiPort {
   }
   logout() {
     return this.post<void>('/auth/logout');
+  }
+  loginMfa(body: { ticket: string; code: string }) {
+    return this.http.request<AuthResponse>('POST', '/auth/mfa/totp', { body, auth: false });
+  }
+  async forgotPassword(email: string) {
+    await this.http.request('POST', '/auth/forgot-password', { body: { email }, auth: false });
+  }
+  async resetPassword(token: string, password: string) {
+    await this.http.request('POST', '/auth/reset-password', { body: { token, password }, auth: false });
+  }
+  async verifyEmail(token: string) {
+    await this.http.request('POST', '/auth/verify-email', { body: { token }, auth: false });
+  }
+  async resendVerification() {
+    await this.post<void>('/auth/resend-verification');
+  }
+  changeAccount(change: AccountChange) {
+    return this.patch<User>('/users/@me', change);
+  }
+  enableTotp(password: string) {
+    return this.post<TotpEnrollment>('/users/@me/mfa/totp/enable', { password });
+  }
+  async verifyTotp(code: string) {
+    return (await this.post<{ backup_codes: BackupCode[] }>('/users/@me/mfa/totp/verify', { code })).backup_codes;
+  }
+  async disableTotp(password: string, code: string) {
+    await this.post<void>('/users/@me/mfa/totp/disable', { password, code });
+  }
+  async backupCodes(password: string, regenerate: boolean) {
+    return (await this.post<{ backup_codes: BackupCode[] }>('/users/@me/mfa/codes-verification', { password, regenerate })).backup_codes;
+  }
+  async disableAccount(password: string) {
+    await this.post<void>('/users/@me/disable', { password });
+  }
+  async deleteAccount(password: string) {
+    await this.post<void>('/users/@me/delete', { password });
   }
 
   registerDevice(body: { name: string; identity_key_b64: string }) {

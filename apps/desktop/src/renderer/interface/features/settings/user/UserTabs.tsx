@@ -22,6 +22,7 @@ import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea }
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
 import { readImageUpload } from '../imageUpload';
+import { AccountSecurity } from './AccountSecurity';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -50,6 +51,7 @@ export function AccountTab() {
         </div>
         <Button onClick={() => openSettings({ kind: 'user', tab: 'profile' })}>Edit profile</Button>
       </div>
+      <AccountSecurity user={user} />
       <SettingRow title="Sign out" description="Removes your session from this device's keychain. Your encrypted local history stays on disk until you delete it.">
         <Button
           variant="danger"

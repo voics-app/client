@@ -392,6 +392,12 @@ button.mode-badge:active { transform: scale(0.96); }
 .auth-panel { display: grid; place-items: center; padding: 32px; }
 .auth-card-shell { width: 100%; max-width: 440px; padding: 8px; border-radius: 32px; background: color-mix(in oklch, var(--fg) 5%, transparent); box-shadow: inset 0 0 0 1px var(--hairline), var(--shadow-dialog); }
 .auth-card { display: flex; flex-direction: column; gap: 18px; padding: 32px; border-radius: 26px; background: var(--bg-2); box-shadow: var(--shadow-inset); } .auth-card h2 { font-size: var(--fs-hero); letter-spacing: -0.025em; } .auth-card .segmented { align-self: flex-start; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.auth-notice { padding: 10px 14px; border-radius: 10px; background: color-mix(in oklch, var(--accent) 14%, transparent); font-size: var(--fs-small); }
+.account-banner { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; margin-bottom: 12px; background: color-mix(in oklch, var(--warning, #d9a441) 14%, transparent); }
+.backup-codes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.backup-codes li.is-used { text-decoration: line-through; opacity: 0.5; }
+.totp-qr { align-self: center; border-radius: 8px; background: #fff; padding: 4px; }
 .auth-error { padding: 10px 14px; border-radius: 10px; background: color-mix(in oklch, var(--danger) 14%, transparent); color: var(--danger); font-size: var(--fs-small); }
 .auth-foot { display: flex; align-items: center; gap: 8px; font-size: var(--fs-meta); color: var(--fg-subtle); } .auth-foot .link-btn { margin-left: auto; }
 
