@@ -171,6 +171,35 @@ describe('EphemeralService receiving', () => {
     expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
   });
 
+  it('replaces its own lone local group when a welcome for the same group arrives (client#118)', async () => {
+    const { service, gateway, crypto } = setup();
+    await crypto.createGroup('500');
+    crypto.memberKeys.mockResolvedValue(['key-self']);
+    await service.handleEnvelope(envelope({ content_type: 'welcome', ciphertext: 'welcome-bytes' }));
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('500');
+    expect(crypto.joinFromWelcome).toHaveBeenCalledWith('welcome-bytes');
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
+  });
+
+  it('on a split-brain race the group of the lower identity key wins and our unread messages are re-sent', async () => {
+    const { service, gateway, crypto } = setup();
+    await service.send(dm(), { content: 'raced' });
+    gateway.sent.length = 0;
+    crypto.memberKeys.mockResolvedValue(['key-self', 'key-bob']);
+    await service.handleEnvelope(envelope({ content_type: 'welcome', ciphertext: 'welcome-bytes' }));
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('500');
+    const resent = gateway.ofOp(GatewayOp.E2EE_ENVELOPE) as unknown as E2EEEnvelope[];
+    expect(resent.map((e) => e.content_type)).toEqual(['application']);
+    expect(resent[0]?.recipients.map((r) => r.device_id)).toEqual(['20']);
+  });
+
+  it('drops an application message it can never decrypt instead of retrying forever', async () => {
+    const { service, gateway, crypto } = setup();
+    crypto.processIncoming.mockRejectedValueOnce(new Error('MLS error: ValidationError(UnableToDecrypt(AeadError))'));
+    await service.handleEnvelope(envelope());
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
+  });
+
   it('decrypts, persists locally, displays, and only then acknowledges', async () => {
     const { service, gateway, encryptFake } = setup();
     const payload = { v: 1, content: SECRET, nonce: '9000', timestamp: '2026-10-17T10:00:00.000Z' };

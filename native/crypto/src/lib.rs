@@ -114,6 +114,11 @@ impl NativeCrypto {
     }
 
     #[napi]
+    pub fn delete_group(&self, group_id: Buffer) -> Result<bool> {
+        self.with(|e| e.delete_group(&group_id))
+    }
+
+    #[napi]
     pub fn create_group(&self, group_id: Buffer) -> Result<i64> {
         self.with(|e| e.create_group(&group_id).map(|x| x as i64))
     }

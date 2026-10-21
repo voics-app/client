@@ -43,6 +43,7 @@ export declare class NativeCrypto {
   sign(data: Buffer): Buffer;
   generateKeyPackages(count: number): Buffer[];
   hasGroup(groupId: Buffer): boolean;
+  deleteGroup(groupId: Buffer): boolean;
   createGroup(groupId: Buffer): number;
   addMembers(groupId: Buffer, keyPackages: Buffer[]): AddMembersResult;
   /** Identity (signature) public keys of every device currently in the group, own device included. */

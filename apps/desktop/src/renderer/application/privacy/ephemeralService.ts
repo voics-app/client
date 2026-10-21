@@ -59,6 +59,8 @@ export class EphemeralService {
   /** Envelopes for a group this device has not joined yet, replayed once its welcome is applied. */
   private readonly awaitingWelcome = new Map<string, E2EEEnvelope[]>();
   private cryptoChecked = false;
+  /** Messages sent in a group before any peer has spoken in it; re-sent if that group is replaced (split brain). */
+  private readonly unconfirmed = new Map<string, { id: string; plaintextB64: string }[]>();
 
   constructor(private readonly deps: EphemeralDeps) {}
 
@@ -137,7 +139,9 @@ export class EphemeralService {
       reply_to: input.replyTo ?? null,
       files: attached.map((a) => a.private),
     };
-    const { ciphertextB64, epoch } = await crypto.encrypt(channelId, encodePayload(payload));
+    const plaintextB64 = encodePayload(payload);
+    const { ciphertextB64, epoch } = await crypto.encrypt(channelId, plaintextB64);
+    this.unconfirmed.set(channelId, [...(this.unconfirmed.get(channelId) ?? []).slice(-19), { id, plaintextB64 }]);
     privacyDebug('ephemeral send: encrypted, relaying', { epoch });
     this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
 
@@ -339,7 +343,7 @@ export class EphemeralService {
     try {
       const crypto = await this.requireCrypto();
       if (envelope.content_type === 'welcome') {
-        await this.handleWelcome(crypto, entry);
+        await this.handleWelcome(crypto, envelope, entry);
       } else {
         const result = await crypto.processIncoming(channelId, entry.ciphertext_b64);
         if (result.kind === 'application' && result.plaintextB64) {
@@ -360,6 +364,13 @@ export class EphemeralService {
         privacy.setGroup(channelId, 'establishing');
         return;
       }
+      if (envelope.content_type === 'application' && /WrongEpoch|AeadError/i.test(reason)) {
+        // Encrypted in a group this device no longer holds (it lost a split-brain tie-break); it can never
+        // be read, and keeping it unacknowledged would only make the gateway redeliver it forever.
+        privacyDebug('ephemeral receive: dropping an unreadable message from a superseded group', { channel: channelId });
+        this.ack(envelope);
+        return;
+      }
       if (envelope.content_type === 'commit' && /epoch/i.test(reason)) {
         // Lost a commit race: the lowest epoch wins, so this stale commit can never apply. Drop it and
         // retry any removal that is still pending as the next committer in line.
@@ -372,14 +383,51 @@ export class EphemeralService {
     }
   }
 
-  private async handleWelcome(crypto: CryptoBridge, entry: E2EERecipient): Promise<void> {
+  /**
+   * True when a Welcome for a group we already hold should replace our copy. Two devices can each create
+   * the group for a channel (one sent before the peer had a device, or both sent first at the same time),
+   * and a device cannot join a group id it already holds. A group with no one else in it is always
+   * replaced; otherwise the group created by the lower identity key wins, which both sides compute alike.
+   */
+  private async welcomeSupersedes(crypto: CryptoBridge, envelope: E2EEEnvelope): Promise<boolean> {
+    const keys = await crypto.memberKeys(envelope.channel_id);
+    if (keys.length <= 1) return true;
+    const self = this.deps.getSelf();
+    const owner = await this.deps.devices.ownerOf(participantsOf(envelope.channel_id, self.userId), envelope.sender_device_id);
+    const senderKey = owner ? await this.deps.devices.identityKey(owner, envelope.sender_device_id) : null;
+    return senderKey !== null && senderKey < self.identityKeyB64;
+  }
+
+  private async handleWelcome(crypto: CryptoBridge, envelope: E2EEEnvelope, entry: E2EERecipient): Promise<void> {
+    if (await crypto.hasGroup(envelope.channel_id)) {
+      if (!(await this.welcomeSupersedes(crypto, envelope))) {
+        privacyDebug('ephemeral welcome: keeping our group (lower identity key wins)', { channel: envelope.channel_id });
+        return;
+      }
+      privacyDebug('ephemeral welcome: replacing our local group', { channel: envelope.channel_id });
+      await crypto.deleteGroup(envelope.channel_id);
+    }
     const { groupId, epoch } = await crypto.joinFromWelcome(entry.ciphertext_b64);
     usePrivacyStore.getState().setGroup(groupId, 'ready', epoch);
     const waiting = this.awaitingWelcome.get(groupId) ?? [];
     this.awaitingWelcome.delete(groupId);
     for (const parked of waiting) void this.enqueue(() => this.receiveNow(parked));
-    await this.deps.history.putState(`mls-members:${groupId}`, await this.currentDevices(groupId).catch(() => ({})));
+    const members = await this.currentDevices(groupId).catch(() => ({}) as Membership);
+    await this.deps.history.putState(`mls-members:${groupId}`, members);
+    await this.resendUnconfirmed(crypto, groupId, members);
     await this.noteKeyPackageClaimed();
+  }
+
+  /** Messages this device sent into a group it has just replaced were never readable by the peer: send them again. */
+  private async resendUnconfirmed(crypto: CryptoBridge, channelId: string, membership: Membership): Promise<void> {
+    const pending = this.unconfirmed.get(channelId) ?? [];
+    this.unconfirmed.delete(channelId);
+    const recipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
+    if (pending.length === 0 || recipients.length === 0) return;
+    for (const { id, plaintextB64 } of pending) {
+      const { ciphertextB64, epoch } = await crypto.encrypt(channelId, plaintextB64);
+      this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
+    }
   }
 
   /** Decrypts, persists locally, shows, and only then lets the caller acknowledge. */
@@ -395,6 +443,7 @@ export class EphemeralService {
     const author = this.userById(senderUserId, channelId);
     const existing = useMessageStore.getState().timelines[channelId]?.byId[envelope.message_id];
     const message = buildPrivateMessage({ id: envelope.message_id, channel, author, payload, mode: 'ephemeral' });
+    if (senderUserId !== self.userId || envelope.sender_device_id !== self.deviceId) this.unconfirmed.delete(channelId);
     await this.deps.history.save(message);
     if (!existing) {
       useMessageStore.getState().receive(message);
