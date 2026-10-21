@@ -7,6 +7,8 @@ export class ApiError extends Error {
     readonly code: number,
     message: string,
     readonly errors?: Record<string, unknown>,
+    /** Present on a 60008 login answer. */
+    readonly ticket?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -28,7 +30,8 @@ export interface HttpClientOptions {
 
 export interface RequestOptions {
   body?: unknown;
-  query?: Record<string, string | number | boolean | undefined | null>;
+  /** Array values are sent as repeated keys. */
+  query?: Record<string, string | number | boolean | string[] | undefined | null>;
   auth?: boolean;
   headers?: Record<string, string>;
   reason?: string;
@@ -54,7 +57,11 @@ export class HttpClient {
 
   private url(path: string, query?: RequestOptions['query']): string {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== null) params.set(k, String(v));
+    for (const [k, v] of Object.entries(query ?? {})) {
+      if (v === undefined || v === null) continue;
+      if (Array.isArray(v)) for (const item of v) params.append(k, item);
+      else params.set(k, String(v));
+    }
     const qs = params.toString();
     return `${this.baseUrl}/api/v1${path}${qs ? `?${qs}` : ''}`;
   }
@@ -153,7 +160,7 @@ function uploadWithProgress(url: string, file: Blob, onProgress: (loaded: number
 function errorFromResponse(status: number, text: string): ApiError {
   const envelope = parseEnvelope(text);
   const message = envelope?.message || `Request failed with HTTP ${status}`;
-  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors);
+  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors, envelope?.ticket);
 }
 
 function parseEnvelope(text: string): Partial<ApiErrorBody> | null {

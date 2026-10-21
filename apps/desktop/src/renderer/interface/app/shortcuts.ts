@@ -49,12 +49,19 @@ function markCurrentRead(shift = false): void {
   else if (view.channelId) markChannelRead(view.channelId);
 }
 
+/** Ctrl+F: focus the channel header search box; without an open channel it falls back to the quick switcher. */
+function focusSearch(): void {
+  const ui = useUiStore.getState();
+  if (ui.view.channelId) ui.focusSearch();
+  else ui.openPalette(true);
+}
+
 const ACTIONS: Record<Keybind['action'], (shift?: boolean) => void> = {
   palette: () => useUiStore.getState().openPalette(!useUiStore.getState().paletteOpen),
   toggleMute: () => void toggleMute(),
   toggleDeafen: () => void toggleDeafen(),
   markRead: markCurrentRead,
-  search: () => useUiStore.getState().openPalette(true),
+  search: focusSearch,
   upload: () => document.querySelector<HTMLButtonElement>('button[aria-label="Attach files"]')?.click(),
   prevChannel: () => adjacentChannel(-1),
   nextChannel: () => adjacentChannel(1),

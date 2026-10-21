@@ -103,9 +103,11 @@ export interface MessageItemProps {
   guildId: string | null | undefined;
   onRetry: (message: ChatMessage) => void;
   onDiscard: (message: ChatMessage) => void;
+  /** The message a search result jumped to. */
+  highlighted?: boolean;
 }
 
-export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard, highlighted }: MessageItemProps) {
   const me = useSessionStore((s) => s.user?.id);
   const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
@@ -140,7 +142,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
 
   return (
     <div
-      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}${interactions.visible ? ' is-toolbar-open' : ''}`}
+      className={`message${startsGroup ? ' starts-group' : ''}${mentionsMe ? ' is-mention' : ''}${sending ? ' is-sending' : ''}${failed ? ' is-failed' : ''}${editing ? ' is-editing' : ''}${interactions.visible ? ' is-toolbar-open' : ''}${highlighted ? ' is-jump-target' : ''}`}
       data-message-id={message.id}
       {...interactions.rootProps}
     >

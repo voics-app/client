@@ -11,6 +11,7 @@ import { MarkdownView } from '../chat/MarkdownView';
 import { MemberList } from '../members/MemberList';
 import { Avatar } from '../../shared/ui/Avatar';
 import { displayName } from '../../shared/hooks/useNames';
+import { SearchPanel } from '../search/SearchPanel';
 import { ThreadPanel } from './ThreadPanel';
 import { WatchPanel } from './WatchPanel';
 
@@ -40,7 +41,7 @@ export function SidePanelHost() {
   const channel = useGuildStore((s) => (view.channelId ? s.channels[view.channelId] : undefined));
   const isGuildView = view.kind === 'guild';
   const effective = panel?.kind === 'members' && !isGuildView ? null : panel;
-  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : null;
+  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -54,6 +55,7 @@ export function SidePanelHost() {
           )}
           {effective.kind === 'members' && isGuildView && <MemberList guildId={view.guildId} />}
           {effective.kind === 'pins' && channel && <PinsPanel channelId={channel.id} />}
+          {effective.kind === 'search' && <SearchPanel channelId={view.channelId} />}
           {effective.kind === 'thread' && <ThreadPanel threadId={effective.threadId} />}
           {effective.kind === 'watch' && <WatchPanel channelId={view.channelId} />}
         </motion.div>

@@ -35,6 +35,7 @@ export interface User {
   bot?: boolean;
   email?: string;
   mfa_enabled?: boolean;
+  verified?: boolean;
 }
 
 export interface CustomStatus {
@@ -255,6 +256,16 @@ export interface Message {
   application_id?: Snowflake;
   components?: MessageComponent[];
   interaction_metadata?: InteractionMetadata;
+  /** Search results only: true for the match, absent for its context messages. */
+  hit?: boolean;
+}
+
+/** `GET /guilds/{id}/messages/search` and `GET /channels/{id}/messages/search`. */
+export interface MessageSearchResponse {
+  total_results: number;
+  /** One group per hit, oldest first; the hit carries `hit: true`. */
+  messages: Message[][];
+  index_building?: boolean;
 }
 
 export const MessageFlag = {
@@ -501,6 +512,28 @@ export interface ApiErrorBody {
   code: number;
   message: string;
   errors?: Record<string, unknown>;
+  /** Login answered 60008: the ticket completes the login with a second factor. */
+  ticket?: string;
+  retry_after?: number;
+}
+
+export interface TotpEnrollment {
+  secret: string;
+  otpauth_uri: string;
+}
+
+export interface BackupCode {
+  /** Plaintext, present only right after generation. */
+  code?: string;
+  consumed: boolean;
+}
+
+export interface AccountChange {
+  username?: string;
+  email?: string;
+  new_password?: string;
+  /** The current password; required for the three fields above. */
+  password: string;
 }
 
 export const ApiErrorCode = {

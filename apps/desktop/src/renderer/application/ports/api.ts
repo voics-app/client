@@ -1,10 +1,14 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
+import type { SearchParams } from '@renderer/domain/messageSearch';
 import type {
   ApplicationCommand,
   ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
+  AccountChange,
   AuthResponse,
+  BackupCode,
+  TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
@@ -20,6 +24,7 @@ import type {
   GuildMember,
   Invite,
   Message,
+  MessageSearchResponse,
   PermissionOverwrite,
   Relationship,
   Role,
@@ -53,6 +58,18 @@ export interface ApiPort {
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
+  loginMfa(body: { ticket: string; code: string }): Promise<AuthResponse>;
+  forgotPassword(email: string): Promise<void>;
+  resetPassword(token: string, password: string): Promise<void>;
+  verifyEmail(token: string): Promise<void>;
+  resendVerification(): Promise<void>;
+  changeAccount(change: AccountChange): Promise<User>;
+  enableTotp(password: string): Promise<TotpEnrollment>;
+  verifyTotp(code: string): Promise<BackupCode[]>;
+  disableTotp(password: string, code: string): Promise<void>;
+  backupCodes(password: string, regenerate: boolean): Promise<BackupCode[]>;
+  disableAccount(password: string): Promise<void>;
+  deleteAccount(password: string): Promise<void>;
 
   registerDevice(body: { name: string; identity_key_b64: string }): Promise<{ device_id: string }>;
   uploadKeyPackages(deviceId: string, packages: string[]): Promise<void>;
@@ -121,6 +138,8 @@ export interface ApiPort {
   deleteInvite(code: string): Promise<void>;
 
   messages(channelId: string, query?: MessageQuery): Promise<Message[]>;
+  /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
+  searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
   editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
