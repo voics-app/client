@@ -6,6 +6,7 @@ import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/applic
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
+import { systemMessageText } from '@renderer/domain/dmModel';
 import { MessageFlag, type Embed } from '@shared/contracts/rest';
 import { attempt } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -143,13 +144,16 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
   const ephemeral = ((message.flags ?? 0) & MessageFlag.EPHEMERAL) !== 0;
   const system = message.type !== 0 && message.type !== 19 && message.type !== 20;
 
+  const target = message.mentions?.[0];
+  const groupText = system ? systemMessageText(message.type, name, target ? displayName(target) : null, message.content ?? '') : null;
+
   if (ephemeral && message.interaction_metadata && message.interaction_metadata.user.id !== me) return null;
 
   if (system) {
     return (
       <div className="message system" data-message-id={message.id}>
         <span className="system-text">
-          <strong>{name}</strong> {message.type === 7 ? 'joined the server.' : message.type === 6 ? 'pinned a message to this channel.' : 'did something.'}
+          {groupText ?? <><strong>{name}</strong> {message.type === 7 ? 'joined the server.' : message.type === 6 ? 'pinned a message to this channel.' : 'did something.'}</>}
         </span>
         <time className="message-time-inline">{formatTime(message.timestamp)}</time>
       </div>

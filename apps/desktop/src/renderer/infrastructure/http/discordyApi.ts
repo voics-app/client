@@ -211,6 +211,12 @@ export class DiscordyApi implements ApiPort {
   deleteChannel(channelId: string) {
     return this.del<void>(`/channels/${channelId}`);
   }
+  addGroupRecipient(channelId: string, userId: string) {
+    return this.put<void>(`/channels/${channelId}/recipients/${userId}`);
+  }
+  removeGroupRecipient(channelId: string, userId: string) {
+    return this.del<void>(`/channels/${channelId}/recipients/${userId}`);
+  }
   putOverwrite(channelId: string, overwrite: PermissionOverwrite) {
     return this.put<void>(`/channels/${channelId}/permissions/${overwrite.id}`, overwrite);
   }

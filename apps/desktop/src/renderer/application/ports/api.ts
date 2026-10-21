@@ -107,6 +107,9 @@ export interface ApiPort {
   channel(channelId: string): Promise<Channel>;
   updateChannel(channelId: string, patch: Partial<Channel>): Promise<Channel>;
   deleteChannel(channelId: string): Promise<void>;
+  /** Group DM: add a member (any member), remove one (owner) or leave (`'@me'`). */
+  addGroupRecipient(channelId: string, userId: string): Promise<void>;
+  removeGroupRecipient(channelId: string, userId: string): Promise<void>;
   putOverwrite(channelId: string, overwrite: PermissionOverwrite): Promise<void>;
   deleteOverwrite(channelId: string, overwriteId: string): Promise<void>;
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
