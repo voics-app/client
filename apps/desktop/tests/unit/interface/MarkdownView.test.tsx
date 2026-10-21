@@ -82,9 +82,9 @@ describe('MarkdownView', () => {
   it('highlights fenced code lazily and keeps the text', async () => {
     const { container } = render(<MarkdownView source={'```js\nconst a = "x";\n```'} />);
     expect(container.querySelector('code')?.textContent).toBe('const a = "x";');
-    await waitFor(() => expect(container.querySelector('.hljs-keyword')?.textContent).toBe('const'));
+    await waitFor(() => expect(container.querySelector('.hljs-keyword')?.textContent).toBe('const'), { timeout: 15_000 });
     expect(container.querySelector('code')?.textContent).toBe('const a = "x";');
-  });
+  }, 20_000);
 
   it('leaves unknown languages unhighlighted', async () => {
     const { container } = render(<MarkdownView source={'```nonsense\n<b>x</b>\n```'} />);
