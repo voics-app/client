@@ -16,10 +16,15 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { BanDialog } from '../members/BanDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
+import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
+import { usePrefsStore, type NotifyLevel } from '@renderer/application/stores/prefsStore';
+import { isIdMuted } from '@renderer/domain/mute';
+import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
 
 function useClose() {
   return () => useUiStore.getState().openDialog(null);
@@ -313,6 +318,62 @@ function CustomStatusDialog() {
   );
 }
 
+function ShortcutsDialog() {
+  const close = useClose();
+  const keybinds = usePrefsStore((s) => s.keybinds);
+  const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
+  return (
+    <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
+      <ul className="shortcut-list">
+        {rows.map((r) => (
+          <li key={`${r.keys}-${r.label}`} className="shortcut-row">
+            <span>{r.label}</span>
+            <kbd className="kbd">{r.keys}</kbd>
+          </li>
+        ))}
+      </ul>
+      <div className="row-end">
+        <Button variant="primary" data-autofocus onClick={close}>Done</Button>
+      </div>
+    </Modal>
+  );
+}
+
+const NOTIFY_OPTIONS: { value: NotifyLevel; label: string }[] = [
+  { value: 'all', label: 'All messages' },
+  { value: 'mentions', label: 'Only mentions' },
+  { value: 'none', label: 'Nothing' },
+];
+
+/**
+ * Per channel/category notification level. Stored on this device until the server exposes
+ * notification settings (api#28); the level is honoured by desktop notifications.
+ */
+function NotificationSettingsDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'notifications' }> }) {
+  const close = useClose();
+  const level = usePrefsStore((s) => s.notifyLevels[dialog.targetId] ?? 'all');
+  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
+  const muteUntil = usePrefsStore((s) => s.muteUntil);
+  const muted = isIdMuted({ mutedChannels, muteUntil }, dialog.targetId, Date.now());
+  return (
+    <Modal open onClose={close} title={`Notification settings: ${dialog.category ? '' : '#'}${dialog.name}`} width={420}>
+      <div className="stack">
+        <Field label="Notify me for">{() => <Segmented label="Notification level" value={level} options={NOTIFY_OPTIONS} onChange={(v) => usePrefsStore.getState().setNotifyLevel(dialog.targetId, v)} />}</Field>
+        {muted && (
+          <p className="confirm-body">
+            This {dialog.category ? 'category' : 'channel'} is muted.{' '}
+            <button type="button" className="link-btn" onClick={() => usePrefsStore.getState().unmute([dialog.targetId])}>Unmute</button>
+          </p>
+        )}
+        <p className="confirm-body">These settings apply on this device.</p>
+        <div className="row-end">
+          <Button variant="primary" onClick={close} data-autofocus>Done</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
   const [busy, setBusy] = useState(false);
   const close = useClose();
@@ -360,10 +421,14 @@ function ActiveDialog() {
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
     case 'newDm': return <NewDmDialog />;
+    case 'groupDm': return <GroupDmDialog channelId={dialog.channelId} />;
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
     case 'customStatus': return <CustomStatusDialog />;
+    case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
+    case 'notifications': return <NotificationSettingsDialog dialog={dialog} />;
+    case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
   }
 }

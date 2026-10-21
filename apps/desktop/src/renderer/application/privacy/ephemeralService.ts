@@ -48,6 +48,8 @@ export interface EphemeralDeps {
 }
 
 interface KeyPackageMeta {
+  /** Device row the packages were uploaded for; a fresh sign-in registers a new row that has none yet. */
+  deviceId?: string;
   uploadedAt: number;
   claimsSinceUpload: number;
 }
@@ -57,6 +59,8 @@ export class EphemeralService {
   /** Envelopes for a group this device has not joined yet, replayed once its welcome is applied. */
   private readonly awaitingWelcome = new Map<string, E2EEEnvelope[]>();
   private cryptoChecked = false;
+  /** Messages sent in a group before any peer has spoken in it; re-sent if that group is replaced (split brain). */
+  private readonly unconfirmed = new Map<string, { id: string; plaintextB64: string }[]>();
 
   constructor(private readonly deps: EphemeralDeps) {}
 
@@ -70,7 +74,7 @@ export class EphemeralService {
   async start(): Promise<void> {
     if (!this.deps.crypto || !(await this.deps.crypto.status()).available) return;
     const meta = await this.deps.history.getState<KeyPackageMeta>('keypackages');
-    const stale = !meta || this.deps.now() - meta.uploadedAt > KEY_PACKAGE_MAX_AGE_MS;
+    const stale = !meta || meta.deviceId !== this.deps.getSelf().deviceId || this.deps.now() - meta.uploadedAt > KEY_PACKAGE_MAX_AGE_MS;
     if (stale) await this.uploadKeyPackages(KEY_PACKAGE_BATCH);
   }
 
@@ -95,6 +99,20 @@ export class EphemeralService {
    */
   reconcileMembership(channelId: string, attempt = 0): Promise<void> {
     return this.enqueue(() => this.reconcileNow(channelId, attempt));
+  }
+
+  /**
+   * A member was added to an existing group DM: commits an MLS Add for their devices and relays the
+   * commit and welcome now, instead of at the next send. Only the adding client calls this, so there
+   * is no commit race; a channel without an MLS group yet is left alone (its first send creates it).
+   */
+  syncMembership(channelId: string): Promise<void> {
+    return this.enqueue(async () => {
+      const crypto = await this.requireCrypto();
+      const channel = useGuildStore.getState().channels[channelId];
+      if (!channel || !(await crypto.hasGroup(channelId))) return;
+      await this.ensureMembership(channel, crypto);
+    });
   }
 
   /** Reconciles every channel that has an MLS group, optionally limited to one guild. */
@@ -135,7 +153,9 @@ export class EphemeralService {
       reply_to: input.replyTo ?? null,
       files: attached.map((a) => a.private),
     };
-    const { ciphertextB64, epoch } = await crypto.encrypt(channelId, encodePayload(payload));
+    const plaintextB64 = encodePayload(payload);
+    const { ciphertextB64, epoch } = await crypto.encrypt(channelId, plaintextB64);
+    this.unconfirmed.set(channelId, [...(this.unconfirmed.get(channelId) ?? []).slice(-19), { id, plaintextB64 }]);
     privacyDebug('ephemeral send: encrypted, relaying', { epoch });
     this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
 
@@ -248,23 +268,59 @@ export class EphemeralService {
     return result;
   }
 
+  /**
+   * Devices to add: one group of device rows per identity key. A device keeps one identity key across
+   * sign-ins while every sign-in registers a new device row, so several rows can share a signature key
+   * and OpenMLS rejects a commit adding them all (DuplicateSignatureKey). Keys already in the group and
+   * the local key are skipped; rows of a key already in the group are returned as aliases.
+   * Rows of one key are listed newest first.
+   */
+  private async devicesToAdd(
+    channelId: string,
+    crypto: CryptoBridge,
+    membership: Membership,
+  ): Promise<{ missing: { userId: string; rows: string[] }[]; aliases: Membership }> {
+    const self = this.deps.getSelf();
+    const inGroup = new Set(await crypto.memberKeys(channelId));
+    inGroup.add(self.identityKeyB64);
+    const byKey = new Map<string, { userId: string; rows: string[] }>();
+    const aliases: Membership = {};
+    for (const userId of participantsOf(channelId, self.userId)) {
+      const devices = [...(await this.deps.devices.devices(userId))].sort((a, b) => (BigInt(b.device_id) > BigInt(a.device_id) ? 1 : -1));
+      for (const device of devices) {
+        if (device.device_id === self.deviceId || device.device_id in membership) continue;
+        if (inGroup.has(device.identity_key_b64)) {
+          aliases[device.device_id] = userId;
+          continue;
+        }
+        const entry = byKey.get(device.identity_key_b64) ?? { userId, rows: [] };
+        entry.rows.push(device.device_id);
+        byKey.set(device.identity_key_b64, entry);
+      }
+    }
+    return { missing: [...byKey.values()], aliases };
+  }
+
   private async addMissingDevices(channelId: string, crypto: CryptoBridge, membership: Membership): Promise<Membership> {
-    const current = await this.currentDevices(channelId);
-    const missing = Object.entries(current).filter(([deviceId]) => !(deviceId in membership));
-    if (missing.length === 0) return membership;
+    const { missing, aliases } = await this.devicesToAdd(channelId, crypto, membership);
+    if (missing.length === 0) return { ...membership, ...aliases };
 
     privacyDebug('ephemeral: claiming key packages', { missing: missing.length });
-    const claimed: { deviceId: string; userId: string; packageB64: string }[] = [];
-    for (const [deviceId, userId] of missing) {
-      try {
-        const { package_b64 } = await this.deps.api.claimKeyPackage(userId, deviceId);
-        claimed.push({ deviceId, userId, packageB64: package_b64 });
-      } catch {
-        // A device without published key packages cannot join yet; it is retried on the next send.
+    const claimed: { deviceId: string; userId: string; packageB64: string; rows: string[] }[] = [];
+    for (const { userId, rows } of missing) {
+      // Any row of the device can supply the package (they share one engine); try the newest first.
+      for (const deviceId of rows) {
+        try {
+          const { package_b64 } = await this.deps.api.claimKeyPackage(userId, deviceId);
+          claimed.push({ deviceId, userId, packageB64: package_b64, rows });
+          break;
+        } catch {
+          // This row has no published key packages; try its siblings, else retry on the next send.
+        }
       }
     }
     privacyDebug('ephemeral: claimed key packages', { claimed: claimed.length });
-    if (claimed.length === 0) return membership;
+    if (claimed.length === 0) return { ...membership, ...aliases };
 
     const existingRecipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
     const { commitB64, welcomeB64, epoch } = await crypto.addMembers(
@@ -280,10 +336,10 @@ export class EphemeralService {
       id(),
       'welcome',
       epoch,
-      claimed.map((c) => ({ user_id: c.userId, device_id: c.deviceId, ciphertext_b64: welcomeB64 })),
+      claimed.flatMap((c) => c.rows.map((row) => ({ user_id: c.userId, device_id: row, ciphertext_b64: welcomeB64 }))),
     );
     usePrivacyStore.getState().setGroup(channelId, 'ready', epoch);
-    return { ...membership, ...Object.fromEntries(claimed.map((c) => [c.deviceId, c.userId])) };
+    return { ...membership, ...aliases, ...Object.fromEntries(claimed.flatMap((c) => c.rows.map((row) => [row, c.userId]))) };
   }
 
   // ---- receiving -----------------------------------------------------------------
@@ -301,7 +357,7 @@ export class EphemeralService {
     try {
       const crypto = await this.requireCrypto();
       if (envelope.content_type === 'welcome') {
-        await this.handleWelcome(crypto, entry);
+        await this.handleWelcome(crypto, envelope, entry);
       } else {
         const result = await crypto.processIncoming(channelId, entry.ciphertext_b64);
         if (result.kind === 'application' && result.plaintextB64) {
@@ -322,6 +378,13 @@ export class EphemeralService {
         privacy.setGroup(channelId, 'establishing');
         return;
       }
+      if (envelope.content_type === 'application' && /WrongEpoch|AeadError/i.test(reason)) {
+        // Encrypted in a group this device no longer holds (it lost a split-brain tie-break); it can never
+        // be read, and keeping it unacknowledged would only make the gateway redeliver it forever.
+        privacyDebug('ephemeral receive: dropping an unreadable message from a superseded group', { channel: channelId });
+        this.ack(envelope);
+        return;
+      }
       if (envelope.content_type === 'commit' && /epoch/i.test(reason)) {
         // Lost a commit race: the lowest epoch wins, so this stale commit can never apply. Drop it and
         // retry any removal that is still pending as the next committer in line.
@@ -334,14 +397,51 @@ export class EphemeralService {
     }
   }
 
-  private async handleWelcome(crypto: CryptoBridge, entry: E2EERecipient): Promise<void> {
+  /**
+   * True when a Welcome for a group we already hold should replace our copy. Two devices can each create
+   * the group for a channel (one sent before the peer had a device, or both sent first at the same time),
+   * and a device cannot join a group id it already holds. A group with no one else in it is always
+   * replaced; otherwise the group created by the lower identity key wins, which both sides compute alike.
+   */
+  private async welcomeSupersedes(crypto: CryptoBridge, envelope: E2EEEnvelope): Promise<boolean> {
+    const keys = await crypto.memberKeys(envelope.channel_id);
+    if (keys.length <= 1) return true;
+    const self = this.deps.getSelf();
+    const owner = await this.deps.devices.ownerOf(participantsOf(envelope.channel_id, self.userId), envelope.sender_device_id);
+    const senderKey = owner ? await this.deps.devices.identityKey(owner, envelope.sender_device_id) : null;
+    return senderKey !== null && senderKey < self.identityKeyB64;
+  }
+
+  private async handleWelcome(crypto: CryptoBridge, envelope: E2EEEnvelope, entry: E2EERecipient): Promise<void> {
+    if (await crypto.hasGroup(envelope.channel_id)) {
+      if (!(await this.welcomeSupersedes(crypto, envelope))) {
+        privacyDebug('ephemeral welcome: keeping our group (lower identity key wins)', { channel: envelope.channel_id });
+        return;
+      }
+      privacyDebug('ephemeral welcome: replacing our local group', { channel: envelope.channel_id });
+      await crypto.deleteGroup(envelope.channel_id);
+    }
     const { groupId, epoch } = await crypto.joinFromWelcome(entry.ciphertext_b64);
     usePrivacyStore.getState().setGroup(groupId, 'ready', epoch);
     const waiting = this.awaitingWelcome.get(groupId) ?? [];
     this.awaitingWelcome.delete(groupId);
     for (const parked of waiting) void this.enqueue(() => this.receiveNow(parked));
-    await this.deps.history.putState(`mls-members:${groupId}`, await this.currentDevices(groupId).catch(() => ({})));
+    const members = await this.currentDevices(groupId).catch(() => ({}) as Membership);
+    await this.deps.history.putState(`mls-members:${groupId}`, members);
+    await this.resendUnconfirmed(crypto, groupId, members);
     await this.noteKeyPackageClaimed();
+  }
+
+  /** Messages this device sent into a group it has just replaced were never readable by the peer: send them again. */
+  private async resendUnconfirmed(crypto: CryptoBridge, channelId: string, membership: Membership): Promise<void> {
+    const pending = this.unconfirmed.get(channelId) ?? [];
+    this.unconfirmed.delete(channelId);
+    const recipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
+    if (pending.length === 0 || recipients.length === 0) return;
+    for (const { id, plaintextB64 } of pending) {
+      const { ciphertextB64, epoch } = await crypto.encrypt(channelId, plaintextB64);
+      this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
+    }
   }
 
   /** Decrypts, persists locally, shows, and only then lets the caller acknowledge. */
@@ -349,14 +449,15 @@ export class EphemeralService {
     const self = this.deps.getSelf();
     const channelId = envelope.channel_id;
     const payload = decodePayload(plaintextB64, { channelId, mode: 'ephemeral', messageId: envelope.message_id });
-    const participants = participantsOf(channelId, self.userId).filter((id) => id !== self.userId);
-    const senderUserId = await this.deps.devices.ownerOf(participants, envelope.sender_device_id);
+    // Includes our own user: another device of ours is a legitimate sender (multi-device mirroring).
+    const senderUserId = await this.deps.devices.ownerOf(participantsOf(channelId, self.userId), envelope.sender_device_id);
     if (!senderUserId) return false;
 
     const channel = useGuildStore.getState().channels[channelId] ?? { id: channelId, guild_id: null };
     const author = this.userById(senderUserId, channelId);
     const existing = useMessageStore.getState().timelines[channelId]?.byId[envelope.message_id];
     const message = buildPrivateMessage({ id: envelope.message_id, channel, author, payload, mode: 'ephemeral' });
+    if (senderUserId !== self.userId || envelope.sender_device_id !== self.deviceId) this.unconfirmed.delete(channelId);
     await this.deps.history.save(message);
     if (!existing) {
       useMessageStore.getState().receive(message);
@@ -389,7 +490,7 @@ export class EphemeralService {
     const crypto = await this.requireCrypto();
     const packages = await crypto.generateKeyPackages(count);
     await this.deps.api.uploadKeyPackages(this.deps.getSelf().deviceId, packages);
-    await this.deps.history.putState('keypackages', { uploadedAt: this.deps.now(), claimsSinceUpload: 0 } satisfies KeyPackageMeta);
+    await this.deps.history.putState('keypackages', { deviceId: this.deps.getSelf().deviceId, uploadedAt: this.deps.now(), claimsSinceUpload: 0 } satisfies KeyPackageMeta);
   }
 
   // ---- helpers -----------------------------------------------------------------------

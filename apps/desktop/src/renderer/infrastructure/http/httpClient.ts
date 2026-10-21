@@ -7,6 +7,8 @@ export class ApiError extends Error {
     readonly code: number,
     message: string,
     readonly errors?: Record<string, unknown>,
+    /** Present on a 60008 login answer. */
+    readonly ticket?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -28,7 +30,8 @@ export interface HttpClientOptions {
 
 export interface RequestOptions {
   body?: unknown;
-  query?: Record<string, string | number | boolean | undefined | null>;
+  /** Array values are sent as repeated keys. */
+  query?: Record<string, string | number | boolean | string[] | undefined | null>;
   auth?: boolean;
   headers?: Record<string, string>;
   reason?: string;
@@ -54,7 +57,11 @@ export class HttpClient {
 
   private url(path: string, query?: RequestOptions['query']): string {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== null) params.set(k, String(v));
+    for (const [k, v] of Object.entries(query ?? {})) {
+      if (v === undefined || v === null) continue;
+      if (Array.isArray(v)) for (const item of v) params.append(k, item);
+      else params.set(k, String(v));
+    }
     const qs = params.toString();
     return `${this.baseUrl}/api/v1${path}${qs ? `?${qs}` : ''}`;
   }
@@ -112,19 +119,48 @@ export class HttpClient {
   }
 
   /** Uploads bytes to a presigned URL (attachments). */
-  async upload(url: string, file: Blob, onProgress?: (fraction: number) => void): Promise<void> {
-    onProgress?.(0);
-    const response = await this.fetchFn(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  async upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void> {
+    onProgress?.(0, file.size);
+    if (onProgress && typeof XMLHttpRequest !== 'undefined') return uploadWithProgress(url, file, onProgress, signal);
+    const response = await this.fetchFn(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' }, signal });
     if (!response.ok) throw new ApiError(response.status, response.status, `Upload failed (${response.status})`);
-    onProgress?.(1);
+    onProgress?.(file.size, file.size);
   }
+}
+
+/** PUT through XMLHttpRequest, the only browser API that reports upload progress. Aborting rejects with an AbortError. */
+function uploadWithProgress(url: string, file: Blob, onProgress: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    const abort = () => request.abort();
+    request.open('PUT', url);
+    request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    request.upload.onprogress = (event) => onProgress(event.loaded, event.lengthComputable ? event.total : file.size);
+    request.onload = () => {
+      signal?.removeEventListener('abort', abort);
+      if (request.status >= 200 && request.status < 300) {
+        onProgress(file.size, file.size);
+        resolve();
+      } else {
+        reject(new ApiError(request.status, request.status, `Upload failed (${request.status})`));
+      }
+    };
+    request.onerror = () => {
+      signal?.removeEventListener('abort', abort);
+      reject(new Error('Upload failed: the connection was lost.'));
+    };
+    request.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+    if (signal?.aborted) return reject(new DOMException('Upload cancelled', 'AbortError'));
+    signal?.addEventListener('abort', abort, { once: true });
+    request.send(file);
+  });
 }
 
 /** Builds the error for a failed response; proxies and gateways send HTML or empty bodies. */
 function errorFromResponse(status: number, text: string): ApiError {
   const envelope = parseEnvelope(text);
   const message = envelope?.message || `Request failed with HTTP ${status}`;
-  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors);
+  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors, envelope?.ticket);
 }
 
 function parseEnvelope(text: string): Partial<ApiErrorBody> | null {

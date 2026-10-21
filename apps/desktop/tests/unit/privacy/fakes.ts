@@ -62,6 +62,7 @@ export function fakeCrypto(gateway?: FakeGateway, available = true) {
     verify: vi.fn(async (key: string, data: string, sig: string) => key === 'key-bob' && sig === `sig:${data}`),
     generateKeyPackages: vi.fn(async (n: number) => Array.from({ length: n }, (_, i) => `kp${i}`)),
     hasGroup: vi.fn(async (id: string) => groups.has(id)),
+    deleteGroup: vi.fn(async (id: string) => groups.delete(id)),
     createGroup: vi.fn(async (id: string) => {
       groups.add(id);
       return 1;
@@ -100,6 +101,9 @@ export function fakeApi(devices: Record<string, { device_id: string; identity_ke
     updateSettings: vi.fn(),
     messages: vi.fn(async (): Promise<unknown[]> => []),
     createAttachmentSlots: vi.fn(),
+    refreshAttachmentUrls: vi.fn(async (_c: string, urls: string[]) => ({
+      refreshed_urls: urls.map((original) => ({ original, refreshed: `https://cdn.test/attachments/signed/${original}?ex=ff&is=1&hm=00` })),
+    })),
     upload: vi.fn(),
   };
   return api;

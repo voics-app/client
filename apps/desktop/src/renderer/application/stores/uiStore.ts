@@ -30,14 +30,18 @@ export type Dialog =
   | { kind: 'joinGuild'; code?: string }
   | { kind: 'createChannel'; guildId: string; parentId: string | null; type?: number }
   | { kind: 'invite'; guildId: string; channelId: string }
+  | { kind: 'notifications'; targetId: string; name: string; category?: boolean }
   | { kind: 'newDm' }
+  | { kind: 'groupDm'; channelId: string }
   | { kind: 'screenPicker' }
   | { kind: 'profile'; userId: string; guildId: string | null }
   | { kind: 'customStatus' }
+  | { kind: 'shortcuts' }
   | { kind: 'editNickname'; guildId: string; userId: string }
+  | { kind: 'ban'; guildId: string; userId: string; name: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
-export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;
+export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;
 
 export interface Toast {
   id: number;
@@ -62,7 +66,14 @@ export interface UiState {
   openSettings(target: SettingsTarget | null): void;
   openDialog(dialog: Dialog | null): void;
   setSidePanel(panel: SidePanel): void;
-  toggleSidePanel(kind: 'members' | 'pins' | 'watch'): void;
+  toggleSidePanel(kind: 'members' | 'pins' | 'watch' | 'search'): void;
+  /** A message to scroll into view (search results); `nonce` makes repeated jumps to the same message fire again. */
+  jump: { channelId: string; messageId: string; nonce: number } | null;
+  jumpTo(channelId: string, messageId: string): void;
+  clearJump(): void;
+  /** Bumped by Ctrl+F so the channel header search box takes focus. */
+  searchFocus: number;
+  focusSearch(): void;
   setReplyTo(channelId: string, message: ChatMessage | null): void;
   setEditing(editing: UiState['editing']): void;
   toast(toast: Omit<Toast, 'id'>): void;
@@ -82,6 +93,11 @@ export const useUiStore = create<UiState>((set) => ({
   editing: null,
   toasts: [],
   galleryOpen: false,
+  jump: null,
+  searchFocus: 0,
+  jumpTo: (channelId, messageId) => set((s) => ({ jump: { channelId, messageId, nonce: (s.jump?.nonce ?? 0) + 1 } })),
+  clearJump: () => set({ jump: null }),
+  focusSearch: () => set((s) => ({ searchFocus: s.searchFocus + 1 })),
   navigate: (view) =>
     set((s) => ({
       view,

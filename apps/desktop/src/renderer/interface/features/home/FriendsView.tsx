@@ -13,6 +13,7 @@ import { Button } from '../../shared/ui/Button';
 import { Input } from '../../shared/ui/Form';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count, EmptyState } from '../../shared/ui/Misc';
+import { UserMenuTarget } from '../members/UserContextMenu';
 import { BRAND } from '@shared/brand';
 
 type Tab = 'online' | 'all' | 'pending' | 'blocked' | 'add';
@@ -31,6 +32,7 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
   };
   return (
     <li className="friend-row">
+      <UserMenuTarget userId={rel.id} name={name} guildId={null} user={rel.user}>
       <button type="button" className="friend-id" onClick={() => openDialog({ kind: 'profile', userId: rel.id, guildId: null })}>
         <Avatar id={rel.id} name={name} avatar={rel.user.avatar} size={38} status={tab === 'blocked' ? null : status} />
         <span className="friend-copy">
@@ -38,6 +40,7 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
           <span className="friend-sub">{rel.type === RelationshipType.INCOMING ? 'Incoming friend request' : rel.type === RelationshipType.OUTGOING ? 'Outgoing friend request' : rel.type === RelationshipType.BLOCKED ? 'Blocked' : status === 'offline' ? 'Offline' : status[0]!.toUpperCase() + status.slice(1)}</span>
         </span>
       </button>
+      </UserMenuTarget>
       <span className="friend-actions">
         {rel.type === RelationshipType.FRIEND && <IconButton label="Message" onClick={() => void message()}><ChatCircle size={20} weight="fill" /></IconButton>}
         {rel.type === RelationshipType.INCOMING && <IconButton label="Accept" tone="accent" onClick={() => void attempt(() => api.putRelationship(rel.id), 'Could not accept')}><Check size={20} weight="bold" /></IconButton>}

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from '@phosphor-icons/react';
+import { trapTarget } from '@renderer/domain/rovingFocus';
 import { gentle } from './motion';
 import { IconButton } from './IconButton';
 
@@ -28,23 +29,24 @@ export function Modal({ open, onClose, title, description, children, footer, wid
     previous.current = document.activeElement as HTMLElement | null;
     const frame = requestAnimationFrame(() => {
       const el = ref.current;
-      (el?.querySelector<HTMLElement>('[data-autofocus]') ?? el?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+      (el?.querySelector<HTMLElement>('[data-autofocus]') ?? el?.querySelector<HTMLElement>(FOCUSABLE) ?? el)?.focus();
     });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (document.querySelector('[role="menu"]')) return; // a menu on top closes first
         e.stopPropagation();
         onClose();
       } else if (e.key === 'Tab' && ref.current) {
         const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-        if (items.length === 0) return;
-        const first = items[0]!;
-        const last = items[items.length - 1]!;
-        if (e.shiftKey && document.activeElement === first) {
+        if (items.length === 0) {
           e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+          return;
+        }
+        const active = document.activeElement as HTMLElement | null;
+        const target = trapTarget(items, active && ref.current.contains(active) ? active : null, e.shiftKey);
+        if (target) {
           e.preventDefault();
-          first.focus();
+          target.focus();
         }
       }
     };
@@ -64,6 +66,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
           <motion.div
             ref={ref}
             role="dialog"
+            tabIndex={-1}
             aria-modal="true"
             aria-label={title}
             className="modal-shell"

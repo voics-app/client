@@ -35,6 +35,7 @@ export interface User {
   bot?: boolean;
   email?: string;
   mfa_enabled?: boolean;
+  verified?: boolean;
 }
 
 export interface CustomStatus {
@@ -184,10 +185,18 @@ export interface Attachment {
   proxy_url?: string;
   height?: number | null;
   width?: number | null;
+  /** AttachmentFlag bits (IS_SPOILER). */
+  flags?: number;
 }
+
+export const AttachmentFlag = {
+  IS_SPOILER: 1 << 3,
+} as const;
 
 export interface EmbedMedia {
   url: string;
+  /** Signed media-proxy URL on the CDN host; load this instead of `url`. */
+  proxy_url?: string;
   width?: number;
   height?: number;
 }
@@ -199,12 +208,12 @@ export interface Embed {
   url?: string;
   timestamp?: string;
   color?: number;
-  footer?: { text: string; icon_url?: string };
+  footer?: { text: string; icon_url?: string; proxy_icon_url?: string };
   image?: EmbedMedia;
   thumbnail?: EmbedMedia;
   video?: EmbedMedia;
   provider?: { name?: string; url?: string };
-  author?: { name: string; url?: string; icon_url?: string };
+  author?: { name: string; url?: string; icon_url?: string; proxy_icon_url?: string };
   fields?: { name: string; value: string; inline?: boolean }[];
 }
 
@@ -247,9 +256,20 @@ export interface Message {
   application_id?: Snowflake;
   components?: MessageComponent[];
   interaction_metadata?: InteractionMetadata;
+  /** Search results only: true for the match, absent for its context messages. */
+  hit?: boolean;
+}
+
+/** `GET /guilds/{id}/messages/search` and `GET /channels/{id}/messages/search`. */
+export interface MessageSearchResponse {
+  total_results: number;
+  /** One group per hit, oldest first; the hit carries `hit: true`. */
+  messages: Message[][];
+  index_building?: boolean;
 }
 
 export const MessageFlag = {
+  SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,
 } as const;
@@ -492,6 +512,28 @@ export interface ApiErrorBody {
   code: number;
   message: string;
   errors?: Record<string, unknown>;
+  /** Login answered 60008: the ticket completes the login with a second factor. */
+  ticket?: string;
+  retry_after?: number;
+}
+
+export interface TotpEnrollment {
+  secret: string;
+  otpauth_uri: string;
+}
+
+export interface BackupCode {
+  /** Plaintext, present only right after generation. */
+  code?: string;
+  consumed: boolean;
+}
+
+export interface AccountChange {
+  username?: string;
+  email?: string;
+  new_password?: string;
+  /** The current password; required for the three fields above. */
+  password: string;
 }
 
 export const ApiErrorCode = {
@@ -510,7 +552,7 @@ export const ApiErrorCode = {
 export interface CreateMessageBody {
   content: string;
   nonce: string;
-  attachments?: { id: string; filename: string; uploaded_filename: string }[];
+  attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];
   message_reference?: MessageReference;
   embeds?: Embed[];
 }
@@ -530,6 +572,60 @@ export interface TurnCredentials {
   ttl: number;
 }
 
+/** 0 all messages, 1 only @mentions, 2 nothing; null inherits (guild level, then the server default). */
+export type NotificationLevel = 0 | 1 | 2;
+
+/** `end_time` null means until turned off; a past `end_time` is an expired mute and is ignored. */
+export interface MuteConfig {
+  end_time: string | null;
+}
+
+export interface ChannelNotificationOverride {
+  channel_id: Snowflake;
+  message_notifications: NotificationLevel | null;
+  muted: boolean;
+  mute_config: MuteConfig | null;
+}
+
+/** The user's notification settings for one guild; `guild_id` null is the user's DMs. */
+export interface GuildNotificationSettings {
+  guild_id: Snowflake | null;
+  message_notifications: NotificationLevel | null;
+  suppress_everyone: boolean;
+  suppress_roles: boolean;
+  muted: boolean;
+  mute_config: MuteConfig | null;
+  hide_muted_channels: boolean;
+  channel_overrides: ChannelNotificationOverride[];
+}
+
+export interface MuteConfigInput {
+  end_time?: string | null;
+  /** Seconds from now, or -1 for until turned off. */
+  selected_time_window?: number | null;
+}
+
+export interface GuildNotificationSettingsPatch {
+  message_notifications?: NotificationLevel | 3 | null;
+  suppress_everyone?: boolean;
+  suppress_roles?: boolean;
+  muted?: boolean;
+  mute_config?: MuteConfigInput | null;
+  hide_muted_channels?: boolean;
+  channel_overrides?: {
+    channel_id: Snowflake;
+    message_notifications?: NotificationLevel | 3 | null;
+    muted?: boolean;
+    mute_config?: MuteConfigInput | null;
+  }[];
+}
+
+export interface UserNote {
+  user_id: Snowflake;
+  note_user_id: Snowflake;
+  note: string;
+}
+
 export interface ReadyPayload {
   v: number;
   user: User;
@@ -539,6 +635,9 @@ export interface ReadyPayload {
   private_channels: Channel[];
   relationships: Relationship[];
   user_settings: UserSettings;
+  user_guild_settings?: GuildNotificationSettings[];
+  /** Private notes keyed by the noted user's id. */
+  notes?: Record<Snowflake, string>;
   read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;

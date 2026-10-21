@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Compass, House, Plus } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
@@ -12,16 +12,19 @@ import { openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
 import { assetCandidates } from '@renderer/domain/assets';
 import { AssetImage } from '../../shared/ui/AssetImage';
+import { isChannelMuted } from '@renderer/domain/mute';
 import { initialsOf } from '../../shared/ui/Avatar';
 import { Count } from '../../shared/ui/Misc';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { snappy } from '../../shared/ui/motion';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { GuildContextMenu } from '../channels/GuildMenu';
 
 export function useGuildActivity(guildId: string): { unread: boolean; mentions: number } {
   const channels = useGuildStore((s) => s.channels);
   const reads = useReadStateStore((s) => s.byChannel);
-  const muted = usePrefsStore((s) => s.mutedChannels);
+  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
+  const muteUntil = usePrefsStore((s) => s.muteUntil);
   return useMemo(() => {
     let unread = false;
     let mentions = 0;
@@ -29,10 +32,10 @@ export function useGuildActivity(guildId: string): { unread: boolean; mentions: 
       if (c.guild_id !== guildId || c.type !== ChannelType.GUILD_TEXT) continue;
       const r = reads[c.id];
       mentions += r?.mentionCount ?? 0;
-      if (!muted[c.id] && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
+      if (!isChannelMuted({ mutedChannels, muteUntil }, c, Date.now()) && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
     }
     return { unread, mentions };
-  }, [channels, reads, muted, guildId]);
+  }, [channels, reads, mutedChannels, muteUntil, guildId]);
 }
 
 function GuildButton({ guildId, active, onDragStart, onDrop }: { guildId: string; active: boolean; onDragStart: () => void; onDrop: () => void }) {
@@ -83,6 +86,8 @@ export function ServerRail() {
   const channels = useGuildStore((s) => s.channels);
   const reads = useReadStateStore((s) => s.byChannel);
   const [dragged, setDragged] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  useRovingFocus(navRef, { selector: '.guild-btn' });
   const dmMentions = useMemo(
     () => Object.values(channels).filter((c) => !c.guild_id).reduce((sum, c) => sum + (reads[c.id]?.mentionCount ?? 0), 0),
     [channels, reads],
@@ -90,7 +95,7 @@ export function ServerRail() {
   const homeActive = view.kind === 'home';
 
   return (
-    <nav className="rail" aria-label="Servers">
+    <nav ref={navRef} className="rail" aria-label="Servers">
       <div className="rail-item">
         {homeActive && <motion.span layoutId="rail-pill" className="rail-pill" transition={snappy} />}
         <Tooltip label="Direct messages" side="right" delay={150}>

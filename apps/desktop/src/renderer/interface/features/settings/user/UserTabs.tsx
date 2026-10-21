@@ -22,6 +22,7 @@ import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea }
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
 import { readImageUpload } from '../imageUpload';
+import { AccountSecurity } from './AccountSecurity';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -50,6 +51,7 @@ export function AccountTab() {
         </div>
         <Button onClick={() => openSettings({ kind: 'user', tab: 'profile' })}>Edit profile</Button>
       </div>
+      <AccountSecurity user={user} />
       <SettingRow title="Sign out" description="Removes your session from this device's keychain. Your encrypted local history stays on disk until you delete it.">
         <Button
           variant="danger"
@@ -357,6 +359,7 @@ export function AppearanceTab() {
       </div>
       <SettingRow title="Message density" description="Compact fits more messages on screen."><Segmented label="Message density" value={prefs.density} onChange={(v) => prefs.set('density', v)} options={[{ value: 'cozy', label: 'Cozy' }, { value: 'compact', label: 'Compact' }]} /></SettingRow>
       <SettingRow title="Text size"><Slider label="Text size" value={prefs.fontScale} min={0.85} max={1.3} step={0.05} onChange={(v) => prefs.set('fontScale', v)} format={(v) => `${Math.round(v * 100)}%`} /></SettingRow>
+      <SettingRow title="Show link previews" description="Previews of links in messages, made by the server for standard chats. Hiding them only affects this device."><Switch label="Show link previews" checked={prefs.linkPreviews} onChange={(v) => prefs.set('linkPreviews', v)} /></SettingRow>
       <SettingRow title="Reduce motion" description="Replaces springs with instant changes and keeps the speaking ring static."><Switch label="Reduce motion" checked={prefs.reduceMotion} onChange={(v) => prefs.set('reduceMotion', v)} /></SettingRow>
     </Page>
   );

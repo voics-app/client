@@ -84,6 +84,17 @@ impl<S: SecureStore> CryptoEngine<S> {
         Ok(self.load_group(group_id)?.is_some())
     }
 
+    /// Forgets a group (its secrets and ratchet tree). Used to drop a local group that lost a split-brain
+    /// tie-break against a Welcome for the same group id. Returns whether a group was removed.
+    pub fn delete_group(&mut self, group_id: &[u8]) -> Result<bool, CryptoError> {
+        let Some(mut group) = self.load_group(group_id)? else {
+            return Ok(false);
+        };
+        group.delete(self.provider.storage()).map_err(mls_err)?;
+        self.persist()?;
+        Ok(true)
+    }
+
     pub fn create_group(&mut self, group_id: &[u8]) -> Result<u64, CryptoError> {
         if let Some(group) = self.load_group(group_id)? {
             return Ok(group.epoch().as_u64());
@@ -121,6 +132,24 @@ impl<S: SecureStore> CryptoEngine<S> {
                     .map_err(mls_err)
             })
             .collect::<Result<Vec<_>, _>>()?;
+        // One leaf per signature key: skip packages of devices already in the group and
+        // repeated packages of the same device (OpenMLS rejects both as DuplicateSignatureKey).
+        let mut seen: Vec<Vec<u8>> = group.members().map(|m| m.signature_key).collect();
+        let packages: Vec<_> = packages
+            .into_iter()
+            .filter(|kp| {
+                let key = kp.leaf_node().signature_key().as_slice().to_vec();
+                if seen.contains(&key) {
+                    false
+                } else {
+                    seen.push(key);
+                    true
+                }
+            })
+            .collect();
+        if packages.is_empty() {
+            return Err(CryptoError::Mls("no new members to add".into()));
+        }
         let (commit, welcome, _group_info) = group
             .add_members(&self.provider, &signer, &packages)
             .map_err(mls_err)?;
@@ -346,6 +375,20 @@ mod tests {
     }
 
     #[test]
+    fn add_members_skips_duplicate_signature_keys() {
+        let mut alice = engine("alice:1");
+        let mut bob = engine("bob:2");
+        let packages = bob.generate_key_packages(2).unwrap();
+        alice.create_group(b"g").unwrap();
+        let added = alice.add_members(b"g", &packages).unwrap();
+        bob.join_from_welcome(&added.welcome).unwrap();
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
+        let again = bob.generate_key_packages(1).unwrap();
+        assert!(alice.add_members(b"g", &again).is_err());
+        assert_eq!(alice.member_keys(b"g").unwrap().len(), 2);
+    }
+
+    #[test]
     fn removed_device_cannot_read_after_the_removal_commit() {
         let mut alice = engine("alice:1");
         let mut bob = engine("bob:2");
@@ -408,6 +451,20 @@ mod tests {
     fn unknown_group_is_an_error() {
         let mut e = engine("a:1");
         assert!(matches!(e.encrypt(b"nope", b"x"), Err(CryptoError::UnknownGroup(_))));
+    }
+
+    #[test]
+    fn deleted_group_can_be_rejoined_from_a_welcome() {
+        let mut alice = engine("a:1");
+        let mut bob = engine("b:1");
+        bob.create_group(b"g").unwrap();
+        alice.create_group(b"g").unwrap();
+        let kp = alice.generate_key_packages(1).unwrap().remove(0);
+        let out = bob.add_members(b"g", &[kp]).unwrap();
+        assert!(alice.delete_group(b"g").unwrap());
+        assert!(!alice.delete_group(b"g").unwrap());
+        alice.join_from_welcome(&out.welcome).unwrap();
+        assert!(alice.has_group(b"g").unwrap());
     }
 
     #[test]

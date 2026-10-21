@@ -6,11 +6,13 @@ import { PENDING_TTL_MS, useInteractionStore, type PendingInteraction } from '@r
 import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
 import { groupMessages } from '@renderer/domain/messageGrouping';
 import { compareSnowflakes } from '@renderer/domain/snowflake';
 import { markChannelRead, reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { formatDay } from '../../shared/hooks/useNow';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Skeleton } from '../../shared/ui/Misc';
@@ -66,6 +68,9 @@ export function MessageList({ channelId }: { channelId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [firstUnread, setFirstUnread] = useState<string | null>(null);
   const pendingPrepend = useRef<number | null>(null);
+  const jump = useUiStore((s) => s.jump);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const jumpStarted = useRef<number | null>(null);
 
   // Capture the read marker once per channel visit so the "New" divider stays put while reading.
   useEffect(() => {
@@ -124,6 +129,44 @@ export function MessageList({ channelId }: { channelId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows.length, timeline?.loaded]);
 
+  // Search results (and anything else) ask to scroll a message into view: load history around it when
+  // it is not in the window yet, then centre it and flash it.
+  useEffect(() => {
+    if (!jump || jump.channelId !== channelId || !channel || !timeline?.loaded) return;
+    const index = rows.findIndex((r) => r.kind === 'message' && r.message.id === jump.messageId);
+    if (index >= 0) {
+      setAtBottom(false);
+      virtualizer.scrollToIndex(index, { align: 'center' });
+      setHighlightId(jump.messageId);
+      useUiStore.getState().clearJump();
+      jumpStarted.current = null;
+      const timer = window.setTimeout(() => setHighlightId(null), 2500);
+      return () => window.clearTimeout(timer);
+    }
+    if (jumpStarted.current === jump.nonce) return;
+    jumpStarted.current = jump.nonce;
+    setAtBottom(false);
+    getRuntime()
+      .privacy.sender.loadAround(channel, jump.messageId)
+      .then(() => {
+        if (!useMessageStore.getState().timelines[channelId]?.byId[jump.messageId]) {
+          useUiStore.getState().toast({ tone: 'info', title: 'That message is no longer available' });
+          useUiStore.getState().clearJump();
+        }
+      })
+      .catch((e) => {
+        reportError(e, 'Could not open that message');
+        useUiStore.getState().clearJump();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump, channelId, channel, timeline?.loaded, rows]);
+
+  const jumpToPresent = useCallback(async () => {
+    if (timeline?.detached) await load();
+    setAtBottom(true);
+    scrollToEnd();
+  }, [timeline?.detached, load, scrollToEnd]);
+
   const loadOlder = useCallback(async () => {
     if (!channel || loadingOlder || !timeline?.hasMoreBefore || timeline.ids.length === 0) return;
     setLoadingOlder(true);
@@ -166,6 +209,8 @@ export function MessageList({ channelId }: { channelId: string }) {
     [channel, channelId],
   );
   const discard = useCallback((m: ChatMessage) => useMessageStore.getState().remove(channelId, m.id), [channelId]);
+
+  useRovingFocus(scrollRef, { selector: '.message', enabled: Boolean(timeline?.loaded) });
 
   if (!timeline?.loaded) {
     if (error) {
@@ -222,15 +267,15 @@ export function MessageList({ channelId }: { channelId: string }) {
                   </div>
                 )}
                 {row.kind === 'thinking' && <ThinkingRow pending={row.pending} />}
-                {row.kind === 'message' && <MessageItem message={row.message} startsGroup={row.startsGroup} guildId={channel?.guild_id} onRetry={retry} onDiscard={discard} />}
+                {row.kind === 'message' && <MessageItem message={row.message} startsGroup={row.startsGroup} guildId={channel?.guild_id} onRetry={retry} onDiscard={discard} highlighted={row.message.id === highlightId} />}
               </div>
             );
           })}
         </div>
         {timeline.ids.length === 0 && !timeline.hasMoreBefore && null}
       </div>
-      {!atBottom && (
-        <button type="button" className="jump-bottom glass" onClick={scrollToEnd}>
+      {(!atBottom || timeline.detached) && (
+        <button type="button" className="jump-bottom glass" onClick={() => void jumpToPresent()}>
           <ArrowDown size={14} weight="bold" /> Jump to present
         </button>
       )}

@@ -124,12 +124,79 @@ describe('EphemeralService sending', () => {
   });
 });
 
+describe('EphemeralService duplicate identity keys', () => {
+  it('adds only one device per identity key (re-registered rows share a signature key)', async () => {
+    const { service, api, crypto } = setup();
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '2'
+        ? [
+            { device_id: '20', identity_key_b64: 'key-bob' },
+            { device_id: '22', identity_key_b64: 'key-bob' },
+          ]
+        : [
+            { device_id: '10', identity_key_b64: 'key-self' },
+            { device_id: '9', identity_key_b64: 'key-self' },
+          ],
+    );
+    await service.send(dm(), { content: 'hi' });
+    expect(crypto.addMembers).toHaveBeenCalledTimes(1);
+    expect(crypto.addMembers).toHaveBeenCalledWith('500', ['pkg:2:22']);
+  });
+
+  it('skips devices whose identity key is already a group member', async () => {
+    const { service, api, crypto, advance } = setup();
+    await service.send(dm(), { content: 'one' });
+    crypto.memberKeys.mockResolvedValue(['key-self', 'key-bob']);
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '2'
+        ? [
+            { device_id: '20', identity_key_b64: 'key-bob' },
+            { device_id: '23', identity_key_b64: 'key-bob' },
+          ]
+        : [{ device_id: '10', identity_key_b64: 'key-self' }],
+    );
+    advance(120_000);
+    crypto.addMembers.mockClear();
+    await service.send(dm(), { content: 'two' });
+    expect(crypto.addMembers).not.toHaveBeenCalled();
+  });
+});
+
 describe('EphemeralService receiving', () => {
   it('joins on a welcome and acknowledges it', async () => {
     const { service, gateway, crypto } = setup();
     await service.handleEnvelope(envelope({ content_type: 'welcome', ciphertext: 'welcome-bytes' }));
     expect(crypto.joinFromWelcome).toHaveBeenCalledWith('welcome-bytes');
     expect(usePrivacyStore.getState().groups['500']?.state).toBe('ready');
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
+  });
+
+  it('replaces its own lone local group when a welcome for the same group arrives (client#118)', async () => {
+    const { service, gateway, crypto } = setup();
+    await crypto.createGroup('500');
+    crypto.memberKeys.mockResolvedValue(['key-self']);
+    await service.handleEnvelope(envelope({ content_type: 'welcome', ciphertext: 'welcome-bytes' }));
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('500');
+    expect(crypto.joinFromWelcome).toHaveBeenCalledWith('welcome-bytes');
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
+  });
+
+  it('on a split-brain race the group of the lower identity key wins and our unread messages are re-sent', async () => {
+    const { service, gateway, crypto } = setup();
+    await service.send(dm(), { content: 'raced' });
+    gateway.sent.length = 0;
+    crypto.memberKeys.mockResolvedValue(['key-self', 'key-bob']);
+    await service.handleEnvelope(envelope({ content_type: 'welcome', ciphertext: 'welcome-bytes' }));
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('500');
+    const resent = gateway.ofOp(GatewayOp.E2EE_ENVELOPE) as unknown as E2EEEnvelope[];
+    expect(resent.map((e) => e.content_type)).toEqual(['application']);
+    expect(resent[0]?.recipients.map((r) => r.device_id)).toEqual(['20']);
+  });
+
+  it('drops an application message it can never decrypt instead of retrying forever', async () => {
+    const { service, gateway, crypto } = setup();
+    crypto.processIncoming.mockRejectedValueOnce(new Error('MLS error: ValidationError(UnableToDecrypt(AeadError))'));
+    await service.handleEnvelope(envelope());
     expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['9000'] }]);
   });
 
@@ -160,6 +227,24 @@ describe('EphemeralService receiving', () => {
     await service.handleEnvelope(envelope({ sender_device_id: '999', ciphertext: encryptFake(utf8ToB64(JSON.stringify(payload))) }));
     expect(useMessageStore.getState().timelines['500']).toBeUndefined();
     expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toHaveLength(1);
+  });
+
+  it('accepts a message from another device of our own user (multi-device mirror)', async () => {
+    const { service, gateway, api, encryptFake } = setup();
+    api.listUserDevices.mockImplementation(async (id: string) =>
+      id === '1'
+        ? [
+            { device_id: '10', identity_key_b64: 'key-self' },
+            { device_id: '11', identity_key_b64: 'key-self-2' },
+          ]
+        : [{ device_id: '20', identity_key_b64: 'key-bob' }],
+    );
+    const payload = { v: 1, content: 'from my other device', nonce: '77', timestamp: '2026-10-17T10:00:00.000Z' };
+    await service.handleEnvelope(envelope({ message_id: '77', sender_device_id: '11', ciphertext: encryptFake(utf8ToB64(JSON.stringify(payload))) }));
+    const shown = useMessageStore.getState().timelines['500']?.byId['77'];
+    expect(shown?.content).toBe('from my other device');
+    expect(shown?.author.id).toBe('1');
+    expect(gateway.ofOp(GatewayOp.E2EE_ACK)).toEqual([{ message_ids: ['77'] }]);
   });
 
   it('uploads a key package batch on start and not again within a day', async () => {

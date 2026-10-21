@@ -39,9 +39,23 @@ export class RemoteAudioMixer implements MixerPort {
       this.master = this.context.createGain();
       this.master.connect(this.context.destination);
       this.applyMaster();
+      this.resumeOnGesture(this.context);
       if (this.outputDeviceId) void this.context.setSinkId?.(this.outputDeviceId).catch(() => undefined);
     }
     return { context: this.context, master: this.master };
+  }
+
+  /** A context created before the first user gesture starts suspended (silent); resume it on the next one. */
+  private resumeOnGesture(context: AudioContext): void {
+    if (typeof document === 'undefined' || context.state === 'running') return;
+    const resume = (): void => {
+      if (context.state === 'running' || context.state === 'closed') {
+        for (const type of ['pointerdown', 'keydown']) document.removeEventListener(type, resume, true);
+        return;
+      }
+      void context.resume().catch(() => undefined);
+    };
+    for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, resume, true);
   }
 
   private applyMaster(): void {

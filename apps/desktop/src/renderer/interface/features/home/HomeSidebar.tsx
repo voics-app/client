@@ -1,16 +1,59 @@
-import { At, Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
-import { useMemo } from 'react';
+import { Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
+import { useMemo, useRef } from 'react';
+import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { buildDmMenu, visibleDms } from '@renderer/domain/dmModel';
+import { isIdMuted, muteDuration } from '@renderer/domain/mute';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, RelationshipType } from '@shared/contracts/rest';
-import { timestampOf } from '@renderer/domain/snowflake';
+import { ChannelType, RelationshipType, type Channel, type PresenceStatus } from '@shared/contracts/rest';
 import { isUnread } from '@renderer/domain/unread';
+import { markChannelRead } from '../../app/actions';
+import { closeDm, leaveGroupDm } from '../../app/dmActions';
 import { openChannel } from '../../app/navigation';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
+import { Menu, useMenu } from '../../shared/ui/Menu';
+import { toMenuEntries } from '../../shared/ui/menuAdapter';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+
+/** One DM row with its context menu: mark as read, profile, group settings, mute, close, leave. */
+function DmRow({ channel: c, name, unread, mentions, active, status }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null }) {
+  const menu = useMenu();
+  const openDialog = useUiStore((s) => s.openDialog);
+  const mutedChannels = usePrefsStore((s) => s.mutedChannels);
+  const muteUntil = usePrefsStore((s) => s.muteUntil);
+  const group = c.type === ChannelType.GROUP_DM;
+  const peer = group ? undefined : (c.recipients ?? [])[0];
+  const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted: isIdMuted({ mutedChannels, muteUntil }, c.id, Date.now()), hasPeer: Boolean(peer) });
+  const entries = toMenuEntries(model, (it) => {
+    switch (it.id) {
+      case 'markRead': return markChannelRead(c.id);
+      case 'profile': return peer ? openDialog({ kind: 'profile', userId: peer.id, guildId: null }) : undefined;
+      case 'settings': return openDialog({ kind: 'groupDm', channelId: c.id });
+      case 'unmute': return usePrefsStore.getState().unmute([c.id]);
+      case 'muteFor': return usePrefsStore.getState().muteFor([c.id], muteDuration(it.arg ?? 'forever')?.ms ?? null);
+      case 'close': return closeDm(c.id);
+      case 'leave':
+        return openDialog({ kind: 'confirm', title: `Leave ${name}?`, body: 'You will stop receiving messages from this group.', confirmLabel: 'Leave group', danger: true, onConfirm: () => leaveGroupDm(c.id) });
+    }
+  });
+  return (
+    <li onContextMenu={menu.openAt}>
+      <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
+        {peer ? <Avatar id={peer.id} name={name} avatar={peer.avatar} size={34} status={status} /> : <Avatar id={c.id} name={name} avatar={c.icon ?? null} size={34} kind="channel-icons" />}
+        <span className="dm-name">{name}</span>
+        {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
+        {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
+        <Count value={mentions} tone="danger" />
+      </button>
+      <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} />
+    </li>
+  );
+}
 
 export function HomeSidebar() {
   const channels = useGuildStore((s) => s.channels);
@@ -20,13 +63,10 @@ export function HomeSidebar() {
   const navigate = useUiStore((s) => s.navigate);
   const openDialog = useUiStore((s) => s.openDialog);
   const pending = useRelationshipStore((s) => Object.values(s.byUser).filter((r) => r.type === RelationshipType.INCOMING).length);
-  const dms = useMemo(
-    () =>
-      Object.values(channels)
-        .filter((c) => !c.guild_id && (c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM))
-        .sort((a, b) => (b.last_message_id ? timestampOf(b.last_message_id) : 0) - (a.last_message_id ? timestampOf(a.last_message_id) : 0)),
-    [channels],
-  );
+  const closed = useClosedDmStore((s) => s.closed);
+  const dms = useMemo(() => visibleDms(channels, closed), [channels, closed]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRovingFocus(scrollRef, { selector: '.nav-row, .dm-row' });
   const friendsActive = view.kind === 'home' && !view.channelId;
 
   return (
@@ -34,7 +74,7 @@ export function HomeSidebar() {
       <div className="sidebar-top">
         <button type="button" className="palette-pill is-sidebar" onClick={() => useUiStore.getState().openPalette(true)}>Find or start a conversation</button>
       </div>
-      <div className="sidebar-scroll">
+      <div ref={scrollRef} className="sidebar-scroll">
         <button type="button" className={`nav-row${friendsActive ? ' is-active' : ''}`} onClick={() => navigate({ kind: 'home', channelId: null })} aria-current={friendsActive || undefined}>
           <UsersThree size={22} weight={friendsActive ? 'fill' : 'regular'} /> <span>Friends</span> <Count value={pending} tone="danger" />
         </button>
@@ -49,18 +89,8 @@ export function HomeSidebar() {
             const read = reads[c.id];
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
-            const first = peers[0];
-            return (
-              <li key={c.id}>
-                <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
-                  {peers.length === 1 && first ? <Avatar id={first.id} name={name} avatar={first.avatar} size={34} status={presence[first.id]?.status ?? 'offline'} /> : <span className="group-avatar"><At size={18} /></span>}
-                  <span className="dm-name">{name}</span>
-                  {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
-                  {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
-                  <Count value={read?.mentionCount ?? 0} tone="danger" />
-                </button>
-              </li>
-            );
+            const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
+            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} status={status} />;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>

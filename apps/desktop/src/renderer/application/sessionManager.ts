@@ -4,6 +4,7 @@ import type { StoredSession } from '@shared/ipc';
 import type { ApiPort } from './ports/api';
 import { useGuildStore } from './stores/guildStore';
 import { useMessageStore } from './stores/messageStore';
+import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
@@ -60,6 +61,13 @@ export class SessionManager {
   async login(body: { email: string; password: string; totp?: string }): Promise<void> {
     this.deps.runtime.setTokens({ access: null, refresh: null });
     const auth = await this.deps.runtime.api.login(body);
+    await this.adopt(auth);
+  }
+
+  /** Completes a login that answered 60008 with the ticket and a TOTP or backup code. */
+  async loginMfa(body: { ticket: string; code: string }): Promise<void> {
+    this.deps.runtime.setTokens({ access: null, refresh: null });
+    const auth = await this.deps.runtime.api.loginMfa(body);
     await this.adopt(auth);
   }
 
@@ -131,6 +139,8 @@ export class SessionManager {
     usePresenceStore.getState().reset();
     useReadStateStore.getState().reset();
     useRelationshipStore.getState().hydrate([]);
+    useNotificationSettingsStore.getState().reset();
+    useUserNotesStore.getState().reset();
     useVoiceStore.getState().resetCall();
     useSessionStore.getState().reset();
   }

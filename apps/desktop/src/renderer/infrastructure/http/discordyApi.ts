@@ -5,7 +5,10 @@ import type {
   ApplicationSummary,
   AttachmentUploadSlot,
   AuditLog,
+  AccountChange,
   AuthResponse,
+  BackupCode,
+  TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
@@ -16,24 +19,29 @@ import type {
   Emoji,
   Guild,
   GuildFull,
+  GuildNotificationSettings,
+  GuildNotificationSettingsPatch,
   GuildMember,
   Invite,
   Message,
+  MessageSearchResponse,
   PermissionOverwrite,
   Relationship,
   Role,
   User,
+  UserNote,
   UserSettings,
   VoiceRegion,
 } from '@shared/contracts/rest';
-import type { HttpClient } from './httpClient';
+import { toQuery, type SearchParams } from '@renderer/domain/messageSearch';
+import type { HttpClient, RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;
 
 export class DiscordyApi implements ApiPort {
   constructor(private readonly http: HttpClient) {}
 
-  private get<T>(path: string, query?: Record<string, string | number | undefined>) {
+  private get<T>(path: string, query?: RequestOptions['query']) {
     return this.http.request<T>('GET', path, { query });
   }
   private post<T>(path: string, body?: unknown, reason?: string) {
@@ -57,6 +65,42 @@ export class DiscordyApi implements ApiPort {
   }
   logout() {
     return this.post<void>('/auth/logout');
+  }
+  loginMfa(body: { ticket: string; code: string }) {
+    return this.http.request<AuthResponse>('POST', '/auth/mfa/totp', { body, auth: false });
+  }
+  async forgotPassword(email: string) {
+    await this.http.request('POST', '/auth/forgot-password', { body: { email }, auth: false });
+  }
+  async resetPassword(token: string, password: string) {
+    await this.http.request('POST', '/auth/reset-password', { body: { token, password }, auth: false });
+  }
+  async verifyEmail(token: string) {
+    await this.http.request('POST', '/auth/verify-email', { body: { token }, auth: false });
+  }
+  async resendVerification() {
+    await this.post<void>('/auth/resend-verification');
+  }
+  changeAccount(change: AccountChange) {
+    return this.patch<User>('/users/@me', change);
+  }
+  enableTotp(password: string) {
+    return this.post<TotpEnrollment>('/users/@me/mfa/totp/enable', { password });
+  }
+  async verifyTotp(code: string) {
+    return (await this.post<{ backup_codes: BackupCode[] }>('/users/@me/mfa/totp/verify', { code })).backup_codes;
+  }
+  async disableTotp(password: string, code: string) {
+    await this.post<void>('/users/@me/mfa/totp/disable', { password, code });
+  }
+  async backupCodes(password: string, regenerate: boolean) {
+    return (await this.post<{ backup_codes: BackupCode[] }>('/users/@me/mfa/codes-verification', { password, regenerate })).backup_codes;
+  }
+  async disableAccount(password: string) {
+    await this.post<void>('/users/@me/disable', { password });
+  }
+  async deleteAccount(password: string) {
+    await this.post<void>('/users/@me/delete', { password });
   }
 
   registerDevice(body: { name: string; identity_key_b64: string }) {
@@ -98,6 +142,23 @@ export class DiscordyApi implements ApiPort {
   }
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
+  }
+  guildNotificationSettings(guildId: string | null) {
+    return this.get<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`);
+  }
+  updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch) {
+    return this.patch<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`, patch);
+  }
+  async userNote(userId: string) {
+    try {
+      return (await this.get<UserNote>(`/users/@me/notes/${userId}`)).note;
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) return '';
+      throw error;
+    }
+  }
+  putUserNote(userId: string, note: string) {
+    return note ? this.put<void>(`/users/@me/notes/${userId}`, { note }) : this.del<void>(`/users/@me/notes/${userId}`);
   }
   sendFriendRequest(username: string) {
     return this.post<void>('/users/@me/relationships', { username });
@@ -157,8 +218,8 @@ export class DiscordyApi implements ApiPort {
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
   }
-  ban(guildId: string, userId: string, reason?: string) {
-    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, {}, reason);
+  ban(guildId: string, userId: string, reason?: string, options: { delete_message_seconds?: number } = {}) {
+    return this.put<void>(`/guilds/${guildId}/bans/${userId}`, options, reason);
   }
   unban(guildId: string, userId: string) {
     return this.del<void>(`/guilds/${guildId}/bans/${userId}`);
@@ -191,6 +252,12 @@ export class DiscordyApi implements ApiPort {
   deleteChannel(channelId: string) {
     return this.del<void>(`/channels/${channelId}`);
   }
+  addGroupRecipient(channelId: string, userId: string) {
+    return this.put<void>(`/channels/${channelId}/recipients/${userId}`);
+  }
+  removeGroupRecipient(channelId: string, userId: string) {
+    return this.del<void>(`/channels/${channelId}/recipients/${userId}`);
+  }
   putOverwrite(channelId: string, overwrite: PermissionOverwrite) {
     return this.put<void>(`/channels/${channelId}/permissions/${overwrite.id}`, overwrite);
   }
@@ -220,10 +287,14 @@ export class DiscordyApi implements ApiPort {
   messages(channelId: string, query: MessageQuery = {}) {
     return this.get<Message[]>(`/channels/${channelId}/messages`, { ...query, limit: query.limit ?? 50 });
   }
+  searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams) {
+    const path = scope.guildId ? `/guilds/${scope.guildId}/messages/search` : `/channels/${scope.channelId}/messages/search`;
+    return this.get<MessageSearchResponse>(path, toQuery(params));
+  }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
   }
-  editMessage(channelId: string, messageId: string, patch: { content: string }) {
+  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);
   }
   deleteMessage(channelId: string, messageId: string) {
@@ -252,8 +323,11 @@ export class DiscordyApi implements ApiPort {
       files: files.map((f, i) => ({ ...f, id: String(i) })),
     });
   }
-  upload(url: string, file: Blob) {
-    return this.http.upload(url, file);
+  refreshAttachmentUrls(channelId: string, urls: string[]) {
+    return this.post<{ refreshed_urls: { original: string; refreshed: string }[] }>(`/channels/${channelId}/attachments/refresh-urls`, { attachment_urls: urls });
+  }
+  upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal) {
+    return this.http.upload(url, file, onProgress, signal);
   }
 
   voiceRegions() {

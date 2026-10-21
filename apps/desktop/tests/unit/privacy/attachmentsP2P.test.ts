@@ -23,7 +23,6 @@ function setup() {
   const attachments = new AttachmentService({
     api: asApi(api) as never,
     fetchBytes: async () => new Uint8Array(0),
-    cdnBase: () => 'https://cdn.test',
     createObjectUrl: () => 'blob:p2p/1',
   });
   const service = new P2PService({
@@ -39,7 +38,7 @@ function setup() {
       return pc;
     },
     now: () => 1_800_000_000_000,
-    connectTimeoutMs: 200,
+    connectTimeoutMs: 30_000,
   });
   return { service, connections, attachments, gateway };
 }

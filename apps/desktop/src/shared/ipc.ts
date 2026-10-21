@@ -50,6 +50,14 @@ export type UpdateStatus =
   | { state: 'downloaded'; version: string }
   | { state: 'error'; message: string };
 
+/** Unread/mention totals the renderer pushes to main so it can drive the taskbar, tray and window title. */
+export interface ActivityCounts {
+  /** Total unread mentions. */
+  mentions: number;
+  /** Unmuted channels with unread messages. */
+  unread: number;
+}
+
 export interface NotificationRequest {
   title: string;
   body: string;
@@ -84,6 +92,8 @@ export interface CryptoBridge {
   verify(publicKeyB64: string, dataB64: string, signatureB64: string): Promise<boolean>;
   generateKeyPackages(count: number): Promise<string[]>;
   hasGroup(groupId: string): Promise<boolean>;
+  /** Forgets a local MLS group; resolves false when there was none. */
+  deleteGroup(groupId: string): Promise<boolean>;
   createGroup(groupId: string): Promise<number>;
   addMembers(groupId: string, keyPackagesB64: string[]): Promise<{ commitB64: string; welcomeB64: string; epoch: number }>;
   /** Identity public keys (base64) of every device currently in the MLS group, this device included. */
@@ -104,7 +114,7 @@ export interface DiscordyBridge {
     info(): Promise<AppInfo>;
     setConnection(profile: ConnectionProfile): Promise<AppInfo>;
     openExternal(url: string): Promise<void>;
-    setBadgeCount(count: number): void;
+    setActivity(counts: ActivityCounts): void;
     notify(request: NotificationRequest): void;
     onNavigate(listener: (route: string) => void): () => void;
     /** Route of the deep link that launched the app, if it has not been delivered yet. */
@@ -136,7 +146,7 @@ export const IpcChannel = {
   appInfo: 'app:info',
   appSetConnection: 'app:set-connection',
   appOpenExternal: 'app:open-external',
-  appBadge: 'app:badge',
+  appActivity: 'app:activity',
   appNotify: 'app:notify',
   appNavigate: 'app:navigate',
   appTakePendingRoute: 'app:take-pending-route',

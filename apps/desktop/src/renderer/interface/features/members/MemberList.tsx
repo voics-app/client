@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -9,6 +9,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { useMenu } from '../../shared/ui/Menu';
+import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { UserContextMenu } from './UserContextMenu';
 
 function MemberRow({
@@ -100,8 +101,11 @@ export function MemberList({ guildId }: { guildId: string }) {
     );
   }, [members, guild, presence]);
 
+  const asideRef = useRef<HTMLElement>(null);
+  useRovingFocus(asideRef, { selector: '.member-row' });
+
   return (
-    <aside className='members' aria-label='Members'>
+    <aside ref={asideRef} className='members' aria-label='Members'>
       {sections.map((s) => (
         <section key={s.title}>
           <h3 className='members-heading'>

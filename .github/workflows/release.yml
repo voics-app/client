@@ -1,0 +1,105 @@
+# Builds the desktop installer and publishes it to the update feed
+# (https://discordy-updates.voics.nl), which is also where the website's Download button points.
+#
+#   push to main (= a git-flow release)  -> publish; version = package.json when newer than the feed,
+#                                           else feed patch + 1 (scripts/release-version.mjs); then tags vX.Y.Z
+#   push of a v* tag                     -> publish exactly that version (must be newer than the feed)
+#   workflow_dispatch                    -> same as a push of the selected branch (use main)
+#
+# Output: GitHub Release assets, and in the discordy-updates bucket Discordy-Setup-X.Y.Z.exe(.blockmap),
+# latest.yml and the stable Discordy-Setup-latest.exe (5-minute cache). electron-updater in installed
+# clients reads latest.yml, so publishing it is what rolls the update out.
+# develop never publishes: Windows minutes cost 2x and a beta channel is not needed yet.
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: client-release
+  cancel-in-progress: false
+
+env:
+  FEED: https://discordy-updates.voics.nl
+
+jobs:
+  windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Decide the version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Cache-bust: Cloudflare caches latest.yml for 5 minutes and a stale copy would repeat a version.
+          code="$(curl -sS -o latest-feed.yml -w '%{http_code}' "${FEED}/latest.yml?ts=$(date +%s)")"
+          case "$code" in
+            200) published="$(node scripts/release-version.mjs --latest-yml latest-feed.yml --print-published)" ;;
+            404) published="none" ;;
+            *) echo "::error::cannot read the feed (HTTP ${code}); refusing to guess the published version"; exit 1 ;;
+          esac
+          echo "feed currently serves: ${published}"
+          tag=""
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then tag="${GITHUB_REF_NAME}"; fi
+          version="$(node scripts/release-version.mjs --published "${published}" ${tag:+--tag "$tag"} --apply)"
+          echo "publishing version: ${version}"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build installer
+        run: pnpm dist:win
+      - name: Collect installer and update feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp apps/desktop/release/*.exe apps/desktop/release/*.exe.blockmap apps/desktop/release/latest.yml out/
+          ls -la out
+          test -f "out/Discordy-Setup-${VERSION}.exe" || { echo "::error::installer name does not match version ${VERSION}"; exit 1; }
+          grep -q "^version: ${VERSION}$" out/latest.yml || { echo "::error::latest.yml does not carry ${VERSION}"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: out
+          retention-days: 14
+      - name: Tag and attach to the GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          # Releases for main merges are tagged here (tags pushed with GITHUB_TOKEN do not re-trigger workflows).
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Discordy ${VERSION}" --notes "See CHANGELOG.md."
+          gh release upload "$tag" out/* --clobber
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+  publish:
+    name: Publish to the update feed
+    needs: [windows]
+    uses: discordy-voics/.github/.github/workflows/minio-publish.yml@main
+    with:
+      artifact: installer-windows
+      bucket: discordy-updates
+      short-cache: latest.yml
+      copies: Discordy-Setup-${{ needs.windows.outputs.version }}.exe:Discordy-Setup-latest.exe

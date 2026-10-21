@@ -162,6 +162,14 @@ describe('dispatchRouter', () => {
     expect(ctx.onVoiceServerUpdate).toHaveBeenCalledWith(update);
   });
 
+  it('tells the call about every voice state after storing it', () => {
+    const onVoiceState = vi.fn();
+    const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onVoiceState, onIncomingMessage: vi.fn(), invalidate: vi.fn() });
+    const state = { guild_id: '100', channel_id: null, user_id: '1', session_id: 'x', deaf: false, mute: false, self_deaf: false, self_mute: false, self_video: false, suppress: false };
+    route('VOICE_STATE_UPDATE', state);
+    expect(onVoiceState).toHaveBeenCalledWith(state);
+  });
+
   it('handles relationships and presence', () => {
     const { route } = setup();
     route('PRESENCE_UPDATE', { user: { id: '2' }, status: 'dnd', activities: [] });

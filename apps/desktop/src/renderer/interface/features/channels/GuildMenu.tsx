@@ -1,5 +1,6 @@
-import { Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
+import { CaretDoubleUp, Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
@@ -16,8 +17,18 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
   if (!guild) return [];
   const isOwner = guild.owner_id === me;
   const firstChannel = Object.values(useGuildStore.getState().channels).find((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT);
+  const categoryIds = Object.values(useGuildStore.getState().channels)
+    .filter((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_CATEGORY)
+    .map((c) => c.id);
   const entries: MenuEntry[] = [
     { kind: 'item', label: 'Mark as read', icon: <Check size={16} />, onSelect: () => markGuildRead(guildId) },
+    {
+      kind: 'item',
+      label: 'Collapse all categories',
+      icon: <CaretDoubleUp size={16} />,
+      disabled: categoryIds.length === 0,
+      onSelect: () => usePrefsStore.getState().setCollapsed(categoryIds, true),
+    },
     {
       kind: 'item',
       label: 'Invite people',
