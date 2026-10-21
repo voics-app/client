@@ -65,6 +65,7 @@ export class CryptoHost {
     verify: async (publicKey, data, signature) => this.requireModule().verify(buf(publicKey), buf(data), buf(signature)),
     generateKeyPackages: async (count) => this.requireEngine().generateKeyPackages(Math.min(Math.max(count, 1), 100)).map(b64),
     hasGroup: async (groupId) => this.requireEngine().hasGroup(groupKey(groupId)),
+    deleteGroup: async (groupId) => this.requireEngine().deleteGroup(groupKey(groupId)),
     createGroup: async (groupId) => this.requireEngine().createGroup(groupKey(groupId)),
     addMembers: async (groupId, packages) => {
       const r = this.requireEngine().addMembers(groupKey(groupId), packages.map(buf));

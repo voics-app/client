@@ -92,6 +92,8 @@ export interface CryptoBridge {
   verify(publicKeyB64: string, dataB64: string, signatureB64: string): Promise<boolean>;
   generateKeyPackages(count: number): Promise<string[]>;
   hasGroup(groupId: string): Promise<boolean>;
+  /** Forgets a local MLS group; resolves false when there was none. */
+  deleteGroup(groupId: string): Promise<boolean>;
   createGroup(groupId: string): Promise<number>;
   addMembers(groupId: string, keyPackagesB64: string[]): Promise<{ commitB64: string; welcomeB64: string; epoch: number }>;
   /** Identity public keys (base64) of every device currently in the MLS group, this device included. */
