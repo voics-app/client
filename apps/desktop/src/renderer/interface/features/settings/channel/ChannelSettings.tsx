@@ -1,3 +1,4 @@
+import { SettingsCloseButton } from '../SettingsCloseButton';
 import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -174,6 +175,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
           {tab === 'permissions' && <div className="settings-page"><h1>Permissions</h1><p className="page-sub">Overwrites win over role permissions. Deny beats allow within the same layer.</p><Overwrites channelId={channelId} /></div>}
           {tab === 'invites' && channel.guild_id && <ServerInvites guildId={channel.guild_id} />}
         </div>
+        <SettingsCloseButton onClose={() => open(null)} />
       </div>
     </div>
   );
