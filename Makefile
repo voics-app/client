@@ -19,3 +19,8 @@ docker:
 
 dist-win:
 	pnpm dist:win
+
+# Install the pre-push hook (lint + unit tests, see lefthook.yml).
+.PHONY: hooks
+hooks:
+	lefthook install
