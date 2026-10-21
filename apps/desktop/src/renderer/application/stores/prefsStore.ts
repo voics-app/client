@@ -1,6 +1,7 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { SoundId } from '@renderer/domain/sounds';
 import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
 import { applyMute, applyUnmute } from '@renderer/domain/mute';
@@ -43,6 +44,8 @@ export interface PrefsState {
   notifyDesktop: boolean;
   notifyOnlyMentions: boolean;
   notifySounds: boolean;
+  /** Per-sound switches under the master `notifySounds`; a missing entry means on. */
+  soundToggles: Partial<Record<SoundId, boolean>>;
   ringtone: RingtoneId;
   ringtoneVolume: number;
   flashTaskbar: boolean;
@@ -105,6 +108,7 @@ export const DEFAULT_PREFS: PrefsData = {
   notifyDesktop: true,
   notifyOnlyMentions: false,
   notifySounds: true,
+  soundToggles: {},
   ringtone: DEFAULT_RINGTONE,
   ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
   flashTaskbar: true,

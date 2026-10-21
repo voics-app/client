@@ -5,6 +5,8 @@ import { usePrefsStore, DEFAULT_KEYBINDS, type AccentId, type ThemeId } from '@r
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
+import { SOUND_OPTIONS } from '@renderer/domain/sounds';
+import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { RINGTONE_OPTIONS, type RingtoneId } from '@renderer/domain/ringtones';
 import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
@@ -382,7 +384,15 @@ export function NotificationsTab() {
     <Page title="Notifications">
       <SettingRow title="Desktop notifications" description="Shown for mentions and direct messages."><Switch label="Desktop notifications" checked={prefs.notifyDesktop} onChange={(v) => prefs.set('notifyDesktop', v)} /></SettingRow>
       <SettingRow title="Only mentions"><Switch label="Only mentions" checked={prefs.notifyOnlyMentions} onChange={(v) => prefs.set('notifyOnlyMentions', v)} /></SettingRow>
-      <SettingRow title="Notification sounds"><Switch label="Notification sounds" checked={prefs.notifySounds} onChange={(v) => prefs.set('notifySounds', v)} /></SettingRow>
+      <SettingRow title="Notification sounds" description="Master switch for call sounds, ringtone and message sounds. Do Not Disturb mutes them."><Switch label="Notification sounds" checked={prefs.notifySounds} onChange={(v) => prefs.set('notifySounds', v)} /></SettingRow>
+      {SOUND_OPTIONS.map((o) => (
+        <SettingRow key={o.id} title={`Sound: ${o.label}`}>
+          <div className="setting-inline">
+            <Button variant="secondary" onClick={() => soundEffects.play(o.id, prefs.outputVolume, prefs.outputDeviceId)}>Preview</Button>
+            <Switch label={`Sound: ${o.label}`} checked={prefs.notifySounds && prefs.soundToggles[o.id] !== false} onChange={(v) => prefs.set('soundToggles', { ...prefs.soundToggles, [o.id]: v })} />
+          </div>
+        </SettingRow>
+      ))}
       <Field label="Ringtone">
         {(id) => (
           <div className="setting-inline">
