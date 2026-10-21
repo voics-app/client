@@ -17,11 +17,15 @@ export interface Timeline {
   byId: Record<string, ChatMessage>;
   hasMoreBefore: boolean;
   loaded: boolean;
+  /** A window around an old message (search jump): newer messages are not appended until the latest is reloaded. */
+  detached?: boolean;
 }
 
 export interface MessageState {
   timelines: Record<string, Timeline>;
   setHistory(channelId: string, messages: ChatMessage[], options: { prepend: boolean; hasMoreBefore: boolean }): void;
+  /** Replaces the timeline with a window that does not reach the present. */
+  setWindow(channelId: string, messages: ChatMessage[], options: { hasMoreBefore: boolean }): void;
   receive(message: ChatMessage): void;
   addOptimistic(message: ChatMessage): void;
   failOptimistic(channelId: string, nonce: string, error: string): void;
@@ -64,12 +68,21 @@ export const useMessageStore = create<MessageState>((set) => ({
         const byId = { ...(prepend ? t.byId : Object.fromEntries(Object.entries(t.byId).filter(([, m]) => m.localState))) };
         for (const m of messages) byId[m.id] = m;
         const base = prepend ? t.ids : t.ids.filter((id) => byId[id]?.localState);
-        return { ids: sortIds([...base, ...messages.map((m) => m.id)], byId), byId, hasMoreBefore, loaded: true };
+        return { ids: sortIds([...base, ...messages.map((m) => m.id)], byId), byId, hasMoreBefore, loaded: true, detached: prepend ? t.detached : false };
+      }),
+    ),
+  setWindow: (channelId, messages, { hasMoreBefore }) =>
+    set((s) =>
+      updateTimeline(s, channelId, () => {
+        const byId = Object.fromEntries(messages.map((m) => [m.id, m]));
+        return { ids: sortIds(messages.map((m) => m.id), byId), byId, hasMoreBefore, loaded: true, detached: true };
       }),
     ),
   receive: (message) =>
     set((s) =>
       updateTimeline(s, message.channel_id, (t) => {
+        // A detached window shows old history; the live message appears once the latest is reloaded.
+        if (t.detached && !t.byId[message.id]) return t;
         const byId = { ...t.byId };
         let ids = t.ids;
         const nonce = message.nonce != null ? String(message.nonce) : null;

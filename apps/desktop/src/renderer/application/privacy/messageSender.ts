@@ -4,6 +4,7 @@ import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
+import { compareSnowflakes } from '@renderer/domain/snowflake';
 import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
@@ -108,6 +109,30 @@ export class MessageSender {
     for (const message of [...local, ...remote]) merged.set(message.id, message);
     const hasMore = mode === 'standard' ? remote.length >= HISTORY_PAGE_SIZE : local.length >= HISTORY_PAGE_SIZE;
     store.setHistory(channel.id, [...merged.values()], { prepend, hasMoreBefore: hasMore });
+  }
+
+  /** The local (encrypted store) messages of a chat, oldest first: the search corpus of private chats. */
+  localMessages(channelId: string, limit = 1000): Promise<ChatMessage[]> {
+    return this.deps.history.list(channelId, null, limit);
+  }
+
+  /**
+   * Replaces the timeline with the messages around `messageId` (search jump). Standard chats ask the
+   * server; private chats only have their local store, so they get the page ending at that message.
+   */
+  async loadAround(channel: Channel, messageId: string): Promise<void> {
+    const mode = this.resolveMode(channel);
+    const store = useMessageStore.getState();
+    let messages: ChatMessage[];
+    if (mode === 'standard') {
+      const around = await this.deps.api.messages(channel.id, { around: messageId, limit: HISTORY_PAGE_SIZE });
+      messages = [...around].sort((a, b) => compareSnowflakes(a.id, b.id));
+    } else {
+      const known = store.timelines[channel.id]?.byId[messageId];
+      const sortKey = (known ? Date.parse(known.timestamp) : Date.now()) + 1;
+      messages = await this.deps.history.list(channel.id, sortKey, HISTORY_PAGE_SIZE);
+    }
+    store.setWindow(channel.id, messages, { hasMoreBefore: messages.length >= HISTORY_PAGE_SIZE });
   }
 
   // ---- internals --------------------------------------------------------------------

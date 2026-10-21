@@ -16,6 +16,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { ModeBadge } from '../privacy/ModeBadge';
 import { CallStrip } from '../voice/CallStrip';
+import { SearchBar } from '../search/SearchBar';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 
@@ -76,6 +77,7 @@ export function ChatView({ channelId }: { channelId: string }) {
         </div>
         <div className="channel-header-actions">
           <ModeBadge mode={mode} />
+          <SearchBar channelId={channelId} />
           {isDm && (
             <IconButton label={inCall ? 'In call' : callInProgress ? 'Join call' : 'Start voice call'} active={inCall} disabled={inCall} onClick={() => void joinVoiceChannel(null, channel.id)}>
               <Phone size={20} weight={inCall ? 'fill' : 'regular'} />

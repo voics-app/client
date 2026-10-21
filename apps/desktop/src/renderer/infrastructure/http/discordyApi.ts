@@ -24,6 +24,7 @@ import type {
   GuildMember,
   Invite,
   Message,
+  MessageSearchResponse,
   PermissionOverwrite,
   Relationship,
   Role,
@@ -32,14 +33,15 @@ import type {
   UserSettings,
   VoiceRegion,
 } from '@shared/contracts/rest';
-import type { HttpClient } from './httpClient';
+import { toQuery, type SearchParams } from '@renderer/domain/messageSearch';
+import type { HttpClient, RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;
 
 export class DiscordyApi implements ApiPort {
   constructor(private readonly http: HttpClient) {}
 
-  private get<T>(path: string, query?: Record<string, string | number | undefined>) {
+  private get<T>(path: string, query?: RequestOptions['query']) {
     return this.http.request<T>('GET', path, { query });
   }
   private post<T>(path: string, body?: unknown, reason?: string) {
@@ -284,6 +286,10 @@ export class DiscordyApi implements ApiPort {
 
   messages(channelId: string, query: MessageQuery = {}) {
     return this.get<Message[]>(`/channels/${channelId}/messages`, { ...query, limit: query.limit ?? 50 });
+  }
+  searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams) {
+    const path = scope.guildId ? `/guilds/${scope.guildId}/messages/search` : `/channels/${scope.channelId}/messages/search`;
+    return this.get<MessageSearchResponse>(path, toQuery(params));
   }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);

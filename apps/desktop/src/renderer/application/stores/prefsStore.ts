@@ -70,6 +70,7 @@ export const DEFAULT_KEYBINDS: Keybind[] = [
   { id: 'mute', action: 'toggleMute', keys: 'Ctrl+Shift+M' },
   { id: 'deafen', action: 'toggleDeafen', keys: 'Ctrl+Shift+D' },
   { id: 'read', action: 'markRead', keys: 'Escape' },
+  { id: 'search', action: 'search', keys: 'Ctrl+F' },
   { id: 'upload', action: 'upload', keys: 'Ctrl+Shift+U' },
   { id: 'prev', action: 'prevChannel', keys: 'Alt+ArrowUp' },
   { id: 'next', action: 'nextChannel', keys: 'Alt+ArrowDown' },
