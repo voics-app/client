@@ -1,6 +1,6 @@
 import { Check, Copy } from '@phosphor-icons/react';
 import { UserMenuTarget } from '../members/UserContextMenu';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { parseMarkdown, type MarkdownNode } from '@renderer/domain/markdown';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -8,6 +8,15 @@ import { openExternalUrl as openLink } from '../../app/links';
 import { copyText } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
+import { useTrustedDomainStore } from '@renderer/application/stores/composerStores';
+import { hostOf, isTrustedLink } from '@renderer/domain/linkTrust';
+import { formatTimestamp, isValidUnix, relativeTickMs, timestampTooltip } from '@renderer/domain/timestamp';
+import type { HighlightNode } from '@renderer/domain/highlightHtml';
+import { Button } from '../../shared/ui/Button';
+import { Checkbox } from '../../shared/ui/Form';
+import { Modal } from '../../shared/ui/Modal';
+import { Tooltip } from '../../shared/ui/Tooltip';
+import { highlightCode } from './highlighter';
 
 function Spoiler({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false);
@@ -18,8 +27,26 @@ function Spoiler({ children }: { children: ReactNode }) {
   );
 }
 
+function renderHighlight(nodes: HighlightNode[]): ReactNode {
+  return nodes.map((n, i) => (typeof n === 'string' ? <Fragment key={i}>{n}</Fragment> : <span key={i} className={n.className}>{renderHighlight(n.children)}</span>));
+}
+
+const MAX_HIGHLIGHT_CHARS = 20_000;
+
 function CodeBlock({ text, lang }: { text: string; lang: string | null }) {
   const [copied, setCopied] = useState(false);
+  const [highlighted, setHighlighted] = useState<HighlightNode[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    setHighlighted(null);
+    if (!lang || text.length > MAX_HIGHLIGHT_CHARS) return;
+    highlightCode(text, lang)
+      .then((nodes) => live && setHighlighted(nodes))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [text, lang]);
   return (
     <div className="codeblock">
       <div className="codeblock-bar">
@@ -37,7 +64,7 @@ function CodeBlock({ text, lang }: { text: string; lang: string | null }) {
         </button>
       </div>
       <pre>
-        <code>{text}</code>
+        <code className={highlighted ? 'hljs' : undefined}>{highlighted ? renderHighlight(highlighted) : text}</code>
       </pre>
     </div>
   );
@@ -70,6 +97,70 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
   );
 }
 
+function Timestamp({ unix, style }: { unix: number; style: 'f' | 't' | 'T' | 'd' | 'D' | 'F' | 'R' }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (style !== 'R' || !isValidUnix(unix)) return;
+    const id = setTimeout(() => setNow(Date.now()), relativeTickMs(unix, now));
+    return () => clearTimeout(id);
+  }, [style, unix, now]);
+  const label = formatTimestamp(unix, style, now);
+  return (
+    <Tooltip label={timestampTooltip(unix)}>
+      <time className="md-timestamp" dateTime={isValidUnix(unix) ? new Date(unix * 1000).toISOString() : undefined}>{label}</time>
+    </Tooltip>
+  );
+}
+
+function MaskedLink({ url, children }: { url: string; children: ReactNode }) {
+  const trusted = useTrustedDomainStore((s) => s.domains);
+  const instanceHost = hostOf(useConnectionStore((s) => s.apiUrl));
+  const [confirming, setConfirming] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const host = hostOf(url) ?? url;
+  const isTrusted = isTrustedLink(url, instanceHost ? [...trusted, instanceHost] : trusted);
+  return (
+    <>
+      <a
+        href={url}
+        title={url}
+        className="md-masked-link"
+        onClick={(e) => {
+          e.preventDefault();
+          if (isTrusted) openLink(url);
+          else setConfirming(true);
+        }}
+      >
+        {children}
+      </a>
+      <Modal
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        title="You are leaving the app"
+        description="This link will take you to an external website."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
+            <Button
+              data-autofocus
+              onClick={() => {
+                if (remember && hostOf(url)) useTrustedDomainStore.getState().trust(hostOf(url)!);
+                setConfirming(false);
+                openLink(url);
+              }}
+            >
+              Visit site
+            </Button>
+          </>
+        }
+      >
+        <p className="link-confirm-url selectable">{url}</p>
+        <Checkbox checked={remember} onChange={setRemember} label={`Trust links from ${host}`} />
+      </Modal>
+    </>
+  );
+}
+
 function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string | null | undefined; big: boolean }) {
   const cdn = useConnectionStore((s) => s.cdnUrl);
   return (
@@ -90,6 +181,24 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
             return <Spoiler key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></Spoiler>;
           case 'quote':
             return <blockquote key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></blockquote>;
+          case 'heading': {
+            const Tag = (['h1', 'h2', 'h3'] as const)[node.level - 1]!;
+            return <Tag key={i} className="md-heading"><Nodes nodes={node.children} guildId={guildId} big={false} /></Tag>;
+          }
+          case 'subtext':
+            return <small key={i} className="md-subtext"><Nodes nodes={node.children} guildId={guildId} big={false} /></small>;
+          case 'list': {
+            const Tag = node.ordered ? 'ol' : 'ul';
+            return (
+              <Tag key={i} className="md-list" start={node.ordered ? node.start : undefined}>
+                {node.items.map((item, j) => (
+                  <li key={j}><Nodes nodes={item} guildId={guildId} big={false} /></li>
+                ))}
+              </Tag>
+            );
+          }
+          case 'timestamp':
+            return <Timestamp key={i} unix={node.unix} style={node.style} />;
           case 'code':
             return <code key={i} className="inline-code">{node.text}</code>;
           case 'codeblock':
@@ -103,6 +212,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
           case 'everyone':
             return <span key={i} className="mention mention-everyone">@{node.kind}</span>;
           case 'link':
+            if (node.label) return <MaskedLink key={i} url={node.url}><Nodes nodes={node.label} guildId={guildId} big={false} /></MaskedLink>;
             return (
               <a key={i} href={node.url} data-ctx="link" data-url={node.url} onClick={(e) => { e.preventDefault(); openLink(node.url); }}>
                 {node.url}

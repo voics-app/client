@@ -100,6 +100,9 @@ export function fakeApi(devices: Record<string, { device_id: string; identity_ke
     updateSettings: vi.fn(),
     messages: vi.fn(async (): Promise<unknown[]> => []),
     createAttachmentSlots: vi.fn(),
+    refreshAttachmentUrls: vi.fn(async (_c: string, urls: string[]) => ({
+      refreshed_urls: urls.map((original) => ({ original, refreshed: `https://cdn.test/attachments/signed/${original}?ex=ff&is=1&hm=00` })),
+    })),
     upload: vi.fn(),
   };
   return api;

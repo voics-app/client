@@ -31,7 +31,6 @@ function setup() {
   const attachments = new AttachmentService({
     api: asApi(api) as never,
     fetchBytes: async () => [...stored.values()][0] as Uint8Array,
-    cdnBase: () => 'https://cdn.test',
     createObjectUrl: () => 'blob:test/1',
   });
   const service = new EphemeralService({
