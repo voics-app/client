@@ -90,6 +90,7 @@ export interface Role {
   color: number;
   hoist: boolean;
   icon?: string | null;
+  unicode_emoji?: string | null;
   position: number;
   permissions: string;
   managed: boolean;
@@ -134,6 +135,7 @@ export interface Channel {
   rate_limit_per_user?: number;
   recipients?: User[];
   icon?: string | null;
+  unicode_emoji?: string | null;
   owner_id?: Snowflake;
   parent_id?: Snowflake | null;
   last_pin_timestamp?: string | null;
@@ -362,6 +364,7 @@ export interface ApplicationSummary {
   id: Snowflake;
   name: string;
   icon?: string | null;
+  unicode_emoji?: string | null;
   bot?: User;
 }
 

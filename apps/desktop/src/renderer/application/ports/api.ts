@@ -106,6 +106,7 @@ export interface ApiPort {
   createRole(guildId: string, body: Partial<Role>): Promise<Role>;
   updateRole(guildId: string, roleId: string, patch: Partial<Role>): Promise<Role>;
   deleteRole(guildId: string, roleId: string): Promise<void>;
+  reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
   updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
