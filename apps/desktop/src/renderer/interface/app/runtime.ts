@@ -8,6 +8,7 @@ import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/a
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
 import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
+import type { IceServer } from '@renderer/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
@@ -33,6 +34,8 @@ export interface Runtime {
   queryClient: QueryClient;
   /** Extension point filled by feature modules (voice, private messaging). */
   hooks: RuntimeHooks;
+  /** Gateway-issued TURN/STUN servers (empty until READY); used by voice and P2P peer connections. */
+  iceServers: () => IceServer[];
 }
 
 export interface RuntimeHooks {
@@ -158,6 +161,6 @@ export function createRuntime(info: AppInfo): Runtime {
     },
   });
 
-  current = { info, http, api, gateway, session: manager, privacy, interactions: new InteractionService(api), queryClient, hooks };
+  current = { info, http, api, gateway, session: manager, privacy, interactions: new InteractionService(api), queryClient, hooks, iceServers: () => turn.iceServers() };
   return current;
 }
