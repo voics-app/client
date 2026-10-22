@@ -188,9 +188,19 @@ test("production smoke", async () => {
       await B.page.getByRole("button", { name: "Join a server" }).click();
       await B.page.getByRole("dialog").getByRole("textbox").first().fill(`${SITE}/invite/${inv.code}`);
       await B.page.getByRole("button", { name: "Continue" }).click();
+      await expect(B.page.getByRole("dialog")).toContainText(/\d+ online/, { timeout: 15_000 });
+      expect(await B.page.getByRole("dialog").innerText()).not.toContain("? online");
       await B.page.getByRole("button", { name: "Accept invite" }).click({ timeout: 20_000 });
       await expect(B.page.getByRole("navigation", { name: "Servers" }).getByRole("button", { name: new RegExp(`e2e-smoke-${RUN}`) })).toBeVisible({ timeout: 30_000 });
       await A.page.getByRole("navigation", { name: "Servers" }).getByRole("button", { name: new RegExp(`e2e-smoke-${RUN}`) }).click({ timeout: 30_000 });
+    });
+
+    await step("2 member list shows both connected accounts ONLINE (client#135)", async () => {
+      for (const i of [A, B]) {
+        await i.page.getByText("general", { exact: true }).first().click().catch(() => undefined);
+        await expect(i.page.locator(".members section", { hasText: /^Online/ })).toContainText(nameA, { timeout: 15_000 });
+        await expect(i.page.locator(".members section", { hasText: /^Online/ })).toContainText(nameB, { timeout: 15_000 });
+      }
     });
 
     // 3. Standard messages

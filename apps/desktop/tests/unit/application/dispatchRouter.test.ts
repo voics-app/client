@@ -83,6 +83,8 @@ describe('dispatchRouter', () => {
     route('GUILD_CREATE', guild);
     expect(useGuildStore.getState().order).toEqual(['100']);
     expect(useGuildStore.getState().channels['200']?.name).toBe('general');
+    // Presence snapshot of the standalone GUILD_CREATE feeds the member list (client#135).
+    expect(usePresenceStore.getState().byUser['2']?.status).toBe('online');
   });
 
   it('hydrates every store from READY', () => {

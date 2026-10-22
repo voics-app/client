@@ -58,6 +58,11 @@ function isFullGuild(guild: GuildFull | { id: string; unavailable?: boolean }): 
   return Array.isArray((guild as GuildFull).channels);
 }
 
+function applyPresences(presences: PresenceUpdate[] | undefined): void {
+  if (!presences?.length) return;
+  usePresenceStore.getState().setMany(Object.fromEntries(presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
+}
+
 function hydrateReady(ready: ReadyPayload): void {
   const session = useSessionStore.getState();
   session.setUser(ready.user);
@@ -68,8 +73,7 @@ function hydrateReady(ready: ReadyPayload): void {
   useNotificationSettingsStore.getState().hydrate(ready.user_guild_settings ?? []);
   useUserNotesStore.getState().hydrate(ready.notes ?? {});
   useReadStateStore.getState().hydrate(ready.read_state ?? []);
-  const presences = [...(ready.presences ?? []), ...guilds.flatMap((g) => g.presences ?? [])];
-  usePresenceStore.getState().setMany(Object.fromEntries(presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
+  applyPresences([...(ready.presences ?? []), ...guilds.flatMap((g) => g.presences ?? [])]);
   for (const g of guilds) useVoiceStore.getState().hydrate(g.id, g.voice_states ?? []);
   useSessionStore.setState({ sessionId: ready.session_id, status: 'ready' });
 }
@@ -107,6 +111,8 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
 
     GUILD_CREATE: (d: GuildFull) => {
       guilds().upsertGuild(d);
+      // Guilds arrive in their own GUILD_CREATE after READY, carrying who is online right now.
+      applyPresences(d.presences);
       useVoiceStore.getState().hydrate(d.id, d.voice_states ?? []);
     },
     GUILD_UPDATE: (d: GuildFull) => guilds().patchGuild(d),
@@ -149,9 +155,7 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     APPLICATION_COMMAND_PERMISSIONS_UPDATE: (d: { guild_id: string }) => useInteractionStore.getState().invalidateCommands(d.guild_id),
     GUILD_MEMBERS_CHUNK: (d: { guild_id: string; members: GuildMember[]; presences?: PresenceUpdate[] }) => {
       guilds().upsertMembers(d.guild_id, d.members);
-      if (d.presences) {
-        usePresenceStore.getState().setMany(Object.fromEntries(d.presences.map((p) => [p.user.id, { status: p.status, activities: p.activities }])));
-      }
+      applyPresences(d.presences);
     },
     GUILD_BAN_ADD: (d: { guild_id: string; user?: User }) => {
       if (d.user) guilds().removeMember(d.guild_id, d.user.id);

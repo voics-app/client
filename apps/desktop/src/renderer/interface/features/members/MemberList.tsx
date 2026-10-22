@@ -86,6 +86,7 @@ export function MemberList({ guildId }: { guildId: string }) {
       guild_id: guildId,
       query: '',
       limit: 100,
+      presences: true,
       nonce: `members-${guildId}`,
     });
   }, [guildId]);
