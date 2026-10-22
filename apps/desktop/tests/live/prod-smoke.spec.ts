@@ -319,6 +319,23 @@ test("production smoke", async () => {
       const [x, y] = [await st(A.page), await st(B.page)];
       const diag = await A.page.evaluate(() => (window as unknown as { __pcs: RTCPeerConnection[] }).__pcs.map((pc) => `${pc.connectionState}/${pc.iceConnectionState}/${pc.iceGatheringState} remote=${(pc.remoteDescription?.sdp ?? "").split(String.fromCharCode(10)).filter((l) => l.startsWith("a=candidate")).map((l) => l.trim().split(" ").slice(4, 8).join(":")).join(",")}`).join(" | "));
       console.log(`voice-diag ${diag}`);
+      // Selected candidate pair (chrome://webrtc-internals equivalent): proves which path media takes (host LAN vs public vs relay).
+      const pair = await A.page.evaluate(async () => {
+        const out: string[] = [];
+        for (const pc of (window as unknown as { __pcs: RTCPeerConnection[] }).__pcs) {
+          const stats = await pc.getStats();
+          const byId = new Map<string, Record<string, unknown>>();
+          stats.forEach((r) => byId.set(r.id, r as Record<string, unknown>));
+          byId.forEach((r) => {
+            if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
+              const l = byId.get(r.localCandidateId as string), m = byId.get(r.remoteCandidateId as string);
+              out.push(`local=${l?.candidateType}:${l?.address ?? l?.ip} remote=${m?.candidateType}:${m?.address ?? m?.ip}:${m?.port}`);
+            }
+          });
+        }
+        return out.join(' | ');
+      });
+      console.log(`voice-selected-pair ${pair}`);
       if (x !== "Voice connected" || y !== "Voice connected") throw new Error(`status A=${x} B=${y}`);
       const [pa, pb, ia, ib] = [await peak(A.page), await peak(B.page), await inbound(A.page), await inbound(B.page)];
       if (!(pa > 0 && pb > 0 && ia.audio > 0 && ib.audio > 0)) throw new Error(`peak A=${pa} B=${pb} inbound A=${ia.audio} B=${ib.audio}`);
