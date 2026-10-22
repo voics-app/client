@@ -67,6 +67,8 @@ const bridge: DiscordyBridge = {
   hotkeys: {
     setPushToTalk: (keycode) => ipcRenderer.invoke(IpcChannel.hotkeyPtt, keycode),
     onPushToTalk: (listener) => subscribe<boolean>(IpcChannel.hotkeyPttEvent, listener),
+    setGlobalKeybinds: (specs) => ipcRenderer.invoke(IpcChannel.hotkeyGlobal, specs),
+    onGlobalKeybind: (listener) => subscribe<{ id: string; pressed: boolean }>(IpcChannel.hotkeyGlobalEvent, listener),
   },
   updates: {
     check: () => ipcRenderer.invoke(IpcChannel.updatesCheck),

@@ -7,7 +7,7 @@ import { installDisplayMediaHandler } from './capture';
 import { resolveConnection, resolveUpdateFeed } from './config';
 import { CryptoHost } from './cryptoHost';
 import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
-import { PushToTalk } from './hotkeys';
+import { GlobalKeybinds, HookHub, PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
 import { loadMainSettings, saveMainSettings } from './settings';
 import { DesktopService } from './desktop/desktopService';
@@ -69,7 +69,9 @@ function bootstrap(): void {
   installSessionPolicies(() => connection);
   installDisplayMediaHandler();
 
-  const pushToTalk = new PushToTalk(getWindow);
+  const hookHub = new HookHub();
+  const pushToTalk = new PushToTalk(getWindow, hookHub);
+  const globalKeybinds = new GlobalKeybinds(getWindow, hookHub);
   if (settings.pushToTalkKeycode !== null) pushToTalk.configure(settings.pushToTalkKeycode);
   const updater = new Updater(createElectronUpdaterPort(updateFeedUrl), (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
   const desktop = new DesktopService({ load: () => settings.desktop, save: () => undefined }, createLoginItemPort(), process.platform, (s) => {
@@ -104,6 +106,7 @@ function bootstrap(): void {
     },
     crypto: new CryptoHost(),
     pushToTalk,
+    globalKeybinds,
     updater,
     takePendingRoute: () => inbox.take(),
   });
@@ -137,6 +140,7 @@ function bootstrap(): void {
     quitting = true;
     updater.stop();
     pushToTalk.dispose();
+    globalKeybinds.dispose();
   });
 }
 

@@ -168,6 +168,9 @@ export interface DiscordyBridge {
   hotkeys: {
     setPushToTalk(keycode: number | null): Promise<boolean>;
     onPushToTalk(listener: (pressed: boolean) => void): () => void;
+    /** Registers the system-wide key combinations; false when the native key hook is unavailable. */
+    setGlobalKeybinds(specs: GlobalKeybindSpec[]): Promise<boolean>;
+    onGlobalKeybind(listener: (event: { id: string; pressed: boolean }) => void): () => void;
   };
   updates: {
     check(): Promise<void>;
@@ -175,6 +178,16 @@ export interface DiscordyBridge {
     onStatus(listener: (status: UpdateStatus) => void): () => void;
   };
   crypto: CryptoBridge;
+}
+
+/** One system-wide key combination: modifiers plus a uiohook keycode; `hold` actions also report the release. */
+export interface GlobalKeybindSpec {
+  id: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  keycode: number;
+  hold: boolean;
 }
 
 export const IpcChannel = {
@@ -200,6 +213,8 @@ export const IpcChannel = {
   captureSelect: 'capture:select',
   hotkeyPtt: 'hotkey:ptt',
   hotkeyPttEvent: 'hotkey:ptt-event',
+  hotkeyGlobal: 'hotkey:global',
+  hotkeyGlobalEvent: 'hotkey:global-event',
   updatesCheck: 'updates:check',
   updatesInstall: 'updates:install',
   updatesStatus: 'updates:status',
