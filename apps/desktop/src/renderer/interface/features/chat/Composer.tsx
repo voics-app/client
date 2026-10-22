@@ -148,7 +148,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     void interactions.loadDirectCommands(bots).catch(() => commandLoads.delete(scope));
   }, [commandSearch === null, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '));
+  const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '), channel.id);
 
   // Mentions chosen from a member context menu are inserted into the open composer of that channel.
   const mentionRequest = useMentionStore((s) => s.request);

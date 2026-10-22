@@ -1,13 +1,15 @@
 import { ArrowClockwise, ChatTeardropText, Eye, LockKey, Plugs, WarningCircle } from '@phosphor-icons/react';
 import { isMentioned } from '@renderer/domain/notificationPolicy';
-import { memo } from 'react';
+import { memo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
 import { systemMessageText } from '@renderer/domain/dmModel';
-import { MessageFlag } from '@shared/contracts/rest';
+import { MessageFlag, type Reaction } from '@shared/contracts/rest';
+import { buildReactionMenu } from '@renderer/domain/messageMenuModel';
+import { reactionSummary } from '@renderer/domain/emojiModel';
 import { attempt, jumpToMessage } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
@@ -15,6 +17,8 @@ import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName, useRoleColor } from '../../shared/hooks/useNames';
 import { formatTime } from '../../shared/hooks/useNow';
 import { Avatar } from '../../shared/ui/Avatar';
+import { Menu, useMenu } from '../../shared/ui/Menu';
+import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { MessageAttachments, UploadProgress } from './AttachmentView';
 import { MessageEmbeds } from './EmbedView';
@@ -42,7 +46,7 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
           <span className="reply-text">{ref.content || 'Click to see attachment'}</span>
         </>
       ) : (
-        <span className="reply-text is-missing">Original message unavailable</span>
+        <span className="reply-text is-missing">{message.referenced_message === null ? 'Original message was deleted' : 'Original message unavailable'}</span>
       )}
     </div>
   );
@@ -61,41 +65,114 @@ function InteractionHeader({ message }: { message: ChatMessage }) {
   );
 }
 
-function Reactions({ message }: { message: ChatMessage }) {
+const LONG_PRESS_MS = 500;
+
+function ReactionChip({ message, reaction, canReact, canManage }: { message: ChatMessage; reaction: Reaction; canReact: boolean; canManage: boolean }) {
   const cdn = useConnectionStore((s) => s.cdnUrl);
-  const canReact = can(useChannelPermissions(message.channel_id), Permission.ADD_REACTIONS);
+  const menu = useMenu();
+  const [names, setNames] = useState<{ names: string[]; count: number } | null>(null);
+  const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false });
+  const key = reactionKey(reaction.emoji);
+  const label = reaction.emoji.id ? `:${reaction.emoji.name}:` : (reaction.emoji.name ?? '');
+
+  const toggle = () => {
+    const api = getRuntime().api;
+    const store = useMessageStore.getState();
+    if (reaction.me) {
+      store.reactionRemove(message.channel_id, message.id, reaction.emoji, true);
+      void attempt(() => api.removeReaction(message.channel_id, message.id, key));
+    } else {
+      store.reactionAdd(message.channel_id, message.id, reaction.emoji, true);
+      void attempt(() => api.addReaction(message.channel_id, message.id, key));
+    }
+  };
+  const openList = () => useUiStore.getState().openDialog({ kind: 'reactionUsers', channelId: message.channel_id, messageId: message.id, emoji: key });
+  const loadNames = () => {
+    if (names && names.count === reaction.count) return;
+    void getRuntime()
+      .api.reactionUsers(message.channel_id, message.id, key)
+      .then((users) => setNames({ count: reaction.count, names: users.slice(0, 4).map((u) => displayName({ username: u.username ?? '', global_name: u.global_name ?? null })) }))
+      .catch(() => undefined);
+  };
+  const run = (id: string) => {
+    const api = getRuntime().api;
+    switch (id) {
+      case 'whoReacted': return openList();
+      case 'toggle': return toggle();
+      case 'removeEmoji':
+        return useUiStore.getState().openDialog({
+          kind: 'confirm',
+          title: 'Remove reactions',
+          body: `Remove every ${label} reaction from this message?`,
+          confirmLabel: 'Remove',
+          danger: true,
+          onConfirm: async () => void (await attempt(() => api.removeEmojiReactions(message.channel_id, message.id, key), 'Could not remove reactions')),
+        });
+      case 'removeAll':
+        return useUiStore.getState().openDialog({
+          kind: 'confirm',
+          title: 'Remove all reactions',
+          body: 'Remove every reaction from this message?',
+          confirmLabel: 'Remove all',
+          danger: true,
+          onConfirm: async () => void (await attempt(() => api.removeAllReactions(message.channel_id, message.id), 'Could not remove reactions')),
+        });
+    }
+  };
+  const entries = toMenuEntries(buildReactionMenu({ canReact, mine: reaction.me, canManageMessages: canManage }), (it) => run(it.id), {});
+
+  return (
+    <>
+      <Tooltip label={names ? reactionSummary(names.names, names.count, label) : `Reacted with ${label}`}>
+        <button
+          type="button"
+          className={`reaction${reaction.me ? ' is-me' : ''}`}
+          disabled={!canReact && !reaction.me}
+          aria-pressed={reaction.me}
+          aria-label={`${reaction.emoji.name} ${reaction.count}`}
+          onMouseEnter={loadNames}
+          onFocus={loadNames}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            menu.openAt(e);
+          }}
+          onPointerDown={() => {
+            press.current.fired = false;
+            press.current.timer = setTimeout(() => {
+              press.current.fired = true;
+              openList();
+            }, LONG_PRESS_MS);
+          }}
+          onPointerUp={() => press.current.timer && clearTimeout(press.current.timer)}
+          onPointerLeave={() => press.current.timer && clearTimeout(press.current.timer)}
+          onClick={() => {
+            if (press.current.fired) {
+              press.current.fired = false;
+              return;
+            }
+            toggle();
+          }}
+        >
+          {reaction.emoji.id ? <img src={`${cdn}/emojis/${reaction.emoji.id}.${reaction.emoji.animated ? 'gif' : 'png'}`} alt={reaction.emoji.name ?? ''} /> : <span>{reaction.emoji.name}</span>}
+          <span className="tnum">{reaction.count}</span>
+        </button>
+      </Tooltip>
+      <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} minWidth={200} />
+    </>
+  );
+}
+
+function Reactions({ message }: { message: ChatMessage }) {
+  const perms = useChannelPermissions(message.channel_id);
+  const canReact = can(perms, Permission.ADD_REACTIONS);
+  const canManage = can(perms, Permission.MANAGE_MESSAGES);
   if (!message.reactions || message.reactions.length === 0) return null;
   return (
     <div className="reactions">
-      {message.reactions.map((r) => {
-        const key = reactionKey(r.emoji);
-        return (
-          <button
-            key={key}
-            type="button"
-            className={`reaction${r.me ? ' is-me' : ''}`}
-            disabled={!canReact}
-            aria-pressed={r.me}
-            aria-label={`${r.emoji.name} ${r.count}`}
-            onClick={() => {
-              const api = getRuntime().api;
-              const store = useMessageStore.getState();
-              const me = useSessionStore.getState().user?.id ?? '';
-              void me;
-              if (r.me) {
-                store.reactionRemove(message.channel_id, message.id, r.emoji, true);
-                void attempt(() => api.removeReaction(message.channel_id, message.id, key));
-              } else {
-                store.reactionAdd(message.channel_id, message.id, r.emoji, true);
-                void attempt(() => api.addReaction(message.channel_id, message.id, key));
-              }
-            }}
-          >
-            {r.emoji.id ? <img src={`${cdn}/emojis/${r.emoji.id}.${r.emoji.animated ? 'gif' : 'png'}`} alt={r.emoji.name ?? ''} /> : <span>{r.emoji.name}</span>}
-            <span className="tnum">{r.count}</span>
-          </button>
-        );
-      })}
+      {message.reactions.map((r) => (
+        <ReactionChip key={reactionKey(r.emoji)} message={message} reaction={r} canReact={canReact} canManage={canManage} />
+      ))}
     </div>
   );
 }
@@ -185,7 +262,11 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           ) : (
             <>
               {message.content && <MarkdownView source={message.content} guildId={guildId} />}
-              {message.edited_timestamp && <span className="edited">(edited)</span>}
+              {message.edited_timestamp && (
+                <Tooltip label={`Edited ${new Date(message.edited_timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}`}>
+                  <span className="edited" tabIndex={0}>(edited)</span>
+                </Tooltip>
+              )}
             </>
           )}
           {message.attachments.length > 0 && <MessageAttachments attachments={message.attachments} channelId={message.channel_id} />}

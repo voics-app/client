@@ -117,7 +117,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     useMessageStore.getState().reactionAdd(message.channel_id, message.id, picked.emoji, true);
     usePrefsStore.getState().recordReaction({ id: picked.emoji.id, name: picked.emoji.name ?? picked.api, animated: picked.emoji.animated });
     void attempt(() => getRuntime().api.addReaction(message.channel_id, message.id, picked.api));
-  });
+  }, message.channel_id);
 
   const visible = !opts.editing && !opts.blocked && (hover || focused || menu.open || emoji.isOpen);
   const [shift, setShift] = useShiftHeld(visible);
