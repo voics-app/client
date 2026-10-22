@@ -63,7 +63,7 @@ function hydrateReady(ready: ReadyPayload): void {
   session.setUser(ready.user);
   session.setSettings(ready.user_settings ?? {});
   const guilds = (ready.guilds as Array<GuildFull | { id: string; unavailable?: boolean }>).filter(isFullGuild);
-  useGuildStore.getState().hydrate(guilds, ready.private_channels, ready.user_settings?.guild_positions);
+  useGuildStore.getState().hydrate(guilds, ready.private_channels, ready.user_settings?.guild_positions, ready.user_settings?.guild_folders);
   useRelationshipStore.getState().hydrate(ready.relationships ?? []);
   useNotificationSettingsStore.getState().hydrate(ready.user_guild_settings ?? []);
   useUserNotesStore.getState().hydrate(ready.notes ?? {});
@@ -183,7 +183,10 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     USER_UPDATE: (d: User) => {
       if (d.id === meId()) useSessionStore.getState().setUser(d);
     },
-    USER_SETTINGS_UPDATE: (d: Partial<UserSettings>) => useSessionStore.getState().setSettings(d),
+    USER_SETTINGS_UPDATE: (d: Partial<UserSettings>) => {
+      useSessionStore.getState().setSettings(d);
+      if (d.guild_folders) guilds().setRail(d.guild_folders);
+    },
     USER_GUILD_SETTINGS_UPDATE: (d: GuildNotificationSettings) => useNotificationSettingsStore.getState().upsert(d),
     USER_NOTE_UPDATE: (d: { id: string; note: string }) => useUserNotesStore.getState().set(d.id, d.note),
     RELATIONSHIP_ADD: (d: Relationship) => useRelationshipStore.getState().upsert(d),
