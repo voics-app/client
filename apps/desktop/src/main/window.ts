@@ -29,6 +29,26 @@ export function installSessionPolicies(getProfile: () => ConnectionProfile): voi
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
 }
 
+export const CALL_POPOUT_FRAME = 'discordy-call-popout';
+
+/** The only child window the renderer may open: the named about:blank call pop-out. */
+export function isCallPopOut(url: string, frameName: string): boolean {
+  return url === 'about:blank' && frameName === CALL_POPOUT_FRAME;
+}
+
+function callPopOutOptions(): Electron.BrowserWindowConstructorOptions {
+  return {
+    width: 1040,
+    height: 680,
+    minWidth: 480,
+    minHeight: 320,
+    autoHideMenuBar: true,
+    title: BRAND.displayName,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#14141c' : '#eef0f5',
+    icon: join(__dirname, '../../resources/icon.png'),
+  };
+}
+
 export function createMainWindow(): BrowserWindow {
   const isMac = process.platform === 'darwin';
   const window = new BrowserWindow({
@@ -61,11 +81,18 @@ export function createMainWindow(): BrowserWindow {
     const devServer = process.env.ELECTRON_RENDERER_URL;
     if (!(devServer && url.startsWith(devServer))) event.preventDefault();
   });
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  window.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    if (isCallPopOut(url, frameName)) return { action: 'allow', overrideBrowserWindowOptions: callPopOutOptions() };
     if (/^https:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
   // The title carries the unread/mention count and is owned by the attention presenter, not the page.
+  window.webContents.on('did-create-window', (child) => {
+    // The pop-out is fed by the opener; it never navigates on its own.
+    child.webContents.on('will-navigate', (event) => event.preventDefault());
+    child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    child.setMenuBarVisibility(false);
+  });
   window.on('page-title-updated', (event) => event.preventDefault());
   window.setTitle(BRAND.displayName);
   installTextContextMenu(window.webContents);
