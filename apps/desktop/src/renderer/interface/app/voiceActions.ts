@@ -100,3 +100,24 @@ async function run(fn: () => Promise<void> | undefined): Promise<void> {
     reportError(error, 'Voice error');
   }
 }
+
+let heldMute = false;
+
+/** Push to mute: mutes while the key is held and restores the mic on release (only if it was live when pressed). */
+export async function pushToMute(pressed: boolean): Promise<void> {
+  if (pressed) {
+    if (heldMute || useVoiceStore.getState().selfMute) return;
+    heldMute = true;
+    await run(() => require()?.setMute(true));
+  } else if (heldMute) {
+    heldMute = false;
+    await run(() => require()?.setMute(false));
+  }
+}
+
+/** Stops the running screen share, or opens the source picker to start one. Only while in a call. */
+export function toggleScreenShare(): void {
+  const { selfStream, call } = useVoiceStore.getState();
+  if (selfStream) void stopShare();
+  else if (call.status !== 'idle') useUiStore.getState().openDialog({ kind: 'screenPicker' });
+}

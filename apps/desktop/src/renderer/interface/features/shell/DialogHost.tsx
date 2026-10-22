@@ -328,13 +328,15 @@ function CustomStatusDialog() {
 function ShortcutsDialog() {
   const close = useClose();
   const keybinds = usePrefsStore((s) => s.keybinds);
-  const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
+  const pttLabel = usePrefsStore((s) => s.pttLabel);
+  const bound = keybinds.filter((k) => k.keys).map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action, global: Boolean(k.global) }));
+  const rows = [...bound, ...(pttLabel ? [{ keys: pttLabel, label: 'Push to talk', global: true }] : []), ...FIXED_SHORTCUTS.map((f) => ({ keys: f.keys, label: f.label, global: false }))];
   return (
-    <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
+    <Modal open onClose={close} title="Keyboard shortcuts" description="Change them in Settings, Keybinds." width={520}>
       <ul className="shortcut-list">
         {rows.map((r) => (
           <li key={`${r.keys}-${r.label}`} className="shortcut-row">
-            <span>{r.label}</span>
+            <span>{r.label}{r.global ? ' (global)' : ''}</span>
             <kbd className="kbd">{r.keys}</kbd>
           </li>
         ))}

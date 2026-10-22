@@ -1,7 +1,7 @@
 import { Check, DeviceMobile, Laptop, SignOut, Upload } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { usePrefsStore, DEFAULT_KEYBINDS, type AccentId, type ThemeId } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore, type AccentId, type ThemeId } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
@@ -17,7 +17,6 @@ import { useUpdateStore } from '@renderer/application/stores/updateStore';
 import { attempt } from '../../../app/actions';
 import { bridge } from '../../../app/bridge';
 import { getRuntime } from '../../../app/runtime';
-import { describeEvent } from '../../../app/shortcuts';
 import { displayName } from '../../../shared/hooks/useNames';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Button } from '../../../shared/ui/Button';
@@ -25,6 +24,7 @@ import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea }
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
 import { readImageUpload } from '../imageUpload';
+import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
 import { BRAND } from '@shared/brand';
 
@@ -305,30 +305,9 @@ export function VoiceTab() {
 }
 
 export function KeybindsTab() {
-  const keybinds = usePrefsStore((s) => s.keybinds);
-  const patch = usePrefsStore((s) => s.patch);
-  const [recording, setRecording] = useState<string | null>(null);
-  useEffect(() => {
-    if (!recording) return;
-    const onKey = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
-      patch({ keybinds: keybinds.map((k) => (k.id === recording ? { ...k, keys: describeEvent(e) } : k)) });
-      setRecording(null);
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [recording, keybinds, patch]);
-  const labels: Record<string, string> = { palette: 'Command palette', toggleMute: 'Toggle mute', toggleDeafen: 'Toggle deafen', markRead: 'Mark channel as read', search: 'Search', upload: 'Upload a file', prevChannel: 'Previous channel', nextChannel: 'Next channel' };
   return (
-    <Page title="Keybinds" sub="In-app shortcuts. Push-to-talk is configured under Voice and video.">
-      {keybinds.map((k) => (
-        <SettingRow key={k.id} title={labels[k.action] ?? k.action}>
-          <Button onClick={() => setRecording(k.id)} aria-label={`Change shortcut for ${labels[k.action]}`}><kbd className="kbd">{recording === k.id ? 'Press keys' : k.keys}</kbd></Button>
-        </SettingRow>
-      ))}
-      <div className="row-end"><Button variant="ghost" onClick={() => patch({ keybinds: DEFAULT_KEYBINDS })}>Reset to defaults</Button></div>
+    <Page title="Keybinds" sub="Shortcuts are saved on this device only. Global shortcuts also work while the app is in the background (desktop app). Press Esc while recording to cancel.">
+      <KeybindsEditor />
     </Page>
   );
 }
