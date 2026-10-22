@@ -29,6 +29,7 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
   const alone = participants.filter((p) => p.state.user_id !== me).length === 0;
 
   return (
+    <div className="voice-call-split">
     <section className="voice-lobby" aria-label={channel.name ?? 'Voice channel'}>
       <EmptyState
         icon={<SpeakerHigh size={36} weight="light" />}
@@ -53,5 +54,7 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
         }
       />
     </section>
+    <VoiceTextChatPanel channelId={channelId} />
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, LockSimple, Megaphone, Plugs, Plus, SpeakerHigh, UserPlus } from '@phosphor-icons/react';
+import { Broadcast, CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, LockSimple, Megaphone, MicrophoneSlash, Plugs, Plus, SpeakerHigh, SpeakerSlash, UserPlus, VideoCamera } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
@@ -10,6 +10,8 @@ import { LOOSE, layoutOf, resolveDrop, type ChannelDrag, type ChannelDropZone } 
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
 import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { DEAF_LABEL, MUTE_LABEL, canDragOccupant, canDropOccupant, channelCapacity, occupantFlags } from '@renderer/domain/voiceOccupant';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { Permission } from '@shared/contracts/permissions';
 import { ChannelType, type Channel, type VoiceState } from '@shared/contracts/rest';
 import { channelIcon, openChannel } from '../../app/navigation';
@@ -23,7 +25,8 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
-import { useUserMenu } from '../members/UserContextMenu';
+import { moveMember, useUserMenu } from '../members/UserContextMenu';
+import { openVoiceChat, voiceTextChatEnabled } from '../voice/VoiceTextChat';
 import { GuildHeader } from './GuildHeader';
 import { CategoryContextMenuEntries, ChannelContextMenuEntries } from './channelMenu';
 
@@ -71,19 +74,48 @@ const halfOf = (event: React.DragEvent, el: Element): 'before' | 'after' => {
 
 const ICONS = { text: Hash, voice: SpeakerHigh, announcement: Megaphone, forum: ChatsCircle, stage: SpeakerHigh, thread: Hash };
 
+/** The occupant being dragged, shared with the channel rows that accept the drop. */
+let draggedOccupant: VoiceState | null = null;
+
 export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | null; state: VoiceState; speaking: number }) {
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[state.user_id] : undefined)) ?? state.member;
   const user = member?.user;
   const name = user ? displayName(user, member?.nick) : state.user_id;
   const openDialog = useUiStore((s) => s.openDialog);
+  const me = useSessionStore((s) => s.user?.id);
+  const perms = useGuildPermissions(guildId);
+  const draggable = Boolean(guildId) && canDragOccupant(perms, state, me);
   const { bind, node } = useUserMenu({ userId: state.user_id, name, guildId, user });
+  const flags = occupantFlags(state);
   return (
-    <li className="occupant" {...bind} onClick={() => openDialog({ kind: 'profile', userId: state.user_id, guildId })}>
+    <li
+      className={`occupant${speaking > 0.05 ? ' is-speaking' : ''}`}
+      {...bind}
+      draggable={draggable}
+      onDragStart={(e) => {
+        if (!draggable) return;
+        e.stopPropagation();
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', name);
+        draggedOccupant = state;
+      }}
+      onDragEnd={() => {
+        draggedOccupant = null;
+      }}
+      onClick={() => openDialog({ kind: 'profile', userId: state.user_id, guildId })}
+    >
       <Avatar id={state.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking} />
-      <span>{name}</span>
-      {(state.self_mute || state.mute) && <span className="occupant-flag" title="Muted">M</span>}
-      {state.self_video && <span className="occupant-flag" title="Camera on">V</span>}
-      {state.self_stream && <span className="occupant-live">LIVE</span>}
+      <span className="occupant-name">{name}</span>
+      <span className="occupant-flags">
+        {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={MUTE_LABEL[flags.mute]} />}
+        {flags.deaf && <SpeakerSlash size={14} weight="fill" className={`occupant-flag is-${flags.deaf}`} aria-label={DEAF_LABEL[flags.deaf]} />}
+        {flags.camera && <VideoCamera size={14} weight="fill" className="occupant-flag" aria-label="Camera on" />}
+        {flags.live && (
+          <span className="occupant-live" title="Streaming">
+            <Broadcast size={10} weight="bold" /> LIVE
+          </span>
+        )}
+      </span>
       {node}
     </li>
   );
@@ -106,18 +138,45 @@ function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolea
   const unread = !muted && !isVoice && isUnread(channel.last_message_id, read?.lastReadId);
   const occupants = isVoice ? usersInChannel(voiceStates, channel.guild_id, channel.id) : [];
   const mentions = read?.mentionCount ?? 0;
+  const me = useSessionStore((s) => s.user?.id);
+  const guildPerms = useGuildPermissions(channel.guild_id);
+  const canMove = can(perms, Permission.MOVE_MEMBERS);
+  const capacity = isVoice ? channelCapacity(channel.user_limit, occupants.length, canMove) : null;
+  const [moveHover, setMoveHover] = useState(false);
+  const chatShown = isVoice && voiceTextChatEnabled(channel);
   const entries = ChannelContextMenuEntries(channel, perms, { openDialog, openSettings, markRead: () => markChannelRead(channel.id), hasUnread: unread || mentions > 0 });
 
   if (!can(perms, Permission.VIEW_CHANNEL)) return null;
 
   const select = () => {
+    if (capacity?.joinBlocked && !occupants.some((o) => o.user_id === me)) return;
     if (isVoice) void openVoiceChannel(channel.guild_id ?? null, channel.id);
     else if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
     else openChannel(channel.id);
   };
 
   return (
-    <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined} className={hoverClass(dnd, dropKey({ kind: 'channel', id: channel.id })).trim() || undefined}>
+    <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined} className={(hoverClass(dnd, dropKey({ kind: 'channel', id: channel.id })).trim() + (moveHover ? ' is-move-target' : '')).trim() || undefined}
+      onDragOver={(e) => {
+        if (!isVoice || !draggedOccupant || !canDropOccupant(draggedOccupant, channel)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        setMoveHover(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setMoveHover(false);
+      }}
+      onDrop={(e) => {
+        setMoveHover(false);
+        const dragged = draggedOccupant;
+        if (!isVoice || !dragged || !canDropOccupant(dragged, channel) || !channel.guild_id || !can(guildPerms, Permission.MOVE_MEMBERS)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        draggedOccupant = null;
+        void moveMember(channel.guild_id, dragged.user_id, channel.id);
+      }}
+    >
       <div
         className={`channel-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}${muted ? ' is-muted' : ''}${dnd.drag?.id === channel.id ? ' is-dragging' : ''}`}
         onContextMenu={menu.openAt}
@@ -128,7 +187,7 @@ function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolea
         }}
         onDragEnd={dnd.end}
       >
-        <button type="button" className="channel-main" onClick={select} aria-current={active || undefined}>
+        <button type="button" className="channel-main" onClick={select} aria-current={active || undefined} aria-disabled={capacity?.joinBlocked || undefined} title={capacity?.joinBlocked ? 'Channel is full' : undefined}>
           {unread && <span className="channel-unread-dot" aria-label="Unread" />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
           <span className="channel-name">{channel.name}</span>
@@ -136,16 +195,35 @@ function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolea
           {channel.nsfw && <span className="channel-nsfw" title="Age-restricted" aria-label="Age-restricted">18+</span>}
           {channel.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
           {channel.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
+          {capacity?.label && (
+            <span className={`channel-capacity tnum${capacity.full ? ' is-full' : ''}`} title={capacity.joinBlocked ? 'Channel is full' : `User limit ${channel.user_limit}`}>
+              {capacity.full && <LockSimple size={11} weight="fill" aria-label="Full" />}
+              {capacity.label}
+            </span>
+          )}
           <Count value={mentions} tone="danger" />
         </button>
-        {channel.guild_id && (can(perms, Permission.CREATE_INSTANT_INVITE) || can(perms, Permission.MANAGE_CHANNELS)) && (
+        {(chatShown || (channel.guild_id && (can(perms, Permission.CREATE_INSTANT_INVITE) || can(perms, Permission.MANAGE_CHANNELS)))) && (
           <span className="channel-actions">
-            {can(perms, Permission.CREATE_INSTANT_INVITE) && (
+            {chatShown && (
+              <IconButton
+                label="Open chat"
+                size="sm"
+                onClick={() => {
+                  if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
+                  else openChannel(channel.id);
+                  openVoiceChat(channel.id);
+                }}
+              >
+                <ChatsCircle size={15} />
+              </IconButton>
+            )}
+            {channel.guild_id && can(perms, Permission.CREATE_INSTANT_INVITE) && (
               <IconButton label="Create invite" size="sm" onClick={() => openDialog({ kind: 'invite', guildId: channel.guild_id!, channelId: channel.id })}>
                 <UserPlus size={15} />
               </IconButton>
             )}
-            {can(perms, Permission.MANAGE_CHANNELS) && (
+            {channel.guild_id && can(perms, Permission.MANAGE_CHANNELS) && (
               <IconButton label="Edit channel" size="sm" onClick={() => openSettings({ kind: 'channel', channelId: channel.id, tab: 'overview' })}>
                 <Gear size={15} />
               </IconButton>

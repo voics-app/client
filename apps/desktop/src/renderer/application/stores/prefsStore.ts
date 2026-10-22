@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SoundId } from '@renderer/domain/sounds';
 import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
+import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '@renderer/domain/stageLayout';
 import { recordReaction, type QuickEmoji } from '@renderer/domain/quickReactions';
 
 export type ThemeId = 'dark' | 'oled' | 'light';
@@ -52,6 +53,8 @@ export interface PrefsState {
   /** Skin tone modifier applied to the emoji picker's hand emoji; empty for the default. */
   skinTone: string;
   collapsedCategories: Record<string, boolean>;
+  /** Call stage layout (grid/focus/spotlight, pin, hide non-video) remembered per voice channel. */
+  stageLayouts: Record<string, StageLayoutPrefs>;
   keybinds: Keybind[];
   /** Show previews of links in messages (Standard chats). */
   linkPreviews: boolean;
@@ -61,11 +64,12 @@ export interface PrefsState {
   set<K extends keyof PrefsData>(key: K, value: PrefsData[K]): void;
   patch(values: Partial<PrefsData>): void;
   toggleMap(key: 'collapsedCategories', id: string): void;
+  patchStageLayout(channelId: string, patch: Partial<StageLayoutPrefs>): void;
   setCollapsed(ids: string[], collapsed: boolean): void;
   recordReaction(emoji: QuickEmoji): void;
 }
 
-export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap' | 'setCollapsed' | 'recordReaction'>;
+export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap' | 'patchStageLayout' | 'setCollapsed' | 'recordReaction'>;
 
 export const DEFAULT_KEYBINDS: Keybind[] = [
   { id: 'palette', action: 'palette', keys: 'Ctrl+K' },
@@ -109,6 +113,7 @@ export const DEFAULT_PREFS: PrefsData = {
   recentReactions: [],
   skinTone: '',
   collapsedCategories: {},
+  stageLayouts: {},
   keybinds: DEFAULT_KEYBINDS,
   linkPreviews: true,
   mediaVolume: 1,
@@ -144,6 +149,7 @@ export const usePrefsStore = create<PrefsState>()(
       patch: (values) => set(values),
       setCollapsed: (ids, collapsed) => set((s) => ({ collapsedCategories: { ...s.collapsedCategories, ...Object.fromEntries(ids.map((id) => [id, collapsed])) } })),
       recordReaction: (emoji) => set((s) => ({ recentReactions: recordReaction(s.recentReactions, emoji) })),
+      patchStageLayout: (channelId, patch) => set((s) => ({ stageLayouts: { ...s.stageLayouts, [channelId]: normalizeLayout({ ...(s.stageLayouts[channelId] ?? DEFAULT_STAGE_LAYOUT), ...patch }) } })),
       toggleMap: (key, id) => set((s) => ({ [key]: { ...s[key], [id]: !s[key][id] } }) as Partial<PrefsState>),
     }),
     {
