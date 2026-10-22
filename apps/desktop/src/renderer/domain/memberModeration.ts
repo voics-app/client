@@ -71,6 +71,8 @@ export interface MemberCapabilities {
   /** Move to another voice channel, or disconnect (MOVE_MEMBERS; Discord has no hierarchy check). */
   canMoveMembers: boolean;
   canTimeout: boolean;
+  /** Delete the member's recent messages in bulk (MANAGE_MESSAGES; Discord has no hierarchy check). */
+  canManageMessages: boolean;
   canKick: boolean;
   canBan: boolean;
 }
@@ -108,6 +110,7 @@ export function memberCapabilities({
     canServerDeafen: has("DEAFEN_MEMBERS") && inVoice && above,
     canMoveMembers: has("MOVE_MEMBERS") && inVoice && !isSelf,
     canTimeout: has("MODERATE_MEMBERS") && above,
+    canManageMessages: has("MANAGE_MESSAGES") && !isSelf,
     canKick: has("KICK_MEMBERS") && above,
     canBan: has("BAN_MEMBERS") && above,
   };

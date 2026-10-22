@@ -620,3 +620,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .folder-colors { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
 .folder-color { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .folder-color.is-selected { border-color: var(--fg); box-shadow: 0 0 0 2px var(--bg-1) inset; }
+
+.member-filters { margin: 8px 0; } .member-filters > * { flex: 1 1 160px; min-width: 0; }
+.check-row { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2, inherit); }
+.manage-list li > input[type="checkbox"] { flex: none; }

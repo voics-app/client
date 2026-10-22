@@ -15,6 +15,7 @@ export type UserMenuItemId =
   | "nickname"
   | "roles"
   | "timeout"
+  | "purgeMessages"
   | "kick"
   | "ban"
   | "serverMute"
@@ -80,6 +81,7 @@ export function userMenuGroups(input: UserMenuInput): UserMenuItemId[][] {
     ...(inGuild && caps.canTimeout ? (["timeout"] as const) : []),
   ];
   const danger: UserMenuItemId[] = [
+    ...(inGuild && caps.canManageMessages ? (["purgeMessages"] as const) : []),
     ...(inGuild && caps.canKick ? (["kick"] as const) : []),
     ...(inGuild && caps.canBan ? (["ban"] as const) : []),
   ];
@@ -108,6 +110,7 @@ export const BAN_HISTORY_OPTIONS: readonly { label: string; seconds: number }[] 
   { label: "Don't delete any", seconds: 0 },
   { label: 'Previous hour', seconds: 3600 },
   { label: 'Previous 6 hours', seconds: 6 * 3600 },
+  { label: 'Previous 12 hours', seconds: 12 * 3600 },
   { label: 'Previous 24 hours', seconds: 24 * 3600 },
   { label: 'Previous 3 days', seconds: 3 * 86400 },
   { label: 'Previous 7 days', seconds: 7 * 86400 },
