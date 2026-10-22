@@ -13,7 +13,7 @@ export function toMenuEntries(model: MenuModel[], run: (item: MenuItemModel) => 
       case 'submenu':
         return { kind: 'submenu', label: e.label, icon: icons[e.id], entries: toMenuEntries(e.items, run, icons) };
       case 'item':
-        return { kind: 'item', label: e.label, icon: icons[e.id], danger: e.danger, disabled: e.disabled, checked: e.checked, onSelect: () => run(e) };
+        return { kind: 'item', label: e.label, icon: icons[e.id], danger: e.danger, disabled: e.disabled, title: e.hint, checked: e.checked, onSelect: () => run(e) };
     }
   });
 }

@@ -45,6 +45,12 @@ describe('message menu', () => {
     expect(idsOf(buildMessageMenu(ctx({ forwardSupported: true }), msg))).toContain('forward');
   });
 
+  it('disables Forward with a hint for E2EE and P2P messages', () => {
+    const entry = buildMessageMenu(ctx({ forwardSupported: true, standard: false }), msg).find((e) => e.kind === 'item' && e.id === 'forward');
+    expect(entry).toMatchObject({ disabled: true });
+    expect((entry as { hint?: string }).hint).toMatch(/end-to-end/i);
+  });
+
   it('drops reaction, pin and thread entries for non-standard delivery but keeps Delete for own messages', () => {
     const ids = idsOf(buildMessageMenu(ctx({ standard: false, isMine: true, canManageMessages: true, canCreateThread: true }), msg));
     for (const hidden of ['addReaction', 'pin', 'thread', 'edit']) expect(ids).not.toContain(hidden);

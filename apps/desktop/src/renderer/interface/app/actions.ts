@@ -1,11 +1,13 @@
 /** UI-facing commands: wrap API calls with consistent error toasts. */
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { forwardBody } from '@renderer/domain/forward';
 import { idBefore } from '@renderer/domain/unread';
-import { ChannelType } from '@shared/contracts/rest';
+import { ChannelType, type Message } from '@shared/contracts/rest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
@@ -69,6 +71,15 @@ export async function copyText(text: string, label = 'Copied'): Promise<void> {
 }
 
 /** Opens the channel and scrolls to (and flashes) the message, loading history around it when it is not in memory. */
+/** Forwards a message into another chat: the server snapshots it, so the copy keeps working if the original goes away. Resolves to whether it was sent. */
+export async function forwardMessage(message: Message, targetChannelId: string, comment: string): Promise<boolean> {
+  const sent = await attempt(() => getRuntime().api.sendMessage(targetChannelId, forwardBody(message, comment, `fwd-${Date.now().toString(36)}`)), 'Could not forward message');
+  if (!sent) return false;
+  useMessageStore.getState().receive(sent);
+  useUiStore.getState().toast({ tone: 'success', title: 'Message forwarded' });
+  return true;
+}
+
 export function jumpToMessage(channelId: string, messageId: string): void {
   useReadNavStore.getState().requestJump(channelId, messageId);
   const ui = useUiStore.getState();

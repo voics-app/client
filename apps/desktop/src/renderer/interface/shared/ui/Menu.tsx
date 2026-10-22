@@ -5,7 +5,7 @@ import { wrapIndex } from '@renderer/domain/rovingFocus';
 import { snappy } from './motion';
 
 export type MenuEntry =
-  | { kind: 'item'; label: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; checked?: boolean; onSelect: () => void }
+  | { kind: 'item'; label: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; title?: string; checked?: boolean; onSelect: () => void }
   | { kind: 'separator' }
   | { kind: 'label'; label: string }
   | { kind: 'submenu'; label: string; icon?: ReactNode; entries: MenuEntry[] }
@@ -156,6 +156,7 @@ export function Menu({ open, x, y, entries, onClose, minWidth = 200 }: Props) {
                 type="button"
                 role="menuitem"
                 disabled={entry.disabled}
+                title={entry.title}
                 className={`menu-item${entry.danger ? ' is-danger' : ''}`}
                 onClick={() => {
                   onClose();
