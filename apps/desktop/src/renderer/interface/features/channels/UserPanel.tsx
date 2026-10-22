@@ -5,7 +5,9 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { PresenceStatus } from '@shared/contracts/rest';
-import { GatewayOp } from '@shared/contracts/gateway';
+import { activeCustomStatus } from '@renderer/domain/selfPresence';
+import { setAutoIdle } from '@renderer/application/selfPresence';
+import { publishPresence } from '../../app/presenceActions';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { toggleDeafen, toggleMute } from '../../app/voiceActions';
@@ -24,13 +26,15 @@ const STATUSES: { id: Exclude<PresenceStatus, 'offline'>; label: string; hint: s
 export function setStatus(status: Exclude<PresenceStatus, 'offline'>): void {
   const rt = getRuntime();
   useSessionStore.getState().setSettings({ status });
-  rt.gateway.send(GatewayOp.PRESENCE_UPDATE, { status, activities: [], afk: false });
+  setAutoIdle(false);
+  publishPresence();
   void attempt(() => rt.api.updateSettings({ status }), 'Could not update status');
 }
 
 export function UserPanel() {
   const user = useSessionStore((s) => s.user);
   const settingsStatus = useSessionStore((s) => s.settings.status);
+  const storedCustom = useSessionStore((s) => s.settings.custom_status);
   const presence = usePresenceStore((s) => (user ? s.byUser[user.id]?.status : undefined));
   const selfMute = useVoiceStore((s) => s.selfMute);
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
@@ -39,11 +43,11 @@ export function UserPanel() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!user) return null;
   const status = (presence && presence !== 'offline' ? presence : settingsStatus) ?? 'online';
-  const customStatus = useSessionStore.getState().settings.custom_status?.text;
+  const customStatus = activeCustomStatus(storedCustom, Date.now())?.text;
 
   const entries: MenuEntry[] = [
     { kind: 'label', label: 'Status' },
-    ...STATUSES.map<MenuEntry>((s) => ({ kind: 'item', label: s.label, checked: status === s.id, onSelect: () => setStatus(s.id) })),
+    ...STATUSES.map<MenuEntry>((s) => ({ kind: 'item', label: s.label, checked: (settingsStatus ?? 'online') === s.id, onSelect: () => setStatus(s.id) })),
     { kind: 'separator' },
     { kind: 'item', label: 'Set custom status', onSelect: () => openDialog({ kind: 'customStatus' }) },
     { kind: 'item', label: 'Edit profile', onSelect: () => openSettings({ kind: 'user', tab: 'profile' }) },

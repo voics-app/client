@@ -1,6 +1,6 @@
 /** IPC handlers: the only path from the sandboxed renderer to privileged APIs. */
 import type { BrowserWindow} from 'electron';
-import { Notification, ipcMain, shell } from 'electron';
+import { Notification, ipcMain, powerMonitor, shell } from 'electron';
 import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, type NotificationRequest, type StoredSession, type CaptureSelection, type VoiceState } from '../shared/ipc';
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
@@ -10,6 +10,13 @@ import { sessionVault } from './sessionVault';
 import { saveMainSettings } from './settings';
 import type { Updater } from './updater';
 import type { DesktopService } from './desktop/desktopService';
+
+/** OS input idle time; the e2e harness can pin it with `globalThis.__e2eIdleSeconds` since a test cannot stop real input. */
+export function systemIdleSeconds(e2e: boolean, read: () => number): number {
+  const override = (globalThis as { __e2eIdleSeconds?: unknown }).__e2eIdleSeconds;
+  if (e2e && typeof override === 'number') return override;
+  return read();
+}
 
 export interface IpcDeps {
   window: () => BrowserWindow | null;
@@ -58,6 +65,7 @@ export function registerIpc(deps: IpcDeps): void {
   on(IpcChannel.appVoiceState, (state: VoiceState) => {
     deps.setVoiceState({ muted: Boolean(state?.muted), deafened: Boolean(state?.deafened) });
   });
+  handle(IpcChannel.idleSeconds, () => systemIdleSeconds(process.env.DISCORDY_E2E === '1', () => powerMonitor.getSystemIdleTime()));
   handle(IpcChannel.desktopGet, () => deps.desktop.get());
   handle(IpcChannel.desktopSet, (patch: unknown) => deps.desktop.update(patch));
   on(IpcChannel.desktopRelaunch, () => deps.relaunch());

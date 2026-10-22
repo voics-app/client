@@ -1,23 +1,25 @@
 /** Device-local desktop integration settings and the rules that derive from them. Pure: no electron imports. */
-import type { DesktopSettings } from '../../shared/ipc';
+import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '../../shared/ipc';
 
 export type { DesktopSettings };
 
 export const HIDDEN_FLAG = '--hidden';
 
 export function defaultDesktopSettings(platform: NodeJS.Platform): DesktopSettings {
-  return { openAtLogin: false, startMinimized: false, closeToTray: platform !== 'linux', hardwareAcceleration: true };
+  return { openAtLogin: false, startMinimized: false, closeToTray: platform !== 'linux', hardwareAcceleration: true, idleTimeoutMinutes: 10 };
 }
 
 export function normalizeDesktopSettings(raw: unknown, platform: NodeJS.Platform): DesktopSettings {
   const base = defaultDesktopSettings(platform);
   const src = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const pick = (key: keyof DesktopSettings): boolean => (typeof src[key] === 'boolean' ? (src[key] as boolean) : base[key]);
+  const pick = (key: 'openAtLogin' | 'startMinimized' | 'closeToTray' | 'hardwareAcceleration'): boolean => (typeof src[key] === 'boolean' ? (src[key] as boolean) : base[key]);
+  const idle = Number(src.idleTimeoutMinutes);
   return {
     openAtLogin: pick('openAtLogin'),
     startMinimized: pick('startMinimized'),
     closeToTray: pick('closeToTray'),
     hardwareAcceleration: pick('hardwareAcceleration'),
+    idleTimeoutMinutes: IDLE_TIMEOUT_CHOICES.includes(idle) ? idle : base.idleTimeoutMinutes,
   };
 }
 

@@ -1,8 +1,16 @@
 import { useEffect } from 'react';
 import { useUpdateStore } from '@renderer/application/stores/updateStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { isAutoIdle, manualStatus, setAutoIdle } from '@renderer/application/selfPresence';
+import { IdleMonitor } from '@renderer/application/idleMonitor';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { isExpired } from '@renderer/domain/selfPresence';
 import { bridge } from './bridge';
+import { publishPresence } from './presenceActions';
+import { setStatusText } from '../features/shell/customStatus';
 import { toggleDeafen, toggleMute } from './voiceActions';
+
+const IDLE_POLL_MS = 10_000;
 
 /** Wires the Electron shell: tray mute/deafen commands in, self voice state and update status out. */
 export function useDesktopIntegration(): void {
@@ -16,7 +24,28 @@ export function useDesktopIntegration(): void {
     const offVoice = useVoiceStore.subscribe(pushVoice);
     const offTray = bridge.app.onTrayCommand((command) => void (command === 'toggleMute' ? toggleMute() : toggleDeafen()));
     const offUpdates = bridge.updates.onStatus((s) => useUpdateStore.getState().setStatus(s));
+    const monitor = new IdleMonitor({
+      idleSeconds: () => bridge!.idle.seconds(),
+      timeoutMinutes: async () => (await bridge!.desktop.get()).idleTimeoutMinutes,
+      manual: manualStatus,
+      current: isAutoIdle,
+      onChange: (idle) => {
+        setAutoIdle(idle);
+        if (useSessionStore.getState().status === 'ready') publishPresence();
+      },
+    });
+    const poll = () => {
+      if (useSessionStore.getState().status !== 'ready') return;
+      void monitor.tick();
+      if (isExpired(useSessionStore.getState().settings.custom_status, Date.now())) void setStatusText(null);
+    };
+    const timer = window.setInterval(poll, IDLE_POLL_MS);
+    const offLock = bridge.idle.onLock((locked) => monitor.setLocked(locked));
+    window.addEventListener('focus', poll);
     return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', poll);
+      offLock();
       offVoice();
       offTray();
       offUpdates();

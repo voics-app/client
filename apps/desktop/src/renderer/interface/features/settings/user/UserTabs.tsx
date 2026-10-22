@@ -12,7 +12,7 @@ import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { keyLabel, uiohookKeycode } from '@renderer/domain/uiohookKeys';
 import type { DeliveryMode } from '@shared/contracts/rest';
-import type { DesktopSettings } from '@shared/ipc';
+import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
 import { useUpdateStore } from '@renderer/application/stores/updateStore';
 import { speak } from '@renderer/infrastructure/tts';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom } from '@renderer/domain/appearance';
@@ -495,7 +495,7 @@ export function DesktopTab() {
       if (r.restartRequired) setRestart(true);
     });
   };
-  const row = (key: keyof DesktopSettings, title: string, description: string, disabled = false) => (
+  const row = (key: Exclude<keyof DesktopSettings, 'idleTimeoutMinutes'>, title: string, description: string, disabled = false) => (
     <SettingRow title={title} description={description}>
       <Switch label={title} checked={settings?.[key] ?? false} disabled={!settings || disabled} onChange={(v) => change({ [key]: v })} />
     </SettingRow>
@@ -506,6 +506,11 @@ export function DesktopTab() {
       {row('startMinimized', 'Start minimized', 'When started at login, stay in the tray instead of opening the window.', !settings?.openAtLogin)}
       {row('closeToTray', 'Minimize to tray', 'The close button hides the window to the tray. Quit from the tray menu.')}
       {row('hardwareAcceleration', 'Hardware acceleration', 'Use the GPU for rendering. Turn off if you see glitches. Takes effect after a restart.')}
+      <SettingRow title="Go idle automatically" description="Show as Idle after this long without keyboard or mouse input, and when the screen locks. Do Not Disturb and Invisible are never changed.">
+        <Select aria-label="Idle timeout" value={String(settings?.idleTimeoutMinutes ?? 10)} disabled={!settings} onChange={(e) => change({ idleTimeoutMinutes: Number(e.target.value) })}>
+          {IDLE_TIMEOUT_CHOICES.map((m) => <option key={m} value={m}>{m === 0 ? 'Never' : m === 60 ? '1 hour' : `${m} minute${m === 1 ? '' : 's'}`}</option>)}
+        </Select>
+      </SettingRow>
       {restart && (
         <div className="row-start">
           <span role="status" className="setting-desc">Restart to apply hardware acceleration.</span>

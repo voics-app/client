@@ -1,6 +1,6 @@
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
-import { app } from 'electron';
+import { app, powerMonitor } from 'electron';
 import { resolve } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';
@@ -109,6 +109,11 @@ function bootstrap(): void {
   });
 
   mainWindow = createMainWindow({ startHidden });
+  const sendLock = (locked: boolean) => mainWindow?.webContents.send(IpcChannel.idleLock, locked);
+  powerMonitor.on('lock-screen', () => sendLock(true));
+  powerMonitor.on('suspend', () => sendLock(true));
+  powerMonitor.on('unlock-screen', () => sendLock(false));
+  powerMonitor.on('resume', () => sendLock(false));
   mainWindow.on('close', (event) => {
     if (shouldHideOnClose(desktop.get(), { quitting, hasTray: trayHandle !== null, e2e: env.DISCORDY_E2E === '1' })) {
       event.preventDefault();

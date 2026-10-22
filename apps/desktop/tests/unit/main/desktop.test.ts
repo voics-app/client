@@ -26,6 +26,7 @@ describe('desktop settings', () => {
       startMinimized: true,
       closeToTray: true,
       hardwareAcceleration: false,
+      idleTimeoutMinutes: 10,
     });
     expect(normalizeDesktopSettings(null, 'win32')).toEqual(defaultDesktopSettings('win32'));
   });
