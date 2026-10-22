@@ -44,6 +44,14 @@ export interface CustomStatus {
   expires_at?: string | null;
 }
 
+/** One server-rail entry (user settings `guild_folders`): a folder when `id` is set, otherwise a single server. */
+export interface GuildFolder {
+  id: number | null;
+  name: string | null;
+  color: number | null;
+  guild_ids: Snowflake[];
+}
+
 export interface UserSettings {
   default_delivery_mode: DeliveryMode;
   /** Every call the user starts or joins is end-to-end encrypted (voice#8). */
@@ -55,6 +63,7 @@ export interface UserSettings {
   developer_mode?: boolean;
   friend_source_flags?: { all?: boolean; mutual_friends?: boolean; mutual_guilds?: boolean };
   guild_positions?: Snowflake[];
+  guild_folders?: GuildFolder[];
   delivery_overrides?: Record<Snowflake, DeliveryMode>;
 }
 

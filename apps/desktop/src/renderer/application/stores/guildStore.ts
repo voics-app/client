@@ -1,15 +1,20 @@
 /** Guilds, channels (guild, DM and thread), roles, members and emojis, fed by READY and guild events. */
 import { create } from 'zustand';
-import type { Channel, Emoji, Guild, GuildFull, GuildMember, Role } from '@shared/contracts/rest';
+import { flatten, moveGuildToIndex, normalizeRail, railFromPositions, single } from '@renderer/domain/railLayout';
+import type { Channel, Emoji, Guild, GuildFolder, GuildFull, GuildMember, Role } from '@shared/contracts/rest';
 
 export type GuildMeta = Omit<GuildFull, 'channels' | 'members' | 'threads' | 'voice_states' | 'presences'>;
 
 export interface GuildState {
   guilds: Record<string, GuildMeta>;
+  /** Flat server order, always the flattened `rail`. */
   order: string[];
+  /** Server rail layout: single servers and folders, in order (user settings `guild_folders`). */
+  rail: GuildFolder[];
   channels: Record<string, Channel>;
   members: Record<string, Record<string, GuildMember>>;
-  hydrate(guilds: GuildFull[], privateChannels: Channel[], order?: string[]): void;
+  hydrate(guilds: GuildFull[], privateChannels: Channel[], order?: string[], folders?: GuildFolder[]): void;
+  setRail(rail: GuildFolder[]): void;
   upsertGuild(guild: GuildFull): void;
   patchGuild(guild: Partial<Guild> & { id: string }): void;
   removeGuild(guildId: string): void;
@@ -43,22 +48,30 @@ function indexChannels(guild: GuildFull): Record<string, Channel> {
 export const useGuildStore = create<GuildState>((set) => ({
   guilds: {},
   order: [],
+  rail: [],
   channels: {},
   members: {},
-  hydrate: (guilds, privateChannels, order) =>
+  hydrate: (guilds, privateChannels, order, folders) =>
     set(() => {
       const ids = guilds.map((g) => g.id);
-      const sorted = order ? [...order.filter((id) => ids.includes(id)), ...ids.filter((id) => !order.includes(id))] : ids;
+      const rail = folders?.length ? normalizeRail(folders, ids) : railFromPositions(order ?? [], ids);
       return {
         guilds: Object.fromEntries(guilds.map((g) => [g.id, meta(g)])),
-        order: sorted,
+        rail,
+        order: flatten(rail),
         channels: Object.assign({}, ...guilds.map(indexChannels), Object.fromEntries(privateChannels.map((c) => [c.id, c]))),
         members: Object.fromEntries(guilds.map((g) => [g.id, indexMembers(g.members)])),
       };
     }),
+  setRail: (rail) =>
+    set((s) => {
+      const next = normalizeRail(rail, Object.keys(s.guilds));
+      return { rail: next, order: flatten(next) };
+    }),
   upsertGuild: (guild) =>
     set((s) => ({
       guilds: { ...s.guilds, [guild.id]: meta(guild) },
+      rail: s.order.includes(guild.id) ? s.rail : [...s.rail, single(guild.id)],
       order: s.order.includes(guild.id) ? s.order : [...s.order, guild.id],
       channels: { ...s.channels, ...indexChannels(guild) },
       members: { ...s.members, [guild.id]: { ...(s.members[guild.id] ?? {}), ...indexMembers(guild.members ?? []) } },
@@ -73,7 +86,8 @@ export const useGuildStore = create<GuildState>((set) => ({
       const { [guildId]: _g, ...guilds } = s.guilds;
       const { [guildId]: _m, ...members } = s.members;
       const channels = Object.fromEntries(Object.entries(s.channels).filter(([, c]) => c.guild_id !== guildId));
-      return { guilds, members, channels, order: s.order.filter((id) => id !== guildId) };
+      const rail = normalizeRail(s.rail, Object.keys(guilds));
+      return { guilds, members, channels, rail, order: flatten(rail) };
     }),
   upsertChannel: (channel) => set((s) => ({ channels: { ...s.channels, [channel.id]: { ...s.channels[channel.id], ...channel } } })),
   removeChannel: (channelId) =>
@@ -110,9 +124,8 @@ export const useGuildStore = create<GuildState>((set) => ({
     }),
   moveGuild: (guildId, toIndex) =>
     set((s) => {
-      const order = s.order.filter((id) => id !== guildId);
-      order.splice(Math.max(0, Math.min(toIndex, order.length)), 0, guildId);
-      return { order };
+      const rail = moveGuildToIndex(s.rail, guildId, toIndex);
+      return { rail, order: flatten(rail) };
     }),
-  reset: () => set({ guilds: {}, order: [], channels: {}, members: {} }),
+  reset: () => set({ guilds: {}, order: [], rail: [], channels: {}, members: {} }),
 }));

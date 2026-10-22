@@ -7,7 +7,8 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { forwardBody } from '@renderer/domain/forward';
 import { idBefore } from '@renderer/domain/unread';
-import { ChannelType, type Message } from '@shared/contracts/rest';
+import { flatten } from '@renderer/domain/railLayout';
+import { ChannelType, type GuildFolder, type Message } from '@shared/contracts/rest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
@@ -45,6 +46,19 @@ export function markGuildRead(guildId: string): void {
   for (const c of Object.values(useGuildStore.getState().channels)) {
     if (c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT) markChannelRead(c.id);
   }
+}
+
+/** Applies a new server-rail layout locally right away, then syncs it to the user's other devices. */
+export async function saveRail(rail: GuildFolder[]): Promise<void> {
+  const store = useGuildStore.getState();
+  const previous = store.rail;
+  store.setRail(rail);
+  const next = useGuildStore.getState().rail;
+  const saved = await attempt(
+    () => getRuntime().api.updateSettings({ guild_folders: next, guild_positions: flatten(next) }),
+    'Could not save server order',
+  );
+  if (!saved) useGuildStore.getState().setRail(previous);
 }
 
 export async function leaveGuild(guildId: string): Promise<void> {
