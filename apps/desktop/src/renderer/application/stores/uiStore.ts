@@ -22,6 +22,7 @@ export type UserSettingsTab =
   | 'accessibility'
   | 'notifications'
   | 'connection'
+  | 'desktop'
   | 'about';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'bans' | 'audit';

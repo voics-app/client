@@ -15,6 +15,7 @@ const USER_TABS = [
   'Keybinds',
   'Appearance',
   'Accessibility',
+  'Desktop',
   'Notifications',
   'Connection',
   'About and updates',

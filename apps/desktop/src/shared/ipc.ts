@@ -41,13 +41,29 @@ export interface CaptureSelection {
   audio: boolean;
 }
 
+/** Device-local desktop integration settings (never synced to the account). */
+export interface DesktopSettings {
+  openAtLogin: boolean;
+  startMinimized: boolean;
+  closeToTray: boolean;
+  hardwareAcceleration: boolean;
+}
+
+export type TrayCommand = 'toggleMute' | 'toggleDeafen';
+
+/** Self mute/deafen the renderer reports so the tray menu can show and toggle them. */
+export interface VoiceState {
+  muted: boolean;
+  deafened: boolean;
+}
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
+  | { state: 'available'; version: string; notes?: string }
   | { state: 'not-available' }
   | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string }
+  | { state: 'downloaded'; version: string; notes?: string }
   | { state: 'error'; message: string };
 
 /** Unread/mention totals the renderer pushes to main so it can drive the taskbar, tray and window title. */
@@ -122,6 +138,14 @@ export interface DiscordyBridge {
     flashFrame(): void;
     /** Sets the UI zoom factor of this window (Ctrl +, Ctrl -, Ctrl 0 and the Appearance page). */
     setZoom(factor: number): void;
+    /** Reports self mute/deafen for the tray menu. */
+    setVoiceState(state: VoiceState): void;
+    onTrayCommand(listener: (command: TrayCommand) => void): () => void;
+  };
+  desktop: {
+    get(): Promise<DesktopSettings>;
+    set(patch: Partial<DesktopSettings>): Promise<{ settings: DesktopSettings; restartRequired: boolean }>;
+    relaunch(): void;
   };
   session: {
     load(): Promise<StoredSession | null>;
@@ -153,6 +177,11 @@ export const IpcChannel = {
   appNavigate: 'app:navigate',
   appTakePendingRoute: 'app:take-pending-route',
   appFlash: 'app:flash',
+  appVoiceState: 'app:voice-state',
+  appTrayCommand: 'app:tray-command',
+  desktopGet: 'desktop:get',
+  desktopSet: 'desktop:set',
+  desktopRelaunch: 'desktop:relaunch',
   sessionLoad: 'session:load',
   sessionSave: 'session:save',
   sessionClear: 'session:clear',

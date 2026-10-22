@@ -4,6 +4,8 @@ import { readJson, userDataPath, writeJson } from './persistence';
 export interface MainSettings {
   connection: ConnectionProfile | null;
   pushToTalkKeycode: number | null;
+  /** Device-local desktop integration settings; validated by DesktopService. */
+  desktop?: unknown;
 }
 
 const FILE = () => userDataPath('main-settings.json');
