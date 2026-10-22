@@ -6,6 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { assertNativeCryptoBuilt } from "./matrix-helpers";
 
 const API = process.env.LIVE_BASE ?? "https://discordy-api.voics.nl";
 const PROD = API === "https://discordy-api.voics.nl";
@@ -81,6 +82,7 @@ const probes = () => {
 };
 
 async function launch(name: string): Promise<Inst> {
+  assertNativeCryptoBuilt();
   const log: string[] = [];
   const urls = new Set<string>();
   const env: Record<string, string> = { ...(process.env as Record<string, string>), DISCORDY_USER_DATA_DIR: mkdtempSync(join(tmpdir(), "discordy-prod-")), ELECTRON_RENDERER_URL: "" };
