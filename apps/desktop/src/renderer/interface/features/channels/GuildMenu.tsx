@@ -97,7 +97,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
   return entries;
 }
 
-export function GuildContextMenu({ guildId, anchor, onClose }: { guildId: string; anchor: { x: number; y: number } | null; onClose: () => void }) {
-  const entries = useGuildMenuEntries(guildId);
+export function GuildContextMenu({ guildId, anchor, onClose, leading = [] }: { guildId: string; anchor: { x: number; y: number } | null; onClose: () => void; leading?: MenuEntry[] }) {
+  const entries = [...leading, ...useGuildMenuEntries(guildId)];
   return <Menu open={anchor !== null} x={anchor?.x ?? 0} y={anchor?.y ?? 0} entries={entries} onClose={onClose} minWidth={220} />;
 }

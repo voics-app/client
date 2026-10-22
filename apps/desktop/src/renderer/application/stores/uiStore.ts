@@ -32,6 +32,7 @@ export type Dialog =
   | { kind: 'invite'; guildId: string; channelId: string }
   | { kind: 'notifications'; targetId: string; name: string; category?: boolean }
   | { kind: 'guildNotifications'; guildId: string }
+  | { kind: 'folderSettings'; folderId: number }
   | { kind: 'inbox' }
   | { kind: 'newDm' }
   | { kind: 'groupDm'; channelId: string }

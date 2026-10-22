@@ -97,6 +97,12 @@ describe('dispatchRouter', () => {
     expect(useSessionStore.getState().status).toBe('ready');
   });
 
+  it('applies synced server folders from USER_SETTINGS_UPDATE', () => {
+    const { route } = setup();
+    route('USER_SETTINGS_UPDATE', { guild_folders: [{ id: 5, name: 'Work', color: 0xff0000, guild_ids: ['100'] }] });
+    expect(useGuildStore.getState().rail[0]).toMatchObject({ id: 5, name: 'Work' });
+  });
+
   it('appends MESSAGE_CREATE, resolves optimistic nonces and bumps last_message_id', () => {
     const { route, ctx } = setup();
     useMessageStore.getState().addOptimistic(message('nonce-1', { author: me, nonce: 'nonce-1' }));
