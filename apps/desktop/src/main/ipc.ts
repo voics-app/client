@@ -1,7 +1,7 @@
 /** IPC handlers: the only path from the sandboxed renderer to privileged APIs. */
 import type { BrowserWindow} from 'electron';
 import { Notification, ipcMain, shell } from 'electron';
-import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, type NotificationRequest, type StoredSession, type CaptureSelection } from '../shared/ipc';
+import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, type NotificationRequest, type StoredSession, type CaptureSelection, type VoiceState } from '../shared/ipc';
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
 import type { CryptoHost } from './cryptoHost';
@@ -9,6 +9,7 @@ import type { PushToTalk } from './hotkeys';
 import { sessionVault } from './sessionVault';
 import { saveMainSettings } from './settings';
 import type { Updater } from './updater';
+import type { DesktopService } from './desktop/desktopService';
 
 export interface IpcDeps {
   window: () => BrowserWindow | null;
@@ -19,6 +20,9 @@ export interface IpcDeps {
   updater: Updater;
   takePendingRoute: () => string | null;
   setActivity: (counts: ActivityCounts) => void;
+  setVoiceState: (state: VoiceState) => void;
+  desktop: DesktopService;
+  relaunch: () => void;
 }
 
 function assertTrustedSender(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, deps: IpcDeps): void {
@@ -51,6 +55,12 @@ export function registerIpc(deps: IpcDeps): void {
   on(IpcChannel.appActivity, (counts: ActivityCounts) => {
     deps.setActivity({ mentions: Number(counts?.mentions), unread: Number(counts?.unread) });
   });
+  on(IpcChannel.appVoiceState, (state: VoiceState) => {
+    deps.setVoiceState({ muted: Boolean(state?.muted), deafened: Boolean(state?.deafened) });
+  });
+  handle(IpcChannel.desktopGet, () => deps.desktop.get());
+  handle(IpcChannel.desktopSet, (patch: unknown) => deps.desktop.update(patch));
+  on(IpcChannel.desktopRelaunch, () => deps.relaunch());
   on(IpcChannel.appFlash, () => deps.window()?.flashFrame(true));
   on(IpcChannel.appNotify, (req: NotificationRequest) => {
     if (!Notification.isSupported()) return;

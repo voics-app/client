@@ -49,7 +49,7 @@ function callPopOutOptions(): Electron.BrowserWindowConstructorOptions {
   };
 }
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(options: { startHidden?: boolean } = {}): BrowserWindow {
   const isMac = process.platform === 'darwin';
   const window = new BrowserWindow({
     width: 1360,
@@ -76,7 +76,9 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
-  window.once('ready-to-show', () => window.show());
+  window.once('ready-to-show', () => {
+    if (!options.startHidden) window.show();
+  });
   window.webContents.on('will-navigate', (event, url) => {
     const devServer = process.env.ELECTRON_RENDERER_URL;
     if (!(devServer && url.startsWith(devServer))) event.preventDefault();

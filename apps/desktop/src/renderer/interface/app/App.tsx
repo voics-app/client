@@ -13,6 +13,8 @@ import { Lightbox } from '../features/chat/Lightbox';
 import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
 import { useActivityReporting } from './activity';
+import { useDesktopIntegration } from './desktopIntegration';
+import { UpdateBanner } from '../features/updates/UpdateBanner';
 import { useGlobalShortcuts } from './shortcuts';
 import { createRuntime, type Runtime } from './runtime';
 import { flushPendingRoute, handleRoute } from './navigation';
@@ -51,6 +53,7 @@ export function App() {
   useAppearance();
   useGlobalShortcuts();
   useActivityReporting();
+  useDesktopIntegration();
 
   useEffect(() => {
     let alive = true;
@@ -96,6 +99,7 @@ export function App() {
           <IncomingCallHost />
           <DialogHost />
           <SettingsHost />
+          <UpdateBanner />
           <Lightbox />
         </>
       )}
