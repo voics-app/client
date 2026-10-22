@@ -1,4 +1,5 @@
 import { item, sep, tidy, type MenuModel } from './menuModel';
+import { FORWARD_MENU_HINT } from './forward';
 import { quickApiForm, type QuickEmoji } from './quickReactions';
 
 export type MessageTarget =
@@ -69,7 +70,7 @@ function messageBlock(ctx: MessageMenuContext): MenuModel[] {
   if (ctx.isMine && ctx.standard) out.push(item('edit', 'Edit Message'));
   if (ctx.standard && ctx.canManageMessages) out.push(item(ctx.pinned ? 'unpin' : 'pin', ctx.pinned ? 'Unpin Message' : 'Pin Message'));
   out.push(item('reply', 'Reply'));
-  if (ctx.forwardSupported && ctx.standard) out.push(item('forward', 'Forward'));
+  if (ctx.forwardSupported) out.push(ctx.standard ? item('forward', 'Forward') : item('forward', 'Forward', { disabled: true, hint: FORWARD_MENU_HINT }));
   if (ctx.standard && ctx.canCreateThread) out.push(item('thread', 'Create Thread'));
   if (ctx.hasText) out.push(item('copyText', 'Copy Text'));
   out.push(item('markUnread', 'Mark Unread'));

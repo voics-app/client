@@ -41,6 +41,7 @@ export type Dialog =
   | { kind: 'shortcuts' }
   | { kind: 'editNickname'; guildId: string; userId: string }
   | { kind: 'ban'; guildId: string; userId: string; name: string }
+  | { kind: 'forward'; message: ChatMessage }
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 

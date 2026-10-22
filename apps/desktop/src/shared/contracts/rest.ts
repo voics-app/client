@@ -224,10 +224,17 @@ export interface Reaction {
 }
 
 export interface MessageReference {
+  /** 0 reply (default), 1 forward. */
+  type?: number;
   message_id?: Snowflake;
   channel_id?: Snowflake;
   guild_id?: Snowflake;
   fail_if_not_exists?: boolean;
+}
+
+/** A frozen copy of a forwarded message (Discord `message_snapshots`). */
+export interface MessageSnapshot {
+  message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'embeds' | 'type' | 'flags'>;
 }
 
 export interface Message {
@@ -252,6 +259,8 @@ export interface Message {
   flags?: number;
   message_reference?: MessageReference;
   referenced_message?: Message | null;
+  /** Present when `message_reference.type` is 1 (forward). */
+  message_snapshots?: MessageSnapshot[];
   thread?: Channel;
   application_id?: Snowflake;
   components?: MessageComponent[];

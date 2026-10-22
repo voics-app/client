@@ -10,6 +10,7 @@ import { systemMessageText } from '@renderer/domain/dmModel';
 import { MessageFlag, type Reaction } from '@shared/contracts/rest';
 import { buildReactionMenu } from '@renderer/domain/messageMenuModel';
 import { reactionSummary } from '@renderer/domain/emojiModel';
+import { isForward } from '@renderer/domain/forward';
 import { attempt, jumpToMessage } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
@@ -22,6 +23,7 @@ import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { MessageAttachments, UploadProgress } from './AttachmentView';
 import { MessageEmbeds } from './EmbedView';
+import { ForwardedMessage } from './ForwardedMessage';
 import { useMessageInteractions } from './useMessageInteractions';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { MarkdownView } from './MarkdownView';
@@ -30,7 +32,7 @@ import { MessageEditor } from './MessageEditor';
 
 function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
-  if (!message.message_reference) return null;
+  if (!message.message_reference || isForward(message)) return null;
   return (
     <div
       className={`reply-preview${message.message_reference?.message_id ? ' is-link' : ''}`}
@@ -269,6 +271,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               )}
             </>
           )}
+          <ForwardedMessage message={message} guildId={guildId} />
           {message.attachments.length > 0 && <MessageAttachments attachments={message.attachments} channelId={message.channel_id} />}
           {sending && message.nonce != null && <UploadProgress nonce={String(message.nonce)} />}
           <MessageEmbeds message={message} />
