@@ -2,6 +2,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@shared/contracts/gateway';
 import type { AppInfo } from '@shared/ipc';
+import { PrefsSync } from '@renderer/application/syncedPrefs';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { InteractionService } from '@renderer/application/interactionService';
 import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/application/sessionManager';
@@ -95,7 +96,13 @@ export function createRuntime(info: AppInfo): Runtime {
     },
   });
 
+  const prefsSync = new PrefsSync({
+    updateSettings: (patch) => api.updateSettings(patch),
+    onError: (error) => useUiStore.getState().toast({ tone: 'danger', title: 'Could not save your settings', body: error instanceof Error ? error.message : 'Try again.' }),
+  });
+  prefsSync.start();
   const dispatch = createDispatchRouter({
+    onUserSettings: (settings, ready, userId) => prefsSync.onSettings(settings, ready, userId),
     onVoiceServerUpdate: (update) => hooks.onVoiceServerUpdate(update),
     onVoiceState: (state) => hooks.onVoiceState?.(state),
     onIncomingMessage: notifyIncoming,
@@ -154,6 +161,8 @@ export function createRuntime(info: AppInfo): Runtime {
     onChange: (signedIn) => {
       queryClient.clear();
       if (!signedIn) {
+        prefsSync.stop();
+        prefsSync.start();
         privacy.stop();
         turn.clear();
       }
