@@ -1,6 +1,6 @@
 // Shared helpers for the delivery-mode matrix specs (live, against gitops/local on :18000).
 import { _electron as electron, expect, type ElectronApplication, type Page } from "@playwright/test";
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -58,6 +58,16 @@ export interface LaunchOptions {
   resume?: boolean;
 }
 
+/**
+ * Fail fast when the native MLS/crypto module was never built in this checkout (fresh or copied worktree):
+ * without it every Ephemeral (MLS) and P2P message silently times out (client#142). Fix: `pnpm build:native`.
+ */
+export function assertNativeCryptoBuilt(): void {
+  const dir = resolve(__dirname, "../../../../native/crypto");
+  const built = existsSync(dir) && readdirSync(dir).some((f) => f.endsWith(".node"));
+  if (!built) throw new Error(`native crypto module missing in ${dir}; run \`pnpm build:native\` in the worktree root before live specs`);
+}
+
 export function newDataDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "discordy-live-"));
   mkdirSync(dir, { recursive: true });
@@ -65,6 +75,7 @@ export function newDataDir(): string {
 }
 
 export async function launch(name: string, opts: LaunchOptions = {}): Promise<Instance> {
+  assertNativeCryptoBuilt();
   const log: string[] = [];
   const ops: Instance["ops"] = [];
   const dataDir = opts.dataDir ?? newDataDir();
