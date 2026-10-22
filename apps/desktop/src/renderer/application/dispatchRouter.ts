@@ -35,6 +35,8 @@ export interface DispatchContext {
   onVoiceState?(state: VoiceState): void;
   onIncomingMessage(message: ChatMessage): void;
   invalidate(queryKey: readonly unknown[]): void;
+  /** The account settings arrived (READY) or changed (USER_SETTINGS_UPDATE). */
+  onUserSettings?(settings: Partial<UserSettings>, ready: boolean, userId?: string): void;
 }
 
 type Handler = (data: never) => void;
@@ -106,7 +108,10 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
   const messages = () => useMessageStore.getState();
 
   const handlers: Record<string, Handler> = {
-    READY: (d: ReadyPayload) => hydrateReady(d),
+    READY: (d: ReadyPayload) => {
+      hydrateReady(d);
+      ctx.onUserSettings?.(d.user_settings ?? {}, true, d.user.id);
+    },
     RESUMED: () => useSessionStore.getState().setStatus('ready'),
 
     GUILD_CREATE: (d: GuildFull) => {
@@ -190,6 +195,7 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     USER_SETTINGS_UPDATE: (d: Partial<UserSettings>) => {
       useSessionStore.getState().setSettings(d);
       if (d.guild_folders) guilds().setRail(d.guild_folders);
+      ctx.onUserSettings?.(d, false);
     },
     USER_GUILD_SETTINGS_UPDATE: (d: GuildNotificationSettings) => useNotificationSettingsStore.getState().upsert(d),
     USER_NOTE_UPDATE: (d: { id: string; note: string }) => useUserNotesStore.getState().set(d.id, d.note),

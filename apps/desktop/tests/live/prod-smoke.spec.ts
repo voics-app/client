@@ -386,11 +386,16 @@ test("production smoke", async () => {
       const before = await sw.isChecked();
       await sw.click();
       await expect(sw).toBeChecked({ checked: !before });
-      await sw.click();
+      // Left switched: the next step checks the change reached the server.
     });
-    await step("7 notification settings sync to server (known gap, client#123)", async () => {
-      const s = JSON.stringify(await rest("GET", "/users/@me/settings", sa.access_token));
-      if (!/notif|sound/i.test(s)) throw new Error(`server settings carry no notification fields: ${s.slice(0, 120)}`);
+    await step("7 notification settings sync to server (client#123)", async () => {
+      let s = "";
+      for (let i = 0; i < 20; i++) {
+        s = JSON.stringify(await rest("GET", "/users/@me/settings", sa.access_token));
+        if (/"notify_sounds":false/.test(s)) return;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      throw new Error(`server settings do not carry the notification sounds change: ${s.slice(0, 200)}`);
     });
     await step("7 settings X close button", async () => {
       await A.page.getByRole("button", { name: /^Close/ }).first().click();

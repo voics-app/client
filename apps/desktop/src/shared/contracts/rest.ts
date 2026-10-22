@@ -52,6 +52,21 @@ export interface GuildFolder {
   guild_ids: Snowflake[];
 }
 
+/** Synced client preferences; sparse (a key is present once set). See docs/specs user settings sync. */
+export interface UserPreferences {
+  accent?: 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
+  reduce_motion?: boolean;
+  font_scale?: number;
+  show_avatars_in_compact?: boolean;
+  link_previews?: boolean;
+  notify_only_mentions?: boolean;
+  notify_sounds?: boolean;
+  sound_toggles?: Record<string, boolean>;
+  ringtone?: string;
+  skin_tone?: string;
+  recent_reactions?: { id: string | null; name: string; animated?: boolean }[];
+}
+
 export interface UserSettings {
   default_delivery_mode: DeliveryMode;
   /** Every call the user starts or joins is end-to-end encrypted (voice#8). */
@@ -61,6 +76,8 @@ export interface UserSettings {
   theme?: 'dark' | 'light' | 'oled';
   locale?: string;
   developer_mode?: boolean;
+  message_display_compact?: boolean;
+  preferences?: UserPreferences;
   friend_source_flags?: { all?: boolean; mutual_friends?: boolean; mutual_guilds?: boolean };
   guild_positions?: Snowflake[];
   guild_folders?: GuildFolder[];
