@@ -587,6 +587,15 @@ button.mode-badge:active { transform: scale(0.96); }
 .forward-row.is-disabled { opacity: 0.5; cursor: not-allowed; }
 .forward-preview { margin: 0; padding: 6px 10px; border-left: 3px solid var(--border); color: var(--fg-subtle); font-size: var(--fs-small); max-height: 72px; overflow: hidden; white-space: pre-wrap; }
 
+/* Channel drag-and-drop indicators (client#59) */
+.channel-row.is-dragging, .category.is-dragging { opacity: 0.45; }
+.category.drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+.category.drop-after { box-shadow: 0 2px 0 0 var(--accent); }
+.category.drop-start .category-head, .category.drop-end:not(:has(li)) { background: var(--accent-soft); border-radius: 6px; }
+.category.drop-end { min-height: 12px; box-shadow: 0 2px 0 0 var(--accent); }
+.category.drop-start .channel-list { box-shadow: 0 -2px 0 0 var(--accent); }
+.channel-list > li.drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+.channel-list > li.drop-after { box-shadow: 0 2px 0 0 var(--accent); }
 /* Server folders and rail drag indicators (client#58) */
 .rail-item.drop-before::before, .rail-item.drop-after::after { content: ''; position: absolute; left: 10px; right: 10px; height: 3px; border-radius: 2px; background: var(--accent); }
 .rail-item.drop-before::before { top: -5px; }

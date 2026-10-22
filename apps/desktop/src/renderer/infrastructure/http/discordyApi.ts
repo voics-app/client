@@ -185,7 +185,7 @@ export class DiscordyApi implements ApiPort {
   createChannel(guildId: string, body: CreateChannelBody) {
     return this.post<Channel>(`/guilds/${guildId}/channels`, body);
   }
-  reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null }[]) {
+  reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null; lock_permissions?: boolean }[]) {
     return this.patch<void>(`/guilds/${guildId}/channels`, positions);
   }
   roles(guildId: string) {

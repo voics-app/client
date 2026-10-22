@@ -9,6 +9,7 @@ import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@renderer/domain/notif
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
+import { canStep, moveCategoryStep, moveChannelStep } from '../../app/channelOrderActions';
 import { muteChannel } from '../../app/notificationActions';
 import { getRuntime } from '../../app/runtime';
 import { can } from '../../shared/hooks/usePermissions';
@@ -57,6 +58,8 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
     canManage: can(perms, Permission.MANAGE_CHANNELS),
     hasUnread: h.hasUnread,
     muted: ownMute(channel),
+    canMoveUp: !channel.guild_id || canStep(channel.guild_id, channel.id, 'channel', -1),
+    canMoveDown: !channel.guild_id || canStep(channel.guild_id, channel.id, 'channel', 1),
   });
   return toMenuEntries(
     model,
@@ -69,6 +72,8 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
         case 'muteFor':
         case 'unmute': return applyMuteChoice(channel, it);
         case 'notifications': return h.openDialog({ kind: 'notifications', targetId: channel.id, name: channel.name ?? 'channel' });
+        case 'moveUp': return void moveChannelStep(channel.guild_id!, channel.id, -1);
+        case 'moveDown': return void moveChannelStep(channel.guild_id!, channel.id, 1);
         case 'edit': return h.openSettings({ kind: 'channel', channelId: channel.id, tab: 'overview' });
         case 'duplicate':
           return void attempt(async () => {
@@ -102,6 +107,8 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
     muted: ownMute(category),
     collapsed,
     hasOtherCategories: siblings.length > 1,
+    canMoveUp: canStep(h.guildId, category.id, 'category', -1),
+    canMoveDown: canStep(h.guildId, category.id, 'category', 1),
   });
   return toMenuEntries(
     model,
@@ -114,6 +121,8 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
         case 'muteFor':
         case 'unmute': return applyMuteChoice(category, it);
         case 'notifications': return h.openDialog({ kind: 'notifications', targetId: category.id, name: category.name ?? 'category', category: true });
+        case 'moveUp': return void moveCategoryStep(h.guildId, category.id, -1);
+        case 'moveDown': return void moveCategoryStep(h.guildId, category.id, 1);
         case 'edit': return h.openSettings({ kind: 'channel', channelId: category.id, tab: 'overview' });
         case 'create': return h.openDialog({ kind: 'createChannel', guildId: h.guildId, parentId: category.id });
         case 'delete':
