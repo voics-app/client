@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from '@phosphor-icons/react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -7,8 +6,8 @@ import { useUiStore, type ServerSettingsTab, type SettingsTarget, type UserSetti
 import { Permission } from '@shared/contracts/permissions';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { useDialogFocus } from '../../shared/hooks/useDialogFocus';
-import { IconButton } from '../../shared/ui/IconButton';
 import { gentle } from '../../shared/ui/motion';
+import { SettingsCloseButton } from './SettingsCloseButton';
 import { ChannelSettings } from './channel/ChannelSettings';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers, ServerOverview } from './server/ServerTabs';
 import { RolesEditor } from './server/RolesEditor';
@@ -41,7 +40,7 @@ function Layout({ title, nav, children, onClose, footer }: { title: string; nav:
       <nav className="settings-nav">{nav}{footer}</nav>
       <div className="settings-content">
         <div className="settings-inner">{children}</div>
-        <div className="settings-close"><IconButton label="Close (Esc)" size="lg" onClick={onClose}><X size={22} /></IconButton></div>
+        <SettingsCloseButton onClose={onClose} />
       </div>
     </div>
   );
