@@ -138,7 +138,7 @@ test("production smoke", async () => {
   const emailA = `discordy-e2e-${RUN}-a@example.com`, emailB = `discordy-e2e-${RUN}-b@example.com`;
   const nameA = `e2ea${RUN}`.slice(0, 30), nameB = `e2eb${RUN}`.slice(0, 30);
   let A!: Inst, B!: Inst, sa!: Session, sb!: Session;
-  let guildId = "", textId = "", voiceId = "", dmId = "";
+  let guildId = "", textId = "", dmId = "";
   try {
     // 1. Account lifecycle, production connection targets
     await step("1 register account A through the UI", async () => { A = curA = await launch("A"); await register(A, emailA, nameA); });
@@ -178,7 +178,7 @@ test("production smoke", async () => {
       guildId = g.id;
       const chans = await rest<{ id: string; type: number }[]>("GET", `/guilds/${guildId}/channels`, sa.access_token);
       textId = chans.find((c) => c.type === 0)?.id ?? (await rest<{ id: string }>("POST", `/guilds/${guildId}/channels`, sa.access_token, { name: "smoke", type: 0 })).id;
-      voiceId = chans.find((c) => c.type === 2)?.id ?? (await rest<{ id: string }>("POST", `/guilds/${guildId}/channels`, sa.access_token, { name: "talk", type: 2 })).id;
+      if (!chans.some((c) => c.type === 2)) await rest("POST", `/guilds/${guildId}/channels`, sa.access_token, { name: "talk", type: 2 });
       return `guild=${guildId}`;
     });
     await step("2 invite link opens on website and B joins via invite", async () => {
@@ -292,7 +292,7 @@ test("production smoke", async () => {
         const chunks: Blob[] = []; rec.ondataavailable = (e) => chunks.push(e.data);
         const done = new Promise<void>((r) => (rec.onstop = () => r()));
         rec.start(); const t0 = performance.now();
-        await new Promise<void>((res) => { const t = () => { x.fillStyle = `hsl(${(performance.now() - t0) / 5 % 360},80%,50%)`; x.fillRect(0, 0, 160, 120); performance.now() - t0 < 1500 ? requestAnimationFrame(t) : res(); }; t(); });
+        await new Promise<void>((res) => { const t = () => { x.fillStyle = `hsl(${(performance.now() - t0) / 5 % 360},80%,50%)`; x.fillRect(0, 0, 160, 120); if (performance.now() - t0 < 1500) requestAnimationFrame(t); else res(); }; t(); });
         rec.stop(); await done;
         return { bytes: Array.from(new Uint8Array(await new Blob(chunks).arrayBuffer())), mime: mime.split(";")[0] };
       });
