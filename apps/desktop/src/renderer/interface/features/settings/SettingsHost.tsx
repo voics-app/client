@@ -11,7 +11,7 @@ import { SettingsCloseButton } from './SettingsCloseButton';
 import { ChannelSettings } from './channel/ChannelSettings';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers, ServerOverview } from './server/ServerTabs';
 import { RolesEditor } from './server/RolesEditor';
-import { AboutTab, AccountTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
+import { AboutTab, AccountTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
 
 const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
   { id: 'account', label: 'My account', group: 'User settings' },
@@ -23,6 +23,7 @@ const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
   { id: 'appearance', label: 'Appearance', group: 'App settings' },
   { id: 'notifications', label: 'Notifications', group: 'App settings' },
   { id: 'connection', label: 'Connection', group: 'App settings' },
+  { id: 'desktop', label: 'Desktop', group: 'App settings' },
   { id: 'about', label: 'About and updates', group: 'App settings' },
 ];
 
@@ -57,7 +58,7 @@ function NavItem({ active, onClick, children, danger }: { active: boolean; onCli
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, notifications: <NotificationsTab />, connection: <ConnectionTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, notifications: <NotificationsTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, about: <AboutTab /> }[tab];
   return (
     <Layout title="User settings" onClose={() => open(null)} nav={USER_TABS.map((t) => {
       const heading = t.group !== lastGroup ? <h3 key={`h-${t.group}`}>{t.group}</h3> : null;
