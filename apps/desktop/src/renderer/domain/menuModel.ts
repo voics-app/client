@@ -7,6 +7,8 @@ export interface MenuItemModel {
   arg?: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Explains a disabled entry (tooltip). */
+  hint?: string;
   checked?: boolean;
 }
 

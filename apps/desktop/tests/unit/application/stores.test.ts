@@ -85,8 +85,19 @@ describe('typing and read state', () => {
 
 describe('guildStore', () => {
   it('reorders guilds in the rail', () => {
-    useGuildStore.setState({ order: ['a', 'b', 'c'] });
+    useGuildStore.setState({ order: ['a', 'b', 'c'], rail: ['a', 'b', 'c'].map((id) => ({ id: null, name: null, color: null, guild_ids: [id] })) });
     useGuildStore.getState().moveGuild('c', 0);
     expect(useGuildStore.getState().order).toEqual(['c', 'a', 'b']);
+  });
+
+  it('keeps the flat order in sync with folders and drops servers that are gone', () => {
+    useGuildStore.setState({ guilds: { a: {} as never, b: {} as never, c: {} as never } });
+    useGuildStore.getState().setRail([
+      { id: 1, name: 'F', color: 1, guild_ids: ['c', 'a', 'zz'] },
+      { id: null, name: null, color: null, guild_ids: ['b'] },
+    ]);
+    expect(useGuildStore.getState().order).toEqual(['c', 'a', 'b']);
+    useGuildStore.getState().removeGuild('a');
+    expect(useGuildStore.getState().rail[0]!.guild_ids).toEqual(['c']);
   });
 });

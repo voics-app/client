@@ -32,6 +32,7 @@ export type Dialog =
   | { kind: 'invite'; guildId: string; channelId: string }
   | { kind: 'notifications'; targetId: string; name: string; category?: boolean }
   | { kind: 'guildNotifications'; guildId: string }
+  | { kind: 'folderSettings'; folderId: number }
   | { kind: 'inbox' }
   | { kind: 'newDm' }
   | { kind: 'groupDm'; channelId: string }
@@ -41,6 +42,8 @@ export type Dialog =
   | { kind: 'shortcuts' }
   | { kind: 'editNickname'; guildId: string; userId: string }
   | { kind: 'ban'; guildId: string; userId: string; name: string }
+  | { kind: 'forward'; message: ChatMessage }
+  | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
 export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;

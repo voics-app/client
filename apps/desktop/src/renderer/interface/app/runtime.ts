@@ -2,12 +2,14 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@shared/contracts/gateway';
 import type { AppInfo } from '@shared/ipc';
+import { PrefsSync } from '@renderer/application/syncedPrefs';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { InteractionService } from '@renderer/application/interactionService';
 import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/application/sessionManager';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
 import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
+import type { IceServer } from '@renderer/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
@@ -33,6 +35,8 @@ export interface Runtime {
   queryClient: QueryClient;
   /** Extension point filled by feature modules (voice, private messaging). */
   hooks: RuntimeHooks;
+  /** Gateway-issued TURN/STUN servers (empty until READY); used by voice and P2P peer connections. */
+  iceServers: () => IceServer[];
 }
 
 export interface RuntimeHooks {
@@ -92,7 +96,13 @@ export function createRuntime(info: AppInfo): Runtime {
     },
   });
 
+  const prefsSync = new PrefsSync({
+    updateSettings: (patch) => api.updateSettings(patch),
+    onError: (error) => useUiStore.getState().toast({ tone: 'danger', title: 'Could not save your settings', body: error instanceof Error ? error.message : 'Try again.' }),
+  });
+  prefsSync.start();
   const dispatch = createDispatchRouter({
+    onUserSettings: (settings, ready, userId) => prefsSync.onSettings(settings, ready, userId),
     onVoiceServerUpdate: (update) => hooks.onVoiceServerUpdate(update),
     onVoiceState: (state) => hooks.onVoiceState?.(state),
     onIncomingMessage: notifyIncoming,
@@ -151,6 +161,8 @@ export function createRuntime(info: AppInfo): Runtime {
     onChange: (signedIn) => {
       queryClient.clear();
       if (!signedIn) {
+        prefsSync.stop();
+        prefsSync.start();
         privacy.stop();
         turn.clear();
       }
@@ -158,6 +170,6 @@ export function createRuntime(info: AppInfo): Runtime {
     },
   });
 
-  current = { info, http, api, gateway, session: manager, privacy, interactions: new InteractionService(api), queryClient, hooks };
+  current = { info, http, api, gateway, session: manager, privacy, interactions: new InteractionService(api), queryClient, hooks, iceServers: () => turn.iceServers() };
   return current;
 }

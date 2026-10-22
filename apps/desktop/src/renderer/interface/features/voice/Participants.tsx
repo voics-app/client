@@ -1,4 +1,4 @@
-import { ArrowsOut, CornersIn, CornersOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, CornersIn, CornersOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -47,7 +47,7 @@ function MediaElement({ stream, muted, className, onReady }: { stream: MediaStre
   return <video ref={ref} className={className} autoPlay playsInline muted={muted} />;
 }
 
-export function VideoTile({ participant, stream, kind, focused, onFocus }: { participant: Participant; stream: MediaStream | null; kind: 'camera' | 'screen' | 'avatar'; focused?: boolean; onFocus?: () => void }) {
+export function VideoTile({ participant, stream, kind, focused, pinned, onPin, onFocus }: { participant: Participant; stream: MediaStream | null; kind: 'camera' | 'screen' | 'avatar'; focused?: boolean; pinned?: boolean; onPin?: () => void; onFocus?: () => void }) {
   const speaking = useVoiceStore((s) => s.speaking[participant.state.user_id] ?? 0);
   const channelGuildId = useGuildStore((s) => s.channels[participant.state.channel_id ?? '']?.guild_id);
   const guildId = participant.state.guild_id ?? channelGuildId ?? null;
@@ -70,7 +70,7 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
     <>
       <div
         ref={tileRef}
-        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
+        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${pinned ? ' is-pinned' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
         style={{ '--speak': speaking } as React.CSSProperties}
         onContextMenu={menu.openAt}
         onDoubleClick={onDoubleClick}
@@ -90,13 +90,15 @@ export function VideoTile({ participant, stream, kind, focused, onFocus }: { par
         {live && (
           <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
         )}
-        {hasVideo && (
+        {pinned && <span className="tile-pin" title="Pinned"><PushPin size={12} weight="fill" /></span>}
+        {(hasVideo || onPin) && (
           <div className="tile-tools">
-            {onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
-            <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
+            {onPin && <IconButton label={pinned ? 'Unpin' : 'Pin'} size="sm" onClick={onPin}>{pinned ? <PushPinSlash size={16} /> : <PushPin size={16} />}</IconButton>}
+            {hasVideo && onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
+            {hasVideo && <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
               {fullscreen.active ? <CornersIn size={16} /> : <CornersOut size={16} />}
-            </IconButton>
-            {video && 'requestPictureInPicture' in video && (
+            </IconButton>}
+            {hasVideo && video && 'requestPictureInPicture' in video && (
               <IconButton label="Picture in picture" size="sm" onClick={() => void video.requestPictureInPicture().catch(() => undefined)}>
                 <PictureInPicture size={16} />
               </IconButton>

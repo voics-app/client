@@ -20,6 +20,11 @@ export const useVoiceChatStore = create<VoiceChatState>()((set) => ({
   toggle: (channelId) => set((s) => ({ openByChannel: { ...s.openByChannel, [channelId]: !s.openByChannel[channelId] } })),
 }));
 
+/** Opens the call's side chat for a channel (idempotent). */
+export function openVoiceChat(channelId: string): void {
+  useVoiceChatStore.setState((s) => ({ openByChannel: { ...s.openByChannel, [channelId]: true } }));
+}
+
 /** Voice channels carry a text chat unless a manager switched it off. */
 export function voiceTextChatEnabled(channel: Pick<Channel, 'text_chat_enabled'> | undefined): boolean {
   return Boolean(channel) && channel?.text_chat_enabled !== false;

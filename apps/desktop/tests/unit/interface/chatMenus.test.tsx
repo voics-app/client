@@ -137,7 +137,7 @@ describe('message hover toolbar', () => {
     seed({ perms: Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES });
     renderMessage();
     fireEvent.mouseEnter(root());
-    expect(toolbarLabels()).toEqual(['Reply', 'More']);
+    expect(toolbarLabels()).toEqual(['Reply', 'Forward', 'More']);
   });
 
   it('does not show while the message is being edited or failed', () => {
@@ -152,7 +152,7 @@ describe('message right-click menu', () => {
     renderMessage();
     fireEvent.contextMenu(root());
     expect(menuLabels()).toEqual(expect.arrayContaining(['Add Reaction', 'Pin Message', 'Reply', 'Create Thread', 'Copy Text', 'Mark Unread', 'Copy Message Link', 'Copy Message ID']));
-    expect(menuLabels()).not.toContain('Forward');
+    expect(menuLabels()).toContain('Forward');
     expect(menuLabels()).not.toContain('Edit Message');
     fireEvent.click(screen.getByRole('menuitem', { name: 'Add Reaction' }));
     expect(within(screen.getByRole('menu', { name: 'Add Reaction' })).getAllByRole('menuitem').map((e) => e.textContent)).toEqual(['👍', '❤️', '😂', '🎉', 'More reactions']);
@@ -291,5 +291,50 @@ describe('channel sidebar', () => {
     render(<ChannelSidebar guildId={G} />);
     expect(screen.getAllByLabelText('Private channel')).toHaveLength(1);
     expect(screen.getAllByLabelText('Age-restricted')).toHaveLength(1);
+  });
+});
+
+describe('forwarded messages', () => {
+  const forwarded = (sourceChannel: string) =>
+    message({
+      content: 'fyi',
+      message_reference: { type: 1, message_id: 'orig', channel_id: sourceChannel },
+      message_snapshots: [{ message: { content: 'the original text', timestamp: '2025-12-01T00:00:00Z', edited_timestamp: null, mentions: [], mention_roles: [], attachments: [], embeds: [], type: 0 } }],
+    } as never);
+
+  it('renders the snapshot under a Forwarded header, not as a reply, with a jump link when the source is visible', () => {
+    seed();
+    const { container } = renderMessage(forwarded('c1'));
+    expect(screen.getByText('Forwarded')).toBeTruthy();
+    expect(screen.getByText('the original text')).toBeTruthy();
+    expect(container.querySelector('.reply-preview')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Jump to original' })).toBeTruthy();
+  });
+
+  it('hides the jump link when the viewer cannot see the source channel', () => {
+    seed({ perms: Permission.VIEW_CHANNEL | Permission.READ_MESSAGE_HISTORY });
+    renderMessage(forwarded('c3'));
+    expect(screen.queryByRole('button', { name: 'Jump to original' })).toBeNull();
+    cleanup();
+    renderMessage(forwarded('unknown'));
+    expect(screen.queryByRole('button', { name: 'Jump to original' })).toBeNull();
+  });
+
+  it('Forward in the context menu opens the picker for the message', () => {
+    seed();
+    const m = message();
+    renderMessage(m);
+    fireEvent.contextMenu(root());
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Forward' }));
+    expect(useUiStore.getState().dialog).toMatchObject({ kind: 'forward', message: { id: 'm1' } });
+  });
+
+  it('disables Forward with a tooltip for end-to-end encrypted messages', () => {
+    seed();
+    renderMessage(message({ deliveryMode: 'ephemeral' } as never));
+    fireEvent.contextMenu(root());
+    const item = screen.getByRole('menuitem', { name: 'Forward' }) as HTMLButtonElement;
+    expect(item.disabled).toBe(true);
+    expect(item.title).toMatch(/end-to-end/i);
   });
 });

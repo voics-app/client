@@ -1,3 +1,4 @@
+import { SettingsCloseButton } from '../SettingsCloseButton';
 import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -114,6 +115,8 @@ function Overview({ channelId }: { channelId: string }) {
   const [topic, setTopic] = useState(channel?.topic ?? '');
   const [slow, setSlow] = useState(String(channel?.rate_limit_per_user ?? 0));
   const [nsfw, setNsfw] = useState(channel?.nsfw ?? false);
+  const [limit, setLimit] = useState(String(channel?.user_limit ?? 0));
+  const [bitrate, setBitrate] = useState(String(Math.round((channel?.bitrate ?? 64000) / 1000)));
   const [saving, setSaving] = useState(false);
   const openDialog = useUiStore((s) => s.openDialog);
   const openSettings = useUiStore((s) => s.openSettings);
@@ -122,7 +125,7 @@ function Overview({ channelId }: { channelId: string }) {
   if (!channel) return null;
   const save = async () => {
     setSaving(true);
-    const updated = await attempt(() => getRuntime().api.updateChannel(channelId, { name, topic: topic || null, nsfw, rate_limit_per_user: Number(slow) }), 'Could not save channel');
+    const updated = await attempt(() => getRuntime().api.updateChannel(channelId, { name, topic: topic || null, nsfw, rate_limit_per_user: Number(slow), ...(isVoice ? { user_limit: Math.max(0, Math.min(99, Math.floor(Number(limit)) || 0)), bitrate: Math.max(8, Math.min(384, Math.floor(Number(bitrate)) || 64)) * 1000 } : {}) }), 'Could not save channel');
     setSaving(false);
     if (updated) useGuildStore.getState().upsertChannel(updated);
   };
@@ -131,6 +134,12 @@ function Overview({ channelId }: { channelId: string }) {
       <h1>Overview</h1>
       <Field label="Channel name">{(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
       {!isVoice && <Field label="Topic">{(id) => <TextArea id={id} value={topic} maxLength={1024} onChange={(e) => setTopic(e.target.value)} />}</Field>}
+      {isVoice && (
+        <Field label="User limit (0 = unlimited)">{(id) => <Input id={id} type="number" min={0} max={99} value={limit} onChange={(e) => setLimit(e.target.value)} />}</Field>
+      )}
+      {isVoice && (
+        <Field label="Bitrate (kbps)">{(id) => <Input id={id} type="number" min={8} max={384} value={bitrate} onChange={(e) => setBitrate(e.target.value)} />}</Field>
+      )}
       {!isVoice && (
         <Field label="Slowmode">
           {() => <Segmented label="Slowmode" value={slow} onChange={setSlow} options={[{ value: '0', label: 'Off' }, { value: '5', label: '5s' }, { value: '30', label: '30s' }, { value: '300', label: '5m' }, { value: '3600', label: '1h' }]} />}
@@ -174,6 +183,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
           {tab === 'permissions' && <div className="settings-page"><h1>Permissions</h1><p className="page-sub">Overwrites win over role permissions. Deny beats allow within the same layer.</p><Overwrites channelId={channelId} /></div>}
           {tab === 'invites' && channel.guild_id && <ServerInvites guildId={channel.guild_id} />}
         </div>
+        <SettingsCloseButton onClose={() => open(null)} />
       </div>
     </div>
   );

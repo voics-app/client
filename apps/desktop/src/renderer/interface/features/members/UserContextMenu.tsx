@@ -69,7 +69,7 @@ async function patchMember(
 }
 
 /** Server-side voice move/disconnect; the gateway then announces the new voice state. */
-async function moveMember(
+export async function moveMember(
   guildId: string,
   userId: string,
   channelId: string | null,

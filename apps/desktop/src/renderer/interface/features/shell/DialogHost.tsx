@@ -18,7 +18,10 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { ForwardDialog } from '../chat/ForwardDialog';
+import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
+import { FolderSettingsDialog } from './FolderSettingsDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
@@ -394,9 +397,12 @@ function ActiveDialog() {
     case 'shortcuts': return <ShortcutsDialog />;
     case 'editNickname': return <EditNicknameDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'notifications': return <ChannelNotificationDialog dialog={dialog} />;
+    case 'folderSettings': return <FolderSettingsDialog folderId={dialog.folderId} />;
     case 'guildNotifications': return <GuildNotificationDialog guildId={dialog.guildId} />;
     case 'inbox': return <MentionsInbox />;
     case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
+    case 'forward': return <ForwardDialog message={dialog.message} />;
+    case 'reactionUsers': return <ReactionUsersDialog channelId={dialog.channelId} messageId={dialog.messageId} emoji={dialog.emoji} />;
   }
 }

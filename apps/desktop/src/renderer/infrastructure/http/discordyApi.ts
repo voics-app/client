@@ -185,7 +185,7 @@ export class DiscordyApi implements ApiPort {
   createChannel(guildId: string, body: CreateChannelBody) {
     return this.post<Channel>(`/guilds/${guildId}/channels`, body);
   }
-  reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null }[]) {
+  reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null; lock_permissions?: boolean }[]) {
     return this.patch<void>(`/guilds/${guildId}/channels`, positions);
   }
   roles(guildId: string) {
@@ -196,6 +196,9 @@ export class DiscordyApi implements ApiPort {
   }
   updateRole(guildId: string, roleId: string, patch: Partial<Role>) {
     return this.patch<Role>(`/guilds/${guildId}/roles/${roleId}`, patch);
+  }
+  reorderRoles(guildId: string, positions: { id: string; position: number }[]) {
+    return this.patch<Role[]>(`/guilds/${guildId}/roles`, positions);
   }
   deleteRole(guildId: string, roleId: string) {
     return this.del<void>(`/guilds/${guildId}/roles/${roleId}`);
@@ -305,6 +308,18 @@ export class DiscordyApi implements ApiPort {
   }
   removeReaction(channelId: string, messageId: string, emoji: string) {
     return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}/@me`);
+  }
+  reactionUsers(channelId: string, messageId: string, emoji: string) {
+    return this.get<{ id: string; username?: string; global_name?: string | null; avatar?: string | null }[]>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}`);
+  }
+  removeEmojiReactions(channelId: string, messageId: string, emoji: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}`);
+  }
+  removeUserReaction(channelId: string, messageId: string, emoji: string, userId: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}/${userId}`);
+  }
+  removeAllReactions(channelId: string, messageId: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions`);
   }
   pins(channelId: string) {
     return this.get<Message[]>(`/channels/${channelId}/pins`);

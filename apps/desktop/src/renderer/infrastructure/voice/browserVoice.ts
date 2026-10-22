@@ -15,13 +15,19 @@ export interface BrowserVoiceOptions {
   gateway: Pick<GatewayPort, 'send'>;
   /** `process.platform` value from AppInfo; Windows enables loopback audio for screen share. */
   platform: string;
+  /** TURN/STUN servers from the gateway READY payload, read when a session starts (relay fallback when UDP to the SFU fails). */
+  iceServers?: () => RTCIceServer[];
   /** Identity public keys of a user's devices, used to remove departed participants from the media group. */
   identityKeysOf?(userId: string): Promise<string[]>;
 }
 
 const LEGACY_ENCODED_STREAMS = !('RTCRtpScriptTransform' in globalThis);
 
-function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceOptions['identityKeysOf']): VoiceSession {
+function createVoiceSession(
+  params: SessionParams,
+  identityKeysOf: BrowserVoiceOptions['identityKeysOf'],
+  iceServers: BrowserVoiceOptions['iceServers'],
+): VoiceSession {
   const cryptor = new FrameCryptor();
   const bridge = window.discordy;
   const session = new VoiceSession({
@@ -35,7 +41,7 @@ function createVoiceSession(params: SessionParams, identityKeysOf: BrowserVoiceO
     // `encodedInsertableStreams` enables the createEncodedStreams fallback, needed only on Chromium without
     // RTCRtpScriptTransform. With it set, every sender and receiver must be piped (FrameCryptor.bypass for clear calls).
     createPeerConnection: () =>
-      new RTCPeerConnection({ bundlePolicy: 'max-bundle', ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration),
+      new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: iceServers?.() ?? [], ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration),
     cryptor,
     createDave: bridge
       ? (send, hooks) =>
@@ -52,7 +58,7 @@ export function createVoiceController(options: BrowserVoiceOptions): VoiceContro
   const bridge = window.discordy;
   return new VoiceController({
     gateway: options.gateway,
-    createSession: (params) => createVoiceSession(params, options.identityKeysOf),
+    createSession: (params) => createVoiceSession(params, options.identityKeysOf, options.iceServers),
     mic: createBrowserMicPipeline(),
     mixer: createBrowserMixer(),
     openCamera: (deviceId, preset) =>

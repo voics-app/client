@@ -44,6 +44,29 @@ export interface CustomStatus {
   expires_at?: string | null;
 }
 
+/** One server-rail entry (user settings `guild_folders`): a folder when `id` is set, otherwise a single server. */
+export interface GuildFolder {
+  id: number | null;
+  name: string | null;
+  color: number | null;
+  guild_ids: Snowflake[];
+}
+
+/** Synced client preferences; sparse (a key is present once set). See docs/specs user settings sync. */
+export interface UserPreferences {
+  accent?: 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
+  reduce_motion?: boolean;
+  font_scale?: number;
+  show_avatars_in_compact?: boolean;
+  link_previews?: boolean;
+  notify_only_mentions?: boolean;
+  notify_sounds?: boolean;
+  sound_toggles?: Record<string, boolean>;
+  ringtone?: string;
+  skin_tone?: string;
+  recent_reactions?: { id: string | null; name: string; animated?: boolean }[];
+}
+
 export interface UserSettings {
   default_delivery_mode: DeliveryMode;
   /** Every call the user starts or joins is end-to-end encrypted (voice#8). */
@@ -53,8 +76,11 @@ export interface UserSettings {
   theme?: 'dark' | 'light' | 'oled';
   locale?: string;
   developer_mode?: boolean;
+  message_display_compact?: boolean;
+  preferences?: UserPreferences;
   friend_source_flags?: { all?: boolean; mutual_friends?: boolean; mutual_guilds?: boolean };
   guild_positions?: Snowflake[];
+  guild_folders?: GuildFolder[];
   delivery_overrides?: Record<Snowflake, DeliveryMode>;
 }
 
@@ -64,6 +90,7 @@ export interface Role {
   color: number;
   hoist: boolean;
   icon?: string | null;
+  unicode_emoji?: string | null;
   position: number;
   permissions: string;
   managed: boolean;
@@ -108,6 +135,7 @@ export interface Channel {
   rate_limit_per_user?: number;
   recipients?: User[];
   icon?: string | null;
+  unicode_emoji?: string | null;
   owner_id?: Snowflake;
   parent_id?: Snowflake | null;
   last_pin_timestamp?: string | null;
@@ -224,10 +252,17 @@ export interface Reaction {
 }
 
 export interface MessageReference {
+  /** 0 reply (default), 1 forward. */
+  type?: number;
   message_id?: Snowflake;
   channel_id?: Snowflake;
   guild_id?: Snowflake;
   fail_if_not_exists?: boolean;
+}
+
+/** A frozen copy of a forwarded message (Discord `message_snapshots`). */
+export interface MessageSnapshot {
+  message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'embeds' | 'type' | 'flags'>;
 }
 
 export interface Message {
@@ -252,6 +287,8 @@ export interface Message {
   flags?: number;
   message_reference?: MessageReference;
   referenced_message?: Message | null;
+  /** Present when `message_reference.type` is 1 (forward). */
+  message_snapshots?: MessageSnapshot[];
   thread?: Channel;
   application_id?: Snowflake;
   components?: MessageComponent[];
@@ -327,6 +364,7 @@ export interface ApplicationSummary {
   id: Snowflake;
   name: string;
   icon?: string | null;
+  unicode_emoji?: string | null;
   bot?: User;
 }
 

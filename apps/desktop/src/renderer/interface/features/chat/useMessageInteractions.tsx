@@ -22,8 +22,8 @@ import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { selectionWithin, targetFromElement } from './contextTarget';
 import { useEmojiPopover } from './EmojiPopover';
 
-/** Forwarding has no server support yet (messages#13), so its entries stay hidden. */
-export const FORWARD_SUPPORTED = false;
+/** Forwarding is stored server-side as a snapshot (messages#13); E2EE and P2P chats are excluded in the menu model. */
+export const FORWARD_SUPPORTED = true;
 
 const ICONS: Record<string, ReactNode> = {
   addReaction: <Smiley size={16} />,
@@ -117,7 +117,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     useMessageStore.getState().reactionAdd(message.channel_id, message.id, picked.emoji, true);
     usePrefsStore.getState().recordReaction({ id: picked.emoji.id, name: picked.emoji.name ?? picked.api, animated: picked.emoji.animated });
     void attempt(() => getRuntime().api.addReaction(message.channel_id, message.id, picked.api));
-  });
+  }, message.channel_id);
 
   const visible = !opts.editing && !opts.blocked && (hover || focused || menu.open || emoji.isOpen);
   const [shift, setShift] = useShiftHeld(visible);
@@ -146,6 +146,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'react': return arg && react(arg);
       case 'reactMore': return anchorRef.current ? emoji.open(anchorRef.current, false) : emoji.openAt(menu.anchor?.x ?? 0, menu.anchor?.y ?? 0, false);
       case 'reply': return setReplyTo(message.channel_id, message);
+      case 'forward': return openDialog({ kind: 'forward', message });
       case 'edit': return setEditing({ channelId: message.channel_id, messageId: message.id });
       case 'pin':
       case 'unpin':
