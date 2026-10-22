@@ -9,6 +9,9 @@ export interface ChannelMenuContext {
   canManage: boolean;
   hasUnread: boolean;
   muted: boolean;
+  /** Keyboard alternative to dragging (MANAGE_CHANNELS); the entry is disabled at the edge of the list. */
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
 export interface CategoryMenuContext {
@@ -18,6 +21,8 @@ export interface CategoryMenuContext {
   collapsed: boolean;
   /** More than one category exists, so "collapse all" is meaningful. */
   hasOtherCategories: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
 function muteEntry(noun: 'Channel' | 'Category', muted: boolean): MenuModel {
@@ -34,7 +39,7 @@ export function buildChannelMenu(ctx: ChannelMenuContext): MenuModel[] {
     ...(ctx.inGuild ? [item('copyLink', 'Copy Link')] : []),
     muteEntry('Channel', ctx.muted),
     item('notifications', 'Notification Settings'),
-    ...(manage ? [sep(), item('edit', 'Edit Channel'), item('duplicate', 'Duplicate Channel'), item('create', 'Create Channel'), item('delete', 'Delete Channel', { danger: true })] : []),
+    ...(manage ? [sep(), item('moveUp', 'Move Up', { disabled: ctx.canMoveUp === false }), item('moveDown', 'Move Down', { disabled: ctx.canMoveDown === false }), item('edit', 'Edit Channel'), item('duplicate', 'Duplicate Channel'), item('create', 'Create Channel'), item('delete', 'Delete Channel', { danger: true })] : []),
     sep(),
     item('copyId', 'Copy Channel ID'),
   ]);
@@ -48,7 +53,7 @@ export function buildCategoryMenu(ctx: CategoryMenuContext): MenuModel[] {
     ...(ctx.hasOtherCategories ? [item('collapseAll', 'Collapse All Categories')] : []),
     muteEntry('Category', ctx.muted),
     item('notifications', 'Notification Settings'),
-    ...(ctx.canManage ? [sep(), item('edit', 'Edit Category'), item('create', 'Create Channel'), item('delete', 'Delete Category', { danger: true })] : []),
+    ...(ctx.canManage ? [sep(), item('moveUp', 'Move Up', { disabled: ctx.canMoveUp === false }), item('moveDown', 'Move Down', { disabled: ctx.canMoveDown === false }), item('edit', 'Edit Category'), item('create', 'Create Channel'), item('delete', 'Delete Category', { danger: true })] : []),
     sep(),
     item('copyId', 'Copy Category ID'),
   ]);

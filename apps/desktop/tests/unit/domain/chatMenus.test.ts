@@ -153,12 +153,12 @@ describe('channel menu', () => {
   const full = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false };
   it('manager with invite permission gets every entry', () => {
     const ids = idsOf(buildChannelMenu(full));
-    expect(ids).toEqual(['markRead', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
+    expect(ids).toEqual(['markRead', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
   });
   it('hides management by MANAGE_CHANNELS and Invite by CREATE_INSTANT_INVITE independently', () => {
     const noManage = idsOf(buildChannelMenu({ ...full, canManage: false }));
     expect(noManage).toContain('invite');
-    for (const h of ['edit', 'duplicate', 'create', 'delete']) expect(noManage).not.toContain(h);
+    for (const h of ['moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete']) expect(noManage).not.toContain(h);
     const noInvite = idsOf(buildChannelMenu({ ...full, canInvite: false }));
     expect(noInvite).not.toContain('invite');
     expect(noInvite).toContain('edit');
@@ -185,7 +185,12 @@ describe('channel menu', () => {
 describe('category menu', () => {
   const full = { canManage: true, hasUnread: true, muted: false, collapsed: false, hasOtherCategories: true };
   it('manager entries', () => {
-    expect(idsOf(buildCategoryMenu(full))).toEqual(['markRead', 'toggleCollapse', 'collapseAll', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'edit', 'create', 'delete', 'copyId']);
+    expect(idsOf(buildCategoryMenu(full))).toEqual(['markRead', 'toggleCollapse', 'collapseAll', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'create', 'delete', 'copyId']);
+  });
+  it('disables Move up/down at the edges of the list', () => {
+    const items = buildCategoryMenu({ ...full, canMoveUp: false }).filter((m) => m.kind === 'item');
+    expect(items.find((m) => m.id === 'moveUp')?.disabled).toBe(true);
+    expect(items.find((m) => m.id === 'moveDown')?.disabled).toBe(false);
   });
   it('member only gets read/collapse/mute/notifications/copy id', () => {
     const ids = idsOf(buildCategoryMenu({ ...full, canManage: false }));

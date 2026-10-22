@@ -6,6 +6,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
 import { isUnread } from '@renderer/domain/unread';
+import { LOOSE, layoutOf, resolveDrop, type ChannelDrag, type ChannelDropZone } from '@renderer/domain/channelOrder';
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
 import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
@@ -14,6 +15,7 @@ import { ChannelType, type Channel, type VoiceState } from '@shared/contracts/re
 import { channelIcon, openChannel } from '../../app/navigation';
 import { openVoiceChannel } from '../../app/voiceActions';
 import { markChannelRead } from '../../app/actions';
+import { applyChannelLayout, guildChannels } from '../../app/channelOrderActions';
 import { can, useChannelPermissions, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -24,6 +26,48 @@ import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { useUserMenu } from '../members/UserContextMenu';
 import { GuildHeader } from './GuildHeader';
 import { CategoryContextMenuEntries, ChannelContextMenuEntries } from './channelMenu';
+
+interface ChannelDnd {
+  enabled: boolean;
+  drag: ChannelDrag | null;
+  hover: { key: string; zone: ChannelDropZone } | null;
+  begin(item: ChannelDrag): void;
+  end(): void;
+  over(key: string, target: ChannelDrag, zone: ChannelDropZone): void;
+  drop(): void;
+}
+
+const dropKey = (item: ChannelDrag) => `${item.kind}:${item.id}`;
+const hoverClass = (dnd: ChannelDnd, key: string) => (dnd.hover?.key === key ? ` drop-${dnd.hover.zone}` : '');
+
+function useChannelDnd(guildId: string, enabled: boolean): ChannelDnd {
+  const [drag, setDrag] = useState<ChannelDrag | null>(null);
+  const [state, setState] = useState<{ key: string; zone: ChannelDropZone; target: ChannelDrag } | null>(null);
+  const end = () => {
+    setDrag(null);
+    setState(null);
+  };
+  return {
+    enabled,
+    drag,
+    hover: state,
+    begin: setDrag,
+    end,
+    over: (key, target, zone) => setState((h) => (h?.key === key && h.zone === zone ? h : { key, zone, target })),
+    drop: () => {
+      if (drag && state) {
+        const layout = resolveDrop(layoutOf(guildChannels(guildId)), drag, state.target, state.zone);
+        void applyChannelLayout(guildId, layout, drag.kind === 'channel' ? drag.id : undefined);
+      }
+      end();
+    },
+  };
+}
+
+const halfOf = (event: React.DragEvent, el: Element): 'before' | 'after' => {
+  const rect = el.getBoundingClientRect();
+  return event.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+};
 
 const ICONS = { text: Hash, voice: SpeakerHigh, announcement: Megaphone, forum: ChatsCircle, stage: SpeakerHigh, thread: Hash };
 
@@ -45,7 +89,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
   );
 }
 
-function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) {
+function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolean; dnd: ChannelDnd }) {
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
   const muted = isChannelMutedDeep(settings, channel, Date.now());
@@ -73,8 +117,17 @@ function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) 
   };
 
   return (
-    <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined}>
-      <div className={`channel-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}${muted ? ' is-muted' : ''}`} onContextMenu={menu.openAt}>
+    <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined} className={hoverClass(dnd, dropKey({ kind: 'channel', id: channel.id })).trim() || undefined}>
+      <div
+        className={`channel-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}${muted ? ' is-muted' : ''}${dnd.drag?.id === channel.id ? ' is-dragging' : ''}`}
+        onContextMenu={menu.openAt}
+        draggable={dnd.enabled}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          dnd.begin({ kind: 'channel', id: channel.id });
+        }}
+        onDragEnd={dnd.end}
+      >
         <button type="button" className="channel-main" onClick={select} aria-current={active || undefined}>
           {unread && <span className="channel-unread-dot" aria-label="Unread" />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
@@ -112,7 +165,7 @@ function ChannelRow({ channel, active }: { channel: Channel; active: boolean }) 
   );
 }
 
-function Category({ category, children, guildId, siblings }: { category: Channel | null; children: Channel[]; guildId: string; siblings: string[] }) {
+function Category({ category, children, guildId, siblings, dnd }: { category: Channel | null; children: Channel[]; guildId: string; siblings: string[]; dnd: ChannelDnd }) {
   const collapsed = usePrefsStore((s) => (category ? s.collapsedCategories[category.id] : false));
   const toggle = usePrefsStore((s) => s.toggleMap);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
@@ -146,10 +199,42 @@ function Category({ category, children, guildId, siblings }: { category: Channel
   const entries = category
     ? CategoryContextMenuEntries(category, children, siblings, perms, { guildId, openDialog, openSettings, hasUnread, markRead: () => children.forEach((c) => markChannelRead(c.id)) })
     : [];
+  const sectionId = category?.id ?? LOOSE;
+  const onDragOver = (event: React.DragEvent) => {
+    const drag = dnd.drag;
+    if (!dnd.enabled || !drag) return;
+    const row = (event.target as HTMLElement).closest('li[data-channel-id]');
+    const head = (event.target as HTMLElement).closest('.category-head');
+    if (drag.kind === 'channel') {
+      event.preventDefault();
+      if (row) dnd.over(dropKey({ kind: 'channel', id: row.getAttribute('data-channel-id')! }), { kind: 'channel', id: row.getAttribute('data-channel-id')! }, halfOf(event, row));
+      else dnd.over(dropKey({ kind: 'category', id: sectionId }), { kind: 'category', id: sectionId }, head ? 'start' : 'end');
+    } else if (category) {
+      event.preventDefault();
+      dnd.over(dropKey({ kind: 'category', id: category.id }), { kind: 'category', id: category.id }, halfOf(event, event.currentTarget));
+    }
+  };
   return (
-    <section className="category">
+    <section
+      className={`category${dnd.drag?.kind === 'category' && dnd.drag.id === category?.id ? ' is-dragging' : ''}${hoverClass(dnd, dropKey({ kind: 'category', id: sectionId }))}`}
+      onDragOver={onDragOver}
+      onDrop={(e) => {
+        if (!dnd.drag) return;
+        e.preventDefault();
+        dnd.drop();
+      }}
+    >
       {category && (
-        <header className="category-head" onContextMenu={menu.openAt}>
+        <header
+          className="category-head"
+          onContextMenu={menu.openAt}
+          draggable={dnd.enabled}
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            dnd.begin({ kind: 'category', id: category.id });
+          }}
+          onDragEnd={dnd.end}
+        >
           <button type="button" onClick={() => toggle('collapsedCategories', category.id)} aria-expanded={!collapsed}>
             {collapsed ? <CaretRight size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
             <span>{category.name}</span>
@@ -164,7 +249,7 @@ function Category({ category, children, guildId, siblings }: { category: Channel
       )}
       <ul className="channel-list">
         {visible.map((c) => (
-          <ChannelRow key={c.id} channel={c} active={c.id === activeId} />
+          <ChannelRow key={c.id} channel={c} active={c.id === activeId} dnd={dnd} />
         ))}
       </ul>
     </section>
@@ -233,6 +318,8 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
   const collapsedMap = usePrefsStore((s) => s.collapsedCategories);
   const scrollRef = useRef<HTMLDivElement>(null);
   useRovingFocus(scrollRef, { selector: '.channel-main, .category-head > button' });
+  const canManage = can(useGuildPermissions(guildId), Permission.MANAGE_CHANNELS);
+  const dnd = useChannelDnd(guildId, canManage);
 
   return (
     <aside className="sidebar" aria-label="Channels">
@@ -240,10 +327,11 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
       <AttentionPill scrollRef={scrollRef} version={[groups, reads, collapsedMap]} />
       <div ref={scrollRef} className="sidebar-scroll">
         {groups.map((g) => (
-          <Category key={g.category?.id ?? 'loose'} category={g.category} guildId={guildId} siblings={categoryIds}>
+          <Category key={g.category?.id ?? 'loose'} category={g.category} guildId={guildId} siblings={categoryIds} dnd={dnd}>
             {g.children}
           </Category>
         ))}
+        {dnd.drag?.kind === 'channel' && !groups.some((g) => !g.category) && <Category category={null} guildId={guildId} siblings={categoryIds} dnd={dnd}>{[]}</Category>}
         {groups.length === 0 && <p className="sidebar-empty">No channels yet.</p>}
       </div>
     </aside>
