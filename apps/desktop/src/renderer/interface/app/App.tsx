@@ -1,6 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { CommandPalette } from '../features/palette/CommandPalette';
@@ -14,25 +13,11 @@ import { Spinner } from '../shared/ui/Spinner';
 import { bridge, loadAppInfo } from './bridge';
 import { useActivityReporting } from './activity';
 import { useGlobalShortcuts } from './shortcuts';
+import { useAppearance } from './appearance';
 import { createRuntime, type Runtime } from './runtime';
 import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
 import { BRAND } from '@shared/brand';
-
-/** Applies theme, accent, motion and density preferences to the document root. */
-function useAppearance(): void {
-  const theme = usePrefsStore((s) => s.theme);
-  const accent = usePrefsStore((s) => s.accent);
-  const reduce = usePrefsStore((s) => s.reduceMotion);
-  const scale = usePrefsStore((s) => s.fontScale);
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = theme;
-    root.dataset.accent = accent;
-    root.dataset.reduceMotion = String(reduce);
-    root.style.setProperty('--font-scale', String(scale));
-  }, [theme, accent, reduce, scale]);
-}
 
 function Boot({ message }: { message: string }) {
   return (

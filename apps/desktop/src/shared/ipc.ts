@@ -120,6 +120,8 @@ export interface DiscordyBridge {
     /** Route of the deep link that launched the app, if it has not been delivered yet. */
     takePendingRoute(): Promise<string | null>;
     flashFrame(): void;
+    /** Sets the UI zoom factor of this window (Ctrl +, Ctrl -, Ctrl 0 and the Appearance page). */
+    setZoom(factor: number): void;
   };
   session: {
     load(): Promise<StoredSession | null>;

@@ -17,6 +17,7 @@ import { Checkbox } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { highlightCode } from './highlighter';
+import { AnimatedImage } from '../../shared/ui/AnimatedImage';
 
 function Spoiler({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(false);
@@ -208,7 +209,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
           case 'channelMention':
             return <Mention key={i} kind={node.type} id={node.id} guildId={guildId} />;
           case 'customEmoji':
-            return <img key={i} data-ctx="emoji" data-emoji-id={node.id} data-emoji-name={node.name} data-animated={node.animated ? 'true' : 'false'} data-src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} className={`custom-emoji${big ? ' is-big' : ''}`} src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} alt={`:${node.name}:`} title={`:${node.name}:`} draggable={false} />;
+            return <AnimatedImage kind="emoji" animated={!!node.animated} key={i} data-ctx="emoji" data-emoji-id={node.id} data-emoji-name={node.name} data-animated={node.animated ? 'true' : 'false'} data-src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} className={`custom-emoji${big ? ' is-big' : ''}`} src={`${cdn}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}`} alt={`:${node.name}:`} title={`:${node.name}:`} draggable={false} />;
           case 'everyone':
             return <span key={i} className="mention mention-everyone">@{node.kind}</span>;
           case 'link':

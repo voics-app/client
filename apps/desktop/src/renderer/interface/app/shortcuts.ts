@@ -6,6 +6,7 @@ import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@renderer/domain/
 import { fixedShortcutAction, type FixedShortcutAction } from '@renderer/domain/shortcutCatalog';
 import { isTextChannel, openChannel, openGuild } from './navigation';
 import { markChannelRead, markGuildRead } from './actions';
+import { handleZoomKey } from './appearance';
 import { toggleDeafen, toggleMute } from './voiceActions';
 
 export function describeEvent(e: KeyboardEvent): string {
@@ -107,7 +108,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (handleContextMenuKey(e)) return;
+      if (handleContextMenuKey(e) || handleZoomKey(e)) return;
       const described = describeEvent(e);
       const fixed = fixedShortcutAction(described);
       if (fixed) {

@@ -5,7 +5,7 @@ export const POPOUT_FRAME = 'discordy-call-popout';
 /** Mirrors the app's styles, theme attributes and tokens into the pop-out document so portaled React content looks identical. */
 export function syncPopOutDocument(source: Document, target: Document): void {
   target.title = source.title;
-  for (const attr of ['class', 'style', 'lang', 'data-theme', 'data-accent', 'data-density']) {
+  for (const attr of ['class', 'style', 'lang', 'data-theme', 'data-accent', 'data-density', 'data-sidebar-density', 'data-link-underline', 'data-high-contrast', 'data-role-colors', 'data-compact-avatars', 'data-desaturated', 'data-reduce-motion']) {
     const value = source.documentElement.getAttribute(attr);
     if (value !== null) target.documentElement.setAttribute(attr, value);
   }

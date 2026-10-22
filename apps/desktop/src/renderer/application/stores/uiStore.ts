@@ -19,6 +19,7 @@ export type UserSettingsTab =
   | 'voice'
   | 'keybinds'
   | 'appearance'
+  | 'accessibility'
   | 'notifications'
   | 'connection'
   | 'about';

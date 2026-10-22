@@ -216,6 +216,7 @@ export class MessageSender {
       const body: CreateMessageBody = {
         content: input.content,
         nonce,
+        ...(input.tts ? { tts: true } : {}),
         message_reference: optimistic.message_reference,
         attachments: await this.uploadFiles(channel.id, nonce, input),
       };

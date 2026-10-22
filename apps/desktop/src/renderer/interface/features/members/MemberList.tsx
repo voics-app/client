@@ -8,6 +8,7 @@ import type { GuildMember } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
+import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
 import { useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { UserContextMenu } from './UserContextMenu';
@@ -28,6 +29,7 @@ function MemberRow({
     .filter((r) => member.roles.includes(r.id) && r.color !== 0)
     .sort((a, b) => b.position - a.position)[0];
   const name = displayName(member.user, member.nick);
+  const roleColor = useRoleColorDisplay(top ? `#${top.color.toString(16).padStart(6, '0')}` : undefined);
   const activity = presence?.activities[0];
 
   return (
@@ -51,12 +53,9 @@ function MemberRow({
         <span className='member-copy'>
           <span
             className='member-name'
-            style={
-              top
-                ? { color: `#${top.color.toString(16).padStart(6, '0')}` }
-                : undefined
-            }
+            style={roleColor.tint ? { color: roleColor.tint } : undefined}
           >
+            <RoleDot color={roleColor.dot} />
             {name}
           </span>
           {activity && (

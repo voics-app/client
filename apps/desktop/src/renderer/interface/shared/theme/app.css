@@ -198,7 +198,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .jump-bottom { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: var(--fs-meta); font-weight: 600; animation: pop-in 180ms var(--ease-out); }
 
 .message { position: relative; padding: 2px 16px 2px 16px; --ring-bg: var(--bg-1); }
-.message.starts-group { margin-top: 16px; padding-top: 2px; }
+.message.starts-group { margin-top: var(--message-spacing, 16px); padding-top: 2px; }
 .message:hover { background: color-mix(in oklch, var(--fg) 3.5%, transparent); }
 .message.is-mention { background: color-mix(in oklch, var(--warning) 9%, transparent); box-shadow: inset 3px 0 0 var(--warning); }
 .message.is-sending { opacity: 0.6; } .message.is-failed .markdown { color: var(--danger); }
