@@ -572,3 +572,9 @@ button.mode-badge:active { transform: scale(0.96); }
 .search-skeleton { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; }
 .search-pager { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-caption); color: var(--fg-muted); }
 @media (prefers-reduced-motion: reduce) { .search-box { transition: none; } }
+.emoji-tone-btn { font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 6px; } .emoji-tone-btn:hover { background: var(--hover); }
+.emoji-tones { display: flex; gap: 4px; padding: 0 10px 6px; } .emoji-tones button { font-size: 18px; padding: 3px 6px; border-radius: 8px; } .emoji-tones button:hover, .emoji-tones button.is-on { background: var(--accent-soft); }
+.emoji-tabs { display: flex; gap: 2px; padding: 0 10px 6px; overflow-x: auto; border-bottom: 1px solid var(--hairline); } .emoji-tabs button { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 16px; } .emoji-tabs button:hover { background: var(--hover); }
+.emoji-tab-guild { width: 20px; height: 20px; border-radius: 50%; background: var(--bg-3); font-size: 11px; display: grid; place-items: center; }
+.reaction-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; } .reaction-list-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; } .reaction-list-row:hover { background: var(--hover); } .reaction-list-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.reaction-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; } .reaction-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px; background: var(--bg-3); } .reaction-tabs button.is-on { background: var(--accent-soft); color: var(--accent-text); } .reaction-tabs img { width: 18px; height: 18px; }

@@ -10,7 +10,7 @@ interface Anchor {
 }
 
 /** Floating emoji picker anchored to a trigger. Returns the element to render plus an `open` opener. */
-export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: PickedEmoji) => void): { node: ReactNode; open: (el: HTMLElement, up?: boolean) => void; openAt: (x: number, y: number, up?: boolean) => void; isOpen: boolean } {
+export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: PickedEmoji) => void, channelId?: string | null): { node: ReactNode; open: (el: HTMLElement, up?: boolean) => void; openAt: (x: number, y: number, up?: boolean) => void; isOpen: boolean } {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const close = useCallback(() => setAnchor(null), []);
 
@@ -40,6 +40,7 @@ export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: 
         <div className="emoji-popover" style={{ left: anchor.x, top: anchor.y, transform: `translate(-100%, ${anchor.up ? '-100%' : '0'})` }}>
           <EmojiPicker
             guildId={guildId}
+            channelId={channelId}
             onPick={(e) => {
               onPick(e);
               close();

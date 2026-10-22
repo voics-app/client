@@ -18,6 +18,7 @@ import { Button } from '../../shared/ui/Button';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
@@ -398,5 +399,6 @@ function ActiveDialog() {
     case 'inbox': return <MentionsInbox />;
     case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
+    case 'reactionUsers': return <ReactionUsersDialog channelId={dialog.channelId} messageId={dialog.messageId} emoji={dialog.emoji} />;
   }
 }

@@ -74,6 +74,8 @@ function messageBlock(ctx: MessageMenuContext): MenuModel[] {
   if (ctx.hasText) out.push(item('copyText', 'Copy Text'));
   out.push(item('markUnread', 'Mark Unread'));
   out.push(item('copyMessageLink', 'Copy Message Link'));
+  if (ctx.standard && !ctx.forwardSupported) out.push(item('forwardSoon', 'Forward (coming soon)', { disabled: true }));
+  if (!ctx.isMine) out.push(item('reportSoon', 'Report Message (coming soon)', { disabled: true }));
   if (ctx.canSpeak && ctx.hasText) out.push(item('speak', 'Speak Message'));
   if ((ctx.isMine || ctx.canManageMessages) && (ctx.standard || ctx.isMine)) out.push(sep(), item('delete', 'Delete Message', { danger: true }));
   out.push(sep(), item('copyId', 'Copy Message ID'));
@@ -112,4 +114,18 @@ export function buildToolbar(ctx: ToolbarContext): ToolbarAction[] {
   }
   out.push({ id: 'more', label: 'More' });
   return out;
+}
+
+export interface ReactionMenuContext {
+  canReact: boolean;
+  mine: boolean;
+  canManageMessages: boolean;
+}
+
+/** Context menu of a reaction chip: who reacted for everyone, removal of one emoji or of all reactions for moderators. */
+export function buildReactionMenu(ctx: ReactionMenuContext): MenuModel[] {
+  const out: MenuModel[] = [item('whoReacted', 'See who reacted')];
+  if (ctx.canReact) out.push(item('toggle', ctx.mine ? 'Remove my reaction' : 'React'));
+  if (ctx.canManageMessages) out.push(sep(), item('removeEmoji', 'Remove this emoji', { danger: true }), item('removeAll', 'Remove all reactions', { danger: true }));
+  return tidy(out);
 }

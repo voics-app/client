@@ -306,6 +306,18 @@ export class DiscordyApi implements ApiPort {
   removeReaction(channelId: string, messageId: string, emoji: string) {
     return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}/@me`);
   }
+  reactionUsers(channelId: string, messageId: string, emoji: string) {
+    return this.get<{ id: string; username?: string; global_name?: string | null; avatar?: string | null }[]>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}`);
+  }
+  removeEmojiReactions(channelId: string, messageId: string, emoji: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}`);
+  }
+  removeUserReaction(channelId: string, messageId: string, emoji: string, userId: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions/${enc(emoji)}/${userId}`);
+  }
+  removeAllReactions(channelId: string, messageId: string) {
+    return this.del<void>(`/channels/${channelId}/messages/${messageId}/reactions`);
+  }
   pins(channelId: string) {
     return this.get<Message[]>(`/channels/${channelId}/pins`);
   }

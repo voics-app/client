@@ -49,6 +49,8 @@ export interface PrefsState {
   ringtoneVolume: number;
   flashTaskbar: boolean;
   recentReactions: QuickEmoji[];
+  /** Skin tone modifier applied to the emoji picker's hand emoji; empty for the default. */
+  skinTone: string;
   collapsedCategories: Record<string, boolean>;
   keybinds: Keybind[];
   /** Show previews of links in messages (Standard chats). */
@@ -105,6 +107,7 @@ export const DEFAULT_PREFS: PrefsData = {
   ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
   flashTaskbar: true,
   recentReactions: [],
+  skinTone: '',
   collapsedCategories: {},
   keybinds: DEFAULT_KEYBINDS,
   linkPreviews: true,
