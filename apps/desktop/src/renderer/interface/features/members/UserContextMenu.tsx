@@ -25,6 +25,7 @@ import {
 } from '@renderer/domain/userMenuModel';
 import { RelationshipType, type GuildMember, type User } from '@shared/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
+import { confirmPurgeRecentMessages } from '../../app/moderationActions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { joinVoiceChannel, setUserVolume } from '../../app/voiceActions';
@@ -50,6 +51,7 @@ const NO_CAPABILITIES: MemberCapabilities = {
   canServerDeafen: false,
   canMoveMembers: false,
   canTimeout: false,
+  canManageMessages: false,
   canKick: false,
   canBan: false,
 };
@@ -297,6 +299,8 @@ export function UserContextMenu({
         return item('Disconnect', () => void moveMember(guildId ?? '', userId, null));
       case 'timeout':
         return item('Timeout', () => openPanel('timeout'));
+      case 'purgeMessages':
+        return item('Delete recent messages', () => confirmPurgeRecentMessages(guildId ?? '', userId, name), true);
       case 'kick':
         return item(`Kick ${name}`, kick, true);
       case 'ban':

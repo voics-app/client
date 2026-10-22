@@ -72,7 +72,7 @@ describe('userMenuGroups: visibility', () => {
     const ids = flat(base(caps(ALL_PERMISSIONS, [], ['low'], { actor: OWNER })));
     const all: UserMenuItemId[] = [
       'profile', 'mention', 'message', 'call', 'note', 'friend', 'block', 'localMute', 'volume',
-      'nickname', 'roles', 'timeout', 'kick', 'ban', 'serverMute', 'serverDeafen', 'moveTo', 'disconnect', 'copyId',
+      'nickname', 'roles', 'timeout', 'purgeMessages', 'kick', 'ban', 'serverMute', 'serverDeafen', 'moveTo', 'disconnect', 'copyId',
     ];
     for (const id of all) expect(ids).toContain(id);
   });
@@ -92,6 +92,7 @@ describe('userMenuGroups: visibility', () => {
     };
     only(Permission.MANAGE_ROLES, 'roles');
     only(Permission.MODERATE_MEMBERS, 'timeout');
+    only(Permission.MANAGE_MESSAGES, 'purgeMessages');
     only(Permission.KICK_MEMBERS, 'kick');
     only(Permission.BAN_MEMBERS, 'ban');
     only(Permission.MUTE_MEMBERS, 'serverMute');
