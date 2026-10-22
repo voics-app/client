@@ -7,7 +7,8 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/desktop/package.json apps/desktop/
 COPY native/crypto/package.json native/crypto/
-RUN pnpm install --frozen-lockfile --filter @discordy/desktop... --ignore-scripts
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --filter @discordy/desktop... --ignore-scripts
 COPY apps/desktop apps/desktop
 RUN pnpm --filter @discordy/desktop exec electron-vite build
 
