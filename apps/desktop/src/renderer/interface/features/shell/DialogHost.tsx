@@ -15,6 +15,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
+import { EXPIRY_CHOICES, expiryFor, type ExpiryChoice } from '@renderer/domain/selfPresence';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
@@ -308,14 +309,16 @@ function NewDmDialog() {
 function CustomStatusDialog() {
   const current = useSessionStore((s) => s.settings.custom_status);
   const [text, setText] = useState(current?.text ?? '');
+  const [expiry, setExpiry] = useState<ExpiryChoice>('never');
   const close = useClose();
   return (
     <Modal open onClose={close} title="Set a custom status" width={420}>
       <div className="stack">
         <Field label="What's happening?">{(id) => <Input id={id} data-autofocus value={text} maxLength={128} onChange={(e) => setText(e.target.value)} />}</Field>
+        <Field label="Clear after">{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select>}</Field>
         <div className="row-end">
           <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>Clear</Button>
-          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null); close(); }}>Save</Button>
+          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date())); close(); }}>Save</Button>
         </div>
       </div>
     </Modal>

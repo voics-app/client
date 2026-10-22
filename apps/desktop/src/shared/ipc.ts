@@ -47,7 +47,12 @@ export interface DesktopSettings {
   startMinimized: boolean;
   closeToTray: boolean;
   hardwareAcceleration: boolean;
+  /** Minutes without keyboard or mouse input before the status turns Idle; 0 turns automatic idle off. */
+  idleTimeoutMinutes: number;
 }
+
+/** Allowed automatic idle timeouts in minutes; 0 is off. */
+export const IDLE_TIMEOUT_CHOICES: readonly number[] = [0, 1, 5, 10, 15, 30, 60];
 
 export type TrayCommand = 'toggleMute' | 'toggleDeafen';
 
@@ -145,6 +150,12 @@ export interface DiscordyBridge {
     set(patch: Partial<DesktopSettings>): Promise<{ settings: DesktopSettings; restartRequired: boolean }>;
     relaunch(): void;
   };
+  idle: {
+    /** Seconds since the last keyboard or mouse input anywhere on the OS. */
+    seconds(): Promise<number>;
+    /** Fires with true when the screen locks or the machine suspends, false when it comes back. */
+    onLock(listener: (locked: boolean) => void): () => void;
+  };
   session: {
     load(): Promise<StoredSession | null>;
     save(session: StoredSession): Promise<void>;
@@ -180,6 +191,8 @@ export const IpcChannel = {
   desktopGet: 'desktop:get',
   desktopSet: 'desktop:set',
   desktopRelaunch: 'desktop:relaunch',
+  idleSeconds: 'idle:seconds',
+  idleLock: 'idle:lock',
   sessionLoad: 'session:load',
   sessionSave: 'session:save',
   sessionClear: 'session:clear',
