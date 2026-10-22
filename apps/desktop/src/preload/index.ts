@@ -46,6 +46,10 @@ const bridge: DiscordyBridge = {
     setVoiceState: (state) => ipcRenderer.send(IpcChannel.appVoiceState, state),
     onTrayCommand: (listener) => subscribe<TrayCommand>(IpcChannel.appTrayCommand, listener),
   },
+  idle: {
+    seconds: () => ipcRenderer.invoke(IpcChannel.idleSeconds),
+    onLock: (listener) => subscribe<boolean>(IpcChannel.idleLock, listener),
+  },
   desktop: {
     get: () => ipcRenderer.invoke(IpcChannel.desktopGet),
     set: (patch) => ipcRenderer.invoke(IpcChannel.desktopSet, patch),

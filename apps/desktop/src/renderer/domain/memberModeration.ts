@@ -9,6 +9,8 @@ export interface HierarchyMember {
 }
 
 export interface MemberSection {
+  /** Stable key: the role id, or `online` / `offline`. */
+  id: string;
   title: string;
   members: GuildMember[];
 }
@@ -138,11 +140,11 @@ export function buildMemberSections(
       .filter((m) => !used.has(m.user.id) && m.roles.includes(role.id))
       .sort(byName);
     list.forEach((m) => used.add(m.user.id));
-    if (list.length) sections.push({ title: role.name, members: list });
+    if (list.length) sections.push({ id: role.id, title: role.name, members: list });
   }
   const rest = online.filter((m) => !used.has(m.user.id)).sort(byName);
-  if (rest.length) sections.push({ title: "Online", members: rest });
-  if (offline.length) sections.push({ title: "Offline", members: offline });
+  if (rest.length) sections.push({ id: "online", title: "Online", members: rest });
+  if (offline.length) sections.push({ id: "offline", title: "Offline", members: offline });
   return sections;
 }
 

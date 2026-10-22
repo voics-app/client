@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { CaretDown, CaretRight, Crown, MagnifyingGlass } from '@phosphor-icons/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { activityLine, flattenSections, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@renderer/domain/memberList';
 import { buildMemberSections } from '@renderer/domain/memberModeration';
 import { GatewayOp } from '@shared/contracts/gateway';
 import type { GuildMember } from '@shared/contracts/rest';
@@ -10,76 +14,137 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+import { RolePills } from './RolePills';
 import { UserContextMenu } from './UserContextMenu';
 
-function MemberRow({
-  guildId,
-  member,
-}: {
-  guildId: string;
-  member: GuildMember;
-}) {
+const HOVER_DELAY_MS = 350;
+const SEARCH_DEBOUNCE_MS = 250;
+const MEMBER_ROW_PX = 44;
+const HEADER_ROW_PX = 36;
+
+function roleColor(guildRoles: { id: string; color: number; position: number }[] | undefined, member: GuildMember): string | undefined {
+  const top = guildRoles?.filter((r) => member.roles.includes(r.id) && r.color !== 0).sort((a, b) => b.position - a.position)[0];
+  return top ? `#${top.color.toString(16).padStart(6, '0')}` : undefined;
+}
+
+function BotTag() {
+  return <span className='member-tag'>BOT</span>;
+}
+
+function OwnerCrown() {
+  return (
+    <span className='member-crown' title='Server Owner' role='img' aria-label='Server owner'>
+      <Crown size={14} weight='fill' />
+    </span>
+  );
+}
+
+function HoverCard({ guildId, member, anchor }: { guildId: string; member: GuildMember; anchor: DOMRect }) {
+  const guild = useGuildStore((s) => s.guilds[guildId]);
+  const presence = usePresenceStore((s) => s.byUser[member.user.id]);
+  const status = presence?.status ?? 'offline';
+  const name = displayName(member.user, member.nick);
+  const line = activityLine(presence?.activities ?? []);
+  const top = Math.max(8, Math.min(anchor.top, window.innerHeight - 220));
+  return createPortal(
+    <div className='member-hover-card' role='tooltip' style={{ left: anchor.left - 8, top }}>
+      <div className='member-hover-head'>
+        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={56} status={status} />
+        <div className='member-hover-names'>
+          <strong style={{ color: roleColor(guild?.roles, member) }}>{name}</strong>
+          <span className='member-hover-user'>
+            {member.user.username}
+            {member.user.bot && <BotTag />}
+          </span>
+        </div>
+        {guild?.owner_id === member.user.id && <OwnerCrown />}
+      </div>
+      {line && <p className='member-hover-activity'>{line}</p>}
+      <RolePills guildId={guildId} userId={member.user.id} />
+    </div>,
+    document.body,
+  );
+}
+
+function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }) {
   const presence = usePresenceStore((s) => s.byUser[member.user.id]);
   const status = presence?.status ?? 'offline';
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const openDialog = useUiStore((s) => s.openDialog);
   const menu = useMenu();
-  const top = guild?.roles
-    .filter((r) => member.roles.includes(r.id) && r.color !== 0)
-    .sort((a, b) => b.position - a.position)[0];
   const name = displayName(member.user, member.nick);
-  const activity = presence?.activities[0];
+  const line = activityLine(presence?.activities ?? []);
+  const isOwner = guild?.owner_id === member.user.id;
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const show = (el: HTMLElement) => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setAnchor(el.getBoundingClientRect()), HOVER_DELAY_MS);
+  };
+  const hide = () => {
+    window.clearTimeout(timer.current);
+    setAnchor(null);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   return (
-    <li>
+    <>
       <button
         type='button'
         className={`member-row${status === 'offline' ? ' is-offline' : ''}`}
-        onClick={() =>
-          openDialog({ kind: 'profile', userId: member.user.id, guildId })
-        }
-        onContextMenu={menu.openAt}
+        onClick={() => {
+          hide();
+          openDialog({ kind: 'profile', userId: member.user.id, guildId });
+        }}
+        onContextMenu={(e) => {
+          hide();
+          menu.openAt(e);
+        }}
+        onMouseEnter={(e) => show(e.currentTarget)}
+        onMouseLeave={hide}
+        onFocus={(e) => show(e.currentTarget)}
+        onBlur={hide}
       >
-        <Avatar
-          id={member.user.id}
-          name={name}
-          avatar={member.avatar ?? member.user.avatar}
-          size={32}
-          status={status}
-          bot={member.user.bot}
-        />
+        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={32} status={status} />
         <span className='member-copy'>
-          <span
-            className='member-name'
-            style={
-              top
-                ? { color: `#${top.color.toString(16).padStart(6, '0')}` }
-                : undefined
-            }
-          >
-            {name}
-          </span>
-          {activity && (
-            <span className='member-activity'>
-              {activity.state ?? activity.name}
+          <span className='member-name-line'>
+            <span className='member-name' style={{ color: roleColor(guild?.roles, member) }}>
+              {name}
             </span>
-          )}
+            {isOwner && <OwnerCrown />}
+            {member.user.bot && <BotTag />}
+          </span>
+          {line && <span className='member-activity'>{line}</span>}
         </span>
       </button>
-      <UserContextMenu
-        userId={member.user.id}
-        name={name}
-        guildId={guildId}
-        menu={menu}
-      />
-    </li>
+      {anchor && <HoverCard guildId={guildId} member={member} anchor={anchor} />}
+      <UserContextMenu userId={member.user.id} name={name} guildId={guildId} menu={menu} />
+    </>
   );
+}
+
+function GroupHeader({ row, onToggle }: { row: Extract<Row, { kind: 'header' }>; onToggle: (id: string) => void }) {
+  return (
+    <h3 className='members-heading'>
+      <button type='button' className='members-heading-btn' aria-expanded={!row.collapsed} onClick={() => onToggle(row.id)}>
+        {row.collapsed ? <CaretRight size={10} weight='bold' /> : <CaretDown size={10} weight='bold' />}
+        <span>{row.title}</span>
+        <span className='tnum'>{row.count}</span>
+      </button>
+    </h3>
+  );
+}
+
+function RowView({ row, guildId, onToggle }: { row: Row; guildId: string; onToggle: (id: string) => void }) {
+  return row.kind === 'header' ? <GroupHeader row={row} onToggle={onToggle} /> : <MemberRow guildId={guildId} member={row.member} />;
 }
 
 export function MemberList({ guildId }: { guildId: string }) {
   const members = useGuildStore((s) => s.members[guildId]);
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const presence = usePresenceStore((s) => s.byUser);
+  const [query, setQuery] = useState('');
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     getRuntime().gateway.send(GatewayOp.REQUEST_GUILD_MEMBERS, {
@@ -89,36 +154,83 @@ export function MemberList({ guildId }: { guildId: string }) {
       presences: true,
       nonce: `members-${guildId}`,
     });
+    setQuery('');
+    setCollapsed(new Set());
   }, [guildId]);
 
-  const sections = useMemo(() => {
+  const needle = query.trim();
+  useEffect(() => {
+    if (!needle) return;
+    const t = window.setTimeout(() => {
+      getRuntime().gateway.send(GatewayOp.REQUEST_GUILD_MEMBERS, {
+        guild_id: guildId,
+        query: needle,
+        limit: 50,
+        presences: true,
+        nonce: `msearch-${guildId}`,
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [guildId, needle]);
+
+  const rows = useMemo<Row[]>(() => {
     if (!members || !guild) return [];
-    return buildMemberSections(
-      Object.values(members),
-      guild.roles,
-      guild.id,
-      (userId) => (presence[userId]?.status ?? 'offline') !== 'offline',
-      (m) => displayName(m.user, m.nick),
-    );
-  }, [members, guild, presence]);
+    const all = Object.values(members);
+    const nameOf = (m: GuildMember) => displayName(m.user, m.nick);
+    if (needle) {
+      const found = searchMembers(all, needle, nameOf);
+      return [
+        { kind: 'header', key: 'h:search', id: 'search', title: 'Search results', count: found.length, collapsed: false },
+        ...found.map<Row>((member) => ({ kind: 'member', key: `m:search:${member.user.id}`, member })),
+      ];
+    }
+    const sections = buildMemberSections(all, guild.roles, guild.id, (userId) => (presence[userId]?.status ?? 'offline') !== 'offline', nameOf);
+    return flattenSections(sections, collapsed);
+  }, [members, guild, presence, collapsed, needle]);
+
+  const toggle = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   const asideRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   useRovingFocus(asideRef, { selector: '.member-row' });
+  const virtual = rows.length > VIRTUALISE_ABOVE;
+  const virtualizer = useVirtualizer({
+    count: virtual ? rows.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (i) => (rows[i]?.kind === 'header' ? HEADER_ROW_PX : MEMBER_ROW_PX),
+    overscan: 12,
+    getItemKey: (i) => rows[i]?.key ?? i,
+  });
 
   return (
     <aside ref={asideRef} className='members' aria-label='Members'>
-      {sections.map((s) => (
-        <section key={s.title}>
-          <h3 className='members-heading'>
-            {s.title} <span className='tnum'>{s.members.length}</span>
-          </h3>
-          <ul>
-            {s.members.map((m) => (
-              <MemberRow key={m.user.id} guildId={guildId} member={m} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      <label className='members-search'>
+        <MagnifyingGlass size={14} aria-hidden />
+        <input type='search' value={query} placeholder='Search members' aria-label='Search members' onChange={(e) => setQuery(e.target.value)} />
+      </label>
+      <div ref={scrollRef} className='members-scroll'>
+        {virtual ? (
+          <div className='members-virtual' style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map((item) => {
+              const row = rows[item.index];
+              if (!row) return null;
+              return (
+                <div key={row.key} className='members-virtual-row' style={{ transform: `translateY(${item.start}px)`, height: item.size }}>
+                  <RowView row={row} guildId={guildId} onToggle={toggle} />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          rows.map((row) => <RowView key={row.key} row={row} guildId={guildId} onToggle={toggle} />)
+        )}
+        {needle && rows.length === 1 && <p className='members-empty'>No members match.</p>}
+      </div>
     </aside>
   );
 }
