@@ -197,6 +197,9 @@ export class DiscordyApi implements ApiPort {
   updateRole(guildId: string, roleId: string, patch: Partial<Role>) {
     return this.patch<Role>(`/guilds/${guildId}/roles/${roleId}`, patch);
   }
+  reorderRoles(guildId: string, positions: { id: string; position: number }[]) {
+    return this.patch<Role[]>(`/guilds/${guildId}/roles`, positions);
+  }
   deleteRole(guildId: string, roleId: string) {
     return this.del<void>(`/guilds/${guildId}/roles/${roleId}`);
   }
