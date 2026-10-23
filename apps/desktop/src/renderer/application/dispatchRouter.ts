@@ -28,6 +28,7 @@ import { useNotificationSettingsStore, useUserNotesStore } from './stores/notifi
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
+import { readAloudIfWanted } from './ttsReader';
 
 export interface DispatchContext {
   onVoiceServerUpdate(update: VoiceServerUpdate): void;
@@ -96,6 +97,7 @@ export function registerIncoming(message: ChatMessage, notify: (message: ChatMes
     const entry = inboxEntryOf(message, ctx);
     if (entry) useMentionInboxStore.getState().add(entry);
   }
+  readAloudIfWanted(message, me ?? undefined);
   notify(message);
 }
 

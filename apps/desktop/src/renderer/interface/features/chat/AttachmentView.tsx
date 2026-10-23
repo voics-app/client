@@ -9,6 +9,8 @@ import { isExpiring, signedUrlExpiryMs } from '@renderer/domain/signedUrl';
 import type { Attachment } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { MediaPlayer } from './MediaPlayer';
+import { AnimatedImage } from '../../shared/ui/AnimatedImage';
+import { looksAnimated } from '@renderer/domain/stillFrame';
 
 const STATE_LABEL: Record<TransferState, string> = {
   encrypting: 'Encrypting',
@@ -92,7 +94,7 @@ function MediaTile({ attachment, onError, tile, siblings }: { attachment: Attach
       style={{ aspectRatio: aspect }}
     >
       {kind === 'image' ? (
-        <img className="media-tile-media" data-ctx="image" data-src={src} data-open={attachment.url} data-filename={name} src={src} alt={hidden ? '' : (attachment.description ?? name)} loading="lazy" draggable={false} onError={onError} />
+        <AnimatedImage kind="gif" animated={looksAnimated(name) || looksAnimated(attachment.url)} className="media-tile-media" data-ctx="image" data-src={src} data-open={attachment.url} data-filename={name} src={src} alt={hidden ? '' : (attachment.description ?? name)} loading="lazy" draggable={false} onError={onError} />
       ) : (
         <>
           <video className="media-tile-media" src={src} preload="metadata" muted playsInline onError={onError} />

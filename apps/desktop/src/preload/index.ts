@@ -1,5 +1,5 @@
 /** Preload: exposes the typed `window.discordy` bridge. No Node APIs leak to the renderer. */
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer, webFrame, type IpcRendererEvent } from 'electron';
 import { IpcChannel, type CryptoBridge, type CryptoMethod, type DiscordyBridge, type TrayCommand, type UpdateStatus } from '../shared/ipc';
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
@@ -43,6 +43,7 @@ const bridge: DiscordyBridge = {
     onNavigate: (listener) => subscribe<string>(IpcChannel.appNavigate, listener),
     takePendingRoute: () => ipcRenderer.invoke(IpcChannel.appTakePendingRoute),
     flashFrame: () => ipcRenderer.send(IpcChannel.appFlash),
+    setZoom: (factor) => webFrame.setZoomFactor(Math.min(2, Math.max(0.5, Number(factor) || 1))),
     setVoiceState: (state) => ipcRenderer.send(IpcChannel.appVoiceState, state),
     onTrayCommand: (listener) => subscribe<TrayCommand>(IpcChannel.appTrayCommand, listener),
   },

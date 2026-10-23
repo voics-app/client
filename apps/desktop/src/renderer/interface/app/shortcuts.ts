@@ -12,6 +12,7 @@ import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@renderer/domain/
 import { fixedShortcutAction, type FixedShortcutAction } from '@renderer/domain/shortcutCatalog';
 import { isTextChannel, openChannel, openGuild } from './navigation';
 import { markChannelRead, markGuildRead } from './actions';
+import { handleZoomKey } from './appearance';
 import { pushToMute, toggleCamera, toggleDeafen, toggleMute, toggleScreenShare } from './voiceActions';
 import { answerRingingCall, declineRingingCall } from './callActions';
 import { goHistory, startNavHistory } from './navHistory';
@@ -155,7 +156,7 @@ export function useGlobalShortcuts(): void {
     const stopGlobal = startGlobalKeybinds((action, pressed) => runKeybindAction(action, pressed));
     const heldBinds = new Map<string, string>();
     const onKey = (e: KeyboardEvent) => {
-      if (handleContextMenuKey(e)) return;
+      if (handleContextMenuKey(e) || handleZoomKey(e)) return;
       const described = describeEvent(e);
       const fixed = fixedShortcutAction(described);
       if (fixed) {

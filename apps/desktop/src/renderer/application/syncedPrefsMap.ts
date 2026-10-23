@@ -20,6 +20,16 @@ export const SYNCED: { [K in keyof PrefsData]?: Mapping } = {
   fontScale: { where: 'pref', field: 'font_scale' },
   showAvatarsInCompact: { where: 'pref', field: 'show_avatars_in_compact' },
   linkPreviews: { where: 'pref', field: 'link_previews' },
+  messageSpacing: { where: 'pref', field: 'message_spacing' },
+  saturation: { where: 'pref', field: 'saturation' },
+  roleColors: { where: 'pref', field: 'role_colors' },
+  linkUnderline: { where: 'pref', field: 'link_underline' },
+  highContrast: { where: 'pref', field: 'high_contrast' },
+  animateGifs: { where: 'pref', field: 'animate_gifs' },
+  animateEmoji: { where: 'pref', field: 'animate_emoji' },
+  animateStickers: { where: 'pref', field: 'animate_stickers' },
+  ttsReadAloud: { where: 'pref', field: 'tts_read_aloud' },
+  ttsRate: { where: 'pref', field: 'tts_rate' },
   notifyOnlyMentions: { where: 'pref', field: 'notify_only_mentions' },
   notifySounds: { where: 'pref', field: 'notify_sounds' },
   soundToggles: { where: 'pref', field: 'sound_toggles' },
@@ -43,6 +53,10 @@ function usable(key: SyncedKey, value: unknown): boolean {
     case 'accent': return typeof value === 'string' && ACCENTS.includes(value);
     case 'density': return typeof value === 'boolean';
     case 'fontScale': return typeof value === 'number' && value >= 0.75 && value <= 1.5;
+    case 'saturation': return typeof value === 'number' && value >= 0 && value <= 1;
+    case 'ttsRate': return typeof value === 'number' && value >= 0.5 && value <= 2;
+    case 'messageSpacing': return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 32;
+    case 'roleColors': return value === 'name' || value === 'dot' || value === 'hidden';
     case 'soundToggles': return !!value && typeof value === 'object' && !Array.isArray(value);
     case 'recentReactions': return Array.isArray(value);
     case 'ringtone':

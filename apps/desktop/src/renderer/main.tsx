@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import './interface/shared/theme/base.css';
 import './interface/shared/theme/ui.css';
 import './interface/shared/theme/app.css';
+import './interface/shared/theme/access.css';
 import { App } from './interface/app/App';
 import { Gallery } from './interface/features/gallery/Gallery';
 import { usePrefsStore } from './application/stores/prefsStore';

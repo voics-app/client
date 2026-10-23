@@ -12,6 +12,7 @@ import type { GuildMember } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
+import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
 import { useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 import { RolePills } from './RolePills';
@@ -73,6 +74,7 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
   const openDialog = useUiStore((s) => s.openDialog);
   const menu = useMenu();
   const name = displayName(member.user, member.nick);
+  const roleStyle = useRoleColorDisplay(roleColor(guild?.roles, member));
   const line = activityLine(presence?.activities ?? []);
   const isOwner = guild?.owner_id === member.user.id;
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -108,7 +110,8 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
         <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={32} status={status} />
         <span className='member-copy'>
           <span className='member-name-line'>
-            <span className='member-name' style={{ color: roleColor(guild?.roles, member) }}>
+            <span className='member-name' style={roleStyle.tint ? { color: roleStyle.tint } : undefined}>
+              <RoleDot color={roleStyle.dot} />
               {name}
             </span>
             {isOwner && <OwnerCrown />}

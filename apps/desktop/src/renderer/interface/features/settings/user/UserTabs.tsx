@@ -14,6 +14,8 @@ import { keyLabel, uiohookKeycode } from '@renderer/domain/uiohookKeys';
 import type { DeliveryMode } from '@shared/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
 import { useUpdateStore } from '@renderer/application/stores/updateStore';
+import { speak } from '@renderer/infrastructure/tts';
+import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom } from '@renderer/domain/appearance';
 import { attempt } from '../../../app/actions';
 import { bridge } from '../../../app/bridge';
 import { getRuntime } from '../../../app/runtime';
@@ -339,10 +341,49 @@ export function AppearanceTab() {
           </button>
         ))}
       </div>
+      <SettingRow title="Sync with computer" description="Follow the light or dark setting of your operating system. A dark computer keeps the dark variant chosen above. This device only."><Switch label="Sync theme with computer" checked={prefs.syncOsTheme} onChange={(v) => prefs.set('syncOsTheme', v)} /></SettingRow>
       <SettingRow title="Message density" description="Compact fits more messages on screen."><Segmented label="Message density" value={prefs.density} onChange={(v) => prefs.set('density', v)} options={[{ value: 'cozy', label: 'Cozy' }, { value: 'compact', label: 'Compact' }]} /></SettingRow>
+      {prefs.density === 'compact' && <SettingRow title="Show avatars in compact" description="Keep avatars next to message groups in compact mode."><Switch label="Show avatars in compact" checked={prefs.showAvatarsInCompact} onChange={(v) => prefs.set('showAvatarsInCompact', v)} /></SettingRow>}
+      <SettingRow title="Space between message groups" description="Pixels between messages from different people. Follows your account."><Slider label="Space between message groups" value={prefs.messageSpacing} min={0} max={32} step={4} onChange={(v) => prefs.set('messageSpacing', v)} format={(v) => `${v}px`} /></SettingRow>
+      <SettingRow title="Channel list density" description="Row height in the channel and direct message lists. This device only."><Segmented label="Channel list density" value={prefs.channelListDensity} onChange={(v) => prefs.set('channelListDensity', v)} options={[{ value: 'cozy', label: 'Cozy' }, { value: 'compact', label: 'Compact' }]} /></SettingRow>
       <SettingRow title="Text size"><Slider label="Text size" value={prefs.fontScale} min={0.85} max={1.3} step={0.05} onChange={(v) => prefs.set('fontScale', v)} format={(v) => `${Math.round(v * 100)}%`} /></SettingRow>
+      <SettingRow title="Zoom" description="Scales the whole window. Ctrl and plus or minus zoom, Ctrl and 0 resets. This device only.">
+        <div className="setting-inline">
+          <Slider label="Zoom" value={prefs.zoom} min={ZOOM_MIN} max={ZOOM_MAX} step={ZOOM_STEP} onChange={(v) => prefs.set('zoom', clampZoom(v))} format={(v) => `${Math.round(v * 100)}%`} />
+          <Button variant="ghost" disabled={prefs.zoom === 1} onClick={() => prefs.set('zoom', 1)}>Reset</Button>
+        </div>
+      </SettingRow>
       <SettingRow title="Show link previews" description="Previews of links in messages, made by the server for standard chats. Follows your account on every device."><Switch label="Show link previews" checked={prefs.linkPreviews} onChange={(v) => prefs.set('linkPreviews', v)} /></SettingRow>
+    </Page>
+  );
+}
+
+export function AccessibilityTab() {
+  const prefs = usePrefsStore();
+  const test = () => speak('This is how text to speech sounds at this speed.', prefs.ttsRate);
+  return (
+    <Page title="Accessibility" sub="Applies at once and, except where noted, follows your account to every device.">
+      <h3>Motion</h3>
+      <SettingRow title="Sync with computer" description="Reduce motion whenever your operating system asks for it. This device only."><Switch label="Sync reduced motion with computer" checked={prefs.syncOsMotion} onChange={(v) => prefs.set('syncOsMotion', v)} /></SettingRow>
       <SettingRow title="Reduce motion" description="Replaces springs with instant changes and keeps the speaking ring static."><Switch label="Reduce motion" checked={prefs.reduceMotion} onChange={(v) => prefs.set('reduceMotion', v)} /></SettingRow>
+      <SettingRow title="Play GIFs automatically" description="When off, GIFs show their first frame and play when you point at them."><Switch label="Play GIFs automatically" checked={prefs.animateGifs} onChange={(v) => prefs.set('animateGifs', v)} /></SettingRow>
+      <SettingRow title="Animate emoji" description="Custom emoji that move."><Switch label="Animate emoji" checked={prefs.animateEmoji} onChange={(v) => prefs.set('animateEmoji', v)} /></SettingRow>
+      <SettingRow title="Animate stickers" description="Stickers that move."><Switch label="Animate stickers" checked={prefs.animateStickers} onChange={(v) => prefs.set('animateStickers', v)} /></SettingRow>
+      <h3>Colour and contrast</h3>
+      <SettingRow title="Saturation" description="Lower it to mute every colour in the app."><Slider label="Saturation" value={prefs.saturation} min={0} max={1} step={0.05} onChange={(v) => prefs.set('saturation', v)} format={(v) => `${Math.round(v * 100)}%`} /></SettingRow>
+      <SettingRow title="Role colours" description="How the top role colour of a member shows beside their name."><Segmented label="Role colours" value={prefs.roleColors} onChange={(v) => prefs.set('roleColors', v)} options={[{ value: 'name', label: 'In the name' }, { value: 'dot', label: 'As a dot' }, { value: 'hidden', label: 'Hidden' }]} /></SettingRow>
+      <SettingRow title="High contrast" description="Stronger text and visible edges on buttons and fields. Windows high contrast mode is respected automatically."><Switch label="High contrast" checked={prefs.highContrast} onChange={(v) => prefs.set('highContrast', v)} /></SettingRow>
+      <SettingRow title="Always underline links"><Switch label="Always underline links" checked={prefs.linkUnderline} onChange={(v) => prefs.set('linkUnderline', v)} /></SettingRow>
+      <h3>Text to speech</h3>
+      <SettingRow title="Allow playback and use of /tts" description="Type /tts and a message to have it read aloud, and hear text-to-speech messages in the channel you are looking at. Sending needs the Send Text-to-Speech Messages permission."><Switch label="Allow text to speech" checked={prefs.ttsReadAloud} onChange={(v) => prefs.set('ttsReadAloud', v)} /></SettingRow>
+      <SettingRow title="Speech rate">
+        <div className="setting-inline">
+          <Slider label="Speech rate" value={prefs.ttsRate} min={0.5} max={2} step={0.25} onChange={(v) => prefs.set('ttsRate', v)} format={(v) => `${v}x`} />
+          <Button variant="secondary" onClick={test}>Test</Button>
+        </div>
+      </SettingRow>
+      <h3>Keyboard</h3>
+      <p className="setting-desc">Every list and menu moves with the arrow keys, Tab shows a focus ring, Shift and F10 opens the context menu of the focused item, and Ctrl and / lists all shortcuts.</p>
     </Page>
   );
 }

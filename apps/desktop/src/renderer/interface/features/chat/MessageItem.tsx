@@ -16,6 +16,7 @@ import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName, useRoleColor } from '../../shared/hooks/useNames';
+import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
 import { formatTime } from '../../shared/hooks/useNow';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Menu, useMenu } from '../../shared/ui/Menu';
@@ -195,7 +196,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
   const openDialog = useUiStore((s) => s.openDialog);
   const setSidePanel = useUiStore((s) => s.setSidePanel);
-  const color = useRoleColor(guildId, message.author.id);
+  const roleColor = useRoleColorDisplay(useRoleColor(guildId, message.author.id));
   const nick = useGuildStore((s) => (guildId ? s.members[guildId]?.[message.author.id]?.nick : null));
   const name = displayName(message.author, nick);
 
@@ -246,8 +247,8 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           {startsGroup && (
             <header className="message-head">
               <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
-                <button type="button" className="message-author" style={color ? { color } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
-                  {name}
+                <button type="button" className="message-author" style={roleColor.tint ? { color: roleColor.tint } : undefined} onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })}>
+                  <RoleDot color={roleColor.dot} />{name}
                 </button>
               </UserMenuTarget>
               {message.deliveryMode === 'ephemeral' && (
