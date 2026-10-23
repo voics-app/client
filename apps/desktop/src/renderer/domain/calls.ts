@@ -33,3 +33,8 @@ export function callerOf(call: DmCall, userId: Snowflake): Snowflake | null {
 export function hasParticipants(call: DmCall | undefined): boolean {
   return Boolean(call && call.voiceStates.some((state) => state.channel_id !== null));
 }
+
+/** The first call currently ringing for the user (keybind answer/decline target). */
+export function ringingCallFor(calls: Record<Snowflake, DmCall>, userId: Snowflake): DmCall | null {
+  return Object.values(calls).find((call) => isRingingFor(call, userId)) ?? null;
+}

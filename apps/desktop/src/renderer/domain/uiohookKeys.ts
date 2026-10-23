@@ -23,3 +23,16 @@ const LABELS: Record<string, string> = { Space: 'Space', ShiftLeft: 'Left Shift'
 export function keyLabel(code: string): string {
   return LABELS[code] ?? code.replace(/^Key|^Digit/, '');
 }
+
+const PUNCT: Record<string, string> = { Minus: '-', Equal: '=', Backquote: '`', Backslash: '\\',BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/' };
+const MODIFIER_CODES = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'CapsLock']);
+
+const BY_NAME: Record<string, number> = { Escape: 1 };
+for (const [code, keycode] of Object.entries(ROW)) {
+  if (!MODIFIER_CODES.has(code)) BY_NAME[PUNCT[code] ?? code.replace(/^Key|^Digit/, '')] = keycode;
+}
+
+/** Keycode for a key name as written by describeEvent (`M`, `ArrowUp`, `Space`, `F5`, `,`); null when the native hook has no code for it. */
+export function keyNameCode(name: string): number | null {
+  return BY_NAME[name] ?? null;
+}

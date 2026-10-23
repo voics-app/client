@@ -52,7 +52,9 @@ export function notifyIncoming(message: ChatMessage): void {
   });
   if (!notify) return;
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
-  const body = toPlainText(parseMarkdown(message.content)).slice(0, 180) || 'Sent an attachment';
+  // Private (E2EE/P2P) plaintext never goes to the OS notification centre.
+  const isPrivate = message.deliveryMode === 'ephemeral' || message.deliveryMode === 'p2p';
+  const body = isPrivate ? 'Sent a private message' : toPlainText(parseMarkdown(message.content)).slice(0, 180) || 'Sent an attachment';
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
   bridge?.app.notify({ title, body, route, silent: !prefs.notifySounds });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();
