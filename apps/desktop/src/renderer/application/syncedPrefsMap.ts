@@ -4,6 +4,7 @@
  * video devices, volumes, voice processing, push-to-talk, keybinds, the desktop notification
  * toggle, taskbar flash, collapsed categories, call stage layouts and media player volume.
  */
+import { RINGTONE_OPTIONS } from '@renderer/domain/ringtones';
 import type { UserPreferences, UserSettings } from '@shared/contracts/rest';
 import { DEFAULT_PREFS, type PrefsData } from './stores/prefsStore';
 
@@ -45,7 +46,7 @@ function usable(key: SyncedKey, value: unknown): boolean {
     case 'fontScale': return typeof value === 'number' && value >= 0.75 && value <= 1.5;
     case 'soundToggles': return !!value && typeof value === 'object' && !Array.isArray(value);
     case 'recentReactions': return Array.isArray(value);
-    case 'ringtone':
+    case 'ringtone': return typeof value === 'string' && RINGTONE_OPTIONS.some((o) => o.id === value);
     case 'skinTone': return typeof value === 'string';
     default: return typeof value === 'boolean';
   }

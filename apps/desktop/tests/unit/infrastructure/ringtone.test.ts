@@ -23,6 +23,36 @@ function fakeContext() {
   return { context, oscillators, gains };
 }
 
+describe('Ringtone resilience', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('falls back to the default pattern for an unknown tone id and the default sink when the device is gone', async () => {
+    const { context, oscillators } = fakeContext();
+    const setSinkId = vi.fn(async (id: string) => {
+      if (id) throw new Error('NotFoundError');
+    });
+    context.setSinkId = setSinkId as typeof context.setSinkId;
+    const ringtone = new Ringtone(INCOMING_RING, { createContext: () => context as unknown as AudioContext });
+    ringtone.start('gone', { tone: 'nope' as never, volume: Number.NaN });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(oscillators.map((o) => o.frequency.value)).toEqual([440, 480]);
+    expect(setSinkId).toHaveBeenLastCalledWith('');
+    ringtone.stop();
+  });
+
+  it('resumes a context that gets suspended while ringing', () => {
+    const { context } = fakeContext();
+    const resume = vi.fn(async () => undefined);
+    Object.assign(context, { state: 'suspended', resume });
+    const ringtone = new Ringtone(INCOMING_RING, { createContext: () => context as unknown as AudioContext });
+    ringtone.start(null);
+    vi.advanceTimersByTime(3_000);
+    expect(resume).toHaveBeenCalledTimes(3);
+    ringtone.stop();
+  });
+});
+
 describe('Ringtone', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
