@@ -34,6 +34,11 @@ jobs:
     # Owner PC runner (label karma-win, .github/scripts/runner-win.ps1) when the repo variable is set; GitHub-hosted otherwise.
     runs-on: ${{ vars.WINDOWS_RUNNER || 'windows-latest' }}
     timeout-minutes: 60
+    # Git Bash by full path: on a native Windows runner `bash` can resolve to C:/Windows/System32/bash.exe (WSL), which fails
+    # with Bash/Service/0x8007274c. windows-latest has Git Bash at the same path.
+    defaults:
+      run:
+        shell: '"C:/Program Files/Git/bin/bash.exe" --noprofile --norc -e -o pipefail {0}'
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -43,7 +48,6 @@ jobs:
           cache: pnpm
       - name: Decide the version
         id: ver
-        shell: bash
         run: |
           set -euo pipefail
           # Cache-bust: Cloudflare caches latest.yml for 5 minutes and a stale copy would repeat a version.
@@ -69,7 +73,6 @@ jobs:
       - name: Build installer
         run: pnpm dist:win
       - name: Collect installer and update feed
-        shell: bash
         run: |
           set -euo pipefail
           mkdir -p out
@@ -83,7 +86,6 @@ jobs:
           path: out
           retention-days: 14
       - name: Tag and attach to the GitHub Release
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
