@@ -4,7 +4,7 @@ import { DaveSession, FRAME_KEY_LABEL } from '@renderer/infrastructure/voice/dav
 
 const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
-function setup(supported = true) {
+function setup(supported = true, hasPeers = true) {
   const sent: { op: number; d: unknown }[] = [];
   const active: boolean[] = [];
   const errors: string[] = [];
@@ -35,6 +35,7 @@ function setup(supported = true) {
     crypto,
     cryptor,
     identityKeysOf: async () => ['key-of-leaver'],
+    hasPeers: () => hasPeers,
     send: (op, d) => sent.push({ op, d }),
     onActive: (a) => active.push(a),
     onError: (m) => errors.push(m),
@@ -70,38 +71,40 @@ describe('DaveSession', () => {
     expect(active).toEqual([true]);
   });
 
-  it('joins from a welcome and activates only on EXECUTE_TRANSITION', async () => {
-    const { dave, cryptor, sent, active } = setup();
-    await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 9, welcome_b64: 'w' });
-    expect(cryptor.setEpoch).toHaveBeenCalledWith(5, expect.any(Uint8Array));
-    expect(sent).toContainEqual({ op: VoiceOp.DAVE_PREPARE_TRANSITION, d: { transition_id: 9 } });
-    expect(active).toEqual([]);
-    await dave.handleOp(VoiceOp.DAVE_EXECUTE_TRANSITION, { transition_id: 9 });
-    expect(cryptor.activate).toHaveBeenCalledWith(5);
+  it('founds the group on start when nobody else is in the call (the voice node sends no founder flag)', async () => {
+    const { dave, crypto, sent, active } = setup(true, false);
+    await dave.start(1);
+    expect(crypto.createGroup).toHaveBeenCalledWith('voice:g');
+    expect(sent).toEqual([]);
     expect(active).toEqual([true]);
   });
 
-  it('the committer adds members and relays commit and welcome', async () => {
+  it('joins from a welcome and activates the epoch immediately (the node never sends EXECUTE)', async () => {
+    const { dave, cryptor, sent, active, crypto } = setup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 9, welcome: 'w' });
+    expect(crypto.joinFromWelcome).toHaveBeenCalledWith('w');
+    expect(cryptor.setEpoch).toHaveBeenCalledWith(5, expect.any(Uint8Array));
+    expect(cryptor.activate).toHaveBeenCalledWith(5);
+    expect(sent).toEqual([]);
+    expect(active).toEqual([true]);
+  });
+
+  it('the committer adds members and relays commit and welcome in the shape the voice node routes', async () => {
     const { dave, sent, crypto } = setup();
     await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
     await dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: 'u2', key_package_b64: 'kp2' });
     expect(crypto.addMembers).toHaveBeenCalledWith('voice:g', ['kp2']);
     expect(sent.at(-1)).toEqual({
       op: VoiceOp.DAVE_MLS_COMMIT_WELCOME,
-      d: { transition_id: 1, commit_b64: 'c', welcome_b64: 'w', user_ids: ['u2'] },
+      d: { transition_id: 1, commit: 'c', welcome: 'w', recipient_ids: ['u2'] },
     });
   });
 
-  it('applies announced commits as pending epochs and activates them on execute', async () => {
+  it('applies announced commits and rotates to the new epoch', async () => {
     const { dave, cryptor, crypto } = setup();
-    await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 4, commit_b64: 'cm' });
+    await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 4, commit: 'cm' });
     expect(crypto.processIncoming).toHaveBeenCalledWith('voice:g', 'cm');
-    expect(cryptor.activate).not.toHaveBeenCalled();
-    await dave.handleOp(VoiceOp.DAVE_PREPARE_TRANSITION, { transition_id: 4 });
-    expect(cryptor.setPassthrough).toHaveBeenCalledWith(true);
-    await dave.handleOp(VoiceOp.DAVE_EXECUTE_TRANSITION, { transition_id: 4 });
     expect(cryptor.activate).toHaveBeenCalledWith(3);
-    expect(cryptor.setPassthrough).toHaveBeenLastCalledWith(false);
   });
 
   it('clears keys and goes inactive on failure or an invalid commit', async () => {
@@ -129,7 +132,7 @@ describe('DaveSession participant removal', () => {
 
     expect(crypto.removeMembers).toHaveBeenCalledWith('voice:g', ['key-of-leaver']);
     expect(cryptor.setEpoch.mock.calls[0]![0]).toBe(4);
-    expect(sent.at(-1)).toEqual({ op: VoiceOp.DAVE_MLS_COMMIT_WELCOME, d: { transition_id: 1, commit_b64: 'rc', welcome_b64: '', user_ids: [] } });
+    expect(sent.at(-1)).toEqual({ op: VoiceOp.DAVE_MLS_COMMIT_WELCOME, d: { transition_id: 1, commit: 'rc' } });
   });
 
   it('does nothing on a device that is not the committer', async () => {

@@ -44,7 +44,7 @@ export interface VoiceSessionOptions {
   createPeerConnection: () => RTCPeerConnection;
   /** Present when the runtime can protect media frames; required if the node announces E2EE. */
   cryptor?: FrameCryptorPort;
-  createDave?: (send: (op: number, d: unknown) => void, hooks: { onActive(active: boolean): void; onError(message: string): void }) => DaveSession;
+  createDave?: (send: (op: number, d: unknown) => void, hooks: { onActive(active: boolean): void; onError(message: string): void; hasPeers(): boolean }) => DaveSession;
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
@@ -84,6 +84,7 @@ export class VoiceSession implements VoiceSessionPort {
   private lastBytes: { sent: number; at: number } | null = null;
   private dave: DaveSession | null = null;
   private e2eeActive = false;
+  private peersSeen = false;
   private lastSpeakingFlags = 0;
   private retiredCount = 0;
 
@@ -231,7 +232,7 @@ export class VoiceSession implements VoiceSessionPort {
         this.onVideo(frame.d as VideoPayload);
         return;
       case VoiceOp.CLIENTS_CONNECT:
-        void (frame.d as ClientsConnect);
+        if ((frame.d as ClientsConnect).user_ids?.length) this.peersSeen = true;
         return;
       case VoiceOp.CLIENT_DISCONNECT:
         this.onClientDisconnect(frame.d as ClientDisconnect);
@@ -371,6 +372,7 @@ export class VoiceSession implements VoiceSessionPort {
       return;
     }
     this.dave = this.options.createDave((op, d) => this.sendFrame(op, d), {
+      hasPeers: () => this.peersSeen,
       onActive: (active) => this.setE2ee(active),
       onError: (message) => {
         this.setE2ee(false);

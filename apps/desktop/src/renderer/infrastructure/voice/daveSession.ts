@@ -11,11 +11,11 @@
  *   25 EXTERNAL_SENDER   <- { founder?: boolean, external_sender_b64?: string }
  *   26 MLS_KEY_PACKAGE   -> { key_package_b64 }       / <- { user_id, key_package_b64 } (relayed to the committer)
  *   27 MLS_PROPOSALS     <- { proposals_b64: string[] }
- *   28 MLS_COMMIT_WELCOME-> { transition_id, commit_b64, welcome_b64, user_ids: string[] }
- *   29 MLS_ANNOUNCE_COMMIT <- { transition_id, commit_b64 }
- *   30 MLS_WELCOME       <- { transition_id, welcome_b64 }
- *   21 PREPARE_TRANSITION<- { transition_id, protocol_version } / -> { transition_id } (ready)
- *   22 EXECUTE_TRANSITION<- { transition_id }
+ *   28 MLS_COMMIT_WELCOME-> { transition_id, commit, welcome?, recipient_ids?: string[] }   (the keys the voice node routes on)
+ *   29 MLS_ANNOUNCE_COMMIT <- { transition_id, commit }
+ *   30 MLS_WELCOME       <- { transition_id, welcome }
+ *   21/22 PREPARE/EXECUTE_TRANSITION: never sent by the voice node (it relays 21 verbatim, which would
+ *        ping-pong an ack), so epochs are activated as soon as their key is installed.
  *   31 MLS_INVALID_COMMIT<- { transition_id }
  */
 import { VoiceOp } from '@shared/contracts/voice';
@@ -36,6 +36,8 @@ export interface DaveOptions {
   cryptor: FrameCryptorPort;
   /** Identity public keys (base64) of every device of a user; needed to remove a departed participant. */
   identityKeysOf?(userId: string): Promise<string[]>;
+  /** True when other participants were already in the call at join; the first member founds the group (the voice node sends no `founder` flag). */
+  hasPeers?(): boolean;
   send(op: number, d: unknown): void;
   onActive(active: boolean): void;
   onError(message: string): void;
@@ -64,7 +66,20 @@ export class DaveSession {
       this.options.onError('This runtime cannot protect media frames; refusing to join an end-to-end encrypted call.');
       return;
     }
-    await this.guard(() => this.sendKeyPackage());
+    await this.guard(async () => {
+      if (this.options.hasPeers && !this.options.hasPeers() && !(await this.options.crypto.hasGroup(this.groupId))) {
+        await this.found();
+        return;
+      }
+      await this.sendKeyPackage();
+    });
+  }
+
+  private async found(): Promise<void> {
+    const epoch = await this.options.crypto.createGroup(this.groupId);
+    this.committer = true;
+    await this.installEpoch(epoch);
+    this.activate(epoch);
   }
 
   /**
@@ -80,13 +95,8 @@ export class DaveSession {
       if (!removal) return;
       this.transitionSeq += 1;
       await this.installEpoch(removal.epoch);
-      this.pending.set(this.transitionSeq, removal.epoch);
-      this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, {
-        transition_id: this.transitionSeq,
-        commit_b64: removal.commitB64,
-        welcome_b64: '',
-        user_ids: [],
-      });
+      this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, { transition_id: this.transitionSeq, commit: removal.commitB64 });
+      this.activate(removal.epoch);
     });
   }
 
@@ -140,10 +150,7 @@ export class DaveSession {
     switch (op) {
       case VoiceOp.DAVE_MLS_EXTERNAL_SENDER: {
         if (d.founder === true && !(await crypto.hasGroup(this.groupId))) {
-          const epoch = await crypto.createGroup(this.groupId);
-          this.committer = true;
-          await this.installEpoch(epoch);
-          this.activate(epoch);
+          await this.found();
         }
         return;
       }
@@ -153,13 +160,13 @@ export class DaveSession {
         const result = await crypto.addMembers(this.groupId, [String(d.key_package_b64)]);
         this.transitionSeq += 1;
         await this.installEpoch(result.epoch);
-        this.pending.set(this.transitionSeq, result.epoch);
         send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, {
           transition_id: this.transitionSeq,
-          commit_b64: result.commitB64,
-          welcome_b64: result.welcomeB64,
-          user_ids: [userId],
+          commit: result.commitB64,
+          welcome: result.welcomeB64,
+          recipient_ids: [userId],
         });
+        this.activate(result.epoch);
         return;
       }
       case VoiceOp.DAVE_MLS_PROPOSALS: {
@@ -167,23 +174,21 @@ export class DaveSession {
         return;
       }
       case VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT: {
-        const result = await crypto.processIncoming(this.groupId, String(d.commit_b64));
+        const result = await crypto.processIncoming(this.groupId, String(d.commit ?? d.commit_b64));
         if (result.kind !== 'commit' || result.epoch === undefined) throw new Error('announced commit could not be applied');
         await this.installEpoch(result.epoch);
-        this.pending.set(Number(d.transition_id), result.epoch);
+        this.activate(result.epoch);
         return;
       }
       case VoiceOp.DAVE_MLS_WELCOME: {
-        const joined = await crypto.joinFromWelcome(String(d.welcome_b64));
+        const joined = await crypto.joinFromWelcome(String(d.welcome ?? d.welcome_b64));
         this.groupId = joined.groupId;
         await this.installEpoch(joined.epoch);
-        this.pending.set(Number(d.transition_id), joined.epoch);
-        send(VoiceOp.DAVE_PREPARE_TRANSITION, { transition_id: d.transition_id });
+        this.activate(joined.epoch);
         return;
       }
       case VoiceOp.DAVE_PREPARE_TRANSITION: {
         cryptor.setPassthrough(true);
-        send(VoiceOp.DAVE_PREPARE_TRANSITION, { transition_id: d.transition_id });
         return;
       }
       case VoiceOp.DAVE_EXECUTE_TRANSITION: {
