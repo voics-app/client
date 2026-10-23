@@ -29,6 +29,7 @@ import type {
   Relationship,
   Role,
   User,
+  UserProfile,
   UserSettings,
   VoiceRegion,
 } from '@shared/contracts/rest';
@@ -79,6 +80,7 @@ export interface ApiPort {
   me(): Promise<User>;
   updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color'>>): Promise<User>;
   user(userId: string): Promise<User>;
+  userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
   privateChannels(): Promise<Channel[]>;
