@@ -75,6 +75,8 @@ export interface P2PDeps {
   now: () => number;
   /** Evaluated per connection so refreshed TURN credentials apply to new links. */
   iceServers?: () => PeerConnectionConfig['iceServers'];
+  /** A decrypted incoming P2P message was shown: feeds unread/mention counters and notifications. */
+  onIncoming?: (message: ChatMessage) => void;
   connectTimeoutMs?: number;
   iceGatherTimeoutMs?: number;
 }
@@ -445,6 +447,9 @@ export class P2PService {
     }
     await this.deps.history.save(message);
     useMessageStore.getState().receive(message);
+    const known = useGuildStore.getState().channels[link.channelId];
+    if (known) useGuildStore.getState().upsertChannel({ ...known, last_message_id: message.id });
+    this.deps.onIncoming?.(message);
   }
 
   private onFileStart(link: Link, id: string, size: unknown): void {

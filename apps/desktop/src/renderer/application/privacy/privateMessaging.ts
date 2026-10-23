@@ -1,3 +1,4 @@
+import type { ChatMessage } from '../stores/messageStore';
 /** Facade over the private delivery modes; the composition root wires one instance per signed-in session. */
 import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '@shared/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
@@ -28,6 +29,8 @@ export interface PrivateMessagingDeps {
   now?: () => number;
   iceServers?: () => PeerConnectionConfig['iceServers'];
   deviceLabel?: string;
+  /** Decrypted incoming (ephemeral/P2P) message: unread/mention counters and notification. */
+  onIncoming?: (message: ChatMessage) => void;
 }
 
 export class PrivateMessaging {
@@ -50,6 +53,7 @@ export class PrivateMessaging {
       attachments: this.attachments,
       getSelf: deps.getSelf,
       now,
+      onIncoming: deps.onIncoming,
     });
     this.p2p = new P2PService({
       gateway: deps.gateway,
@@ -61,6 +65,7 @@ export class PrivateMessaging {
       createPeerConnection: deps.createPeerConnection,
       now,
       iceServers: deps.iceServers,
+      onIncoming: deps.onIncoming,
     });
     this.sender = new MessageSender({ api: deps.api, ephemeral: this.ephemeral, p2p: this.p2p, history, now });
   }
