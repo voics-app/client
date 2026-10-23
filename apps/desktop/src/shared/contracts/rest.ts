@@ -487,6 +487,13 @@ export interface Relationship {
   nickname?: string | null;
 }
 
+/** GET /users/{id}/profile: the user plus servers and friends shared with the caller. */
+export interface UserProfile {
+  user: User;
+  mutual_guilds: { id: Snowflake; nick?: string | null }[];
+  mutual_friends: User[];
+}
+
 export interface Ban {
   reason: string | null;
   user: User;

@@ -1,3 +1,4 @@
+import { callUser } from '../../app/callActions';
 import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -28,7 +29,7 @@ import { attempt, copyText, reportError } from '../../app/actions';
 import { confirmPurgeRecentMessages } from '../../app/moderationActions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
-import { joinVoiceChannel, setUserVolume } from '../../app/voiceActions';
+import { setUserVolume } from '../../app/voiceActions';
 import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
@@ -188,16 +189,7 @@ export function UserContextMenu({
     useMentionStore.getState().requestMention(channelId, name, userId);
   };
 
-  const call = async () => {
-    const channel = await attempt(
-      () => getRuntime().api.openPrivateChannel([userId]),
-      'Could not open conversation',
-    );
-    if (!channel) return;
-    useGuildStore.getState().upsertChannel(channel);
-    openChannel(channel.id);
-    await attempt(() => joinVoiceChannel(null, channel.id), 'Could not start call');
-  };
+  const call = () => callUser(userId);
 
   const relate = async (fn: () => Promise<unknown>, title: string) => {
     await attempt(fn, title);

@@ -29,6 +29,7 @@ import type {
   Relationship,
   Role,
   User,
+  UserProfile,
   UserNote,
   UserSettings,
   VoiceRegion,
@@ -124,6 +125,9 @@ export class DiscordyApi implements ApiPort {
   }
   user(userId: string) {
     return this.get<User>(`/users/${userId}`);
+  }
+  userProfile(userId: string) {
+    return this.get<UserProfile>(`/users/${userId}/profile`);
   }
   settings() {
     return this.get<UserSettings>('/users/@me/settings');
