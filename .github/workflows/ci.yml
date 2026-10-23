@@ -11,8 +11,9 @@ concurrency:
 
 jobs:
   node:
-    uses: discordy-voics/.github/.github/workflows/node.yml@main
+    uses: discordy-voics/.github/.github/workflows/node.yml@feature/59-ci-cache
     with:
+      runs-on: vm-ci2
       image-name: discordy-client
       lint-script: lint
       typecheck-script: typecheck
@@ -23,7 +24,9 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: discordy-voics/.github/.github/workflows/docker.yml@main
+    uses: discordy-voics/.github/.github/workflows/docker.yml@feature/59-ci-cache
     with:
+      runs-on: vm-ci2
+      push: false
       image-name: client
       description: Discordy client web build (renderer bundle and component gallery, served by nginx)
