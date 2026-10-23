@@ -6,6 +6,7 @@
  * declared so Chromium raises `track` for it.
  */
 import type { SessionDescription } from '@shared/contracts/voice';
+import { VIDEO_BWE_FMTP } from '@renderer/domain/sdp';
 
 export type SourceKind = 'audio' | 'camera' | 'screen';
 
@@ -75,10 +76,12 @@ function sectionAnswer(
   const ip = remote.candidates[0]?.ip ?? '0.0.0.0';
   const port = remote.candidates[0]?.port ?? 9;
   const pts = `${payload.pt}${payload.rtx !== null && offer.kind === 'video' ? ` ${payload.rtx}` : ''}`;
+  // The client's own uplink runs without transport-wide-cc, see the uplink note in domain/sdp.
+  const uplink = direction === 'recvonly';
   const extmaps = offer.lines
     .filter((l) => l.startsWith('a=extmap:'))
     .map((l) => l.slice(9).split(' '))
-    .filter(([, uri]) => SUPPORTED_EXTENSIONS.includes(uri ?? ''))
+    .filter(([, uri]) => SUPPORTED_EXTENSIONS.includes(uri ?? '') && !(uplink && uri?.includes('transport-wide-cc')))
     .map(([id, uri]) => `a=extmap:${id} ${uri}`);
   const out = [
     `m=${offer.kind} ${port} UDP/TLS/RTP/SAVPF ${pts}`,
@@ -94,12 +97,13 @@ function sectionAnswer(
     'a=rtcp-mux',
   ];
   if (offer.kind === 'audio') {
-    out.push(`a=rtpmap:${payload.pt} opus/48000/2`, `a=fmtp:${payload.pt} minptime=10;useinbandfec=1;usedtx=1`, `a=rtcp-fb:${payload.pt} transport-cc`);
+    out.push(`a=rtpmap:${payload.pt} opus/48000/2`, `a=fmtp:${payload.pt} minptime=10;useinbandfec=1;usedtx=1`, ...(uplink ? [] : [`a=rtcp-fb:${payload.pt} transport-cc`]));
   } else {
     out.push(
       `a=rtpmap:${payload.pt} ${remote.video_codec.toUpperCase()}/90000`,
+      `a=fmtp:${payload.pt} ${VIDEO_BWE_FMTP}`,
       `a=rtcp-fb:${payload.pt} goog-remb`,
-      `a=rtcp-fb:${payload.pt} transport-cc`,
+      ...(uplink ? [] : [`a=rtcp-fb:${payload.pt} transport-cc`]),
       `a=rtcp-fb:${payload.pt} ccm fir`,
       `a=rtcp-fb:${payload.pt} nack`,
       `a=rtcp-fb:${payload.pt} nack pli`,

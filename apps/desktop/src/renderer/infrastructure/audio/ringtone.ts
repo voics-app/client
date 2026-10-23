@@ -89,12 +89,25 @@ export class Ringtone {
     if (this.context) return;
     const context = this.deps.createContext();
     this.context = context;
-    if (context.state === 'suspended') void context.resume().catch(() => undefined);
-    if (outputDeviceId) void context.setSinkId?.(outputDeviceId).catch(() => undefined);
-    const pattern = options.tone ? RINGTONE_PATTERNS[options.tone] : this.pattern;
+    const wake = () => {
+      if (context.state === 'suspended' || (context.state as string) === 'interrupted') void context.resume().catch(() => undefined);
+    };
+    wake();
+    // A stale or unplugged device must never leave the ring silent: fall back to the system default.
+    if (outputDeviceId) void context.setSinkId?.(outputDeviceId).catch(() => context.setSinkId?.('').catch(() => undefined));
+    // An unknown synced tone id or a garbage volume must not throw and leave the ring half started.
+    const pattern = (options.tone && RINGTONE_PATTERNS[options.tone]) || this.pattern;
     const level = pattern.gain * clampVolume(options.volume ?? 1);
-    playCycle(context, pattern, level);
-    this.timer = setInterval(() => playCycle(context, pattern, level), pattern.cycleMs);
+    const cycle = () => {
+      wake();
+      try {
+        playCycle(context, pattern, level);
+      } catch (error) {
+        console.error('ringtone cycle failed', error);
+      }
+    };
+    cycle();
+    this.timer = setInterval(cycle, pattern.cycleMs);
   }
 
   stop(): void {
@@ -107,7 +120,7 @@ export class Ringtone {
 }
 
 function clampVolume(volume: number): number {
-  return Math.min(1, Math.max(0, volume));
+  return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.8;
 }
 
 function playCycle(context: AudioContext, pattern: TonePattern, level: number): void {

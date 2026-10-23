@@ -4,7 +4,7 @@ import { DaveSession, FRAME_KEY_LABEL } from '@renderer/infrastructure/voice/dav
 
 const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
-function setup(supported = true) {
+function setup(supported = true, hasPeers = true) {
   const sent: { op: number; d: unknown }[] = [];
   const active: boolean[] = [];
   const errors: string[] = [];
@@ -35,6 +35,7 @@ function setup(supported = true) {
     crypto,
     cryptor,
     identityKeysOf: async () => ['key-of-leaver'],
+    hasPeers: () => hasPeers,
     send: (op, d) => sent.push({ op, d }),
     onActive: (a) => active.push(a),
     onError: (m) => errors.push(m),
@@ -70,38 +71,66 @@ describe('DaveSession', () => {
     expect(active).toEqual([true]);
   });
 
-  it('joins from a welcome and activates only on EXECUTE_TRANSITION', async () => {
-    const { dave, cryptor, sent, active } = setup();
-    await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 9, welcome_b64: 'w' });
+  it('does not found when the node says another member founds, and founds when it says so', async () => {
+    const other = setup();
+    await other.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: false });
+    expect(other.crypto.createGroup).not.toHaveBeenCalled();
+    const first = setup();
+    await first.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    expect(first.crypto.createGroup).toHaveBeenCalledWith('voice:g');
+    expect(first.active).toEqual([true]);
+  });
+
+  it('falls back to "nobody was in the call" when an older node sends no founder flag', async () => {
+    const alone = setup(true, false);
+    await alone.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, {});
+    expect(alone.crypto.createGroup).toHaveBeenCalled();
+    const joiner = setup(true, true);
+    await joiner.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, {});
+    expect(joiner.crypto.createGroup).not.toHaveBeenCalled();
+  });
+
+  it('joins from a welcome and activates the epoch immediately (the node never sends EXECUTE)', async () => {
+    const { dave, cryptor, sent, active, crypto } = setup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 9, welcome: 'w' });
+    expect(crypto.joinFromWelcome).toHaveBeenCalledWith('w');
     expect(cryptor.setEpoch).toHaveBeenCalledWith(5, expect.any(Uint8Array));
-    expect(sent).toContainEqual({ op: VoiceOp.DAVE_PREPARE_TRANSITION, d: { transition_id: 9 } });
-    expect(active).toEqual([]);
-    await dave.handleOp(VoiceOp.DAVE_EXECUTE_TRANSITION, { transition_id: 9 });
     expect(cryptor.activate).toHaveBeenCalledWith(5);
+    expect(sent).toEqual([]);
     expect(active).toEqual([true]);
   });
 
-  it('the committer adds members and relays commit and welcome', async () => {
+  it('the committer adds members and relays commit and welcome in the shape the voice node routes', async () => {
     const { dave, sent, crypto } = setup();
     await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
     await dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: 'u2', key_package_b64: 'kp2' });
     expect(crypto.addMembers).toHaveBeenCalledWith('voice:g', ['kp2']);
     expect(sent.at(-1)).toEqual({
       op: VoiceOp.DAVE_MLS_COMMIT_WELCOME,
-      d: { transition_id: 1, commit_b64: 'c', welcome_b64: 'w', user_ids: ['u2'] },
+      d: { transition_id: 1, commit: 'c', welcome: 'w', recipient_ids: ['u2'] },
     });
   });
 
-  it('applies announced commits as pending epochs and activates them on execute', async () => {
+  it('applies announced commits and rotates to the new epoch', async () => {
     const { dave, cryptor, crypto } = setup();
-    await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 4, commit_b64: 'cm' });
+    crypto.hasGroup.mockResolvedValue(true);
+    await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 4, commit: 'cm' });
     expect(crypto.processIncoming).toHaveBeenCalledWith('voice:g', 'cm');
-    expect(cryptor.activate).not.toHaveBeenCalled();
-    await dave.handleOp(VoiceOp.DAVE_PREPARE_TRANSITION, { transition_id: 4 });
-    expect(cryptor.setPassthrough).toHaveBeenCalledWith(true);
-    await dave.handleOp(VoiceOp.DAVE_EXECUTE_TRANSITION, { transition_id: 4 });
     expect(cryptor.activate).toHaveBeenCalledWith(3);
-    expect(cryptor.setPassthrough).toHaveBeenLastCalledWith(false);
+  });
+
+  it('ignores the commit announced to a joiner and keeps the keys its welcome installs, even when both race', async () => {
+    const { dave, cryptor, crypto, errors, active } = setup();
+    crypto.processIncoming.mockRejectedValue(new Error('unknown MLS group'));
+    await Promise.all([
+      dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 1, commit: 'cm' }),
+      dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 1, welcome: 'w' }),
+    ]);
+    expect(errors).toEqual([]);
+    expect(crypto.processIncoming).not.toHaveBeenCalled();
+    expect(cryptor.clear).not.toHaveBeenCalled();
+    expect(cryptor.activate).toHaveBeenCalledWith(5);
+    expect(active).toEqual([true]);
   });
 
   it('clears keys and goes inactive on failure or an invalid commit', async () => {
@@ -113,6 +142,7 @@ describe('DaveSession', () => {
     expect(active).toEqual([true, false]);
     expect(sent.at(-1)?.op).toBe(VoiceOp.DAVE_MLS_KEY_PACKAGE);
 
+    crypto.hasGroup.mockResolvedValue(true);
     crypto.processIncoming.mockRejectedValueOnce(new Error('bad commit'));
     await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 2, commit_b64: 'x' });
     expect(errors).toEqual(['bad commit']);
@@ -129,7 +159,7 @@ describe('DaveSession participant removal', () => {
 
     expect(crypto.removeMembers).toHaveBeenCalledWith('voice:g', ['key-of-leaver']);
     expect(cryptor.setEpoch.mock.calls[0]![0]).toBe(4);
-    expect(sent.at(-1)).toEqual({ op: VoiceOp.DAVE_MLS_COMMIT_WELCOME, d: { transition_id: 1, commit_b64: 'rc', welcome_b64: '', user_ids: [] } });
+    expect(sent.at(-1)).toEqual({ op: VoiceOp.DAVE_MLS_COMMIT_WELCOME, d: { transition_id: 1, commit: 'rc' } });
   });
 
   it('does nothing on a device that is not the committer', async () => {

@@ -22,6 +22,20 @@ export interface VideoSection {
   rtxSsrc: number | null;
 }
 
+/*
+ * Uplink bandwidth estimation (client#158). Our own uplink is negotiated WITHOUT transport-wide-cc (no
+ * extension, no rtcp-fb): measured against the voice node, Chromium's send-side estimator never applies the
+ * node's TWCC reports and decays to its floor (~60 kbps: 320x180 video at 7 fps), whereas without TWCC the
+ * sender keeps its start bitrate and sends 1280x720. The estimator then relies on receiver reports (loss) and
+ * REMB. Downlink sections keep TWCC.
+ */
+
+/**
+ * Chromium only honours these on the codec of the remote description: the sender estimate starts at 1.5 Mbps
+ * instead of 300 kbps, so 720p30 is sent from the first second and up to 4.5 Mbps (1080p30) is allowed.
+ */
+export const VIDEO_BWE_FMTP = `x-google-start-bitrate=${1500};x-google-min-bitrate=${600};x-google-max-bitrate=${4500}`;
+
 export interface ParsedOffer {
   iceUfrag: string;
   icePwd: string;
@@ -170,7 +184,7 @@ export function synthesizeRemoteAnswer(offer: ParsedOffer, remote: SessionDescri
     'a=setup:passive',
     `a=mid:${mid}`,
     ...(offer.extmaps[mid] ?? [])
-      .filter((e) => SUPPORTED_EXTENSIONS.has(e.uri))
+      .filter((e) => SUPPORTED_EXTENSIONS.has(e.uri) && !e.uri.includes('transport-wide-cc'))
       .map((e) => `a=extmap:${e.id} ${e.uri}`),
     'a=sendrecv',
     'a=rtcp-mux',
@@ -188,7 +202,6 @@ export function synthesizeRemoteAnswer(offer: ParsedOffer, remote: SessionDescri
     ...transport(offer.audio.mid),
     `a=rtpmap:${audioPt} ${CLOCK.opus}`,
     `a=fmtp:${audioPt} minptime=10;useinbandfec=1;usedtx=1`,
-    `a=rtcp-fb:${audioPt} transport-cc`,
     ...candidates,
   );
 
@@ -198,8 +211,8 @@ export function synthesizeRemoteAnswer(offer: ParsedOffer, remote: SessionDescri
       `m=video ${port} UDP/TLS/RTP/SAVPF ${vpt}${rtx !== null ? ` ${rtx}` : ''}`,
       ...transport(mid),
       `a=rtpmap:${vpt} ${codec}/${CLOCK.video}`,
+      `a=fmtp:${vpt} ${VIDEO_BWE_FMTP}`,
       `a=rtcp-fb:${vpt} goog-remb`,
-      `a=rtcp-fb:${vpt} transport-cc`,
       `a=rtcp-fb:${vpt} ccm fir`,
       `a=rtcp-fb:${vpt} nack`,
       `a=rtcp-fb:${vpt} nack pli`,

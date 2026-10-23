@@ -44,7 +44,7 @@ export interface VoiceSessionOptions {
   createPeerConnection: () => RTCPeerConnection;
   /** Present when the runtime can protect media frames; required if the node announces E2EE. */
   cryptor?: FrameCryptorPort;
-  createDave?: (send: (op: number, d: unknown) => void, hooks: { onActive(active: boolean): void; onError(message: string): void }) => DaveSession;
+  createDave?: (send: (op: number, d: unknown) => void, hooks: { onActive(active: boolean): void; onError(message: string): void; hasPeers(): boolean }) => DaveSession;
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
@@ -84,6 +84,8 @@ export class VoiceSession implements VoiceSessionPort {
   private lastBytes: { sent: number; at: number } | null = null;
   private dave: DaveSession | null = null;
   private e2eeActive = false;
+  private peersSeen = false;
+  private earlyDave: { op: number; d: unknown }[] = [];
   private lastSpeakingFlags = 0;
   private retiredCount = 0;
 
@@ -231,14 +233,17 @@ export class VoiceSession implements VoiceSessionPort {
         this.onVideo(frame.d as VideoPayload);
         return;
       case VoiceOp.CLIENTS_CONNECT:
-        void (frame.d as ClientsConnect);
+        if ((frame.d as ClientsConnect).user_ids?.length) this.peersSeen = true;
         return;
       case VoiceOp.CLIENT_DISCONNECT:
         this.onClientDisconnect(frame.d as ClientDisconnect);
         return;
       default:
         if (frame.op >= VoiceOp.DAVE_PREPARE_TRANSITION && frame.op <= VoiceOp.DAVE_MLS_INVALID_COMMIT) {
-          await this.dave?.handleOp(frame.op, frame.d);
+          // The node announces the external sender (and who founds the group) right after READY, before
+          // the offer/answer exchange creates the DAVE session; hold those frames instead of dropping them.
+          if (this.dave) await this.dave.handleOp(frame.op, frame.d);
+          else this.earlyDave.push({ op: frame.op, d: frame.d });
         }
     }
   }
@@ -371,13 +376,19 @@ export class VoiceSession implements VoiceSessionPort {
       return;
     }
     this.dave = this.options.createDave((op, d) => this.sendFrame(op, d), {
+      hasPeers: () => this.peersSeen,
       onActive: (active) => this.setE2ee(active),
       onError: (message) => {
         this.setE2ee(false);
         console.error('DAVE error', message);
       },
     });
-    void this.dave.start(description.e2ee.protocol_version);
+    const dave = this.dave;
+    const early = this.earlyDave;
+    this.earlyDave = [];
+    void dave.start(description.e2ee.protocol_version).then(async () => {
+      for (const frame of early) await dave.handleOp(frame.op, frame.d);
+    });
   }
 
   private setE2ee(active: boolean): void {
@@ -404,7 +415,10 @@ export class VoiceSession implements VoiceSessionPort {
       return;
     }
     if (existing?.active && existing.ssrc === ssrc) return;
-    if (existing) this.dropRemote(existing);
+    // An active source whose ssrc is corrected (the speaking op announces the node's planned ssrc, the video op the
+    // browser's real one) keeps its transceiver and track: dropping the stream here would silence it for good,
+    // because the existing receiver does not fire `track` again.
+    if (existing && !existing.active) this.dropRemote(existing);
     this.sources.set(key, { userId, source, ssrc, rtxSsrc, active: true });
     this.ssrcUsers.set(ssrc, userId);
     this.scheduleRenegotiation();
