@@ -28,6 +28,7 @@ import { useNotificationSettingsStore, useUserNotesStore } from './stores/notifi
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from './stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
+import { readAloudIfWanted } from './ttsReader';
 
 export interface DispatchContext {
   onVoiceServerUpdate(update: VoiceServerUpdate): void;
@@ -80,13 +81,9 @@ function hydrateReady(ready: ReadyPayload): void {
   useSessionStore.setState({ sessionId: ready.session_id, status: 'ready' });
 }
 
-function receiveMessage(message: Message, ctx: DispatchContext): void {
-  useMessageStore.getState().receive(message);
-  if (message.interaction_metadata) useInteractionStore.getState().resolvePending(message.channel_id, message.interaction_metadata.id);
-  const guilds = useGuildStore.getState();
-  const channel = guilds.channels[message.channel_id];
-  if (channel) guilds.upsertChannel({ ...channel, last_message_id: message.id });
-  useTypingStore.getState().stop(message.channel_id, message.author.id);
+/** Unread/mention/inbox bookkeeping and notification for a message already in the store. Shared by
+ * gateway MESSAGE_CREATE and the private (ephemeral/P2P) paths, which only have plaintext after decrypting. */
+export function registerIncoming(message: ChatMessage, notify: (message: ChatMessage) => void): void {
   const me = meId();
   if (message.author.id === me) {
     useReadStateStore.getState().markRead(message.channel_id, message.id);
@@ -100,7 +97,18 @@ function receiveMessage(message: Message, ctx: DispatchContext): void {
     const entry = inboxEntryOf(message, ctx);
     if (entry) useMentionInboxStore.getState().add(entry);
   }
-  ctx.onIncomingMessage(message);
+  readAloudIfWanted(message, me ?? undefined);
+  notify(message);
+}
+
+function receiveMessage(message: Message, ctx: DispatchContext): void {
+  useMessageStore.getState().receive(message);
+  if (message.interaction_metadata) useInteractionStore.getState().resolvePending(message.channel_id, message.interaction_metadata.id);
+  const guilds = useGuildStore.getState();
+  const channel = guilds.channels[message.channel_id];
+  if (channel) guilds.upsertChannel({ ...channel, last_message_id: message.id });
+  useTypingStore.getState().stop(message.channel_id, message.author.id);
+  registerIncoming(message, ctx.onIncomingMessage);
 }
 
 export function createDispatchRouter(ctx: DispatchContext): (event: string, data: unknown) => void {

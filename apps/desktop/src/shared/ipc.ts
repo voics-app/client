@@ -41,13 +41,34 @@ export interface CaptureSelection {
   audio: boolean;
 }
 
+/** Device-local desktop integration settings (never synced to the account). */
+export interface DesktopSettings {
+  openAtLogin: boolean;
+  startMinimized: boolean;
+  closeToTray: boolean;
+  hardwareAcceleration: boolean;
+  /** Minutes without keyboard or mouse input before the status turns Idle; 0 turns automatic idle off. */
+  idleTimeoutMinutes: number;
+}
+
+/** Allowed automatic idle timeouts in minutes; 0 is off. */
+export const IDLE_TIMEOUT_CHOICES: readonly number[] = [0, 1, 5, 10, 15, 30, 60];
+
+export type TrayCommand = 'toggleMute' | 'toggleDeafen';
+
+/** Self mute/deafen the renderer reports so the tray menu can show and toggle them. */
+export interface VoiceState {
+  muted: boolean;
+  deafened: boolean;
+}
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
+  | { state: 'available'; version: string; notes?: string }
   | { state: 'not-available' }
   | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string }
+  | { state: 'downloaded'; version: string; notes?: string }
   | { state: 'error'; message: string };
 
 /** Unread/mention totals the renderer pushes to main so it can drive the taskbar, tray and window title. */
@@ -120,6 +141,22 @@ export interface DiscordyBridge {
     /** Route of the deep link that launched the app, if it has not been delivered yet. */
     takePendingRoute(): Promise<string | null>;
     flashFrame(): void;
+    /** Sets the UI zoom factor of this window (Ctrl +, Ctrl -, Ctrl 0 and the Appearance page). */
+    setZoom(factor: number): void;
+    /** Reports self mute/deafen for the tray menu. */
+    setVoiceState(state: VoiceState): void;
+    onTrayCommand(listener: (command: TrayCommand) => void): () => void;
+  };
+  desktop: {
+    get(): Promise<DesktopSettings>;
+    set(patch: Partial<DesktopSettings>): Promise<{ settings: DesktopSettings; restartRequired: boolean }>;
+    relaunch(): void;
+  };
+  idle: {
+    /** Seconds since the last keyboard or mouse input anywhere on the OS. */
+    seconds(): Promise<number>;
+    /** Fires with true when the screen locks or the machine suspends, false when it comes back. */
+    onLock(listener: (locked: boolean) => void): () => void;
   };
   session: {
     load(): Promise<StoredSession | null>;
@@ -133,6 +170,9 @@ export interface DiscordyBridge {
   hotkeys: {
     setPushToTalk(keycode: number | null): Promise<boolean>;
     onPushToTalk(listener: (pressed: boolean) => void): () => void;
+    /** Registers the system-wide key combinations; false when the native key hook is unavailable. */
+    setGlobalKeybinds(specs: GlobalKeybindSpec[]): Promise<boolean>;
+    onGlobalKeybind(listener: (event: { id: string; pressed: boolean }) => void): () => void;
   };
   updates: {
     check(): Promise<void>;
@@ -140,6 +180,16 @@ export interface DiscordyBridge {
     onStatus(listener: (status: UpdateStatus) => void): () => void;
   };
   crypto: CryptoBridge;
+}
+
+/** One system-wide key combination: modifiers plus a uiohook keycode; `hold` actions also report the release. */
+export interface GlobalKeybindSpec {
+  id: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  keycode: number;
+  hold: boolean;
 }
 
 export const IpcChannel = {
@@ -151,6 +201,13 @@ export const IpcChannel = {
   appNavigate: 'app:navigate',
   appTakePendingRoute: 'app:take-pending-route',
   appFlash: 'app:flash',
+  appVoiceState: 'app:voice-state',
+  appTrayCommand: 'app:tray-command',
+  desktopGet: 'desktop:get',
+  desktopSet: 'desktop:set',
+  desktopRelaunch: 'desktop:relaunch',
+  idleSeconds: 'idle:seconds',
+  idleLock: 'idle:lock',
   sessionLoad: 'session:load',
   sessionSave: 'session:save',
   sessionClear: 'session:clear',
@@ -158,6 +215,8 @@ export const IpcChannel = {
   captureSelect: 'capture:select',
   hotkeyPtt: 'hotkey:ptt',
   hotkeyPttEvent: 'hotkey:ptt-event',
+  hotkeyGlobal: 'hotkey:global',
+  hotkeyGlobalEvent: 'hotkey:global-event',
   updatesCheck: 'updates:check',
   updatesInstall: 'updates:install',
   updatesStatus: 'updates:status',

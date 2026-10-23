@@ -1,12 +1,22 @@
 import { useEffect } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore, type Keybind } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { infoFor, type KeybindAction } from '@renderer/domain/keybinds';
+import { useReadStateStore } from '@renderer/application/stores/peopleStores';
+import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
+import { isUnread } from '@renderer/domain/unread';
+import { pickUnreadChannel } from '@renderer/domain/unreadNav';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@renderer/domain/rovingFocus';
 import { fixedShortcutAction, type FixedShortcutAction } from '@renderer/domain/shortcutCatalog';
 import { isTextChannel, openChannel, openGuild } from './navigation';
 import { markChannelRead, markGuildRead } from './actions';
-import { toggleDeafen, toggleMute } from './voiceActions';
+import { handleZoomKey } from './appearance';
+import { pushToMute, toggleCamera, toggleDeafen, toggleMute, toggleScreenShare } from './voiceActions';
+import { answerRingingCall, declineRingingCall } from './callActions';
+import { goHistory, startNavHistory } from './navHistory';
+import { isGloballyHandled, startGlobalKeybinds } from './globalKeybinds';
 
 export function describeEvent(e: KeyboardEvent): string {
   const parts: string[] = [];
@@ -26,6 +36,20 @@ function adjacentChannel(delta: 1 | -1): void {
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const next = list[wrapIndex(list.length, list.findIndex((c) => c.id === view.channelId), delta)];
   if (next) openChannel(next.id);
+}
+
+/** Next or previous unread, unmuted text channel of the open server (or of the DM list at home), wrapping around. */
+function adjacentUnread(delta: 1 | -1): void {
+  const view = useUiStore.getState().view;
+  const guildId = view.kind === 'guild' ? view.guildId : null;
+  const reads = useReadStateStore.getState().byChannel;
+  const settings = useNotificationSettingsStore.getState().byScope;
+  const list = Object.values(useGuildStore.getState().channels)
+    .filter((c) => (c.guild_id ?? null) === guildId && isTextChannel(c))
+    .sort(guildId ? (a, b) => (a.position ?? 0) - (b.position ?? 0) : (a, b) => (b.last_message_id ?? '').localeCompare(a.last_message_id ?? ''))
+    .map((c) => ({ id: c.id, unread: !isChannelMutedDeep(settings[scopeKey(c.guild_id)], c, Date.now()) && isUnread(c.last_message_id, reads[c.id]?.lastReadId) }));
+  const next = pickUnreadChannel(list, view.channelId, delta);
+  if (next) openChannel(next);
 }
 
 /** Ctrl+Alt+Up/Down: previous/next server in rail order. From Home, forward enters the first server and back the last. */
@@ -56,17 +80,39 @@ function focusSearch(): void {
   else ui.openPalette(true);
 }
 
-const ACTIONS: Record<Keybind['action'], (shift?: boolean) => void> = {
+interface RunContext {
+  /** False for the release of a held key (push to mute). */
+  pressed: boolean;
+  /** The Shift variant of the combination fired (Shift+Esc marks the whole server read). */
+  shift: boolean;
+}
+
+const ACTIONS: Record<KeybindAction, (ctx: RunContext) => void> = {
   palette: () => useUiStore.getState().openPalette(!useUiStore.getState().paletteOpen),
   toggleMute: () => void toggleMute(),
   toggleDeafen: () => void toggleDeafen(),
-  markRead: markCurrentRead,
+  pushToMute: ({ pressed }) => void pushToMute(pressed),
+  toggleCamera: () => void toggleCamera(),
+  toggleScreenShare: () => toggleScreenShare(),
+  answerCall: () => answerRingingCall(),
+  declineCall: () => declineRingingCall(),
+  markRead: ({ shift }) => markCurrentRead(shift),
   search: focusSearch,
   upload: () => document.querySelector<HTMLButtonElement>('button[aria-label="Attach files"]')?.click(),
   prevChannel: () => adjacentChannel(-1),
   nextChannel: () => adjacentChannel(1),
+  prevUnread: () => adjacentUnread(-1),
+  nextUnread: () => adjacentUnread(1),
+  historyBack: () => goHistory(-1),
+  historyForward: () => goHistory(1),
+  toggleMembers: () => useUiStore.getState().toggleSidePanel('members'),
 };
 
+/** Runs a keybind action; held actions get both the press and the release, every other action only the press. */
+export function runKeybindAction(action: KeybindAction, pressed = true, shift = false): void {
+  if (!pressed && !infoFor(action).hold) return;
+  ACTIONS[action]({ pressed, shift });
+}
 const FIXED: Record<FixedShortcutAction, () => void> = {
   prevServer: () => adjacentServer(-1),
   nextServer: () => adjacentServer(1),
@@ -103,11 +149,14 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && target.matches('input, textarea, select, [contenteditable="true"]');
 }
 
-/** Registers the user-configurable in-app shortcuts plus the fixed navigation ones. Global (out-of-focus) push-to-talk lives in the main process. */
+/** Registers the user-configurable in-app shortcuts plus the fixed navigation ones, the nav history and the global (system-wide) binds. */
 export function useGlobalShortcuts(): void {
   useEffect(() => {
+    const stopHistory = startNavHistory();
+    const stopGlobal = startGlobalKeybinds((action, pressed) => runKeybindAction(action, pressed));
+    const heldBinds = new Map<string, string>();
     const onKey = (e: KeyboardEvent) => {
-      if (handleContextMenuKey(e)) return;
+      if (handleContextMenuKey(e) || handleZoomKey(e)) return;
       const described = describeEvent(e);
       const fixed = fixedShortcutAction(described);
       if (fixed) {
@@ -115,13 +164,43 @@ export function useGlobalShortcuts(): void {
         FIXED[fixed]();
         return;
       }
-      const bind = usePrefsStore.getState().keybinds.find((k) => k.keys === described || (k.action === 'markRead' && e.shiftKey && described === `Shift+${k.keys}`));
-      if (!bind) return;
+      const bind = usePrefsStore.getState().keybinds.find((k) => k.keys && (k.keys === described || (k.action === 'markRead' && e.shiftKey && described === `Shift+${k.keys}`)));
+      if (!bind || isGloballyHandled(bind.id)) return;
       if (bind.action === 'markRead' && (e.defaultPrevented || isTypingTarget(e.target) || overlayOpen())) return;
       e.preventDefault();
-      ACTIONS[bind.action](bind.keys !== described);
+      if (infoFor(bind.action).hold) {
+        if (e.repeat) return;
+        heldBinds.set(bind.id, e.key);
+        runKeybindAction(bind.action, true);
+        return;
+      }
+      runKeybindAction(bind.action, true, bind.keys !== described);
     };
+    const release = (id?: string) => {
+      for (const bindId of [...heldBinds.keys()]) {
+        if (id && id !== bindId) continue;
+        heldBinds.delete(bindId);
+        const bind = usePrefsStore.getState().keybinds.find((k) => k.id === bindId);
+        if (bind) runKeybindAction(bind.action, false);
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      for (const [bindId, key] of [...heldBinds]) {
+        const keys = usePrefsStore.getState().keybinds.find((k) => k.id === bindId)?.keys ?? '';
+        const modifier = e.key === 'Control' || e.key === 'Meta' ? 'Ctrl' : ['Alt', 'Shift'].includes(e.key) ? e.key : null;
+        if (key.toLowerCase() === e.key.toLowerCase() || (modifier !== null && keys.split('+').includes(modifier))) release(bindId);
+      }
+    };
+    const onBlur = () => release();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      stopHistory();
+      stopGlobal();
+    };
   }, []);
 }

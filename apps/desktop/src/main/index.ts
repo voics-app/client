@@ -1,25 +1,33 @@
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
-import { app } from 'electron';
+import { app, powerMonitor } from 'electron';
 import { resolve } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';
 import { resolveConnection, resolveUpdateFeed } from './config';
 import { CryptoHost } from './cryptoHost';
 import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
-import { PushToTalk } from './hotkeys';
+import { GlobalKeybinds, HookHub, PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
-import { loadMainSettings } from './settings';
+import { loadMainSettings, saveMainSettings } from './settings';
+import { DesktopService } from './desktop/desktopService';
+import { createLoginItemPort } from './desktop/loginItemAdapter';
+import { normalizeDesktopSettings, shouldHideOnClose, shouldStartHidden } from './desktop/desktopSettings';
 import { AttentionPresenter } from './attention/presenter';
 import { createElectronAttentionPort } from './attention/electronAdapter';
 import { createTray, type TrayHandle } from './tray';
-import { Updater } from './updater';
+import { Updater, createElectronUpdaterPort } from './updater';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
 
 if (process.env.DISCORDY_USER_DATA_DIR) app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
 
 const env = process.env as Record<string, string | undefined>;
+
+// Hardware acceleration can only be switched before the app is ready, so it is read from the local settings file first.
+const desktopSettings = normalizeDesktopSettings(loadMainSettings().desktop, process.platform);
+if (!desktopSettings.hardwareAcceleration) app.disableHardwareAcceleration();
+
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
 let trayHandle: TrayHandle | null = null;
@@ -61,9 +69,16 @@ function bootstrap(): void {
   installSessionPolicies(() => connection);
   installDisplayMediaHandler();
 
-  const pushToTalk = new PushToTalk(getWindow);
+  const hookHub = new HookHub();
+  const pushToTalk = new PushToTalk(getWindow, hookHub);
+  const globalKeybinds = new GlobalKeybinds(getWindow, hookHub);
   if (settings.pushToTalkKeycode !== null) pushToTalk.configure(settings.pushToTalkKeycode);
-  const updater = new Updater(updateFeedUrl, (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
+  const updater = new Updater(createElectronUpdaterPort(updateFeedUrl), (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
+  const desktop = new DesktopService({ load: () => settings.desktop, save: () => undefined }, createLoginItemPort(), process.platform, (s) => {
+    saveMainSettings({ desktop: s });
+  });
+  desktop.sync();
+  const startHidden = env.DISCORDY_E2E !== '1' && shouldStartHidden(desktop.get(), process.argv, app.getLoginItemSettings().wasOpenedAtLogin);
 
   const attention = new AttentionPresenter(
     createElectronAttentionPort(getWindow, () => trayHandle),
@@ -74,36 +89,58 @@ function bootstrap(): void {
 
   registerIpc({
     window: getWindow,
-    setActivity: (counts) => attention.apply(counts),
+    setActivity: (counts) => {
+      attention.apply(counts);
+      trayHandle?.setActivity(counts);
+    },
+    setVoiceState: (state) => trayHandle?.setVoice(state),
+    desktop,
+    relaunch: () => {
+      quitting = true;
+      app.relaunch();
+      app.quit();
+    },
     info,
     setConnection: (profile) => {
       connection = profile;
     },
     crypto: new CryptoHost(),
     pushToTalk,
+    globalKeybinds,
     updater,
     takePendingRoute: () => inbox.take(),
   });
 
-  mainWindow = createMainWindow();
+  mainWindow = createMainWindow({ startHidden });
+  const sendLock = (locked: boolean) => mainWindow?.webContents.send(IpcChannel.idleLock, locked);
+  powerMonitor.on('lock-screen', () => sendLock(true));
+  powerMonitor.on('suspend', () => sendLock(true));
+  powerMonitor.on('unlock-screen', () => sendLock(false));
+  powerMonitor.on('resume', () => sendLock(false));
   mainWindow.on('close', (event) => {
-    if (!quitting && process.platform !== 'linux' && env.DISCORDY_E2E !== '1') {
+    if (shouldHideOnClose(desktop.get(), { quitting, hasTray: trayHandle !== null, e2e: env.DISCORDY_E2E === '1' })) {
       event.preventDefault();
       mainWindow?.hide();
     }
   });
 
   if (env.DISCORDY_E2E !== '1') {
-    trayHandle = createTray(getWindow, () => {
-      quitting = true;
-      app.quit();
-    });
-    setTimeout(() => void updater.check().catch(() => undefined), 10_000);
+    trayHandle = createTray(
+      getWindow,
+      () => {
+        quitting = true;
+        app.quit();
+      },
+      (command) => mainWindow?.webContents.send(IpcChannel.appTrayCommand, command),
+    );
+    updater.start();
   }
 
   app.on('before-quit', () => {
     quitting = true;
+    updater.stop();
     pushToTalk.dispose();
+    globalKeybinds.dispose();
   });
 }
 

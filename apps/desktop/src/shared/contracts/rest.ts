@@ -59,6 +59,16 @@ export interface UserPreferences {
   font_scale?: number;
   show_avatars_in_compact?: boolean;
   link_previews?: boolean;
+  saturation?: number;
+  role_colors?: 'name' | 'dot' | 'hidden';
+  link_underline?: boolean;
+  message_spacing?: number;
+  high_contrast?: boolean;
+  animate_gifs?: boolean;
+  animate_emoji?: boolean;
+  animate_stickers?: boolean;
+  tts_read_aloud?: boolean;
+  tts_rate?: number;
   notify_only_mentions?: boolean;
   notify_sounds?: boolean;
   sound_toggles?: Record<string, boolean>;
@@ -477,6 +487,13 @@ export interface Relationship {
   nickname?: string | null;
 }
 
+/** GET /users/{id}/profile: the user plus servers and friends shared with the caller. */
+export interface UserProfile {
+  user: User;
+  mutual_guilds: { id: Snowflake; nick?: string | null }[];
+  mutual_friends: User[];
+}
+
 export interface Ban {
   reason: string | null;
   user: User;
@@ -593,6 +610,7 @@ export interface CreateMessageBody {
   attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];
   message_reference?: MessageReference;
   embeds?: Embed[];
+  tts?: boolean;
 }
 
 export interface AttachmentUploadSlot {

@@ -102,7 +102,11 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
       onDragEnd={() => {
         draggedOccupant = null;
       }}
-      onClick={() => openDialog({ kind: 'profile', userId: state.user_id, guildId })}
+      onClick={(e) => {
+        // The user menu and its panels are portals inside this <li>: their clicks bubble through React but are not ours.
+        if (!e.currentTarget.contains(e.target as Node)) return;
+        openDialog({ kind: 'profile', userId: state.user_id, guildId });
+      }}
     >
       <Avatar id={state.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking} />
       <span className="occupant-name">{name}</span>

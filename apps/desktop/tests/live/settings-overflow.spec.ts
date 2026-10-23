@@ -14,6 +14,8 @@ const USER_TABS = [
   'Voice and video',
   'Keybinds',
   'Appearance',
+  'Accessibility',
+  'Desktop',
   'Notifications',
   'Connection',
   'About and updates',

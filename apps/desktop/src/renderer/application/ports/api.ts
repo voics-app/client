@@ -29,6 +29,7 @@ import type {
   Relationship,
   Role,
   User,
+  UserProfile,
   UserSettings,
   VoiceRegion,
 } from '@shared/contracts/rest';
@@ -79,6 +80,7 @@ export interface ApiPort {
   me(): Promise<User>;
   updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color'>>): Promise<User>;
   user(userId: string): Promise<User>;
+  userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
   privateChannels(): Promise<Channel[]>;
@@ -115,7 +117,8 @@ export interface ApiPort {
   bans(guildId: string): Promise<Ban[]>;
   ban(guildId: string, userId: string, reason?: string, options?: { delete_message_seconds?: number }): Promise<void>;
   unban(guildId: string, userId: string): Promise<void>;
-  auditLog(guildId: string, query?: { limit?: number; before?: string }): Promise<AuditLog>;
+  auditLog(guildId: string, query?: { limit?: number; before?: string; user_id?: string; action_type?: number }): Promise<AuditLog>;
+  bulkDeleteMessages(channelId: string, messageIds: string[]): Promise<void>;
   emojis(guildId: string): Promise<Emoji[]>;
   createEmoji(guildId: string, body: { name: string; image: string }): Promise<Emoji>;
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;

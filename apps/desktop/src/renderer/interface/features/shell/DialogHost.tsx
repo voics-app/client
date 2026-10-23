@@ -15,6 +15,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
+import { EXPIRY_CHOICES, expiryFor, type ExpiryChoice } from '@renderer/domain/selfPresence';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
@@ -308,14 +309,16 @@ function NewDmDialog() {
 function CustomStatusDialog() {
   const current = useSessionStore((s) => s.settings.custom_status);
   const [text, setText] = useState(current?.text ?? '');
+  const [expiry, setExpiry] = useState<ExpiryChoice>('never');
   const close = useClose();
   return (
     <Modal open onClose={close} title="Set a custom status" width={420}>
       <div className="stack">
         <Field label="What's happening?">{(id) => <Input id={id} data-autofocus value={text} maxLength={128} onChange={(e) => setText(e.target.value)} />}</Field>
+        <Field label="Clear after">{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select>}</Field>
         <div className="row-end">
           <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>Clear</Button>
-          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null); close(); }}>Save</Button>
+          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date())); close(); }}>Save</Button>
         </div>
       </div>
     </Modal>
@@ -325,13 +328,15 @@ function CustomStatusDialog() {
 function ShortcutsDialog() {
   const close = useClose();
   const keybinds = usePrefsStore((s) => s.keybinds);
-  const rows = [...keybinds.map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action })), ...FIXED_SHORTCUTS];
+  const pttLabel = usePrefsStore((s) => s.pttLabel);
+  const bound = keybinds.filter((k) => k.keys).map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action, global: Boolean(k.global) }));
+  const rows = [...bound, ...(pttLabel ? [{ keys: pttLabel, label: 'Push to talk', global: true }] : []), ...FIXED_SHORTCUTS.map((f) => ({ keys: f.keys, label: f.label, global: false }))];
   return (
-    <Modal open onClose={close} title="Keyboard shortcuts" description="Configurable shortcuts live in Settings, Keybinds." width={520}>
+    <Modal open onClose={close} title="Keyboard shortcuts" description="Change them in Settings, Keybinds." width={520}>
       <ul className="shortcut-list">
         {rows.map((r) => (
           <li key={`${r.keys}-${r.label}`} className="shortcut-row">
-            <span>{r.label}</span>
+            <span>{r.label}{r.global ? ' (global)' : ''}</span>
             <kbd className="kbd">{r.keys}</kbd>
           </li>
         ))}

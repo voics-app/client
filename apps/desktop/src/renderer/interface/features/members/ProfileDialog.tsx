@@ -1,4 +1,4 @@
-import { Chat, Copy, Fingerprint, UserMinus, UserPlus, Prohibit } from '@phosphor-icons/react';
+import { Chat, Copy, Phone, Fingerprint, UserMinus, UserPlus, Prohibit } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -7,6 +7,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { RelationshipType, type User } from '@shared/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
+import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
@@ -47,6 +48,29 @@ function SafetyNumber({ userId }: { userId: string }) {
       )}
       <p className="setting-desc">Compare this number with theirs over another channel. If it matches, no one is intercepting your encrypted chats.</p>
     </section>
+  );
+}
+
+function Mutuals({ userId }: { userId: string }) {
+  const query = useQuery({ queryKey: ['user-profile', userId], queryFn: () => getRuntime().api.userProfile(userId), staleTime: 60_000 });
+  const guilds = useGuildStore((s) => s.guilds);
+  if (!query.data) return null;
+  const { mutual_guilds: servers, mutual_friends: friends } = query.data;
+  return (
+    <>
+      <section className="profile-section" aria-label="Mutual servers">
+        <h4>Mutual servers — {servers.length}</h4>
+        {servers.length === 0 ? <p className="setting-desc">No servers in common.</p> : (
+          <ul className="mutual-list">{servers.map((g) => <li key={g.id}>{guilds[g.id]?.name ?? 'Server'}{g.nick ? <span className="setting-desc"> as {g.nick}</span> : null}</li>)}</ul>
+        )}
+      </section>
+      <section className="profile-section" aria-label="Mutual friends">
+        <h4>Mutual friends — {friends.length}</h4>
+        {friends.length === 0 ? <p className="setting-desc">No friends in common.</p> : (
+          <ul className="mutual-list">{friends.map((f) => <li key={f.id}><Avatar id={f.id} name={displayName(f)} avatar={f.avatar} size={20} /> {displayName(f)}</li>)}</ul>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -91,6 +115,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
             {!isMe && (
               <div className="profile-actions">
                 <Button variant="primary" icon={<Chat size={16} weight="fill" />} onClick={() => void message()}>Message</Button>
+                <Button icon={<Phone size={16} weight="fill" />} onClick={() => { close(); void callUser(userId); }}>Call</Button>
                 {relationship?.type === RelationshipType.FRIEND ? (
                   <Button icon={<UserMinus size={16} />} onClick={removeFriend}>Remove friend</Button>
                 ) : relationship?.type === RelationshipType.OUTGOING ? (
@@ -116,6 +141,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                 <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))} />
               </section>
             )}
+            {!isMe && !user.bot && <Mutuals userId={userId} />}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}
             {!isMe && <SafetyNumber userId={userId} />}
             <button type="button" className="link-btn" onClick={() => void copyText(user.id, 'User ID copied')}><Copy size={13} /> Copy user ID</button>

@@ -29,6 +29,7 @@ import type {
   Relationship,
   Role,
   User,
+  UserProfile,
   UserNote,
   UserSettings,
   VoiceRegion,
@@ -124,6 +125,9 @@ export class DiscordyApi implements ApiPort {
   }
   user(userId: string) {
     return this.get<User>(`/users/${userId}`);
+  }
+  userProfile(userId: string) {
+    return this.get<UserProfile>(`/users/${userId}/profile`);
   }
   settings() {
     return this.get<UserSettings>('/users/@me/settings');
@@ -227,8 +231,11 @@ export class DiscordyApi implements ApiPort {
   unban(guildId: string, userId: string) {
     return this.del<void>(`/guilds/${guildId}/bans/${userId}`);
   }
-  auditLog(guildId: string, query: { limit?: number; before?: string } = {}) {
-    return this.get<AuditLog>(`/guilds/${guildId}/audit-logs`, { limit: query.limit ?? 50, before: query.before });
+  auditLog(guildId: string, query: { limit?: number; before?: string; user_id?: string; action_type?: number } = {}) {
+    return this.get<AuditLog>(`/guilds/${guildId}/audit-logs`, { limit: query.limit ?? 50, before: query.before, user_id: query.user_id, action_type: query.action_type });
+  }
+  bulkDeleteMessages(channelId: string, messageIds: string[]) {
+    return this.post<void>(`/channels/${channelId}/messages/bulk-delete`, { messages: messageIds });
   }
   emojis(guildId: string) {
     return this.get<Emoji[]>(`/guilds/${guildId}/emojis`);

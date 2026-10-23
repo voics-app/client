@@ -9,6 +9,8 @@ export interface HierarchyMember {
 }
 
 export interface MemberSection {
+  /** Stable key: the role id, or `online` / `offline`. */
+  id: string;
   title: string;
   members: GuildMember[];
 }
@@ -71,6 +73,8 @@ export interface MemberCapabilities {
   /** Move to another voice channel, or disconnect (MOVE_MEMBERS; Discord has no hierarchy check). */
   canMoveMembers: boolean;
   canTimeout: boolean;
+  /** Delete the member's recent messages in bulk (MANAGE_MESSAGES; Discord has no hierarchy check). */
+  canManageMessages: boolean;
   canKick: boolean;
   canBan: boolean;
 }
@@ -108,6 +112,7 @@ export function memberCapabilities({
     canServerDeafen: has("DEAFEN_MEMBERS") && inVoice && above,
     canMoveMembers: has("MOVE_MEMBERS") && inVoice && !isSelf,
     canTimeout: has("MODERATE_MEMBERS") && above,
+    canManageMessages: has("MANAGE_MESSAGES") && !isSelf,
     canKick: has("KICK_MEMBERS") && above,
     canBan: has("BAN_MEMBERS") && above,
   };
@@ -135,11 +140,11 @@ export function buildMemberSections(
       .filter((m) => !used.has(m.user.id) && m.roles.includes(role.id))
       .sort(byName);
     list.forEach((m) => used.add(m.user.id));
-    if (list.length) sections.push({ title: role.name, members: list });
+    if (list.length) sections.push({ id: role.id, title: role.name, members: list });
   }
   const rest = online.filter((m) => !used.has(m.user.id)).sort(byName);
-  if (rest.length) sections.push({ title: "Online", members: rest });
-  if (offline.length) sections.push({ title: "Offline", members: offline });
+  if (rest.length) sections.push({ id: "online", title: "Online", members: rest });
+  if (offline.length) sections.push({ id: "offline", title: "Offline", members: offline });
   return sections;
 }
 

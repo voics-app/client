@@ -25,6 +25,15 @@ describe('synced preference mapping', () => {
     expect(patch).toEqual({ theme: 'oled', message_display_compact: true, preferences: { font_scale: 1.1, notify_sounds: false } });
   });
 
+  it('maps the appearance and accessibility keys and keeps device-only ones local', () => {
+    const server = { preferences: { saturation: 0.5, role_colors: 'dot', link_underline: true, message_spacing: 8, high_contrast: true, animate_gifs: false, animate_emoji: false, animate_stickers: false, tts_read_aloud: true, tts_rate: 1.5 } };
+    const prefs = fromServer(server as never);
+    expect(prefs).toEqual({ saturation: 0.5, roleColors: 'dot', linkUnderline: true, messageSpacing: 8, highContrast: true, animateGifs: false, animateEmoji: false, animateStickers: false, ttsReadAloud: true, ttsRate: 1.5 });
+    expect(toServerPatch(['roleColors', 'messageSpacing'], { ...DEFAULT_PREFS, roleColors: 'hidden', messageSpacing: 4 })).toEqual({ preferences: { role_colors: 'hidden', message_spacing: 4 } });
+    expect(fromServer({ preferences: { saturation: 2, role_colors: 'bold', message_spacing: 1.5, tts_rate: 5 } } as never)).toEqual({});
+    for (const local of ['zoom', 'syncOsTheme', 'syncOsMotion', 'channelListDensity']) expect(SYNCED_KEYS).not.toContain(local);
+  });
+
   it('ignores malformed server values', () => {
     expect(fromServer({ theme: 'neon', preferences: { accent: 'teal', font_scale: 9, reduce_motion: 'yes' } } as never)).toEqual({});
   });

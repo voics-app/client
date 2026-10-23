@@ -9,6 +9,8 @@ import { Permission } from '@shared/contracts/permissions';
 import type { Embed, EmbedMedia } from '@shared/contracts/rest';
 import { suppressEmbeds } from '../../app/messageActions';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
+import { AnimatedImage } from '../../shared/ui/AnimatedImage';
+import { looksAnimated } from '@renderer/domain/stillFrame';
 import { MediaPlayer } from './MediaPlayer';
 
 function filenameOf(media: EmbedMedia): string {
@@ -24,7 +26,7 @@ function EmbedImage({ media, className }: { media: EmbedMedia; className: string
   if (!src) return null;
   return (
     <button type="button" className={`embed-media-button ${className}`} aria-label="View image" onClick={() => openInLightbox(media, src)}>
-      <img data-ctx="image" data-src={src} data-open={media.url} data-filename={filenameOf(media)} src={src} alt="" loading="lazy" draggable={false} style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : undefined }} />
+      <AnimatedImage kind="gif" animated={looksAnimated(src) || looksAnimated(media.url)} data-ctx="image" data-src={src} data-open={media.url} data-filename={filenameOf(media)} src={src} alt="" loading="lazy" draggable={false} style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : undefined }} />
     </button>
   );
 }

@@ -17,6 +17,8 @@ export interface SendInput {
   files?: File[];
   /** Per file, in the same order: alt text for standard chats. */
   fileOptions?: { description?: string }[];
+  /** Text-to-speech message (`/tts`); standard chats only. */
+  tts?: boolean;
 }
 
 export interface PrivatePayload {

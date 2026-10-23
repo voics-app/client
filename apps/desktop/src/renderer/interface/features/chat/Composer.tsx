@@ -13,6 +13,8 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { maxFileBytes } from '@renderer/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
 import { Permission } from '@shared/contracts/permissions';
+import { parseTtsCommand } from '@renderer/domain/appearance';
+import { speak } from '@renderer/infrastructure/tts';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
 import { reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
@@ -95,6 +97,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
 
   const standard = mode === 'standard';
   const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
+  const ttsAllowed = !channel.guild_id || can(perms, Permission.SEND_TTS_MESSAGES);
   const canAttach = !channel.guild_id || can(perms, Permission.ATTACH_FILES);
 
   const slowmodeBypass = !channel.guild_id || can(perms, Permission.MANAGE_CHANNELS) || can(perms, Permission.MANAGE_MESSAGES);
@@ -282,6 +285,21 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const send = async () => {
     if (command) return runCommand();
     let content = text.trim();
+    const prefs = usePrefsStore.getState();
+    const ttsText = parseTtsCommand(content);
+    let tts = false;
+    if (content.toLowerCase().startsWith('/tts ') && ttsText) {
+      if (!standard || !ttsAllowed) {
+        reportError(new Error(!ttsAllowed ? 'You do not have permission to send text-to-speech messages here.' : 'Text-to-speech messages need a standard chat.'), 'Cannot send /tts');
+        return;
+      }
+      if (!prefs.ttsReadAloud) {
+        reportError(new Error('Turn on text-to-speech in Settings, Accessibility, to use /tts.'), 'Text-to-speech is off');
+        return;
+      }
+      content = ttsText;
+      tts = true;
+    }
     if (!content && files.length === 0) return;
     if (tooLong) {
       reportError(new Error(`Messages are limited to ${MAX_MESSAGE_LENGTH} characters. Remove ${-remainingChars} to send.`), 'Message too long');
@@ -294,6 +312,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       files: files.length > 0 ? files : undefined,
       fileOptions: files.map((f) => ({ description: descriptions.get(f) })),
       replyTo: replyTo?.id ?? null,
+      tts,
     };
     const draft = { text, files, descriptions };
     setText('');
@@ -304,6 +323,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     if (standard) useSlowmodeStore.getState().markSent(channel.id);
     try {
       await getRuntime().privacy.sender.send(channel, input);
+      if (tts) speak(content, prefs.ttsRate);
     } catch (e) {
       if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
       const cancelled = e instanceof Error && e.name === 'UploadCancelled';

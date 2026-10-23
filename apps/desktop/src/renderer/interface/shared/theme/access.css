@@ -1,0 +1,39 @@
+/* Appearance and accessibility preferences, driven by data attributes and custom properties set by useAppearance. */
+
+/* Saturation: the whole interface, only when below full colour so the filter costs nothing by default. */
+html[data-desaturated='true'] { filter: saturate(var(--saturation, 1)); }
+
+/* Link underline. */
+[data-link-underline='true'] a, [data-link-underline='true'] .markdown a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* Role colours: tint the name (default), a dot beside it, or neither. A dot is drawn by RoleDot. */
+.role-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex: none; vertical-align: baseline; }
+[data-role-colors='hidden'] .role-dot { display: none; }
+
+/* Message layout: compact drops the avatar column (unless avatars are kept) and the grouping gap shrinks. */
+[data-density='compact'] .message { padding-top: 0; padding-bottom: 0; }
+[data-density='compact'] .message-row { gap: 8px; }
+[data-density='compact'] .message-gutter { width: 28px; }
+[data-density='compact'][data-compact-avatars='false'] .message-gutter .message-avatar { display: none; }
+[data-density='compact'][data-compact-avatars='false'] .message-gutter { width: 44px; justify-content: flex-start; }
+[data-density='compact'] .message.starts-group { margin-top: calc(var(--message-spacing, 16px) * 0.5); }
+
+/* Channel list density. */
+[data-sidebar-density='compact'] .channel-main { height: 26px; }
+[data-sidebar-density='compact'] .nav-row { height: 32px; }
+[data-sidebar-density='compact'] .dm-row { height: 36px; }
+
+/* High contrast: stronger text and visible borders on every surface, in all three themes. */
+[data-high-contrast='true'] { --fg: oklch(1 0 0); --fg-muted: oklch(0.92 0 0); --fg-subtle: oklch(0.84 0 0); --focus-ring-width: 3px; }
+[data-high-contrast='true'][data-theme='light'] { --fg: oklch(0 0 0); --fg-muted: oklch(0.2 0 0); --fg-subtle: oklch(0.3 0 0); }
+[data-high-contrast='true'] button, [data-high-contrast='true'] input, [data-high-contrast='true'] textarea, [data-high-contrast='true'] select, [data-high-contrast='true'] .menu, [data-high-contrast='true'] .modal { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--fg) 55%, transparent); }
+[data-high-contrast='true'] .message-time, [data-high-contrast='true'] .message-time-gutter { color: var(--fg-muted); opacity: 1; }
+
+/* Windows high-contrast and other forced-colour modes: use the system palette, never our tints. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight; }
+  .accent-dot, .role-dot, .theme-preview i { forced-color-adjust: none; }
+  .message-author, .member-name { color: CanvasText !important; }
+  a { color: LinkText; text-decoration: underline; }
+  button, input, textarea, select { border: 1px solid ButtonText; }
+}

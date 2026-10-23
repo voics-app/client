@@ -17,8 +17,10 @@ import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
 import { HttpClient } from '@renderer/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
 import type { AuthResponse, ReadyPayload, VoiceState } from '@shared/contracts/rest';
+import { currentPresence } from '@renderer/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
+import { registerIncoming } from '@renderer/application/dispatchRouter';
 import { notifyIncoming } from './notifications';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DEVICE_UNREGISTERED_REASON } from '@renderer/domain/deliveryMode';
@@ -90,10 +92,7 @@ export function createRuntime(info: AppInfo): Runtime {
     properties: { os: info.platform, client: 'discordy-desktop', version: info.version },
     socketFactory: browserSocketFactory,
     intents: ALL_INTENTS,
-    presence: () => {
-      const status = useSessionStore.getState().settings.status;
-      return { status: status && status !== 'offline' ? status : 'online', activities: [], afk: false };
-    },
+    presence: () => currentPresence(),
   });
 
   const prefsSync = new PrefsSync({
@@ -123,6 +122,7 @@ export function createRuntime(info: AppInfo): Runtime {
     cdnUrl: () => useConnectionStore.getState().cdnUrl,
     iceServers: () => turn.iceServers(),
     deviceLabel: `${BRAND.displayName} ${info.platform}`,
+    onIncoming: (message) => registerIncoming(message, notifyIncoming),
   });
   gateway.onDispatch((event, data) => {
     dispatch(event, data);

@@ -5,6 +5,7 @@ import type { SoundId } from '@renderer/domain/sounds';
 import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
 import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '@renderer/domain/stageLayout';
+import type { RoleColorMode } from '@renderer/domain/appearance';
 import { recordReaction, type QuickEmoji } from '@renderer/domain/quickReactions';
 
 export type ThemeId = 'dark' | 'oled' | 'light';
@@ -14,11 +15,8 @@ export type InputMode = 'vad' | 'ptt';
 /** Device-local notification level for a channel or category until server-side settings exist (api#28). */
 export type NotifyLevel = 'all' | 'mentions' | 'none';
 
-export interface Keybind {
-  id: string;
-  action: 'palette' | 'toggleMute' | 'toggleDeafen' | 'markRead' | 'search' | 'upload' | 'prevChannel' | 'nextChannel';
-  keys: string;
-}
+import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@renderer/domain/keybinds';
+export type { Keybind };
 
 export interface PrefsState {
   theme: ThemeId;
@@ -27,6 +25,27 @@ export interface PrefsState {
   density: Density;
   fontScale: number;
   showAvatarsInCompact: boolean;
+  /** Pixels between message groups (synced). */
+  messageSpacing: number;
+  /** Colour saturation of the whole interface, 1 is full colour (synced). */
+  saturation: number;
+  roleColors: RoleColorMode;
+  linkUnderline: boolean;
+  highContrast: boolean;
+  animateGifs: boolean;
+  animateEmoji: boolean;
+  animateStickers: boolean;
+  /** Allow /tts and read text-to-speech messages aloud (synced). */
+  ttsReadAloud: boolean;
+  ttsRate: number;
+  /** Follow the operating system's light or dark setting (device-local). */
+  syncOsTheme: boolean;
+  /** Follow the operating system's reduced-motion setting (device-local). */
+  syncOsMotion: boolean;
+  /** UI zoom factor set with Ctrl +, Ctrl - and Ctrl 0 (device-local). */
+  zoom: number;
+  /** Row height of the channel list (device-local). */
+  channelListDensity: Density;
   inputDeviceId: string | null;
   outputDeviceId: string | null;
   cameraDeviceId: string | null;
@@ -71,16 +90,7 @@ export interface PrefsState {
 
 export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap' | 'patchStageLayout' | 'setCollapsed' | 'recordReaction'>;
 
-export const DEFAULT_KEYBINDS: Keybind[] = [
-  { id: 'palette', action: 'palette', keys: 'Ctrl+K' },
-  { id: 'mute', action: 'toggleMute', keys: 'Ctrl+Shift+M' },
-  { id: 'deafen', action: 'toggleDeafen', keys: 'Ctrl+Shift+D' },
-  { id: 'read', action: 'markRead', keys: 'Escape' },
-  { id: 'search', action: 'search', keys: 'Ctrl+F' },
-  { id: 'upload', action: 'upload', keys: 'Ctrl+Shift+U' },
-  { id: 'prev', action: 'prevChannel', keys: 'Alt+ArrowUp' },
-  { id: 'next', action: 'nextChannel', keys: 'Alt+ArrowDown' },
-];
+export { DEFAULT_KEYBINDS };
 
 export const DEFAULT_PREFS: PrefsData = {
   theme: 'dark',
@@ -89,6 +99,20 @@ export const DEFAULT_PREFS: PrefsData = {
   density: 'cozy',
   fontScale: 1,
   showAvatarsInCompact: false,
+  messageSpacing: 16,
+  saturation: 1,
+  roleColors: 'name',
+  linkUnderline: false,
+  highContrast: false,
+  animateGifs: true,
+  animateEmoji: true,
+  animateStickers: true,
+  ttsReadAloud: false,
+  ttsRate: 1,
+  syncOsTheme: false,
+  syncOsMotion: true,
+  zoom: 1,
+  channelListDensity: 'cozy',
   inputDeviceId: null,
   outputDeviceId: null,
   cameraDeviceId: null,
@@ -154,6 +178,7 @@ export const usePrefsStore = create<PrefsState>()(
     }),
     {
       name: 'discordy.prefs.v1',
+      merge: (persisted, current) => ({ ...current, ...(persisted as Partial<PrefsState>), keybinds: mergeKeybinds((persisted as Partial<PrefsState> | undefined)?.keybinds) }),
       storage: createJSONStorage(() => (typeof window === 'undefined' ? memoryStorage() : browserStorage())),
     },
   ),
