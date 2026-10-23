@@ -20,6 +20,7 @@ import type { AuthResponse, ReadyPayload, VoiceState } from '@shared/contracts/r
 import { currentPresence } from '@renderer/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
+import { registerIncoming } from '@renderer/application/dispatchRouter';
 import { notifyIncoming } from './notifications';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DEVICE_UNREGISTERED_REASON } from '@renderer/domain/deliveryMode';
@@ -121,6 +122,7 @@ export function createRuntime(info: AppInfo): Runtime {
     cdnUrl: () => useConnectionStore.getState().cdnUrl,
     iceServers: () => turn.iceServers(),
     deviceLabel: `${BRAND.displayName} ${info.platform}`,
+    onIncoming: (message) => registerIncoming(message, notifyIncoming),
   });
   gateway.onDispatch((event, data) => {
     dispatch(event, data);

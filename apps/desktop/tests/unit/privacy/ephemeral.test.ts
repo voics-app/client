@@ -10,7 +10,7 @@ import { BOB, FakeGateway, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores } f
 
 const SECRET = 'meet at the old bridge at nine';
 
-function setup(options: { available?: boolean; noCrypto?: boolean } = {}) {
+function setup(options: { available?: boolean; noCrypto?: boolean; onIncoming?: (m: unknown) => void } = {}) {
   resetStores();
   const gateway = new FakeGateway();
   const { crypto, records, encryptFake } = fakeCrypto(gateway, options.available ?? true);
@@ -30,6 +30,7 @@ function setup(options: { available?: boolean; noCrypto?: boolean } = {}) {
     attachments: { prepareCdn: async () => [] },
     getSelf: () => SELF,
     now: () => clock,
+    onIncoming: options.onIncoming,
   });
   return { service, gateway, crypto, api, records, encryptFake, advance: (ms: number) => (clock += ms) };
 }
@@ -211,6 +212,17 @@ describe('EphemeralService receiving', () => {
     expect(message?.deliveryMode).toBe('ephemeral');
     expect(gateway.log.indexOf('persist')).toBeGreaterThanOrEqual(0);
     expect(gateway.log.indexOf('persist')).toBeLessThan(gateway.log.indexOf(`gw:${GatewayOp.E2EE_ACK}`));
+  });
+
+  it('reports a decrypted incoming message once so unread/mention/notification run (client#154)', async () => {
+    const seen: unknown[] = [];
+    const { service, encryptFake } = setup({ onIncoming: (m) => seen.push(m) });
+    const payload = { v: 1, content: SECRET, nonce: '9000', timestamp: '2026-10-17T10:00:00.000Z' };
+    const env = envelope({ ciphertext: encryptFake(utf8ToB64(JSON.stringify(payload))) });
+    await service.handleEnvelope(env);
+    await service.handleEnvelope(env);
+    expect(seen).toHaveLength(1);
+    expect((seen[0] as { content: string; deliveryMode: string }).deliveryMode).toBe('ephemeral');
   });
 
   it('does not acknowledge when decryption fails, so the relay keeps the entry', async () => {
