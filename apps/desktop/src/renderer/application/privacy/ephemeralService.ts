@@ -45,6 +45,8 @@ export interface EphemeralDeps {
   attachments: Pick<AttachmentService, 'prepareCdn'>;
   getSelf: () => SelfIdentity;
   now: () => number;
+  /** A decrypted incoming message was shown: feeds unread/mention counters and notifications. */
+  onIncoming?: (message: ChatMessage) => void;
 }
 
 interface KeyPackageMeta {
@@ -462,6 +464,7 @@ export class EphemeralService {
     if (!existing) {
       useMessageStore.getState().receive(message);
       this.touchChannel(channelId, message.id);
+      this.deps.onIncoming?.(message);
     }
     return true;
   }

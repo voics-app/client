@@ -14,11 +14,8 @@ export type InputMode = 'vad' | 'ptt';
 /** Device-local notification level for a channel or category until server-side settings exist (api#28). */
 export type NotifyLevel = 'all' | 'mentions' | 'none';
 
-export interface Keybind {
-  id: string;
-  action: 'palette' | 'toggleMute' | 'toggleDeafen' | 'markRead' | 'search' | 'upload' | 'prevChannel' | 'nextChannel';
-  keys: string;
-}
+import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@renderer/domain/keybinds';
+export type { Keybind };
 
 export interface PrefsState {
   theme: ThemeId;
@@ -71,16 +68,7 @@ export interface PrefsState {
 
 export type PrefsData = Omit<PrefsState, 'set' | 'patch' | 'toggleMap' | 'patchStageLayout' | 'setCollapsed' | 'recordReaction'>;
 
-export const DEFAULT_KEYBINDS: Keybind[] = [
-  { id: 'palette', action: 'palette', keys: 'Ctrl+K' },
-  { id: 'mute', action: 'toggleMute', keys: 'Ctrl+Shift+M' },
-  { id: 'deafen', action: 'toggleDeafen', keys: 'Ctrl+Shift+D' },
-  { id: 'read', action: 'markRead', keys: 'Escape' },
-  { id: 'search', action: 'search', keys: 'Ctrl+F' },
-  { id: 'upload', action: 'upload', keys: 'Ctrl+Shift+U' },
-  { id: 'prev', action: 'prevChannel', keys: 'Alt+ArrowUp' },
-  { id: 'next', action: 'nextChannel', keys: 'Alt+ArrowDown' },
-];
+export { DEFAULT_KEYBINDS };
 
 export const DEFAULT_PREFS: PrefsData = {
   theme: 'dark',
@@ -154,6 +142,7 @@ export const usePrefsStore = create<PrefsState>()(
     }),
     {
       name: 'discordy.prefs.v1',
+      merge: (persisted, current) => ({ ...current, ...(persisted as Partial<PrefsState>), keybinds: mergeKeybinds((persisted as Partial<PrefsState> | undefined)?.keybinds) }),
       storage: createJSONStorage(() => (typeof window === 'undefined' ? memoryStorage() : browserStorage())),
     },
   ),

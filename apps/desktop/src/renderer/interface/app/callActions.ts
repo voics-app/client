@@ -2,6 +2,7 @@
 import { GatewayOp } from '@shared/contracts/gateway';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useCallStore } from '@renderer/application/stores/callStore';
+import { ringingCallFor } from '@renderer/domain/calls';
 import { getRuntime } from './runtime';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -29,4 +30,20 @@ export async function callUser(userId: string, video = false): Promise<void> {
   openChannel(channel.id);
   await attempt(() => joinVoiceChannel(null, channel.id), 'Could not start call');
   if (video && !useVoiceStore.getState().selfVideo) await toggleCamera();
+}
+
+function ringingChannel(): string | null {
+  const me = useSessionStore.getState().user?.id;
+  return me ? (ringingCallFor(useCallStore.getState().calls, me)?.channelId ?? null) : null;
+}
+
+/** Keybind targets: answer or decline the call that is ringing for the user, if any. */
+export function answerRingingCall(): void {
+  const id = ringingChannel();
+  if (id) acceptCall(id);
+}
+
+export function declineRingingCall(): void {
+  const id = ringingChannel();
+  if (id) declineCall(id);
 }

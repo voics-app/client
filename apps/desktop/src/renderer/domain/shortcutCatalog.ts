@@ -12,16 +12,7 @@ export const FIXED_SHORTCUTS: readonly { keys: string; action: FixedShortcutActi
   { keys: 'Escape', action: null, label: 'Close the open dialog or menu and return to where you were' },
 ];
 
-export const ACTION_LABELS: Record<string, string> = {
-  palette: 'Quick switcher',
-  toggleMute: 'Toggle mute',
-  toggleDeafen: 'Toggle deafen',
-  markRead: 'Mark channel as read',
-  search: 'Search',
-  upload: 'Upload a file',
-  prevChannel: 'Previous channel',
-  nextChannel: 'Next channel',
-};
+export { ACTION_LABELS } from './keybinds';
 
 /** Looks up the fixed action for a described key combination (see describeEvent). */
 export function fixedShortcutAction(described: string): FixedShortcutAction | null {

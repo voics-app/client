@@ -5,7 +5,7 @@ import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, 
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
 import type { CryptoHost } from './cryptoHost';
-import type { PushToTalk } from './hotkeys';
+import { sanitizeSpecs, type GlobalKeybinds, type PushToTalk } from './hotkeys';
 import { sessionVault } from './sessionVault';
 import { saveMainSettings } from './settings';
 import type { Updater } from './updater';
@@ -24,6 +24,7 @@ export interface IpcDeps {
   setConnection: (profile: ConnectionProfile) => void;
   crypto: CryptoHost;
   pushToTalk: PushToTalk;
+  globalKeybinds: GlobalKeybinds;
   updater: Updater;
   takePendingRoute: () => string | null;
   setActivity: (counts: ActivityCounts) => void;
@@ -94,6 +95,8 @@ export function registerIpc(deps: IpcDeps): void {
     saveMainSettings({ pushToTalkKeycode: value });
     return deps.pushToTalk.configure(value);
   });
+
+  handle(IpcChannel.hotkeyGlobal, (specs: unknown) => deps.globalKeybinds.configure(sanitizeSpecs(specs)));
 
   handle(IpcChannel.updatesCheck, () => deps.updater.check());
   on(IpcChannel.updatesInstall, () => deps.updater.install());
