@@ -71,12 +71,23 @@ describe('DaveSession', () => {
     expect(active).toEqual([true]);
   });
 
-  it('founds the group on start when nobody else is in the call (the voice node sends no founder flag)', async () => {
-    const { dave, crypto, sent, active } = setup(true, false);
-    await dave.start(1);
-    expect(crypto.createGroup).toHaveBeenCalledWith('voice:g');
-    expect(sent).toEqual([]);
-    expect(active).toEqual([true]);
+  it('does not found when the node says another member founds, and founds when it says so', async () => {
+    const other = setup();
+    await other.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: false });
+    expect(other.crypto.createGroup).not.toHaveBeenCalled();
+    const first = setup();
+    await first.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    expect(first.crypto.createGroup).toHaveBeenCalledWith('voice:g');
+    expect(first.active).toEqual([true]);
+  });
+
+  it('falls back to "nobody was in the call" when an older node sends no founder flag', async () => {
+    const alone = setup(true, false);
+    await alone.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, {});
+    expect(alone.crypto.createGroup).toHaveBeenCalled();
+    const joiner = setup(true, true);
+    await joiner.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, {});
+    expect(joiner.crypto.createGroup).not.toHaveBeenCalled();
   });
 
   it('joins from a welcome and activates the epoch immediately (the node never sends EXECUTE)', async () => {
@@ -102,9 +113,24 @@ describe('DaveSession', () => {
 
   it('applies announced commits and rotates to the new epoch', async () => {
     const { dave, cryptor, crypto } = setup();
+    crypto.hasGroup.mockResolvedValue(true);
     await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 4, commit: 'cm' });
     expect(crypto.processIncoming).toHaveBeenCalledWith('voice:g', 'cm');
     expect(cryptor.activate).toHaveBeenCalledWith(3);
+  });
+
+  it('ignores the commit announced to a joiner and keeps the keys its welcome installs, even when both race', async () => {
+    const { dave, cryptor, crypto, errors, active } = setup();
+    crypto.processIncoming.mockRejectedValue(new Error('unknown MLS group'));
+    await Promise.all([
+      dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 1, commit: 'cm' }),
+      dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 1, welcome: 'w' }),
+    ]);
+    expect(errors).toEqual([]);
+    expect(crypto.processIncoming).not.toHaveBeenCalled();
+    expect(cryptor.clear).not.toHaveBeenCalled();
+    expect(cryptor.activate).toHaveBeenCalledWith(5);
+    expect(active).toEqual([true]);
   });
 
   it('clears keys and goes inactive on failure or an invalid commit', async () => {
@@ -116,6 +142,7 @@ describe('DaveSession', () => {
     expect(active).toEqual([true, false]);
     expect(sent.at(-1)?.op).toBe(VoiceOp.DAVE_MLS_KEY_PACKAGE);
 
+    crypto.hasGroup.mockResolvedValue(true);
     crypto.processIncoming.mockRejectedValueOnce(new Error('bad commit'));
     await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 2, commit_b64: 'x' });
     expect(errors).toEqual(['bad commit']);

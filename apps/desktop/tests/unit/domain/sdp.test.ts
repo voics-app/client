@@ -87,6 +87,12 @@ describe('synthesizeRemoteAnswer', () => {
     expect(answer).toContain('a=setup:passive');
   });
 
+  it('negotiates the uplink without transport-wide-cc and with a high start bitrate (client#158)', () => {
+    expect(answer).not.toContain('transport-cc');
+    expect(answer).not.toContain('transport-wide-cc');
+    expect(answer).toMatch(/a=fmtp:[0-9]+ x-google-start-bitrate=1500;x-google-min-bitrate=600;x-google-max-bitrate=4500/);
+  });
+
   it('emits host candidates from the payload', () => {
     expect(answer).toContain('a=candidate:1 1 udp 2130706431 203.0.113.7 50000 typ host');
     expect(answer).toContain('a=end-of-candidates');

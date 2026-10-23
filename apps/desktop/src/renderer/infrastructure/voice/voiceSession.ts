@@ -85,6 +85,7 @@ export class VoiceSession implements VoiceSessionPort {
   private dave: DaveSession | null = null;
   private e2eeActive = false;
   private peersSeen = false;
+  private earlyDave: { op: number; d: unknown }[] = [];
   private lastSpeakingFlags = 0;
   private retiredCount = 0;
 
@@ -239,7 +240,10 @@ export class VoiceSession implements VoiceSessionPort {
         return;
       default:
         if (frame.op >= VoiceOp.DAVE_PREPARE_TRANSITION && frame.op <= VoiceOp.DAVE_MLS_INVALID_COMMIT) {
-          await this.dave?.handleOp(frame.op, frame.d);
+          // The node announces the external sender (and who founds the group) right after READY, before
+          // the offer/answer exchange creates the DAVE session; hold those frames instead of dropping them.
+          if (this.dave) await this.dave.handleOp(frame.op, frame.d);
+          else this.earlyDave.push({ op: frame.op, d: frame.d });
         }
     }
   }
@@ -379,7 +383,12 @@ export class VoiceSession implements VoiceSessionPort {
         console.error('DAVE error', message);
       },
     });
-    void this.dave.start(description.e2ee.protocol_version);
+    const dave = this.dave;
+    const early = this.earlyDave;
+    this.earlyDave = [];
+    void dave.start(description.e2ee.protocol_version).then(async () => {
+      for (const frame of early) await dave.handleOp(frame.op, frame.d);
+    });
   }
 
   private setE2ee(active: boolean): void {
@@ -406,7 +415,10 @@ export class VoiceSession implements VoiceSessionPort {
       return;
     }
     if (existing?.active && existing.ssrc === ssrc) return;
-    if (existing) this.dropRemote(existing);
+    // An active source whose ssrc is corrected (the speaking op announces the node's planned ssrc, the video op the
+    // browser's real one) keeps its transceiver and track: dropping the stream here would silence it for good,
+    // because the existing receiver does not fire `track` again.
+    if (existing && !existing.active) this.dropRemote(existing);
     this.sources.set(key, { userId, source, ssrc, rtxSsrc, active: true });
     this.ssrcUsers.set(ssrc, userId);
     this.scheduleRenegotiation();

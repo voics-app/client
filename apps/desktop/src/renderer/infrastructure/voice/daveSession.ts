@@ -36,7 +36,7 @@ export interface DaveOptions {
   cryptor: FrameCryptorPort;
   /** Identity public keys (base64) of every device of a user; needed to remove a departed participant. */
   identityKeysOf?(userId: string): Promise<string[]>;
-  /** True when other participants were already in the call at join; the first member founds the group (the voice node sends no `founder` flag). */
+  /** Fallback for voice nodes older than 0.1.6 that send no `founder` flag: true when others were in the call at join. */
   hasPeers?(): boolean;
   send(op: number, d: unknown): void;
   onActive(active: boolean): void;
@@ -48,6 +48,7 @@ const fromB64 = (value: string): Uint8Array => Uint8Array.from(atob(value), (c) 
 export class DaveSession {
   private groupId: string;
   private committer = false;
+  private queue: Promise<void> = Promise.resolve();
   private active = false;
   private transitionSeq = 0;
   private readonly pending = new Map<number, number>();
@@ -66,13 +67,7 @@ export class DaveSession {
       this.options.onError('This runtime cannot protect media frames; refusing to join an end-to-end encrypted call.');
       return;
     }
-    await this.guard(async () => {
-      if (this.options.hasPeers && !this.options.hasPeers() && !(await this.options.crypto.hasGroup(this.groupId))) {
-        await this.found();
-        return;
-      }
-      await this.sendKeyPackage();
-    });
+    await this.guard(() => this.sendKeyPackage());
   }
 
   private async found(): Promise<void> {
@@ -106,8 +101,12 @@ export class DaveSession {
     this.setActive(false);
   }
 
+  /** Ops run strictly one after another: the node announces a commit to everybody, including the member
+   * it also sends the welcome to, and a failure of the first must not wipe the keys the second installs. */
   handleOp(op: number, d: unknown): Promise<void> {
-    return this.guard(() => this.dispatch(op, d as Record<string, unknown>));
+    const run = this.queue.then(() => this.guard(() => this.dispatch(op, d as Record<string, unknown>)));
+    this.queue = run;
+    return run;
   }
 
   private async guard(fn: () => Promise<void>): Promise<void> {
@@ -149,7 +148,8 @@ export class DaveSession {
     const { crypto, cryptor, send } = this.options;
     switch (op) {
       case VoiceOp.DAVE_MLS_EXTERNAL_SENDER: {
-        if (d.founder === true && !(await crypto.hasGroup(this.groupId))) {
+        const founder = d.founder === undefined ? this.options.hasPeers?.() === false : d.founder === true;
+        if (founder && !(await crypto.hasGroup(this.groupId))) {
           await this.found();
         }
         return;
@@ -174,6 +174,8 @@ export class DaveSession {
         return;
       }
       case VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT: {
+        // A joiner is also sent the commit that adds it; it holds no group yet and gets its keys from the welcome.
+        if (!(await crypto.hasGroup(this.groupId))) return;
         const result = await crypto.processIncoming(this.groupId, String(d.commit ?? d.commit_b64));
         if (result.kind !== 'commit' || result.epoch === undefined) throw new Error('announced commit could not be applied');
         await this.installEpoch(result.epoch);
