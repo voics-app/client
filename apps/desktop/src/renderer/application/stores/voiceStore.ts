@@ -1,6 +1,7 @@
 /** Voice states for every guild/DM plus the local call connection. */
 import { create } from 'zustand';
 import type { VoiceState } from '@shared/contracts/rest';
+import { appendRtt } from '@renderer/domain/voicePanel';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
 
 export type CallStatus = 'idle' | 'requesting' | 'connecting' | 'connected' | 'reconnecting' | 'failed';
@@ -26,6 +27,8 @@ export interface CallState {
   error: string | null;
   e2ee: boolean;
   quality: CallQuality | null;
+  /** Recent round-trip samples (ms) for the average ping in connection details. */
+  rttHistory: number[];
 }
 
 export interface VoiceStoreState {
@@ -58,7 +61,7 @@ export interface VoiceStoreState {
   resetCall(): void;
 }
 
-const idleCall: CallState = { status: 'idle', guildId: null, channelId: null, region: null, error: null, e2ee: false, quality: null };
+const idleCall: CallState = { status: 'idle', guildId: null, channelId: null, region: null, error: null, e2ee: false, quality: null, rttHistory: [] };
 
 export const scopeOf = (state: Pick<VoiceState, 'guild_id' | 'channel_id'>): string | null => state.guild_id ?? state.channel_id;
 
@@ -90,7 +93,11 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
       return { states };
     }),
   hydrate: (scopeId, list) => set((s) => ({ states: { ...s.states, [scopeId]: Object.fromEntries(list.map((v) => [v.user_id, v])) } })),
-  setCall: (patch) => set((s) => ({ call: { ...s.call, ...patch } })),
+  setCall: (patch) =>
+    set((s) => {
+      const rttHistory = patch.quality ? appendRtt(s.call.rttHistory, patch.quality.rttMs) : patch.rttHistory ?? s.call.rttHistory;
+      return { call: { ...s.call, ...patch, rttHistory } };
+    }),
   setSelf: (patch) => set(patch),
   setSpeaking: (userId, level) => set((s) => ({ speaking: { ...s.speaking, [userId]: level } })),
   setRemoteStream: (stream) =>

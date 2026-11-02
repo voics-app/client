@@ -12,6 +12,7 @@ import { leaveVoice, stopShare, toggleCamera, toggleMute } from '../../app/voice
 import { Button } from '../../shared/ui/Button';
 import { IconButton } from '../../shared/ui/IconButton';
 import { snappy } from '../../shared/ui/motion';
+import { DeviceArrow, NoiseSuppressionButton, useKeyHint } from './DeviceMenus';
 import { VideoTile, streamKey, useParticipants, type Participant } from './Participants';
 import { usePopOut } from './usePopOut';
 import { VoiceChatToggle } from './VoiceTextChat';
@@ -64,6 +65,9 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
   const patchLayout = usePrefsStore((s) => s.patchStageLayout);
   const toggleSide = useUiStore((s) => s.toggleSidePanel);
   const openDialog = useUiStore((s) => s.openDialog);
+  const muteKeys = useKeyHint('toggleMute');
+  const cameraKeys = useKeyHint('toggleCamera');
+  const shareKeys = useKeyHint('toggleScreenShare');
   const popOut = usePopOut();
   const layout = useMemo(() => normalizeLayout(saved ?? DEFAULT_STAGE_LAYOUT), [saved]);
   const { main, rest, hidden, mode } = useMemo(() => arrangeStage(tiles, layout, focusedKey), [tiles, layout, focusedKey]);
@@ -107,13 +111,20 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
       </LayoutGroup>
       {layout.hideNonVideo && hidden > 0 && <p className="stage-hidden-note tnum">{hidden} without video hidden</p>}
       <div className="stage-controls glass" role="toolbar" aria-label="Call controls">
-        <IconButton label={selfMute ? 'Unmute' : 'Mute'} size="lg" active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
-          {selfMute ? <MicrophoneSlash size={24} /> : <Microphone size={24} />}
-        </IconButton>
-        <IconButton label={selfVideo ? 'Turn off camera' : 'Turn on camera'} size="lg" active={selfVideo} onClick={() => void toggleCamera()}>
-          <Camera size={24} weight={selfVideo ? 'fill' : 'regular'} />
-        </IconButton>
-        <IconButton label={selfStream ? 'Stop sharing' : 'Share your screen'} size="lg" active={selfStream} tone={selfStream ? 'accent' : 'default'} onClick={() => (selfStream ? void stopShare() : openDialog({ kind: 'screenPicker' }))}>
+        <span className="split-control">
+          <IconButton label={selfMute ? 'Unmute' : 'Mute'} hint={muteKeys} size="lg" active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
+            {selfMute ? <MicrophoneSlash size={24} /> : <Microphone size={24} />}
+          </IconButton>
+          <DeviceArrow kind="input" />
+        </span>
+        <span className="split-control">
+          <IconButton label={selfVideo ? 'Turn off camera' : 'Turn on camera'} hint={cameraKeys} size="lg" active={selfVideo} onClick={() => void toggleCamera()}>
+            <Camera size={24} weight={selfVideo ? 'fill' : 'regular'} />
+          </IconButton>
+          <DeviceArrow kind="camera" />
+        </span>
+        <NoiseSuppressionButton size="lg" iconSize={24} />
+        <IconButton label={selfStream ? 'Stop sharing' : 'Share your screen'} hint={shareKeys} size="lg" active={selfStream} tone={selfStream ? 'accent' : 'default'} onClick={() => (selfStream ? void stopShare() : openDialog({ kind: 'screenPicker' }))}>
           <Monitor size={24} weight={selfStream ? 'fill' : 'regular'} />
         </IconButton>
         <IconButton label="Watch Together" size="lg" onClick={() => toggleSide('watch')}>

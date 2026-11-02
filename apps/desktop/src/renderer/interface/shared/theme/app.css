@@ -125,8 +125,16 @@
 .voice-dock-place { font-size: var(--fs-meta); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-dock-stats { font-size: var(--fs-caption); color: var(--fg-subtle); }
 .voice-dock-error { font-size: var(--fs-meta); color: var(--danger); }
+.split-control { display: inline-flex; align-items: center; }
+.split-control .device-arrow { width: 16px; height: 24px; margin-left: -4px; border-radius: 6px; }
+.voice-signal { flex: none; margin: -4px 0 0 -6px; }
+.conn-details { margin: 0; display: grid; gap: 6px; min-width: 220px; }
+.conn-row { display: flex; justify-content: space-between; gap: 16px; font-size: var(--fs-small); }
+.conn-row dt { color: var(--fg-muted); } .conn-row dd { margin: 0; font-weight: 600; }
+.tooltip-kbd { margin-left: 6px; }
 .voice-dock-actions { display: flex; gap: 2px; margin-top: 2px; }
-.voice-dock-actions .icon-btn { flex: 1; width: auto; }
+.voice-dock-actions > .icon-btn, .voice-dock-actions > .split-control { flex: 1; width: auto; }
+.voice-dock-actions .split-control > .icon-btn:first-child { flex: 1; width: auto; }
 .e2ee-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; background: color-mix(in oklch, var(--mode-ephemeral) 18%, transparent); color: var(--mode-ephemeral); flex: none; }
 .e2ee-chip.is-large { font-size: var(--fs-meta); padding: 4px 12px; }
 .e2ee-chip.is-off { background: var(--bg-3); color: var(--fg-subtle); font-weight: 560; letter-spacing: 0; }
