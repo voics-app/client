@@ -3,6 +3,8 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
+import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useMemberGroupStore } from '@renderer/application/stores/memberGroupStore';
 import type { User } from '@shared/contracts/rest';
 
 const send = vi.fn();
@@ -17,6 +19,8 @@ const role = (id: string, position: number, extra = {}) => ({ id, name: id, colo
 
 beforeEach(() => {
   send.mockClear();
+  useMemberGroupStore.setState({ collapsed: {} });
+  useVoiceStore.setState({ states: {} });
   useGuildStore.setState({
     guilds: { [G]: { id: G, name: 'G', owner_id: 'owner', emojis: [], roles: [role(G, 0), role('adm', 5, { hoist: true, name: 'Admins' })] } } as never,
     members: { [G]: { owner: member('owner', ['adm']), alice: member('alice'), robo: member('robo', [], true), zed: member('zed') } } as never,
@@ -37,7 +41,7 @@ describe('MemberList', () => {
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(headings).toEqual(['Admins1', 'Online2', 'Offline1']);
     expect(screen.getByLabelText('Server owner')).toBeTruthy();
-    expect(screen.getByText('BOT')).toBeTruthy();
+    expect(screen.getByText('APP')).toBeTruthy();
     expect(screen.getByText('brb lunch')).toBeTruthy();
     expect(screen.getByRole('img', { name: 'idle' })).toBeTruthy();
   });
@@ -84,5 +88,30 @@ describe('MemberList', () => {
     useGuildStore.setState({ members: { [G]: many } as never });
     const { container } = render(<MemberList guildId={G} />);
     expect(container.querySelectorAll('.member-row').length).toBeLessThan(100);
+  });
+
+  it('shows a speaker for members in voice, named after the channel', () => {
+    useGuildStore.setState({ channels: { v1: { id: 'v1', name: 'Lounge', type: 2 } } as never });
+    useVoiceStore.setState({ states: { [G]: { alice: { channel_id: 'v1', user_id: 'alice' } } } as never });
+    render(<MemberList guildId={G} />);
+    expect(screen.getAllByLabelText('In voice: Lounge')).toHaveLength(1);
+  });
+
+  it('shows the icon of the highest role that has one', () => {
+    useGuildStore.setState({
+      guilds: { [G]: { id: G, name: 'G', owner_id: 'owner', emojis: [], roles: [role(G, 0), role('lo', 1, { name: 'Low', unicode_emoji: 'L1' }), role('hi', 4, { name: 'High', unicode_emoji: 'H1' })] } } as never,
+      members: { [G]: { alice: member('alice', ['lo', 'hi']) } } as never,
+    });
+    render(<MemberList guildId={G} />);
+    expect(screen.getByLabelText('High').textContent).toBe('H1');
+    expect(screen.queryByLabelText('Low')).toBeNull();
+  });
+
+  it('remembers collapsed groups across remounts', () => {
+    const first = render(<MemberList guildId={G} />);
+    fireEvent.click(screen.getByRole('button', { name: /Offline/ }));
+    first.unmount();
+    render(<MemberList guildId={G} />);
+    expect(screen.queryByText('zed')).toBeNull();
   });
 });
