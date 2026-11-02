@@ -20,6 +20,9 @@ import type {
   Guild,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
+  DiscoveryPage,
+  DiscoveryQuery,
+  GuildDiscoverySettings,
   GuildFull,
   GuildMember,
   Invite,
@@ -136,6 +139,12 @@ export interface ApiPort {
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
+
+  discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
+  discoveryCategories(): Promise<string[]>;
+  joinDiscoveryGuild(guildId: string): Promise<void>;
+  guildDiscovery(guildId: string): Promise<GuildDiscoverySettings>;
+  putGuildDiscovery(guildId: string, body: { enabled: boolean; category?: string | null; tags?: string[] }): Promise<GuildDiscoverySettings>;
 
   invite(code: string): Promise<Invite>;
   acceptInvite(code: string): Promise<Invite>;

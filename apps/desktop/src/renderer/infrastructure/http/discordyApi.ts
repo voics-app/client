@@ -18,6 +18,9 @@ import type {
   Device,
   Emoji,
   Guild,
+  DiscoveryPage,
+  DiscoveryQuery,
+  GuildDiscoverySettings,
   GuildFull,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
@@ -282,6 +285,22 @@ export class DiscordyApi implements ApiPort {
   }
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
+  }
+
+  discoveryGuilds(query: DiscoveryQuery = {}) {
+    return this.get<DiscoveryPage>('/discovery/guilds', query as Record<string, string>);
+  }
+  async discoveryCategories() {
+    return (await this.get<{ categories: string[] }>('/discovery/categories')).categories;
+  }
+  joinDiscoveryGuild(guildId: string) {
+    return this.post<void>(`/discovery/guilds/${guildId}/join`);
+  }
+  guildDiscovery(guildId: string) {
+    return this.get<GuildDiscoverySettings>(`/guilds/${guildId}/discovery`);
+  }
+  putGuildDiscovery(guildId: string, body: { enabled: boolean; category?: string | null; tags?: string[] }) {
+    return this.put<GuildDiscoverySettings>(`/guilds/${guildId}/discovery`, body);
   }
 
   invite(code: string) {

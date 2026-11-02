@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BellRinging, BellSlash, Check, Compass, FolderSimple, FolderSimpleDashed, Gear, House, Plus } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, Check, Compass, FolderSimple, FolderSimpleDashed, Gear, House, LinkSimple, Plus } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
@@ -310,6 +310,14 @@ export function ServerRail() {
         <div className="rail-item">
           <Tooltip label="Join a server" side="right" delay={150}>
             <button type="button" className="guild-btn add-btn" aria-label="Join a server" onClick={() => openDialog({ kind: 'joinGuild' })}>
+              <LinkSimple size={22} />
+            </button>
+          </Tooltip>
+        </div>
+        <div className="rail-item">
+          {view.kind === 'discover' && <motion.span layoutId="rail-pill" className="rail-pill" transition={snappy} />}
+          <Tooltip label="Discover servers" side="right" delay={150}>
+            <button type="button" className={`guild-btn add-btn${view.kind === 'discover' ? ' is-active' : ''}`} aria-label="Discover servers" aria-current={view.kind === 'discover' || undefined} onClick={() => navigate({ kind: 'discover', channelId: null })}>
               <Compass size={22} />
             </button>
           </Tooltip>

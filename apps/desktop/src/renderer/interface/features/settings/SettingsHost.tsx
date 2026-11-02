@@ -9,6 +9,7 @@ import { useDialogFocus } from '../../shared/hooks/useDialogFocus';
 import { gentle } from '../../shared/ui/motion';
 import { SettingsCloseButton } from './SettingsCloseButton';
 import { ChannelSettings } from './channel/ChannelSettings';
+import { ServerDiscovery } from './server/ServerDiscovery';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers, ServerOverview } from './server/ServerTabs';
 import { RolesEditor } from './server/RolesEditor';
 import { AboutTab, AccessibilityTab, AccountTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
@@ -82,10 +83,11 @@ function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettings
     { id: 'emoji', label: 'Emoji', show: can(perms, Permission.MANAGE_GUILD_EXPRESSIONS) },
     { id: 'members', label: 'Members', show: true },
     { id: 'invites', label: 'Invites', show: can(perms, Permission.MANAGE_GUILD) },
+    { id: 'discovery', label: 'Discovery', show: can(perms, Permission.MANAGE_GUILD) },
     { id: 'bans', label: 'Bans', show: can(perms, Permission.BAN_MEMBERS) },
     { id: 'audit', label: 'Audit log', show: can(perms, Permission.VIEW_AUDIT_LOG) },
   ];
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} /> }[tab];
+  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} /> }[tab];
   return (
     <Layout title="Server settings" onClose={() => open(null)} nav={<NavGroup title={guild.name}>{tabs.filter((t) => t.show).map((t) => <NavItem key={t.id} active={tab === t.id} onClick={() => open({ kind: 'server', guildId, tab: t.id })}>{t.label}</NavItem>)}</NavGroup>}>
       {body}

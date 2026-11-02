@@ -3,6 +3,7 @@ import { ChannelSidebar } from '../channels/ChannelSidebar';
 import { UserPanel } from '../channels/UserPanel';
 import { HomeSidebar } from '../home/HomeSidebar';
 import { FriendsView } from '../home/FriendsView';
+import { DiscoverView } from '../discover/DiscoverView';
 import { VoiceDock } from '../voice/VoiceDock';
 import { SidePanelHost } from '../panels/SidePanelHost';
 import { StageHost } from '../voice/StageHost';
@@ -22,7 +23,9 @@ export function Shell() {
           <UserPanel />
         </div>
         <main className="stage">
-          {view.kind === 'home' && !view.channelId ? (
+          {view.kind === 'discover' ? (
+            <DiscoverView />
+          ) : view.kind === 'home' && !view.channelId ? (
             <FriendsView />
           ) : view.channelId ? (
             <StageHost channelId={view.channelId} />
