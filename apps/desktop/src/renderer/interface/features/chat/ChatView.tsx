@@ -7,6 +7,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { hasParticipants } from '@renderer/domain/calls';
+import { typingLine } from '@renderer/domain/composerFormat';
 import { ChannelType } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { joinVoiceChannel } from '../../app/voiceActions';
@@ -34,7 +35,7 @@ function TypingBar({ channelId }: { channelId: string }) {
     const user = m?.user ?? channel?.recipients?.find((u) => u.id === id);
     return user ? displayName(user, m?.nick) : 'Someone';
   });
-  const text = names.length === 0 ? '' : names.length === 1 ? `${names[0]} is typing` : names.length === 2 ? `${names[0]} and ${names[1]} are typing` : 'Several people are typing';
+  const text = typingLine(names);
   return (
     <div className="typing-bar" aria-live="polite">
       {names.length > 0 && (
