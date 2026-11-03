@@ -11,3 +11,13 @@ describe('call pop-out window policy', () => {
     expect(isCallPopOut('https://evil.example', CALL_POPOUT_FRAME)).toBe(false);
   });
 });
+
+describe('main window audio policy', () => {
+  it('lets sounds start without a user gesture (ringtone, message and friend-request sounds)', async () => {
+    const { mainWebPreferences } = await import('../../../src/main/window');
+    const prefs = mainWebPreferences('/preload.js');
+    expect(prefs.autoplayPolicy).toBe('no-user-gesture-required');
+    expect(prefs.contextIsolation).toBe(true);
+    expect(prefs.sandbox).toBe(true);
+  });
+});

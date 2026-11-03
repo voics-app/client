@@ -213,6 +213,17 @@ describe('dispatchRouter', () => {
     expect(onFriendship).toHaveBeenCalledWith('2');
   });
 
+  it('reports a new incoming friend request once, not on a replay or an accept', () => {
+    const ctx = { onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), onFriendRequest: vi.fn(), invalidate: vi.fn() };
+    const route = createDispatchRouter(ctx);
+    route('RELATIONSHIP_ADD', { id: '5', type: 3, user: friend });
+    route('RELATIONSHIP_ADD', { id: '5', type: 3, user: friend });
+    expect(ctx.onFriendRequest).toHaveBeenCalledTimes(1);
+    route('RELATIONSHIP_ADD', { id: '5', type: 1, user: friend });
+    route('RELATIONSHIP_ADD', { id: '6', type: 4, user: friend });
+    expect(ctx.onFriendRequest).toHaveBeenCalledTimes(1);
+  });
+
   it('invalidates cached queries for bans and audit logs', () => {
     const { route, ctx } = setup();
     route('GUILD_BAN_ADD', { guild_id: '100', user: friend });

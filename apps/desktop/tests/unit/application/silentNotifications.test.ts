@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { notify, flashFrame } = vi.hoisted(() => ({ notify: vi.fn(), flashFrame: vi.fn() }));
+const { notify, flashFrame, play } = vi.hoisted(() => ({ notify: vi.fn(), flashFrame: vi.fn(), play: vi.fn() }));
+vi.mock('@renderer/infrastructure/audio/sfx', () => ({ soundEffects: { play } }));
 vi.mock('@renderer/interface/app/bridge', () => ({ bridge: { app: { notify, flashFrame } } }));
 
 import { notifyIncoming } from '@renderer/interface/app/notifications';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import type { ChatMessage } from '@renderer/application/stores/messageStore';
 
@@ -17,19 +19,45 @@ describe('notifyIncoming and @silent', () => {
   beforeEach(() => {
     notify.mockClear();
     flashFrame.mockClear();
+    play.mockClear();
+    useUiStore.setState({ view: { channelId: null } } as never);
     useSessionStore.setState({ user: me, settings: { status: 'online' } } as never);
-    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, flashTaskbar: true, notifyOnlyMentions: false } as never);
+    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false } as never);
     vi.stubGlobal('document', { hasFocus: () => false });
   });
 
-  it('notifies for an ordinary DM', () => {
+  it('notifies for an ordinary DM and plays the message sound in the app, with a silent toast', () => {
     notifyIncoming(dm());
     expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify.mock.calls[0]?.[0]).toMatchObject({ silent: true });
+    expect(play).toHaveBeenCalledWith('message', expect.any(Number), null);
+  });
+
+  it('still plays the sound when desktop notifications are off', () => {
+    usePrefsStore.setState({ notifyDesktop: false } as never);
+    notifyIncoming(dm());
+    expect(notify).not.toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['the master sound switch is off', () => usePrefsStore.setState({ notifySounds: false } as never)],
+    ['the message sound is off', () => usePrefsStore.setState({ soundToggles: { message: false } } as never)],
+    ['Do Not Disturb is on', () => useSessionStore.setState({ settings: { status: 'dnd' } } as never)],
+    ['the channel is open and focused', () => {
+      vi.stubGlobal('document', { hasFocus: () => true });
+      useUiStore.setState({ view: { channelId: '300' } } as never);
+    }],
+  ])('plays no sound when %s', (_name, arrange) => {
+    arrange();
+    notifyIncoming(dm());
+    expect(play).not.toHaveBeenCalled();
   });
 
   it('gives a silent message no desktop notification, sound or taskbar flash', () => {
     notifyIncoming(dm({ flags: 1 << 12 }));
     expect(notify).not.toHaveBeenCalled();
     expect(flashFrame).not.toHaveBeenCalled();
+    expect(play).not.toHaveBeenCalled();
   });
 });

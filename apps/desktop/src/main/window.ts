@@ -46,6 +46,21 @@ export function installSessionPolicies(getProfile: () => ConnectionProfile): voi
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
 }
 
+/** Hardened preferences of the main window. Ringtone, message and friend-request sounds start without a click. */
+export function mainWebPreferences(preload: string): Electron.WebPreferences {
+  return {
+    preload,
+    contextIsolation: true,
+    sandbox: true,
+    nodeIntegration: false,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+    spellcheck: true,
+    backgroundThrottling: false,
+    autoplayPolicy: 'no-user-gesture-required',
+  };
+}
+
 export const CALL_POPOUT_FRAME = 'discordy-call-popout';
 
 /** The only child window the renderer may open: the named about:blank call pop-out. */
@@ -79,18 +94,7 @@ export function createMainWindow(options: { startHidden?: boolean } = {}): Brows
     titleBarOverlay: isMac ? false : { color: '#00000000', symbolColor: '#a9abc0', height: 36 },
     trafficLightPosition: { x: 16, y: 12 },
     icon: join(__dirname, '../../resources/icon.png'),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      spellcheck: true,
-      backgroundThrottling: false,
-      // Ringtone and sound effects are synthesised with Web Audio and must start without a click.
-      autoplayPolicy: 'no-user-gesture-required',
-    },
+    webPreferences: mainWebPreferences(join(__dirname, '../preload/index.js')),
   });
 
   window.once('ready-to-show', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMentioned, shouldNotify, type NotifyInput, type PolicyMessage } from '@renderer/domain/notificationPolicy';
+import { shouldAlert, isMentioned, shouldNotify, type NotifyInput, type PolicyMessage } from '@renderer/domain/notificationPolicy';
 
 const msg = (extra: Partial<PolicyMessage> = {}): PolicyMessage => ({ guild_id: 'g', mentions: [], mention_roles: [], mention_everyone: false, ...extra });
 const ctx = { meId: 'me', myRoleIds: ['r1'] };
@@ -36,4 +36,11 @@ describe('shouldNotify', () => {
   it.each([{ muted: true }, { viewingChannel: true }, { desktopEnabled: false }, { doNotDisturb: true }])('suppressed by %o', (o) =>
     expect(shouldNotify({ ...base, mentioned: true, ...o })).toBe(false),
   );
+});
+
+describe('shouldAlert (sound gating, independent of the desktop toggle)', () => {
+  const base = { mentioned: false, level: 'all' as const, muted: false, viewingChannel: false, doNotDisturb: false };
+  it('alerts for a DM or mention while another channel is open', () => expect(shouldAlert({ ...base, level: 'mentions', mentioned: true })).toBe(true));
+  it('does not alert for an unmentioned message at level mentions', () => expect(shouldAlert({ ...base, level: 'mentions' })).toBe(false));
+  it.each([{ muted: true }, { viewingChannel: true }, { doNotDisturb: true }])('is silenced by %o', (o) => expect(shouldAlert({ ...base, mentioned: true, ...o })).toBe(false));
 });

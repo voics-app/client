@@ -7,6 +7,8 @@ import {
   needsRestart,
   normalizeDesktopSettings,
   shouldHideOnClose,
+  shouldHideOnMinimize,
+  shouldShowTray,
   shouldStartHidden,
 } from '../../../src/main/desktop/desktopSettings';
 import { buildTrayMenu, type TrayMenuItem } from '../../../src/main/desktop/trayModel';
@@ -15,6 +17,9 @@ vi.mock('electron', () => ({ app: { isPackaged: false } }));
 vi.mock('electron-updater', () => ({ autoUpdater: {} }));
 
 describe('desktop settings', () => {
+  it('shows the tray by default, closes to it on win/mac, and does not minimize to it', () => {
+    expect(defaultDesktopSettings('win32')).toMatchObject({ showTray: true, minimizeToTray: false, closeToTray: true, startMinimized: false });
+  });
   it('defaults close-to-tray on win/mac and off on linux', () => {
     expect(defaultDesktopSettings('win32').closeToTray).toBe(true);
     expect(defaultDesktopSettings('linux').closeToTray).toBe(false);
@@ -24,6 +29,8 @@ describe('desktop settings', () => {
     expect(normalizeDesktopSettings({ openAtLogin: 'yes', startMinimized: true, hardwareAcceleration: false }, 'win32')).toEqual({
       openAtLogin: false,
       startMinimized: true,
+      showTray: true,
+      minimizeToTray: false,
       closeToTray: true,
       hardwareAcceleration: false,
       idleTimeoutMinutes: 10,
@@ -41,6 +48,29 @@ describe('desktop settings', () => {
     expect(shouldStartHidden(s, ['app.exe'], true)).toBe(true);
     expect(shouldStartHidden(s, ['app.exe'], false)).toBe(false);
     expect(shouldStartHidden({ ...s, startMinimized: false }, ['app.exe'], true)).toBe(false);
+  });
+  it('never starts hidden without a tray to open it from', () => {
+    const s = { ...defaultDesktopSettings('win32'), startMinimized: true, showTray: false };
+    expect(shouldStartHidden(s, ['app.exe', '--hidden'], true)).toBe(false);
+  });
+  it('shows the tray only when enabled and not under the e2e tests', () => {
+    const s = defaultDesktopSettings('win32');
+    expect(shouldShowTray(s, false)).toBe(true);
+    expect(shouldShowTray({ ...s, showTray: false }, false)).toBe(false);
+    expect(shouldShowTray(s, true)).toBe(false);
+  });
+  it('closing quits when the tray is switched off, even with close-to-tray on', () => {
+    const s = { ...defaultDesktopSettings('win32'), showTray: false };
+    expect(s.closeToTray).toBe(true);
+    expect(shouldHideOnClose(s, { quitting: false, hasTray: false, e2e: false })).toBe(false);
+  });
+  it('hides on minimize only with the option, a tray, and not while quitting', () => {
+    const s = { ...defaultDesktopSettings('win32'), minimizeToTray: true };
+    const ok = { quitting: false, hasTray: true, e2e: false };
+    expect(shouldHideOnMinimize(s, ok)).toBe(true);
+    expect(shouldHideOnMinimize({ ...s, minimizeToTray: false }, ok)).toBe(false);
+    expect(shouldHideOnMinimize(s, { ...ok, hasTray: false })).toBe(false);
+    expect(shouldHideOnMinimize(s, { ...ok, quitting: true })).toBe(false);
   });
   it('hides on close only with the option, a tray, and not while quitting', () => {
     const s = defaultDesktopSettings('win32');
@@ -92,6 +122,7 @@ describe('tray menu', () => {
     expect(find(m, 'mute').action).toBe('toggleMute');
     expect(find(m, 'deafen').action).toBe('toggleDeafen');
     expect(find(m, 'quit').label).toBe('Quit Brand');
+    expect(find(m, 'updates').action).toBe('checkUpdates');
     expect(find(m, 'unread').label).toBe('No unread messages');
   });
   it('shows unread counts', () => expect(find(buildTrayMenu({ ...base, activity: { mentions: 1, unread: 4 } }), 'unread').label).toBe('1 mention, 4 unread'));

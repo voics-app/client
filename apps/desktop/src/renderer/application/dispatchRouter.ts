@@ -19,6 +19,7 @@ import type {
   UserSettings,
   VoiceState,
 } from '@shared/contracts/rest';
+import { RelationshipType } from '@shared/contracts/rest';
 import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUpdate } from '@shared/contracts/gateway';
 import { useCallStore } from './stores/callStore';
 import { useGuildStore } from './stores/guildStore';
@@ -36,6 +37,8 @@ export interface DispatchContext {
   /** Every VOICE_STATE_UPDATE, after the store has applied it (the call reacts to its own). */
   onVoiceState?(state: VoiceState): void;
   onIncomingMessage(message: ChatMessage): void;
+  /** A friend request from someone else arrived (not a replay of one already pending). */
+  onFriendRequest?(request: Relationship): void;
   invalidate(queryKey: readonly unknown[]): void;
   /** The account settings arrived (READY) or changed (USER_SETTINGS_UPDATE). */
   onUserSettings?(settings: Partial<UserSettings>, ready: boolean, userId?: string): void;
@@ -212,9 +215,11 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     USER_NOTE_UPDATE: (d: { id: string; note: string }) => useUserNotesStore.getState().set(d.id, d.note),
     RELATIONSHIP_ADD: (d: Relationship) => {
       const store = useRelationshipStore.getState();
-      const friends = becameFriends(store.byUser[d.id], d);
+      const known = store.byUser[d.id];
+      const friends = becameFriends(known, d);
       store.upsert(d);
       if (friends) ctx.onFriendship?.(d.id);
+      if (d.type === RelationshipType.INCOMING && known?.type !== RelationshipType.INCOMING) ctx.onFriendRequest?.(d);
     },
     RELATIONSHIP_REMOVE: (d: { id: string }) => useRelationshipStore.getState().remove(d.id),
     SESSIONS_REPLACE: () => undefined,

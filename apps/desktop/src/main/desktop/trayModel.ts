@@ -1,7 +1,7 @@
 /** Tray context menu as data, so the rules are testable without Electron. */
 import type { ActivityCounts, TrayCommand, VoiceState } from '../../shared/ipc';
 
-export type TrayAction = TrayCommand | 'open' | 'quit';
+export type TrayAction = TrayCommand | 'open' | 'quit' | 'checkUpdates';
 
 export type TrayMenuItem =
   | { kind: 'item'; id: string; label: string; enabled?: boolean; checked?: boolean; action?: TrayAction }
@@ -20,6 +20,7 @@ export function buildTrayMenu(input: { brand: string; version: string; activity:
     { kind: 'item', id: 'deafen', label: 'Deafen', checked: voice.deafened, action: 'toggleDeafen' },
     { kind: 'separator' },
     { kind: 'item', id: 'version', label: `Version ${input.version}`, enabled: false },
+    { kind: 'item', id: 'updates', label: 'Check for updates', action: 'checkUpdates' },
     { kind: 'item', id: 'quit', label: `Quit ${input.brand}`, action: 'quit' },
   ];
 }
