@@ -1,3 +1,4 @@
+import { BRAND } from '@shared/brand';
 import type { Channel } from '@shared/contracts/rest';
 import { item, sep, tidy, type MenuModel } from './menuModel';
 import { MUTE_DURATIONS } from './notificationSettings';
@@ -60,7 +61,7 @@ export function buildCategoryMenu(ctx: CategoryMenuContext): MenuModel[] {
 }
 
 export function channelLink(guildId: string | null | undefined, channelId: string, messageId?: string): string {
-  return `discordy://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
+  return `${BRAND.protocolScheme}://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
 }
 
 /** Body for "Duplicate channel": same type, topic, slowmode, overwrites and parent under a new name. */

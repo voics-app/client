@@ -1,5 +1,6 @@
 /** Content-Security-Policy for the renderer, derived from the active connection profile. */
 import type { ConnectionProfile } from '../shared/ipc';
+import { BRAND } from '../shared/brand';
 
 function originOf(url: string): string {
   const u = new URL(url);
@@ -12,8 +13,8 @@ export function buildCsp(profile: ConnectionProfile, devServer: string | null): 
   const connect = [
     "'self'",
     ...endpoints,
-    'wss://*.voics.nl',
-    'https://*.voics.nl',
+    `wss://*.${BRAND.baseDomain}`,
+    `https://*.${BRAND.baseDomain}`,
     ...(local ? ['ws://localhost:*', 'http://localhost:*', 'ws://127.0.0.1:*', 'http://127.0.0.1:*'] : []),
     ...(devServer ? [originOf(devServer), originOf(devServer).replace(/^http/, 'ws')] : []),
   ];

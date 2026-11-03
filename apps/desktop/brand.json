@@ -6,5 +6,10 @@
   "protocolScheme": "discordy",
   "description": "Discordy desktop client",
   "publisher": "Discordy <noreply@voics.nl>",
-  "updateFeedHost": "https://discordy-updates.voics.nl"
+  "updateFeedHost": "https://discordy-updates.voics.nl",
+  "baseDomain": "voics.nl",
+  "landingUrl": "https://discordy.voics.nl",
+  "apiUrl": "https://discordy-api.voics.nl",
+  "gatewayUrl": "wss://discordy-gateway.voics.nl",
+  "cdnUrl": "https://discordy-cdn.voics.nl"
 }

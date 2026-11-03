@@ -1,5 +1,7 @@
+import { BRAND } from '@shared/brand';
+
 /** Hosts that never need the "you are leaving" confirmation. */
-const BUILT_IN_TRUSTED = ['discordy.voics.nl', 'voics.nl'];
+const BUILT_IN_TRUSTED = [new URL(BRAND.landingUrl).hostname, BRAND.baseDomain];
 
 export function hostOf(url: string): string | null {
   try {

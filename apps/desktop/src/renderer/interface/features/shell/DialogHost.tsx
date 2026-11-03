@@ -28,6 +28,7 @@ import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText } from './customStatus';
+import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
 
@@ -143,7 +144,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       ) : (
         <form onSubmit={lookup} className="stack">
           <Field label="Invite link or code" error={error}>
-            {(id) => <Input id={id} data-autofocus value={code} placeholder="https://discordy.voics.nl/invite/hTKzmak" onChange={(e) => setCode(e.target.value)} />}
+            {(id) => <Input id={id} data-autofocus value={code} placeholder={`${BRAND.landingUrl}/invite/hTKzmak`} onChange={(e) => setCode(e.target.value)} />}
           </Field>
           <div className="row-end">
             <Button variant="ghost" onClick={close}>Cancel</Button>

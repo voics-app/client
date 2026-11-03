@@ -10,9 +10,9 @@ export const DEFAULT_UPDATE_FEED_URL = BRAND.updateFeedHost;
 export const PROFILES: Record<Exclude<ConnectionProfileId, 'custom'>, ConnectionProfile> = {
   production: {
     id: 'production',
-    apiUrl: 'https://discordy-api.voics.nl',
-    gatewayUrl: 'wss://discordy-gateway.voics.nl',
-    cdnUrl: 'https://discordy-cdn.voics.nl',
+    apiUrl: BRAND.apiUrl,
+    gatewayUrl: BRAND.gatewayUrl,
+    cdnUrl: BRAND.cdnUrl,
   },
   local: {
     id: 'local',
