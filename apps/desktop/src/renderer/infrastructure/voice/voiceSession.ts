@@ -15,6 +15,7 @@ import {
   type SelectProtocol,
   type SessionDescription,
   type Speaking,
+  type StreamViewers,
   type VideoPayload,
   type VoiceFrame,
   type VoiceHello,
@@ -232,6 +233,9 @@ export class VoiceSession implements VoiceSessionPort {
       case VoiceOp.VIDEO:
         this.onVideo(frame.d as VideoPayload);
         return;
+      case VoiceOp.STREAM_VIEWERS:
+        this.onStreamViewers(frame.d as StreamViewers);
+        return;
       case VoiceOp.CLIENTS_CONNECT:
         if ((frame.d as ClientsConnect).user_ids?.length) this.peersSeen = true;
         return;
@@ -406,6 +410,7 @@ export class VoiceSession implements VoiceSessionPort {
   private upsertSource(userId: string, source: SourceKind, ssrc: number, rtxSsrc: number): void {
     const key = this.sourceKey(userId, source);
     const existing = this.sources.get(key);
+    if (source === 'screen') useVoiceStore.getState().setScreenSsrc(key, ssrc);
     if (ssrc <= 0) {
       if (existing?.active) {
         existing.active = false;
@@ -435,6 +440,10 @@ export class VoiceSession implements VoiceSessionPort {
       this.upsertSource(userId, 'camera', 0, 0);
       this.upsertSource(userId, 'screen', 0, 0);
     }
+  }
+
+  private onStreamViewers({ user_ids }: StreamViewers): void {
+    useVoiceStore.getState().setStreamViewers((user_ids ?? []).filter((id) => id !== this.options.userId));
   }
 
   private onClientDisconnect({ user_id }: ClientDisconnect): void {

@@ -65,7 +65,7 @@ export function withoutSelfPreview<T extends StageTile>(tiles: readonly T[], hid
 }
 
 /**
- * Whether the SFU supports telling a streamer who is watching, and dropping a screen share per viewer.
- * Today it does neither (screen packets bypass MEDIA_SINK_WANTS and no viewer events exist), so the viewer UI stays hidden.
+ * Whether the SFU tells a streamer who is watching (STREAM_VIEWERS) and forwards a screen share only to subscribers that
+ * opted in through MEDIA_SINK_WANTS, so the viewer UI is shown.
  */
-export const STREAM_VIEWER_REPORTING = false;
+export const STREAM_VIEWER_REPORTING = true;

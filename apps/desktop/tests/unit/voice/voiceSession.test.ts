@@ -152,6 +152,22 @@ describe('VoiceSession protocol', () => {
     ]);
   });
 
+  it('tracks remote screen ssrcs and the viewers of the local share', async () => {
+    const session = makeSession();
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, video_ssrc: 0, rtx_ssrc: 0, streams: [{ type: 'screen', ssrc: 777, rtx_ssrc: 778, active: true }] } });
+    expect(useVoiceStore.getState().screenSsrcs).toEqual({ 'u2:screen': 777 });
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+    expect(useVoiceStore.getState().screenSsrcs).toEqual({});
+
+    socket.receive({ op: VoiceOp.STREAM_VIEWERS, d: { ssrc: 5, user_ids: ['u2', 'u3'] } });
+    expect(useVoiceStore.getState().streamViewers).toEqual(['u2', 'u3']);
+    socket.receive({ op: VoiceOp.STREAM_VIEWERS, d: { ssrc: 5, user_ids: [] } });
+    expect(useVoiceStore.getState().streamViewers).toEqual([]);
+  });
+
   it('negotiates a section per remote source, routes tracks, and removes them on disconnect', async () => {
     const session = makeSession({ statsIntervalMs: 50 });
     const audio: [string, unknown][] = [];
