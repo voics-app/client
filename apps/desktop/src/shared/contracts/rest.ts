@@ -275,6 +275,11 @@ export interface MessageSnapshot {
   message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'embeds' | 'type' | 'flags'>;
 }
 
+export interface MessageCall {
+  participants?: Snowflake[];
+  ended_timestamp?: string | null;
+}
+
 export interface Message {
   id: Snowflake;
   channel_id: Snowflake;
@@ -300,6 +305,8 @@ export interface Message {
   /** Present when `message_reference.type` is 1 (forward). */
   message_snapshots?: MessageSnapshot[];
   thread?: Channel;
+  /** Type 3 (CALL): participants and when it ended (Discord shape). Not produced by the backend yet. */
+  call?: MessageCall;
   application_id?: Snowflake;
   components?: MessageComponent[];
   interaction_metadata?: InteractionMetadata;
