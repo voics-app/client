@@ -10,6 +10,7 @@ import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { CallRinger } from '@renderer/application/calls/callRinger';
 import { callerOf, isRingingFor, type DmCall } from '@renderer/domain/calls';
 import { OUTGOING_RINGBACK, Ringtone } from '@renderer/infrastructure/audio/ringtone';
+import { installAudioUnlock } from '@renderer/infrastructure/audio/sharedContext';
 import { bridge } from '../../app/bridge';
 import { acceptCall, declineCall } from '../../app/callActions';
 import { displayName } from '../../shared/hooks/useNames';
@@ -91,6 +92,7 @@ function useCallRinging(): void {
 export function IncomingCallHost() {
   useCallRinging();
   useVoiceSounds();
+  useEffect(() => installAudioUnlock(), []);
   const calls = useCallStore((s) => s.calls);
   const me = useSessionStore((s) => s.user?.id ?? null);
   const channels = useGuildStore((s) => s.channels);

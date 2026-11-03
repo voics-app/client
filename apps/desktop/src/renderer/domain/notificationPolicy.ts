@@ -45,11 +45,16 @@ export interface NotifyInput {
   doNotDisturb: boolean;
 }
 
-export function shouldNotify(input: NotifyInput): boolean {
-  if (!input.desktopEnabled || input.doNotDisturb || input.muted || input.viewingChannel) return false;
+/** Whether a message deserves any alert (sound or desktop notification): the channel's rules, not the device toggles. */
+export function shouldAlert(input: Omit<NotifyInput, 'desktopEnabled'>): boolean {
+  if (input.doNotDisturb || input.muted || input.viewingChannel) return false;
   if (input.level === 'none') return false;
   if (input.level === 'mentions') return input.mentioned;
   return true;
+}
+
+export function shouldNotify(input: NotifyInput): boolean {
+  return input.desktopEnabled && shouldAlert(input);
 }
 
 export function levelFromPrefs(onlyMentions: boolean): NotifyLevel {
