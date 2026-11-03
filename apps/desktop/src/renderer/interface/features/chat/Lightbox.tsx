@@ -103,11 +103,11 @@ export function Lightbox() {
           <button type="button" className="lightbox-nav is-next" aria-label="Next" onClick={() => step(1)}><CaretRight size={28} /></button>
         </>
       )}
-      <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>
+      <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={(e) => e.target === e.currentTarget && close()} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>
         {item.kind === 'image' ? (
           <img key={item.src} className={`lightbox-media${view.zoom > MIN_ZOOM ? ' is-zoomed' : ''}`} src={item.src} alt={item.description ?? name} draggable={false} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }} />
         ) : (
-          <div key={item.src} className="lightbox-media lightbox-video"><MediaPlayer kind="video" src={item.src} label={name} autoPlay /></div>
+          <div key={item.src} className="lightbox-media lightbox-video"><MediaPlayer kind="video" src={item.src} label={name} autoPlay fullscreen={false} /></div>
         )}
       </div>
       {item.description && <p className="lightbox-caption">{item.description}</p>}
