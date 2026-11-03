@@ -17,7 +17,12 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
   ref,
 ) {
   return (
-    <Tooltip label={hint ? <>{label} <kbd className="kbd tooltip-kbd">{hint}</kbd></> : label} side={tooltipSide}>
+    // No tooltip while this button's own menu/popover is open (aria-expanded), as in Discord.
+    <Tooltip
+      label={hint ? <>{label} <kbd className="kbd tooltip-kbd">{hint}</kbd></> : label}
+      side={tooltipSide}
+      suppressed={rest['aria-expanded'] === true || rest['aria-expanded'] === 'true'}
+    >
       <button
         ref={ref}
         type={type}
