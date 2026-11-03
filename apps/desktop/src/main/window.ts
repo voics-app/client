@@ -8,12 +8,29 @@ import { configureSpellcheck, installTextContextMenu } from './textMenu';
 
 const ALLOWED_PERMISSIONS = new Set(['media', 'display-capture', 'notifications', 'clipboard-sanitized-write', 'fullscreen']);
 
+/**
+ * `pnpm dev` serves the renderer from the Vite origin (http://localhost:5173), which the servers' CORS lists do
+ * not include (production allows only the packaged app's `null` origin). Dev builds only: answer every
+ * cross-origin response as if the server allowed the dev origin, so a dev client can sign in to any profile.
+ */
+export function withDevServerCors(
+  headers: Record<string, string[]> | undefined,
+  devServer: string,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(headers ?? {})) {
+    if (k.toLowerCase() !== 'access-control-allow-origin') out[k] = v;
+  }
+  out['Access-Control-Allow-Origin'] = [new URL(devServer).origin];
+  return out;
+}
+
 export function installSessionPolicies(getProfile: () => ConnectionProfile): void {
   const devServer = process.env.ELECTRON_RENDERER_URL ?? null;
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const isAppDocument = details.url.startsWith('file:') || (devServer !== null && details.url.startsWith(devServer));
     if (!isAppDocument) {
-      callback({ responseHeaders: details.responseHeaders });
+      callback({ responseHeaders: devServer ? withDevServerCors(details.responseHeaders, devServer) : details.responseHeaders });
       return;
     }
     callback({
