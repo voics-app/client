@@ -1,5 +1,5 @@
 /** Sound effects (Discord-style) and the policy deciding whether one plays. */
-export type SoundId = 'selfJoin' | 'selfLeave' | 'userJoin' | 'userLeave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'message';
+export type SoundId = 'selfJoin' | 'selfLeave' | 'userJoin' | 'userLeave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'message' | 'friendRequest';
 
 export const SOUND_OPTIONS: readonly { id: SoundId; label: string }[] = [
   { id: 'selfJoin', label: 'You join a call' },
@@ -10,6 +10,8 @@ export const SOUND_OPTIONS: readonly { id: SoundId; label: string }[] = [
   { id: 'unmute', label: 'Unmute' },
   { id: 'deafen', label: 'Deafen' },
   { id: 'undeafen', label: 'Undeafen' },
+  { id: 'message', label: 'New message' },
+  { id: 'friendRequest', label: 'Friend request' },
 ];
 
 export interface SoundPolicyInput {

@@ -43,7 +43,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+          # Not on tag runs: those are usually a no-op (the release merge already published), and with no
+          # pnpm install the cache save fails the run on a missing path.
+          cache: ${{ github.ref_type != 'tag' && 'pnpm' || '' }}
       - name: Decide the version
         id: ver
         shell: bash

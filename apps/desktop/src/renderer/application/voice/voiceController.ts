@@ -7,6 +7,7 @@
 import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '@shared/contracts/gateway';
 import type { VoiceState } from '@shared/contracts/rest';
 import { SpeakingFlag, type MediaSinkWants } from '@shared/contracts/voice';
+import { screenSinkWants } from '@renderer/domain/sinkWants';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
 import { usePrefsStore, type PrefsData } from '@renderer/application/stores/prefsStore';
 import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
@@ -58,6 +59,8 @@ export class VoiceController {
   private mutedBeforeDeafen = false;
   private readonly screenShare: ScreenShare;
   private joinToken = 0;
+  /** Last MEDIA_SINK_WANTS body sent on the current session, to skip identical resends. */
+  private sentWants: string | null = null;
 
   constructor(private readonly deps: VoiceControllerDeps) {
     const host: ScreenShareHost = {
@@ -96,6 +99,9 @@ export class VoiceController {
       prefs.subscribe((state, previous) => {
         if (DEVICE_KEYS.some((k) => state[k] !== previous[k])) void this.refreshDevices();
         if (state.cameraPreset !== previous.cameraPreset) void this.applyCameraPreset();
+      }),
+      useVoiceStore.subscribe((state, previous) => {
+        if (state.watching !== previous.watching || state.screenSsrcs !== previous.screenSsrcs) this.syncSinkWants();
       }),
     );
   }
@@ -209,11 +215,16 @@ export class VoiceController {
       token: update.token,
     });
     this.session = session;
+    this.sentWants = null;
     useVoiceStore.getState().setCall({ region: update.region });
     this.sessionDisposers = [
       session.onStatus((status) => {
-        if (status === 'connected') useVoiceStore.getState().setCall({ status: 'connected', error: null });
-        else if (status === 'connecting') useVoiceStore.getState().setCall({ status: 'connecting' });
+        if (status === 'connected') {
+          useVoiceStore.getState().setCall({ status: 'connected', error: null });
+          // A (re)connected socket starts without wants, so opt back into watched screens.
+          this.sentWants = null;
+          this.syncSinkWants();
+        } else if (status === 'connecting') useVoiceStore.getState().setCall({ status: 'connecting' });
         else if (status === 'reconnecting') useVoiceStore.getState().setCall({ status: 'reconnecting' });
       }),
       session.onClosed((info) => {
@@ -331,6 +342,20 @@ export class VoiceController {
 
   setSinkWants(wants: MediaSinkWants): void {
     this.session?.setSinkWants(wants);
+  }
+
+  /**
+   * The SFU forwards a screen share only to subscribers that list its SSRC with quality > 0, so every change to what is
+   * watched (or to the shares that exist) resends the whole map. Older SFUs ignore screen wants, which makes this harmless.
+   */
+  private syncSinkWants(): void {
+    if (!this.session) return;
+    const { screenSsrcs, watching } = useVoiceStore.getState();
+    const wants = screenSinkWants(screenSsrcs, watching);
+    const body = JSON.stringify(wants);
+    if (body === this.sentWants || (this.sentWants === null && Object.keys(wants).length === 0)) return;
+    this.sentWants = body;
+    this.session.setSinkWants(wants);
   }
 
   // ---- camera ------------------------------------------------------------

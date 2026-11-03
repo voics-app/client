@@ -188,6 +188,7 @@ export interface Guild {
   name: string;
   icon: string | null;
   banner?: string | null;
+  splash?: string | null;
   description?: string | null;
   owner_id: Snowflake;
   afk_channel_id?: Snowflake | null;
@@ -199,6 +200,7 @@ export interface Guild {
   emojis: Emoji[];
   features?: string[];
   system_channel_id?: Snowflake | null;
+  system_channel_flags?: number;
   rules_channel_id?: Snowflake | null;
   preferred_locale?: string;
   member_count?: number;

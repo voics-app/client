@@ -1,6 +1,7 @@
 import { ArrowSquareIn, ArrowSquareOut, ArrowsIn, Camera, Eye, EyeSlash, Layout, UserPlus, LockKey, Microphone, MicrophoneSlash, Monitor, PhoneDisconnect, Rectangle, SquaresFour, Television, VideoCamera, VideoCameraSlash } from '@phosphor-icons/react';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useMemo } from 'react';
+import { ringableRecipients } from '@renderer/domain/calls';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
@@ -8,6 +9,9 @@ import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageMode } from '@renderer/domain/stageLayout';
+import { ringIntoCall } from '../../app/callActions';
+import { Menu, useMenu } from '../../shared/ui/Menu';
+import { displayName } from '../../shared/hooks/useNames';
 import { leaveVoice, stopShare, toggleCamera, toggleMute } from '../../app/voiceActions';
 import { Button } from '../../shared/ui/Button';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -24,6 +28,33 @@ interface Tile {
   stream: MediaStream | null;
   hasVideo: boolean;
   isSelf: boolean;
+}
+
+/** DM and group DM calls: rings recipients who are not in the call yet. */
+function AddToCall({ channelId }: { channelId: string }) {
+  const recipients = useGuildStore((s) => s.channels[channelId]?.recipients);
+  const voiceStates = useVoiceStore((s) => s.states[channelId]);
+  const me = useSessionStore((s) => s.user?.id);
+  const menu = useMenu();
+  const candidates = useMemo(() => ringableRecipients(recipients ?? [], Object.values(voiceStates ?? {}), me ?? ''), [recipients, voiceStates, me]);
+  if (!recipients || candidates.length === 0) return null;
+  return (
+    <>
+      <Button variant="secondary" size="sm" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.openBelow}>
+        <UserPlus size={16} /> Add to call
+      </Button>
+      <Menu
+        open={menu.open}
+        x={menu.anchor?.x ?? 0}
+        y={menu.anchor?.y ?? 0}
+        onClose={menu.close}
+        entries={[
+          ...candidates.map((user) => ({ kind: 'item' as const, label: `Ring ${displayName(user)}`, onSelect: () => ringIntoCall(channelId, [user.id]) })),
+          ...(candidates.length > 1 ? [{ kind: 'separator' as const }, { kind: 'item' as const, label: 'Ring everyone', onSelect: () => ringIntoCall(channelId, candidates.map((u) => u.id)) }] : []),
+        ]}
+      />
+    </>
+  );
 }
 
 export function useTiles(guildId: string | null, channelId: string): Tile[] {
@@ -172,6 +203,7 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
         ) : (
           call.status === 'connected' && <span className="e2ee-chip is-off">Standard transport encryption (DTLS-SRTP)</span>
         )}
+        {!guildId && <AddToCall channelId={channelId} />}
         {guildId && (
           <Button variant="secondary" size="sm" onClick={() => openDialog({ kind: 'invite', guildId, channelId })}>
             <UserPlus size={16} /> Invite

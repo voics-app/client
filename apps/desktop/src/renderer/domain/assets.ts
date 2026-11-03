@@ -4,7 +4,7 @@
  * a `.png` key. Images uploaded before that convention kept their own extension, so the remaining
  * extensions are fallbacks to try in order.
  */
-export type AssetKind = 'avatars' | 'icons' | 'banners' | 'channel-icons' | 'role-icons';
+export type AssetKind = 'avatars' | 'icons' | 'banners' | 'splashes' | 'channel-icons' | 'role-icons';
 
 const LEGACY_EXTENSIONS = ['gif', 'webp', 'jpg'] as const;
 

@@ -3,6 +3,7 @@
  * until stopped. Plays on the selected output device when the browser supports it.
  */
 import type { RingtoneId } from '@renderer/domain/ringtones';
+import { sharedAudioContext, wakeContext } from './sharedContext';
 
 export interface ToneNote {
   /** Frequencies sounded together. */
@@ -69,10 +70,13 @@ export interface ToneOptions {
 
 export interface RingtoneDeps {
   createContext(): AudioContext;
+  /** Called when ringing stops; a shared context is left open for the next ring. */
+  releaseContext?(context: AudioContext): void;
 }
 
 export const browserRingtoneDeps: RingtoneDeps = {
-  createContext: () => new AudioContext({ latencyHint: 'interactive' }),
+  createContext: sharedAudioContext,
+  releaseContext: () => undefined,
 };
 
 export class Ringtone {
@@ -89,9 +93,7 @@ export class Ringtone {
     if (this.context) return;
     const context = this.deps.createContext();
     this.context = context;
-    const wake = () => {
-      if (context.state === 'suspended' || (context.state as string) === 'interrupted') void context.resume().catch(() => undefined);
-    };
+    const wake = () => wakeContext(context);
     wake();
     // A stale or unplugged device must never leave the ring silent: fall back to the system default.
     if (outputDeviceId) void context.setSinkId?.(outputDeviceId).catch(() => context.setSinkId?.('').catch(() => undefined));
@@ -115,7 +117,9 @@ export class Ringtone {
     this.timer = null;
     const context = this.context;
     this.context = null;
-    if (context) void context.close().catch(() => undefined);
+    if (!context) return;
+    if (this.deps.releaseContext) this.deps.releaseContext(context);
+    else void context.close().catch(() => undefined);
   }
 }
 

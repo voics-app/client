@@ -19,6 +19,7 @@ export const GatewayOp = {
   VOICE_TELEMETRY: 23,
   WATCH_TOGETHER: 24,
   CALL_DECLINE: 25,
+  CALL_RING: 26,
 } as const;
 export type GatewayOp = (typeof GatewayOp)[keyof typeof GatewayOp];
 
@@ -220,4 +221,10 @@ export interface CallDeleteEvent {
 
 export interface CallDeclinePayload {
   channel_id: Snowflake;
+}
+
+/** Rings recipients of a DM or group DM into a running call (1 to 10 users who are not in it). */
+export interface CallRingPayload {
+  channel_id: Snowflake;
+  user_ids: Snowflake[];
 }

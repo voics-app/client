@@ -21,7 +21,8 @@ import { currentPresence } from '@renderer/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { registerIncoming } from '@renderer/application/dispatchRouter';
-import { notifyIncoming } from './notifications';
+import { ensureDm } from './dmActions';
+import { notifyIncoming, playFriendRequestSound } from './notifications';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { DEVICE_UNREGISTERED_REASON } from '@renderer/domain/deliveryMode';
 import { BRAND } from '@shared/brand';
@@ -105,6 +106,8 @@ export function createRuntime(info: AppInfo): Runtime {
     onVoiceServerUpdate: (update) => hooks.onVoiceServerUpdate(update),
     onVoiceState: (state) => hooks.onVoiceState?.(state),
     onIncomingMessage: notifyIncoming,
+    onFriendship: (userId) => void ensureDm(userId),
+    onFriendRequest: playFriendRequestSound,
     invalidate: (key) => void queryClient.invalidateQueries({ queryKey: [...key] }),
   });
   let identityUserId = '';

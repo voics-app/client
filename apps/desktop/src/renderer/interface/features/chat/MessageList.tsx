@@ -8,16 +8,19 @@ import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { dmIntro } from '@renderer/domain/dmIntro';
 import { groupMessages } from '@renderer/domain/messageGrouping';
 import { firstUnreadMessageId, isUnread, unreadBar } from '@renderer/domain/unread';
 import { jumpToFirstUnread, markChannelRead, reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { formatDay } from '../../shared/hooks/useNow';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Skeleton } from '../../shared/ui/Misc';
 import { Spinner } from '../../shared/ui/Spinner';
+import { DmIntro } from './DmIntro';
 import { MessageItem } from './MessageItem';
 
 type Row =
@@ -106,6 +109,7 @@ export function MessageList({ channelId }: { channelId: string }) {
   const markers = useMemo(() => messages.filter((m) => !m.localState).map((m) => ({ id: m.id, authorId: m.author.id })), [messages]);
   const firstUnread = useMemo(() => firstUnreadMessageId(markers, anchor, me), [markers, anchor, me]);
   const rows = useMemo(() => buildRows(messages, timeline?.hasMoreBefore ?? true, firstUnread, pending ?? []), [messages, timeline?.hasMoreBefore, firstUnread, pending]);
+  const intro = useMemo(() => dmIntro(channel, Boolean(timeline?.loaded) && messages.length === 0 && !pending?.length, displayName), [channel, timeline?.loaded, messages.length, pending?.length]);
   const bar = useMemo(() => {
     if (!anchor || barDismissed || !isUnread(channel?.last_message_id, lastRead)) return null;
     return unreadBar(markers, anchor, me, timeline?.hasMoreBefore ?? false);
@@ -296,7 +300,8 @@ export function MessageList({ channelId }: { channelId: string }) {
             if (!row) return null;
             return (
               <div key={item.key} data-index={item.index} ref={virtualizer.measureElement} className="row-slot" style={{ transform: `translateY(${item.start}px)` }}>
-                {row.kind === 'start' && (
+                {row.kind === 'start' && intro && channel && <DmIntro channel={channel} intro={intro} />}
+                {row.kind === 'start' && !intro && (
                   <div className="channel-start">
                     <ChatCircleDots size={44} weight="light" />
                     <h2>{channel?.guild_id ? `Welcome to #${channel.name}` : 'This is the beginning of your conversation'}</h2>

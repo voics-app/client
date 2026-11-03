@@ -1,7 +1,8 @@
-import { ArrowsOut, CornersIn, CornersOut, Eye, EyeSlash, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, Users, CornersIn, CornersOut, Eye, EyeSlash, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { STREAM_VIEWER_REPORTING } from '@renderer/domain/stageLayout';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
 import type { VoiceState } from '@shared/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
@@ -46,6 +47,18 @@ function MediaElement({ stream, muted, className, onReady }: { stream: MediaStre
     onReady?.(el);
   }, [stream, onReady]);
   return <video ref={ref} className={className} autoPlay playsInline muted={muted} />;
+}
+
+/** On your own screen share: how many people watch it, with their names on hover. */
+function ViewerBadge({ guildId, channelId }: { guildId: string | null; channelId: string }) {
+  const viewers = useVoiceStore((s) => s.streamViewers);
+  const participants = useParticipants(guildId, channelId);
+  const names = viewers.map((id) => participants.find((p) => p.state.user_id === id)?.name ?? id);
+  return (
+    <span className="tile-viewers tnum" title={names.length > 0 ? names.join(', ') : 'Nobody is watching yet'} aria-label={`${viewers.length} watching`}>
+      <Users size={12} weight="fill" /> {viewers.length}
+    </span>
+  );
 }
 
 export function VideoTile({ participant, stream, kind, focused, pinned, onPin, onFocus }: { participant: Participant; stream: MediaStream | null; kind: 'camera' | 'screen' | 'avatar'; focused?: boolean; pinned?: boolean; onPin?: () => void; onFocus?: () => void }) {
@@ -102,6 +115,7 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
         {live && (
           <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
         )}
+        {STREAM_VIEWER_REPORTING && live && participant.isSelf && participant.state.channel_id && <ViewerBadge guildId={guildId} channelId={participant.state.channel_id} />}
         {pinned && <span className="tile-pin" title="Pinned"><PushPin size={12} weight="fill" /></span>}
         {(hasVideo || onPin) && !previewOnly && (
           <div className="tile-tools">

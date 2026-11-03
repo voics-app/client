@@ -202,6 +202,28 @@ describe('dispatchRouter', () => {
     expect(useRelationshipStore.getState().byUser['2']).toEqual({ id: '2', type: 1, user: friend });
   });
 
+  it('asks for the DM when a request becomes a friendship, once', () => {
+    const onFriendship = vi.fn();
+    const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate: vi.fn(), onFriendship });
+    route('RELATIONSHIP_ADD', { id: '2', type: 4, user: friend });
+    expect(onFriendship).not.toHaveBeenCalled();
+    route('RELATIONSHIP_ADD', { id: '2', type: 1, user: friend });
+    route('RELATIONSHIP_ADD', { id: '2', type: 1, user: friend });
+    expect(onFriendship).toHaveBeenCalledTimes(1);
+    expect(onFriendship).toHaveBeenCalledWith('2');
+  });
+
+  it('reports a new incoming friend request once, not on a replay or an accept', () => {
+    const ctx = { onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), onFriendRequest: vi.fn(), invalidate: vi.fn() };
+    const route = createDispatchRouter(ctx);
+    route('RELATIONSHIP_ADD', { id: '5', type: 3, user: friend });
+    route('RELATIONSHIP_ADD', { id: '5', type: 3, user: friend });
+    expect(ctx.onFriendRequest).toHaveBeenCalledTimes(1);
+    route('RELATIONSHIP_ADD', { id: '5', type: 1, user: friend });
+    route('RELATIONSHIP_ADD', { id: '6', type: 4, user: friend });
+    expect(ctx.onFriendRequest).toHaveBeenCalledTimes(1);
+  });
+
   it('invalidates cached queries for bans and audit logs', () => {
     const { route, ctx } = setup();
     route('GUILD_BAN_ADD', { guild_id: '100', user: friend });

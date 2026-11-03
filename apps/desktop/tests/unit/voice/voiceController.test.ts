@@ -134,6 +134,39 @@ describe('VoiceController', () => {
     expect(useVoiceStore.getState().call).toMatchObject({ status: 'connected', region: 'eu', channelId: 'c1' });
   });
 
+  it('opts into watched screen shares with MEDIA_SINK_WANTS and drops them again', async () => {
+    const { controller, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const session = sessions[0]!;
+    session.status.forEach((l) => l('connected'));
+    expect(session.setSinkWants).not.toHaveBeenCalled();
+
+    useVoiceStore.getState().setScreenSsrc('u2:screen', 222);
+    expect(session.setSinkWants).toHaveBeenLastCalledWith({ '222': 0 });
+    useVoiceStore.getState().watchStream('u2:screen');
+    expect(session.setSinkWants).toHaveBeenLastCalledWith({ '222': 100 });
+    useVoiceStore.getState().setScreenSsrc('u3:screen', 333);
+    expect(session.setSinkWants).toHaveBeenLastCalledWith({ '222': 100, '333': 0 });
+    useVoiceStore.getState().stopWatching('u2:screen');
+    expect(session.setSinkWants).toHaveBeenLastCalledWith({ '222': 0, '333': 0 });
+    const calls = session.setSinkWants.mock.calls.length;
+    useVoiceStore.getState().stopWatching('u2:screen');
+    expect(session.setSinkWants.mock.calls.length).toBe(calls);
+  });
+
+  it('resends the wants after the socket reconnects', async () => {
+    const { controller, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const session = sessions[0]!;
+    useVoiceStore.getState().setScreenSsrc('u2:screen', 222);
+    useVoiceStore.getState().watchStream('u2:screen');
+    session.setSinkWants.mockClear();
+    session.status.forEach((l) => l('connected'));
+    expect(session.setSinkWants).toHaveBeenCalledWith({ '222': 100 });
+  });
+
   it('ignores server updates for other channels and times out without one', async () => {
     const { controller, sessions, sent } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });

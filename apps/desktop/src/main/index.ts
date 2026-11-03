@@ -12,10 +12,10 @@ import { registerIpc } from './ipc';
 import { loadMainSettings, saveMainSettings } from './settings';
 import { DesktopService } from './desktop/desktopService';
 import { createLoginItemPort } from './desktop/loginItemAdapter';
-import { normalizeDesktopSettings, shouldHideOnClose, shouldStartHidden } from './desktop/desktopSettings';
+import { normalizeDesktopSettings, shouldHideOnClose, shouldHideOnMinimize, shouldStartHidden } from './desktop/desktopSettings';
 import { AttentionPresenter } from './attention/presenter';
 import { createElectronAttentionPort } from './attention/electronAdapter';
-import { createTray, type TrayHandle } from './tray';
+import { createTrayController } from './trayController';
 import { Updater, createElectronUpdaterPort } from './updater';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
@@ -30,7 +30,6 @@ if (!desktopSettings.hardwareAcceleration) app.disableHardwareAcceleration();
 
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
-let trayHandle: TrayHandle | null = null;
 const inbox = new DeepLinkInbox();
 
 function navigate(link: string | null): void {
@@ -74,26 +73,41 @@ function bootstrap(): void {
   const globalKeybinds = new GlobalKeybinds(getWindow, hookHub);
   if (settings.pushToTalkKeycode !== null) pushToTalk.configure(settings.pushToTalkKeycode);
   const updater = new Updater(createElectronUpdaterPort(updateFeedUrl), (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
+  const e2e = env.DISCORDY_E2E === '1';
+  const trayController = createTrayController({
+    getWindow,
+    e2e,
+    actions: {
+      onQuit: () => {
+        quitting = true;
+        app.quit();
+      },
+      onCheckUpdates: () => void updater.check(),
+      onCommand: (command) => mainWindow?.webContents.send(IpcChannel.appTrayCommand, command),
+    },
+    onCreated: (counts) => attention.apply(counts),
+  });
   const desktop = new DesktopService({ load: () => settings.desktop, save: () => undefined }, createLoginItemPort(), process.platform, (s) => {
     saveMainSettings({ desktop: s });
+    trayController.apply(s);
   });
   desktop.sync();
   const startHidden = env.DISCORDY_E2E !== '1' && shouldStartHidden(desktop.get(), process.argv, app.getLoginItemSettings().wasOpenedAtLogin);
 
   const attention = new AttentionPresenter(
-    createElectronAttentionPort(getWindow, () => trayHandle),
+    createElectronAttentionPort(getWindow, trayController.handle),
     BRAND.displayName,
-    () => trayHandle?.baseBitmap ?? null,
+    () => trayController.handle()?.baseBitmap ?? null,
     process.platform,
   );
 
   registerIpc({
     window: getWindow,
     setActivity: (counts) => {
+      trayController.setActivity(counts);
       attention.apply(counts);
-      trayHandle?.setActivity(counts);
     },
-    setVoiceState: (state) => trayHandle?.setVoice(state),
+    setVoiceState: trayController.setVoice,
     desktop,
     relaunch: () => {
       quitting = true;
@@ -118,23 +132,17 @@ function bootstrap(): void {
   powerMonitor.on('unlock-screen', () => sendLock(false));
   powerMonitor.on('resume', () => sendLock(false));
   mainWindow.on('close', (event) => {
-    if (shouldHideOnClose(desktop.get(), { quitting, hasTray: trayHandle !== null, e2e: env.DISCORDY_E2E === '1' })) {
+    if (shouldHideOnClose(desktop.get(), { quitting, hasTray: trayController.handle() !== null, e2e })) {
       event.preventDefault();
       mainWindow?.hide();
     }
   });
+  mainWindow.on('minimize', () => {
+    if (shouldHideOnMinimize(desktop.get(), { quitting, hasTray: trayController.handle() !== null, e2e })) mainWindow?.hide();
+  });
 
-  if (env.DISCORDY_E2E !== '1') {
-    trayHandle = createTray(
-      getWindow,
-      () => {
-        quitting = true;
-        app.quit();
-      },
-      (command) => mainWindow?.webContents.send(IpcChannel.appTrayCommand, command),
-    );
-    updater.start();
-  }
+  trayController.apply(desktop.get());
+  if (!e2e) updater.start();
 
   app.on('before-quit', () => {
     quitting = true;
@@ -160,6 +168,8 @@ if (!app.requestSingleInstanceLock()) {
   registerProtocol();
   navigate(findDeepLink(process.argv));
 
+  // Belt and braces with the window's autoplayPolicy: no web contents may block audio that lacks a click.
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   void app.whenReady().then(() => {
     bootstrap();
     app.on('activate', () => mainWindow?.show());
