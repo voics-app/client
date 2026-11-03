@@ -2,6 +2,7 @@ import { ArrowRight, GlobeHemisphereWest, LockKey, Plugs, ShieldCheck } from '@p
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, type FormEvent } from 'react';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { authErrorDisplay } from '@renderer/domain/authErrors';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { errorMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
@@ -12,6 +13,9 @@ import { gentle } from '../../shared/ui/motion';
 import { Segmented } from '../../shared/ui/Form';
 import { ConnectionPicker } from './ConnectionPicker';
 import { BRAND } from '@shared/brand';
+
+/** Form fields that can show their own error; any other error key goes to the banner. */
+const AUTH_FIELDS = ['email', 'password', 'username', 'code', 'token'];
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
@@ -81,20 +85,18 @@ export function AuthScreen() {
       else if (mode === 'login') await session.login({ email: email.trim(), password });
       else await session.register({ email: email.trim(), username: username.trim(), password });
     } catch (err) {
+      let general: string | null = null;
       if (err instanceof ApiError && err.errors) {
-        const flat: Record<string, string> = {};
-        for (const [k, v] of Object.entries(err.errors)) {
-          const messages = (v as { _errors?: { message: string }[] })._errors;
-          if (messages?.[0]) flat[k] = messages[0].message;
-        }
-        setFieldErrors(flat);
+        const shown = authErrorDisplay(err.errors, AUTH_FIELDS);
+        setFieldErrors(shown.fields);
+        general = shown.general;
       }
       if (err instanceof ApiError && err.code === MFA_REQUIRED && err.ticket) {
         setTicket(err.ticket);
         setError(null);
         return;
       }
-      setError(errorMessage(err));
+      setError(general ?? errorMessage(err));
     } finally {
       setBusy(false);
     }
