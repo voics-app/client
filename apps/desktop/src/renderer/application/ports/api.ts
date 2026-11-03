@@ -15,6 +15,7 @@ import type {
   CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
+  AuthSession,
   Device,
   Emoji,
   Guild,
@@ -80,6 +81,12 @@ export interface ApiPort {
   uploadKeyPackages(deviceId: string, packages: string[]): Promise<void>;
   listUserDevices(userId: string): Promise<Device[]>;
   claimKeyPackage(userId: string, deviceId: string): Promise<{ package_b64: string }>;
+
+  listSessions(): Promise<AuthSession[]>;
+  /** Logs out one other session: its tokens stop working and its live connection closes. */
+  revokeSession(sessionId: string): Promise<void>;
+  /** Logs out every session except the current one. */
+  logoutOtherSessions(): Promise<void>;
 
   me(): Promise<User>;
   updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color'>>): Promise<User>;
