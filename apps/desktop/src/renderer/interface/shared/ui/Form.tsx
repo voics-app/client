@@ -1,3 +1,4 @@
+import { rowSlug } from '@renderer/domain/rowSlug';
 import { forwardRef, useId, type CSSProperties, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 export function Field({ label, hint, error, children }: { label: string; hint?: ReactNode; error?: string | null; children: (id: string) => ReactNode }) {
@@ -139,7 +140,7 @@ export function Checkbox({ checked, onChange, label }: { checked: boolean; onCha
 
 export function SettingRow({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
-    <div className="setting-row">
+    <div className="setting-row" data-row={typeof title === 'string' ? rowSlug(title) : undefined}>
       <div className="setting-copy">
         <p className="setting-title">{title}</p>
         {description && <p className="setting-desc">{description}</p>}

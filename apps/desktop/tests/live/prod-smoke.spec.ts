@@ -161,8 +161,8 @@ test("production smoke", async () => {
     });
     await step("1 logout then login again", async () => {
       await openSettingsTab(A.page, "My account");
-      await A.page.getByRole("button", { name: "Sign out" }).first().click();
-      await A.page.getByRole("dialog", { name: /Sign out/ }).getByRole("button", { name: "Sign out" }).or(A.page.getByRole("button", { name: "Sign out" }).last()).last().click();
+      await A.page.getByRole("button", { name: "Log out" }).first().click();
+      await A.page.getByRole("dialog", { name: /Log out/ }).getByRole("button", { name: "Log out" }).or(A.page.getByRole("button", { name: "Log out" }).last()).last().click();
       await A.page.getByLabel("Email", { exact: true }).last().fill(emailA, { timeout: 30_000 });
       await A.page.getByLabel("Password", { exact: true }).last().fill(PASSWORD);
       await A.page.getByRole("button", { name: "Sign in" }).click();

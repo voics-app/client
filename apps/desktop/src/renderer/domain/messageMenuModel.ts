@@ -26,6 +26,8 @@ export interface MessageMenuContext {
   /** Emoji can be added to the current server (permission and not already present). */
   canAddEmoji: boolean;
   quick: QuickEmoji[];
+  /** Developer mode (Settings, Advanced): shows Copy Message ID. */
+  developerMode?: boolean;
 }
 
 function targetBlock(ctx: MessageMenuContext, target: MessageTarget): MenuModel[] {
@@ -79,7 +81,7 @@ function messageBlock(ctx: MessageMenuContext): MenuModel[] {
   if (!ctx.isMine) out.push(item('reportSoon', 'Report Message (coming soon)', { disabled: true }));
   if (ctx.canSpeak && ctx.hasText) out.push(item('speak', 'Speak Message'));
   if ((ctx.isMine || ctx.canManageMessages) && (ctx.standard || ctx.isMine)) out.push(sep(), item('delete', 'Delete Message', { danger: true }));
-  out.push(sep(), item('copyId', 'Copy Message ID'));
+  if (ctx.developerMode) out.push(sep(), item('copyId', 'Copy Message ID'));
   return out;
 }
 
@@ -93,7 +95,7 @@ export type ToolbarAction =
   | { id: 'react'; arg: string; label: string }
   | { id: 'reactMore' | 'reply' | 'edit' | 'forward' | 'copyId' | 'delete' | 'pin' | 'unpin' | 'more'; label: string };
 
-export interface ToolbarContext extends Pick<MessageMenuContext, 'isMine' | 'standard' | 'canReact' | 'canManageMessages' | 'forwardSupported' | 'pinned' | 'quick'> {
+export interface ToolbarContext extends Pick<MessageMenuContext, 'isMine' | 'standard' | 'canReact' | 'canManageMessages' | 'forwardSupported' | 'pinned' | 'quick' | 'developerMode'> {
   shift: boolean;
 }
 
@@ -105,7 +107,7 @@ export function buildToolbar(ctx: ToolbarContext): ToolbarAction[] {
     out.push({ id: 'reactMore', label: 'Add reaction' });
   }
   if (ctx.shift) {
-    out.push({ id: 'copyId', label: 'Copy message ID' });
+    if (ctx.developerMode) out.push({ id: 'copyId', label: 'Copy message ID' });
     if (ctx.standard && ctx.canManageMessages) out.push(ctx.pinned ? { id: 'unpin', label: 'Unpin' } : { id: 'pin', label: 'Pin' });
     if (ctx.isMine || ctx.canManageMessages) out.push({ id: 'delete', label: 'Delete (no confirmation)' });
   } else {

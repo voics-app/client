@@ -22,10 +22,12 @@ import { getRuntime } from '../../../app/runtime';
 import { displayName } from '../../../shared/hooks/useNames';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Button } from '../../../shared/ui/Button';
+import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea } from '../../../shared/ui/Form';
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
 import { readImageUpload } from '../imageUpload';
+import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
 import { BRAND } from '@shared/brand';
@@ -42,7 +44,6 @@ function Page({ title, sub, children }: { title: string; sub?: string; children:
 
 export function AccountTab() {
   const user = useSessionStore((s) => s.user);
-  const openDialog = useUiStore((s) => s.openDialog);
   const openSettings = useUiStore((s) => s.openSettings);
   if (!user) return null;
   return (
@@ -57,15 +58,13 @@ export function AccountTab() {
         <Button onClick={() => openSettings({ kind: 'user', tab: 'profile' })}>Edit profile</Button>
       </div>
       <AccountSecurity user={user} />
-      <SettingRow title="Sign out" description="Removes your session from this device's keychain. Your encrypted local history stays on disk until you delete it.">
+      <SettingRow title="Log out" description="Removes your session from this device's keychain. Your encrypted local history stays on disk until you delete it.">
         <Button
           variant="danger"
           icon={<SignOut size={16} />}
-          onClick={() =>
-            openDialog({ kind: 'confirm', title: 'Sign out?', body: `You will need to sign in again to use ${BRAND.displayName} on this device.`, confirmLabel: 'Sign out', danger: true, onConfirm: async () => { useUiStore.getState().openSettings(null); await getRuntime().session.logout(); } })
-          }
+          onClick={confirmLogout}
         >
-          Sign out
+          Log out
         </Button>
       </SettingRow>
     </Page>
@@ -76,12 +75,21 @@ export function ProfileTab() {
   const user = useSessionStore((s) => s.user);
   const [globalName, setGlobalName] = useState(user?.global_name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
-  const [accent, setAccent] = useState(user?.accent_color ? `#${user.accent_color.toString(16).padStart(6, '0')}` : '#7c6cf0');
+  const savedAccent = user?.accent_color ? `#${user.accent_color.toString(16).padStart(6, '0')}` : '#7c6cf0';
+  const [accent, setAccent] = useState(savedAccent);
   const [avatar, setAvatar] = useState<string | undefined>();
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   if (!user) return null;
+  const dirty = globalName !== (user.global_name ?? '') || bio !== (user.bio ?? '') || accent !== savedAccent || avatar !== undefined;
+  const reset = () => {
+    setGlobalName(user.global_name ?? '');
+    setBio(user.bio ?? '');
+    setAccent(savedAccent);
+    setAvatar(undefined);
+    setAvatarError(null);
+  };
   const chooseAvatar = async (file: File | undefined) => {
     if (!file) return;
     try {
@@ -119,7 +127,7 @@ export function ProfileTab() {
           <Field label="Profile colour">{(id) => <input id={id} type="color" className="color-input" value={accent} onChange={(e) => setAccent(e.target.value)} />}</Field>
         </div>
       </div>
-      <div className="row-end"><Button variant="primary" loading={saving} onClick={() => void save()}>Save changes</Button></div>
+      <UnsavedBar dirty={dirty} saving={saving} onReset={reset} onSave={() => void save()} />
     </Page>
   );
 }
@@ -353,7 +361,6 @@ export function AppearanceTab() {
           <Button variant="ghost" disabled={prefs.zoom === 1} onClick={() => prefs.set('zoom', 1)}>Reset</Button>
         </div>
       </SettingRow>
-      <SettingRow title="Show link previews" description="Previews of links in messages, made by the server for standard chats. Follows your account on every device."><Switch label="Show link previews" checked={prefs.linkPreviews} onChange={(v) => prefs.set('linkPreviews', v)} /></SettingRow>
     </Page>
   );
 }
@@ -496,6 +503,37 @@ export function DesktopTab() {
           <Button variant="primary" onClick={() => bridge?.desktop.relaunch()}>Restart now</Button>
         </div>
       )}
+    </Page>
+  );
+}
+
+export function ChatTab() {
+  const prefs = usePrefsStore();
+  return (
+    <Page title="Chat" sub="How messages look and how you send them. These apply to this device.">
+      <h3>Display</h3>
+      <SettingRow title="Display images and videos" description="Show attachments inside the message instead of as links."><Switch label="Display images and videos" checked={prefs.inlineMedia} onChange={(v) => prefs.set('inlineMedia', v)} /></SettingRow>
+      <SettingRow title="Show embeds" description="Rich cards that servers attach to links, such as videos and articles."><Switch label="Show embeds" checked={prefs.inlineEmbeds} onChange={(v) => prefs.set('inlineEmbeds', v)} /></SettingRow>
+      <SettingRow title="Show link previews" description="Previews of links in messages, made by the server for standard chats. Follows your account on every device."><Switch label="Show link previews" checked={prefs.linkPreviews} onChange={(v) => prefs.set('linkPreviews', v)} /></SettingRow>
+      <SettingRow title="Show spoiler content" description="When hidden text is revealed without a click.">
+        <Segmented label="Show spoiler content" value={prefs.spoilerDisplay} onChange={(v) => prefs.set('spoilerDisplay', v)} options={[{ value: 'click', label: 'On click' }, { value: 'moderated', label: 'On servers I moderate' }, { value: 'always', label: 'Always' }]} />
+      </SettingRow>
+      <SettingRow title="Show reactions" description="Reaction chips under messages."><Switch label="Show reactions" checked={prefs.showReactions} onChange={(v) => prefs.set('showReactions', v)} /></SettingRow>
+      <SettingRow title="Compact reply preview" description="Quote the replied-to message on a single line."><Switch label="Compact reply preview" checked={prefs.compactReplyPreview} onChange={(v) => prefs.set('compactReplyPreview', v)} /></SettingRow>
+      <h3>Composer</h3>
+      <SettingRow title="Convert emoticons" description="Turn :) and similar into emoji as you send."><Switch label="Convert emoticons" checked={prefs.convertEmoticons} onChange={(v) => prefs.set('convertEmoticons', v)} /></SettingRow>
+      <SettingRow title="Send with Ctrl+Enter" description="Enter adds a new line and Ctrl+Enter sends the message."><Switch label="Send with Ctrl+Enter" checked={prefs.sendWithCtrlEnter} onChange={(v) => prefs.set('sendWithCtrlEnter', v)} /></SettingRow>
+    </Page>
+  );
+}
+
+export function AdvancedTab() {
+  const prefs = usePrefsStore();
+  return (
+    <Page title="Advanced">
+      <SettingRow title="Developer mode" description="Adds Copy ID to the menus of channels, categories, messages and people, so you can use them with bots and the API.">
+        <Switch label="Developer mode" checked={prefs.developerMode} onChange={(v) => prefs.set('developerMode', v)} />
+      </SettingRow>
     </Page>
   );
 }
