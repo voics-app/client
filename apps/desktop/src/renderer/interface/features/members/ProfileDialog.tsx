@@ -11,6 +11,7 @@ import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
+import { StatusLine } from './StatusLine';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { RolePills } from './RolePills';
@@ -79,6 +80,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
   const me = useSessionStore((s) => s.user);
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[userId] : undefined));
   const status = usePresenceStore((s) => s.byUser[userId]?.status ?? 'offline');
+  const activities = usePresenceStore((s) => s.byUser[userId]?.activities);
   const relationship = useRelationshipStore((s) => s.byUser[userId]);
   const query = useQuery({ queryKey: ['user', userId], queryFn: () => getRuntime().api.user(userId), initialData: member?.user as User | undefined, staleTime: 60_000 });
   const user = query.data;
@@ -109,6 +111,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
             <div className="profile-names">
               <h2>{displayName(user, member?.nick)}</h2>
               <p className="mono">{user.username}</p>
+              <StatusLine className="profile-status" activities={activities} />
             </div>
           </div>
           <div className="profile-body">

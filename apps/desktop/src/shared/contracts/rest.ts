@@ -40,6 +40,7 @@ export interface User {
 
 export interface CustomStatus {
   text: string | null;
+  emoji_id?: Snowflake | null;
   emoji_name?: string | null;
   expires_at?: string | null;
 }
