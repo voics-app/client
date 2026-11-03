@@ -684,3 +684,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .template-preview { display: grid; gap: 10px; max-height: 280px; overflow-y: auto; padding: 12px 14px; border-radius: 14px; background: var(--bg-1); }
 .template-group h4 { margin: 0 0 4px; font-size: var(--fs-meta); letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
 .template-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--fs-small); } .template-group li span { display: inline-block; width: 1.2em; color: var(--fg-subtle); }
+
+/* Remote screen share before the viewer opts in: blurred preview with a Watch Stream button. */
+.tile.is-preview .tile-video { filter: blur(18px) brightness(0.55); transform: scale(1.06); }
+.tile-watch { position: absolute; inset: 0; display: grid; place-items: center; }

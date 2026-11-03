@@ -47,6 +47,10 @@ export interface VoiceStoreState {
   userVolumes: Record<string, number>;
   focusedStream: string | null;
   pipStream: string | null;
+  /** Stream keys (`userId:screen`) of remote screen shares the user opted to watch. */
+  watching: string[];
+  /** Hides the user's own camera and screen preview tiles on the stage. */
+  hideSelfPreview: boolean;
   upsertState(state: VoiceState): void;
   hydrate(scopeId: string, states: VoiceState[]): void;
   setCall(patch: Partial<CallState>): void;
@@ -58,6 +62,9 @@ export interface VoiceStoreState {
   setUserVolume(userId: string, volume: number): void;
   focus(streamKey: string | null): void;
   popOut(streamKey: string | null): void;
+  watchStream(streamKey: string): void;
+  stopWatching(streamKey: string): void;
+  setHideSelfPreview(hide: boolean): void;
   resetCall(): void;
 }
 
@@ -80,6 +87,8 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   userVolumes: {},
   focusedStream: null,
   pipStream: null,
+  watching: [],
+  hideSelfPreview: false,
   upsertState: (state) =>
     set((s) => {
       // A user is in at most one call: drop them from every other scope first.
@@ -105,13 +114,21 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
       remoteStreams: [...s.remoteStreams.filter((r) => !(r.userId === stream.userId && r.kind === stream.kind)), stream],
     })),
   removeRemoteStreams: (userId, kind) =>
-    set((s) => ({ remoteStreams: s.remoteStreams.filter((r) => r.userId !== userId || (kind !== undefined && r.kind !== kind)) })),
+    set((s) => ({
+      remoteStreams: s.remoteStreams.filter((r) => r.userId !== userId || (kind !== undefined && r.kind !== kind)),
+      // A share that ended must be opted into again next time.
+      watching: s.watching.filter((k) => !k.startsWith(`${userId}:`) || (kind !== undefined && k !== `${userId}:${kind}`)),
+      focusedStream: s.focusedStream && s.focusedStream.startsWith(`${userId}:`) && (kind === undefined || s.focusedStream === `${userId}:${kind}`) ? null : s.focusedStream,
+    })),
   setLocalMedia: (patch) => set(patch),
   setUserVolume: (userId, volume) => set((s) => ({ userVolumes: { ...s.userVolumes, [userId]: Math.max(0, Math.min(2, volume)) } })),
   focus: (focusedStream) => set({ focusedStream }),
   popOut: (pipStream) => set({ pipStream }),
+  watchStream: (key) => set((s) => (s.watching.includes(key) ? s : { watching: [...s.watching, key] })),
+  stopWatching: (key) => set((s) => ({ watching: s.watching.filter((k) => k !== key), focusedStream: s.focusedStream === key ? null : s.focusedStream, pipStream: s.pipStream === key ? null : s.pipStream })),
+  setHideSelfPreview: (hideSelfPreview) => set({ hideSelfPreview }),
   resetCall: () =>
-    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null }),
+    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [] }),
 }));
 
 export function usersInChannel(states: VoiceStoreState['states'], scopeId: string | null | undefined, channelId: string): VoiceState[] {

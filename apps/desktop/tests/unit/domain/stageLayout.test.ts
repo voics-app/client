@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, type StageTile } from '@renderer/domain/stageLayout';
+import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageTile } from '@renderer/domain/stageLayout';
 
 const tile = (key: string, kind: StageTile['kind'] = 'avatar', isSelf = false): StageTile => ({ key, kind, hasVideo: kind !== 'avatar', isSelf });
 const tiles = [tile('a:main', 'camera', true), tile('b:main'), tile('c:main', 'camera'), tile('c:screen', 'screen')];
@@ -51,5 +51,13 @@ describe('normalizeLayout / gridColumns', () => {
   });
   it('caps columns at four', () => {
     expect([0, 1, 2, 5, 30].map(gridColumns)).toEqual([1, 1, 2, 3, 4]);
+  });
+});
+
+describe('withoutSelfPreview', () => {
+  it('drops own camera and screen previews only when hiding', () => {
+    const mine = [tile('a:main', 'camera', true), tile('a:screen', 'screen', true), tile('a:av', 'avatar', true), tile('b:main', 'camera')];
+    expect(withoutSelfPreview(mine, false)).toHaveLength(4);
+    expect(withoutSelfPreview(mine, true).map((t) => t.key)).toEqual(['a:av', 'b:main']);
   });
 });

@@ -1,4 +1,4 @@
-import { ArrowSquareIn, ArrowSquareOut, ArrowsIn, Camera, Layout, LockKey, Microphone, MicrophoneSlash, Monitor, PhoneDisconnect, Rectangle, SquaresFour, Television, VideoCamera, VideoCameraSlash } from '@phosphor-icons/react';
+import { ArrowSquareIn, ArrowSquareOut, ArrowsIn, Camera, Eye, EyeSlash, Layout, UserPlus, LockKey, Microphone, MicrophoneSlash, Monitor, PhoneDisconnect, Rectangle, SquaresFour, Television, VideoCamera, VideoCameraSlash } from '@phosphor-icons/react';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -7,7 +7,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, type StageMode } from '@renderer/domain/stageLayout';
+import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageMode } from '@renderer/domain/stageLayout';
 import { leaveVoice, stopShare, toggleCamera, toggleMute } from '../../app/voiceActions';
 import { Button } from '../../shared/ui/Button';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -53,7 +53,10 @@ const MODES: { mode: StageMode; label: string; icon: React.ReactNode }[] = [
 
 /** Connected-call stage: grid, focus (speaker plus filmstrip) or spotlight, per channel; can be popped out into its own window. */
 export function VoiceStage({ channelId, guildId }: { channelId: string; guildId: string | null }) {
-  const tiles = useTiles(guildId, channelId);
+  const allTiles = useTiles(guildId, channelId);
+  const hideSelf = useVoiceStore((s) => s.hideSelfPreview);
+  const setHideSelf = useVoiceStore((s) => s.setHideSelfPreview);
+  const tiles = useMemo(() => withoutSelfPreview(allTiles, hideSelf), [allTiles, hideSelf]);
   const focusedKey = useVoiceStore((s) => s.focusedStream);
   const focus = useVoiceStore((s) => s.focus);
   const call = useVoiceStore((s) => s.call);
@@ -139,6 +142,9 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
         <IconButton label={layout.hideNonVideo ? 'Show participants without video' : 'Hide participants without video'} size="lg" active={layout.hideNonVideo} onClick={() => patchLayout(channelId, { hideNonVideo: !layout.hideNonVideo })}>
           {layout.hideNonVideo ? <VideoCameraSlash size={24} /> : <VideoCamera size={24} />}
         </IconButton>
+        <IconButton label={hideSelf ? 'Show your preview' : 'Hide your preview'} size="lg" active={hideSelf} onClick={() => setHideSelf(!hideSelf)}>
+          {hideSelf ? <EyeSlash size={24} /> : <Eye size={24} />}
+        </IconButton>
         {main && (
           <IconButton label="Back to grid" size="lg" onClick={backToGrid}>
             <ArrowsIn size={24} />
@@ -159,12 +165,17 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
       <header className="voice-stage-head">
         <div>
           <h1>{channel?.name ?? 'Call'}</h1>
-          <p className="tnum">{tiles.filter((t) => t.kind !== 'screen').length} in call{call.region ? ` · ${call.region}` : ''}</p>
+          <p className="tnum">{allTiles.filter((t) => t.kind !== 'screen').length} in call{call.region ? ` · ${call.region}` : ''}</p>
         </div>
         {call.e2ee ? (
           <span className="e2ee-chip is-large"><LockKey size={13} weight="fill" /> End-to-end encrypted</span>
         ) : (
           call.status === 'connected' && <span className="e2ee-chip is-off">Standard transport encryption (DTLS-SRTP)</span>
+        )}
+        {guildId && (
+          <Button variant="secondary" size="sm" onClick={() => openDialog({ kind: 'invite', guildId, channelId })}>
+            <UserPlus size={16} /> Invite
+          </Button>
         )}
         <VoiceChatToggle channelId={channelId} />
       </header>

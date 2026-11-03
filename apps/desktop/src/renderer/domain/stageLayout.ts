@@ -58,3 +58,14 @@ export function arrangeStage<T extends StageTile>(tiles: readonly T[], layout: S
 export function gridColumns(count: number): number {
   return Math.min(Math.max(1, Math.ceil(Math.sqrt(count))), 4);
 }
+
+/** Drops the user's own camera and screen previews when "hide self view" is on; the avatar tile stays so you still see yourself in the call. */
+export function withoutSelfPreview<T extends StageTile>(tiles: readonly T[], hide: boolean): T[] {
+  return hide ? tiles.filter((t) => !(t.isSelf && t.hasVideo)) : [...tiles];
+}
+
+/**
+ * Whether the SFU supports telling a streamer who is watching, and dropping a screen share per viewer.
+ * Today it does neither (screen packets bypass MEDIA_SINK_WANTS and no viewer events exist), so the viewer UI stays hidden.
+ */
+export const STREAM_VIEWER_REPORTING = false;
