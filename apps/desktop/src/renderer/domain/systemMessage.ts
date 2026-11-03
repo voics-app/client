@@ -95,9 +95,15 @@ export function callDuration(startIso: string, endIso: string): string {
 /** Types this table knows. Anything else gets the fallback text. */
 export const KNOWN_SYSTEM_TYPES: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 18];
 
-/** True for every message type that is not default (0), reply (19) or chat input command (20). */
+/**
+ * Message types that carry ordinary user or bot content and render as a normal message row: default (0),
+ * thread starter (21), reply (19), chat input command (20) and context menu command (23).
+ */
+export const CONTENT_TYPES: readonly number[] = [0, 19, 20, 21, 23];
+
+/** True for every other type: those render as a system row (unknown ones with the safe fallback). */
 export function isSystemType(type: number): boolean {
-  return type !== 0 && type !== 19 && type !== 20;
+  return !CONTENT_TYPES.includes(type);
 }
 
 const text = (s: string): SystemPart => ({ t: 'text', text: s });
