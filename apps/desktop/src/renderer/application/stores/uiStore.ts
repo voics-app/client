@@ -1,5 +1,6 @@
 /** Navigation and transient UI state. */
 import { create } from 'zustand';
+import { canGo, emptyHistory, pushView, stepHistory, type NavHistory } from '@renderer/domain/navHistory';
 import type { ChatMessage } from './messageStore';
 
 export type View =
@@ -64,6 +65,8 @@ export interface Toast {
 export interface UiState {
   view: View;
   lastChannelByGuild: Record<string, string>;
+  /** Visited views (bounded to 50), driven by `navigate`, `back` and `forward`; in memory only. */
+  history: NavHistory<View>;
   paletteOpen: boolean;
   settings: SettingsTarget | null;
   dialog: Dialog | null;
@@ -72,7 +75,11 @@ export interface UiState {
   editing: { channelId: string; messageId: string } | null;
   toasts: Toast[];
   galleryOpen: boolean;
+  /** Single entry point for moving to a view; records it in the history (jumping from the middle drops the forward entries). */
   navigate(view: View): void;
+  /** Steps one view back or forward in the history without recording a new entry; false when at the end. */
+  back(): boolean;
+  forward(): boolean;
   openPalette(open: boolean): void;
   openSettings(target: SettingsTarget | null): void;
   openDialog(dialog: Dialog | null): void;
@@ -89,8 +96,29 @@ export interface UiState {
 
 let toastSeq = 0;
 
-export const useUiStore = create<UiState>((set) => ({
-  view: { kind: 'home', channelId: null },
+const INITIAL_VIEW: View = { kind: 'home', channelId: null };
+
+/** The state changes shared by every way of showing a view. */
+function applyView(s: UiState, view: View): Partial<UiState> {
+  return {
+    view,
+    editing: null,
+    lastChannelByGuild: view.kind === 'guild' && view.channelId ? { ...s.lastChannelByGuild, [view.guildId]: view.channelId } : s.lastChannelByGuild,
+    sidePanel: s.sidePanel?.kind === 'thread' ? { kind: 'members' } : s.sidePanel,
+  };
+}
+
+function step(set: (fn: (s: UiState) => Partial<UiState>) => void, get: () => UiState, delta: 1 | -1): boolean {
+  if (!canGo(get().history, delta)) return false;
+  set((s) => {
+    const history = stepHistory(s.history, delta);
+    return { ...applyView(s, history.entries[history.index]!), history };
+  });
+  return true;
+}
+
+export const useUiStore = create<UiState>((set, get) => ({
+  view: INITIAL_VIEW,
   lastChannelByGuild: {},
   paletteOpen: false,
   settings: null,
@@ -102,14 +130,10 @@ export const useUiStore = create<UiState>((set) => ({
   galleryOpen: false,
   searchFocus: 0,
   focusSearch: () => set((s) => ({ searchFocus: s.searchFocus + 1 })),
-  navigate: (view) =>
-    set((s) => ({
-      view,
-      editing: null,
-      lastChannelByGuild:
-        view.kind === 'guild' && view.channelId ? { ...s.lastChannelByGuild, [view.guildId]: view.channelId } : s.lastChannelByGuild,
-      sidePanel: s.sidePanel?.kind === 'thread' ? { kind: 'members' } : s.sidePanel,
-    })),
+  history: pushView(emptyHistory<View>(), INITIAL_VIEW),
+  navigate: (view) => set((s) => ({ ...applyView(s, view), history: pushView(s.history, view) })),
+  back: () => step(set, get, -1),
+  forward: () => step(set, get, 1),
   openPalette: (paletteOpen) => set({ paletteOpen }),
   openSettings: (settings) => set({ settings }),
   openDialog: (dialog) => set({ dialog }),
