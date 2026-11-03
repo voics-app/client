@@ -26,10 +26,11 @@ export type UserSettingsTab =
   | 'desktop'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'discovery' | 'bans' | 'audit';
+export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit';
 
 export type Dialog =
   | { kind: 'createGuild' }
+  | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
   | { kind: 'createChannel'; guildId: string; parentId: string | null; type?: number }
   | { kind: 'invite'; guildId: string; channelId: string }

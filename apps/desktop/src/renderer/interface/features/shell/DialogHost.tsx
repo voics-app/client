@@ -23,6 +23,7 @@ import { ForwardDialog } from '../chat/ForwardDialog';
 import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
+import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
@@ -34,42 +35,6 @@ import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog
 
 function useClose() {
   return () => useUiStore.getState().openDialog(null);
-}
-
-function CreateGuildDialog() {
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const close = useClose();
-  const me = useSessionStore((s) => s.user);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const guild = await getRuntime().api.createGuild({ name: name.trim() });
-      useGuildStore.getState().upsertGuild(guild);
-      close();
-      openGuild(guild.id);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal open onClose={close} title="Create your server" description="A server is where you and your friends hang out. Make yours and start talking.">
-      <form onSubmit={submit} className="stack">
-        <Field label="Server name" error={error}>
-          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={`${me ? displayName(me) : 'My'}'s server`} onChange={(e) => setName(e.target.value)} />}
-        </Field>
-        <div className="row-end">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 2}>Create server</Button>
-        </div>
-      </form>
-    </Modal>
-  );
 }
 
 function JoinGuildDialog({ initial }: { initial?: string }) {
@@ -392,6 +357,7 @@ function ActiveDialog() {
   if (!dialog) return null;
   switch (dialog.kind) {
     case 'createGuild': return <CreateGuildDialog />;
+    case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;

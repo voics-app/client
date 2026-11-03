@@ -108,6 +108,7 @@ test('every user and server settings tab fits without horizontal scroll', async 
   if (!(await hasServerSettings(page))) {
     // Bob owns no server by default, so create one to get the owner-only Server settings tabs.
     await page.getByRole('button', { name: 'Create a server' }).click();
+    await page.getByRole('button', { name: 'Create My Own' }).click();
     await page.getByLabel('Server name').fill('Overflow probe');
     await page.getByRole('button', { name: 'Create server' }).click();
     await expect(page.locator('.guild-header-name', { hasText: 'Overflow probe' })).toBeVisible({ timeout: 30_000 });

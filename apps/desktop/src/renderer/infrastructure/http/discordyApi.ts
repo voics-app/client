@@ -19,6 +19,7 @@ import type {
   Emoji,
   Guild,
   DiscoveryPage,
+  GuildTemplate,
   DiscoveryQuery,
   GuildDiscoverySettings,
   GuildFull,
@@ -179,6 +180,30 @@ export class DiscordyApi implements ApiPort {
 
   createGuild(body: { name: string; icon?: string | null }) {
     return this.post<GuildFull>('/guilds', body);
+  }
+  builtinGuildTemplates() {
+    return this.get<GuildTemplate[]>('/guilds/templates');
+  }
+  guildTemplate(code: string) {
+    return this.get<GuildTemplate>(`/guilds/templates/${encodeURIComponent(code)}`);
+  }
+  createGuildFromTemplate(code: string, body: { name: string; icon?: string | null }) {
+    return this.post<GuildFull>(`/guilds/templates/${encodeURIComponent(code)}`, body);
+  }
+  guildTemplates(guildId: string) {
+    return this.get<GuildTemplate[]>(`/guilds/${guildId}/templates`);
+  }
+  createGuildTemplate(guildId: string, body: { name: string; description?: string | null }) {
+    return this.post<GuildTemplate>(`/guilds/${guildId}/templates`, body);
+  }
+  modifyGuildTemplate(guildId: string, code: string, body: { name?: string; description?: string | null }) {
+    return this.patch<GuildTemplate>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`, body);
+  }
+  syncGuildTemplate(guildId: string, code: string) {
+    return this.put<GuildTemplate>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`);
+  }
+  deleteGuildTemplate(guildId: string, code: string) {
+    return this.del<void>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`);
   }
   guild(guildId: string) {
     return this.get<Guild>(`/guilds/${guildId}`);

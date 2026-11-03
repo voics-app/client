@@ -5,6 +5,7 @@ export const PROTOCOL = BRAND.protocolScheme;
 
 const ID = /^\d{1,20}$/;
 const INVITE = /^[A-Za-z0-9-]{2,32}$/;
+const TEMPLATE = /^[A-Za-z0-9-]{2,64}$/;
 
 export function routeFromDeepLink(link: string): string | null {
   let url: URL;
@@ -17,6 +18,7 @@ export function routeFromDeepLink(link: string): string | null {
   const parts = [url.hostname, ...url.pathname.split('/')].filter(Boolean);
   const [kind, a, b, c] = parts;
   if (kind === 'invite' && a && INVITE.test(a) && parts.length === 2) return `/invite/${a}`;
+  if (kind === 'template' && a && TEMPLATE.test(a) && parts.length === 2) return `/template/${a}`;
   if (kind === 'channels' && a && b && (a === '@me' || ID.test(a)) && ID.test(b)) {
     if (parts.length === 3) return `/channels/${a}/${b}`;
     if (parts.length === 4 && c && ID.test(c)) return `/channels/${a}/${b}/${c}`;
