@@ -181,6 +181,11 @@ export interface ApiPort {
 
   applications(): Promise<ApplicationSummary[]>;
   globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
+  createApplication(body: { name: string; description?: string }): Promise<ApplicationSummary>;
+  /** Issues a new bot token and invalidates the old one. The token is returned once; callers must not persist or log it. */
+  resetBotToken(applicationId: string): Promise<{ token: string }>;
+  createCommand(applicationId: string, body: { type: number; name: string; description: string }): Promise<ApplicationCommand>;
+  deleteCommand(applicationId: string, commandId: string): Promise<void>;
   commandIndex(guildId: string): Promise<CommandIndex>;
   createInteraction(body: CreateInteractionBody): Promise<{ id: string }>;
 }

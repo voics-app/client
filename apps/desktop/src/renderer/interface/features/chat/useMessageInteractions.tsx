@@ -20,6 +20,7 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { selectionWithin, targetFromElement } from './contextTarget';
+import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
 import { useEmojiPopover } from './EmojiPopover';
 
 /** Forwarding is stored server-side as a snapshot (messages#13); E2EE and P2P chats are excluded in the menu model. */
@@ -139,6 +140,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       },
     });
 
+  const appCommands = useContextCommands(can(perms, Permission.USE_APPLICATION_COMMANDS) ? message.channel_id : null, menu.open && standard);
   const canManage = can(perms, Permission.MANAGE_MESSAGES);
   const canReact = can(perms, Permission.ADD_REACTIONS);
 
@@ -170,6 +172,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'copyLink': return arg && void copyText(arg, 'Link copied');
       case 'copyImage': return arg && void copyImage(arg);
       case 'saveImage': return arg && void saveImage(arg, target.kind === 'image' ? target.filename : 'image');
+      case 'appCommand': return runContextCommand(channel, appCommands?.find((c) => c.id === arg), message.id);
       case 'addEmoji': return target.kind === 'emoji' && guildId && void addEmojiToGuild(guildId, target.name, target.url);
     }
   };
@@ -193,6 +196,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
         !(guild?.emojis ?? []).some((e) => e.id === target.id),
       quick,
       developerMode,
+      appCommands,
     },
     target,
   );

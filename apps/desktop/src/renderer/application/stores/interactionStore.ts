@@ -1,6 +1,7 @@
 /** Slash command catalogue, in-flight interactions ("is thinking…") and the open modal. */
 import { create } from 'zustand';
 import type { MessageComponent } from '@shared/contracts/rest';
+import type { ContextCommand } from '@renderer/domain/contextCommands';
 import type { SlashEntry } from '@renderer/domain/slashCommand';
 
 /** Deferred responses may take up to fifteen minutes; after that the placeholder is dropped. */
@@ -29,11 +30,14 @@ export const DM_SCOPE = 'dm';
 
 export interface InteractionState {
   commands: Record<string, SlashEntry[]>;
+  /** USER and MESSAGE commands per scope, behind the Apps submenu. */
+  contextCommands: Record<string, ContextCommand[]>;
   appNames: Record<string, string>;
   pending: Record<string, PendingInteraction[]>;
   applicationOf: Record<string, string>;
   modal: OpenModal | null;
   setCommands(scope: string, entries: SlashEntry[]): void;
+  setContextCommands(scope: string, entries: ContextCommand[]): void;
   invalidateCommands(scope: string): void;
   setAppName(applicationId: string, name: string): void;
   addPending(pending: PendingInteraction): void;
@@ -45,15 +49,17 @@ export interface InteractionState {
   reset(): void;
 }
 
-const initial = { commands: {}, appNames: {}, pending: {}, applicationOf: {}, modal: null };
+const initial = { commands: {}, contextCommands: {}, appNames: {}, pending: {}, applicationOf: {}, modal: null };
 
 export const useInteractionStore = create<InteractionState>((set) => ({
   ...initial,
   setCommands: (scope, entries) => set((s) => ({ commands: { ...s.commands, [scope]: entries } })),
+  setContextCommands: (scope, entries) => set((s) => ({ contextCommands: { ...s.contextCommands, [scope]: entries } })),
   invalidateCommands: (scope) =>
     set((s) => {
       const { [scope]: _dropped, ...commands } = s.commands;
-      return { commands };
+      const { [scope]: _droppedContext, ...contextCommands } = s.contextCommands;
+      return { commands, contextCommands };
     }),
   setAppName: (applicationId, name) => set((s) => ({ appNames: { ...s.appNames, [applicationId]: name } })),
   addPending: (pending) =>

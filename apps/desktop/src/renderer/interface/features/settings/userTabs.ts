@@ -14,5 +14,6 @@ export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] 
   { id: 'connection', label: 'Connection', group: 'App settings' },
   { id: 'desktop', label: 'Desktop', group: 'App settings' },
   { id: 'advanced', label: 'Advanced', group: 'App settings' },
+  { id: 'developer', label: 'Developer', group: 'App settings' },
   { id: 'about', label: 'About and updates', group: 'App settings' },
 ];

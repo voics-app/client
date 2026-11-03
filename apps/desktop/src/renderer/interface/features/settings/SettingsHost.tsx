@@ -18,6 +18,7 @@ import { closeSettings, useUnsavedStore } from '@renderer/application/stores/uns
 import { confirmLogout } from './logout';
 import { searchSettings } from './searchIndex';
 import { USER_TABS } from './userTabs';
+import { DeveloperTab } from './user/DeveloperTab';
 import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
 
 function Layout({ title, nav, children, footer }: { title: string; nav: ReactNode; children: ReactNode; footer?: ReactNode }) {
@@ -97,7 +98,7 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
   return (
     <Layout
       title="User settings"

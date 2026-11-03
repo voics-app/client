@@ -406,6 +406,18 @@ export class DiscordyApi implements ApiPort {
   globalCommands(applicationId: string) {
     return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);
   }
+  createApplication(body: { name: string; description?: string }) {
+    return this.post<ApplicationSummary>('/applications', body);
+  }
+  resetBotToken(applicationId: string) {
+    return this.post<{ token: string }>(`/applications/${enc(applicationId)}/bot/reset-token`);
+  }
+  createCommand(applicationId: string, body: { type: number; name: string; description: string }) {
+    return this.post<ApplicationCommand>(`/applications/${enc(applicationId)}/commands`, body);
+  }
+  deleteCommand(applicationId: string, commandId: string) {
+    return this.del<void>(`/applications/${enc(applicationId)}/commands/${enc(commandId)}`);
+  }
   commandIndex(guildId: string) {
     return this.get<CommandIndex>(`/guilds/${guildId}/application-command-index`);
   }
