@@ -95,10 +95,10 @@ describe('system menu and toolbar', () => {
     expect(idsOf(buildSystemMenu({ canManageMessages: false }))).not.toContain('delete');
     expect(idsOf(buildSystemMenu({ canManageMessages: true }))).toContain('delete');
   });
-  it('Copy ID follows Developer mode, and stays when the setting does not exist yet', () => {
+  it('Copy ID follows Developer mode, and is hidden when it is unset', () => {
     expect(idsOf(buildSystemMenu({ canManageMessages: false, developerMode: false }))).not.toContain('copyId');
     expect(idsOf(buildSystemMenu({ canManageMessages: false, developerMode: true }))).toContain('copyId');
-    expect(idsOf(buildSystemMenu({ canManageMessages: false }))).toContain('copyId');
+    expect(idsOf(buildSystemMenu({ canManageMessages: false }))).not.toContain('copyId');
   });
   it('always offers Mark Unread', () => {
     expect(idsOf(buildSystemMenu({ canManageMessages: false, developerMode: false }))).toEqual(['markUnread']);

@@ -66,6 +66,38 @@ describe('voiceStore', () => {
     useVoiceStore.getState().setUserVolume('u', 5);
     expect(useVoiceStore.getState().userVolumes.u).toBe(2);
   });
+
+  it('tracks the screen shares the user opted to watch', () => {
+    const v = useVoiceStore.getState();
+    v.watchStream('u:screen');
+    v.watchStream('u:screen');
+    expect(useVoiceStore.getState().watching).toEqual(['u:screen']);
+    v.focus('u:screen');
+    v.stopWatching('u:screen');
+    expect(useVoiceStore.getState().watching).toEqual([]);
+    expect(useVoiceStore.getState().focusedStream).toBeNull();
+  });
+
+  it('forgets the watch opt-in when the share ends or the call resets', () => {
+    const v = useVoiceStore.getState();
+    const stream = {} as MediaStream;
+    v.setRemoteStream({ userId: 'u', kind: 'screen', stream });
+    v.watchStream('u:screen');
+    v.watchStream('w:screen');
+    v.removeRemoteStreams('u', 'camera');
+    expect(useVoiceStore.getState().watching).toEqual(['u:screen', 'w:screen']);
+    v.removeRemoteStreams('u', 'screen');
+    expect(useVoiceStore.getState().watching).toEqual(['w:screen']);
+    v.resetCall();
+    expect(useVoiceStore.getState().watching).toEqual([]);
+  });
+
+  it('keeps the hide-self-view choice across calls', () => {
+    useVoiceStore.getState().setHideSelfPreview(true);
+    useVoiceStore.getState().resetCall();
+    expect(useVoiceStore.getState().hideSelfPreview).toBe(true);
+    useVoiceStore.getState().setHideSelfPreview(false);
+  });
 });
 
 describe('typing and read state', () => {

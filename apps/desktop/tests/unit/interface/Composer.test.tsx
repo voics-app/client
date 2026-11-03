@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
 import { Permission } from '@shared/contracts/permissions';
@@ -308,14 +309,28 @@ describe('Composer: edit last message and Escape', () => {
 });
 
 describe('Composer: paste limits', () => {
-  it('turns a pasted wall of text into message.txt', () => {
+  it('offers Convert to file or Send as message for a pasted wall of text', () => {
     const c = guildChannel();
     seedGuild(BASE, c);
     render(<Composer channel={c} mode="standard" />);
     const long = 'x'.repeat(2500);
     fireEvent.paste(input(), { clipboardData: { files: [], getData: () => long } });
+    expect(input().value).toBe('');
+    expect(screen.queryByText('message.txt')).toBeNull();
+    fireEvent.click(screen.getByText('Convert to file'));
     expect(screen.getByText('message.txt')).toBeTruthy();
     expect(input().value).toBe('');
+  });
+
+  it('Send as message puts the text in the input', () => {
+    const c = guildChannel();
+    seedGuild(BASE, c);
+    render(<Composer channel={c} mode="standard" />);
+    const long = 'y'.repeat(2500);
+    fireEvent.paste(input(), { clipboardData: { files: [], getData: () => long } });
+    fireEvent.click(screen.getByText('Send as message'));
+    expect(input().value).toBe(long);
+    expect(screen.queryByText('message.txt')).toBeNull();
   });
 
   it('lets short pastes through as text', () => {
@@ -330,5 +345,45 @@ describe('Composer: paste limits', () => {
     fireEvent.paste(input(), { clipboardData: { files, getData: () => '' } });
     expect(screen.getAllByRole('listitem').filter((li) => li.textContent?.includes('.txt'))).toHaveLength(10);
     expect(useUiStore.getState().toasts.some((t) => t.body?.includes('at most 10'))).toBe(true);
+  });
+});
+
+describe('Composer: send key preference, @here and format toolbar', () => {
+  afterEach(() => usePrefsStore.setState({ sendWithCtrlEnter: false } as never));
+
+  it('with Send with Ctrl+Enter on, Enter does not send but Ctrl+Enter does', () => {
+    usePrefsStore.setState({ sendWithCtrlEnter: true } as never);
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    type('hello');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).not.toHaveBeenCalled();
+    fireEvent.keyDown(input(), { key: 'Enter', ctrlKey: true });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('suggests @here next to @everyone with MENTION_EVERYONE', () => {
+    const c = guildChannel();
+    seedGuild(BASE | Permission.MENTION_EVERYONE, c);
+    render(<Composer channel={c} mode="standard" />);
+    type('@he');
+    fireEvent.keyDown(input(), { key: 'Tab' });
+    expect(input().value).toBe('@here ');
+  });
+
+  it('shows the format toolbar on a selection and wraps it', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    type('hello');
+    expect(screen.queryByRole('toolbar')).toBeNull();
+    input().setSelectionRange(0, 5);
+    fireEvent.select(input());
+    fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
+    expect(input().value).toBe('**hello**');
+  });
+
+  it('the plus menu offers Upload a file only', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add to message' }));
+    expect(screen.getByRole('menuitem', { name: /Upload a file/ })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: /poll/i })).toBeNull();
   });
 });
