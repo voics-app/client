@@ -565,6 +565,20 @@ export interface Device {
   identity_key_b64: string;
 }
 
+/** A login session of the current user (`GET /users/@me/sessions`). */
+export interface AuthSession {
+  id: string;
+  client: string;
+  os: string;
+  /** Name of the encrypted-message device bound to the session. */
+  device_name: string | null;
+  /** ISO 3166-1 country code from the edge; null when unknown. */
+  location: string | null;
+  created_at: string;
+  last_used_at: string;
+  current: boolean;
+}
+
 export interface VoiceRegion {
   id: string;
   name: string;

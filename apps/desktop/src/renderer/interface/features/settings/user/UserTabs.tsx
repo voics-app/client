@@ -30,6 +30,7 @@ import { readImageUpload } from '../imageUpload';
 import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
+import { SessionsList } from './SessionsList';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -179,7 +180,9 @@ export function DevicesTab() {
   const current = useSessionStore((s) => s.deviceId);
   const devices = useQuery({ queryKey: ['devices', me], queryFn: () => getRuntime().api.listUserDevices(me!), enabled: Boolean(me) });
   return (
-    <Page title="Devices" sub="Devices that can receive your encrypted messages.">
+    <Page title="Devices" sub="Where you are logged in, and the devices that can receive your encrypted messages.">
+      <SessionsList />
+      <h2>Encrypted-message devices</h2>
       <ul className="manage-list">
         {devices.data?.map((d) => (
           <li key={d.device_id}>
