@@ -56,7 +56,7 @@ describe('systemSpec by type', () => {
 
 describe('isSystemType', () => {
   it('excludes default, reply and chat input command', () => {
-    expect([0, 19, 20].some(isSystemType)).toBe(false);
+    expect([0, 19, 20, 21, 23].some(isSystemType)).toBe(false); // content types, incl. context menu command replies
     expect([3, 6, 7, 18, 99].every(isSystemType)).toBe(true);
   });
 });
