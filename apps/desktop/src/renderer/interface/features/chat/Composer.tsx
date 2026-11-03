@@ -1,3 +1,4 @@
+import { convertEmoticons } from '@renderer/domain/emoticons';
 import { ArrowBendUpLeft, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
@@ -315,6 +316,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     }
     if (slowmodeLeft > 0) return;
     for (const [tok, wire] of mentionMap.current) content = content.split(tok).join(wire);
+    if (prefs.convertEmoticons) content = convertEmoticons(content);
     const input = {
       content,
       files: files.length > 0 ? files : undefined,
