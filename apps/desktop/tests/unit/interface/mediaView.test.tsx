@@ -175,3 +175,73 @@ describe('link embeds', () => {
     expect(screen.queryByRole('button', { name: /Remove all link previews/ })).toBeNull();
   });
 });
+
+describe('chat display preferences', () => {
+  const setPref = (p: Partial<typeof DEFAULT_PREFS>) => usePrefsStore.setState({ ...DEFAULT_PREFS, ...p });
+  const reply = { id: 'r0', channel_id: 'c1', author: user('carol'), content: 'first line\nsecond line', attachments: [], embeds: [], timestamp: '2026-01-01T00:00:00Z' };
+
+  it('inlineMedia off lists images as file links, not tiles', () => {
+    setPref({ inlineMedia: false });
+    renderMessage(message({ attachments: [image('a')] as never }));
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(0);
+    expect(document.querySelector('a.attachment-file')).toBeTruthy();
+    cleanup();
+    setPref({ inlineMedia: true });
+    renderMessage(message({ attachments: [image('a')] as never }));
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(1);
+  });
+
+  it('inlineEmbeds off hides every embed', () => {
+    setPref({ inlineEmbeds: false });
+    renderMessage(message({ embeds: [linkEmbed] as never }));
+    expect(screen.queryByText('A post')).toBeNull();
+    cleanup();
+    setPref({ inlineEmbeds: true });
+    renderMessage(message({ embeds: [linkEmbed] as never }));
+    expect(screen.getByText('A post')).toBeTruthy();
+  });
+
+  it('spoilerDisplay: click keeps it hidden, always reveals, moderated follows MANAGE_MESSAGES', () => {
+    const spoilerMsg = () => message({ content: '||secret||', attachments: [image('a', { filename: 'SPOILER_a.png' })] as never });
+    setPref({ spoilerDisplay: 'click' });
+    renderMessage(spoilerMsg());
+    expect(document.querySelector('.spoiler.is-shown')).toBeNull();
+    expect(screen.getByRole('button', { name: /Spoiler: a\.png/ })).toBeTruthy();
+    cleanup();
+    setPref({ spoilerDisplay: 'always' });
+    renderMessage(spoilerMsg());
+    expect(document.querySelector('.spoiler.is-shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open a.png' })).toBeTruthy();
+    cleanup();
+    setPref({ spoilerDisplay: 'moderated' });
+    renderMessage(spoilerMsg()); // seeded with all permissions
+    expect(document.querySelector('.spoiler.is-shown')).toBeTruthy();
+    cleanup();
+    seed('alice', 0n);
+    renderMessage(spoilerMsg());
+    expect(document.querySelector('.spoiler.is-shown')).toBeNull();
+  });
+
+  it('showReactions off hides the reaction bar', () => {
+    const m = message({ reactions: [{ emoji: { id: null, name: '👍' }, count: 2, me: false }] as never });
+    setPref({ showReactions: false });
+    renderMessage(m);
+    expect(document.querySelector('.reactions')).toBeNull();
+    cleanup();
+    setPref({ showReactions: true });
+    renderMessage(m);
+    expect(document.querySelector('.reactions')).toBeTruthy();
+  });
+
+  it('compactReplyPreview drops the avatar and flattens the quoted text', () => {
+    const m = message({ message_reference: { message_id: 'r0' }, referenced_message: reply } as never);
+    setPref({ compactReplyPreview: true });
+    renderMessage(m);
+    expect(document.querySelector('.reply-preview.is-compact')).toBeTruthy();
+    expect(document.querySelector('.reply-text')?.textContent).toBe('first line second line');
+    cleanup();
+    setPref({ compactReplyPreview: false });
+    renderMessage(m);
+    expect(document.querySelector('.reply-preview.is-compact')).toBeNull();
+  });
+});

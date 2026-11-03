@@ -1,5 +1,10 @@
 import { ArrowClockwise, File as FileIcon, FilePdf, LockSimple, Play, WarningCircle, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { Permission } from '@shared/contracts/permissions';
+import { spoilersOpen } from '@renderer/domain/chatDisplay';
+import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { useLightboxStore, type LightboxItem } from '@renderer/application/stores/lightboxStore';
 import { fractionOf, useTransferStore, type TransferState } from '@renderer/application/stores/transferStore';
 import { uploadFraction, useUploadStore } from '@renderer/application/stores/uploadStore';
@@ -69,11 +74,14 @@ function lightboxItem(a: Attachment, src = a.proxy_url ?? a.url): LightboxItem {
   return { kind: previewKind(a) === 'video' ? 'video' : 'image', src, original: a.url, filename: a.filename, description: a.description, width: a.width, height: a.height };
 }
 
-function MediaTile({ attachment, onError, tile, siblings }: { attachment: Attachment; onError: () => void; tile?: boolean; siblings?: Attachment[] }) {
+function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachment: Attachment; onError: () => void; tile?: boolean; siblings?: Attachment[]; channelId?: string }) {
   const kind = previewKind(attachment);
   const spoiler = isSpoiler(attachment);
   const [revealed, setRevealed] = useState(false);
-  const hidden = spoiler && !revealed;
+  const mode = usePrefsStore((s) => s.spoilerDisplay);
+  const guildId = useGuildStore((s) => (channelId ? s.channels[channelId]?.guild_id : null));
+  const open = spoilersOpen(mode, can(useGuildPermissions(guildId), Permission.MANAGE_MESSAGES));
+  const hidden = spoiler && !revealed && !open;
   const src = attachment.proxy_url ?? attachment.url;
   const name = displayFilename(attachment.filename);
 
@@ -154,6 +162,7 @@ function TextPreview({ attachment, url }: { attachment: Attachment; url: string 
 
 function MediaAttachment({ attachment: original, channelId, tile, siblings }: ItemProps) {
   const { url, refresh } = useFreshUrl(original, channelId);
+  const inlineMedia = usePrefsStore((s) => s.inlineMedia);
   const attachment = { ...original, url, proxy_url: url };
   const retried = useRef(false);
   const onError = () => {
@@ -162,7 +171,8 @@ function MediaAttachment({ attachment: original, channelId, tile, siblings }: It
     refresh();
   };
   const kind = previewKind(attachment);
-  if (kind === 'image' || kind === 'video') return <MediaTile attachment={attachment} onError={onError} tile={tile} siblings={siblings} />;
+  if ((kind === 'image' || kind === 'video') && !inlineMedia) return <FileCard attachment={attachment} url={url} />;
+  if (kind === 'image' || kind === 'video') return <MediaTile attachment={attachment} onError={onError} tile={tile} siblings={siblings} channelId={channelId} />;
   if (kind === 'audio') {
     return (
       <div className="attachment-audio">
@@ -246,7 +256,10 @@ export function AttachmentView({ attachment, channelId, tile, siblings }: ItemPr
 
 /** All attachments of a message: images and videos in a Discord-style grid, other files listed below. */
 export function MessageAttachments({ attachments, channelId }: { attachments: Attachment[]; channelId: string }) {
-  const { media, files } = splitAttachments(attachments);
+  const inlineMedia = usePrefsStore((s) => s.inlineMedia);
+  const split = splitAttachments(attachments);
+  const media = inlineMedia ? split.media : [];
+  const files = inlineMedia ? split.files : attachments;
   const layout = media.length > 1 ? gridLayout(media.length) : null;
   const shown = layout ? media.slice(0, layout.cells.length) : media;
   return (

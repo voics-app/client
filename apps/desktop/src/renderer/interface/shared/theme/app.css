@@ -711,9 +711,23 @@ button.mode-badge:active { transform: scale(0.96); }
 /* Remote screen share before the viewer opts in: blurred preview with a Watch Stream button. */
 .tile.is-preview .tile-video { filter: blur(18px) brightness(0.55); transform: scale(1.06); }
 .tile-watch { position: absolute; inset: 0; display: grid; place-items: center; }
+.composer-format { display: flex; gap: 2px; align-self: flex-start; margin: 4px 12px 0; padding: 2px; border-radius: 10px; background: var(--bg-3); }
+.composer-paste { display: flex; align-items: center; gap: 8px; margin: 6px 12px 0; padding: 6px 10px; border-radius: 10px; background: var(--bg-3); font-size: var(--fs-meta); color: var(--fg-muted); }
+.composer-paste > span { flex: 1; }
+.composer-paste-btn { padding: 4px 10px; border-radius: 8px; font-weight: 650; background: var(--bg-2); color: var(--fg); } .composer-paste-btn.is-primary { background: var(--accent); color: var(--accent-fg, #fff); }
+.palette-mode { flex: none; padding: 2px 8px; border-radius: var(--radius-pill, 999px); background: var(--accent-soft, var(--hairline)); color: var(--fg); font-size: var(--fs-caption, 12px); font-weight: 600; white-space: nowrap; }
 .invite-embed { display: flex; align-items: center; gap: 12px; max-width: 420px; margin-top: 6px; padding: 12px; border-radius: 12px; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
 .invite-embed-info { display: flex; flex-direction: column; min-width: 0; flex: 1; } .invite-embed-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .invite-embed-info span, .invite-embed-loading, .invite-embed.is-invalid p { color: var(--fg-muted); font-size: var(--fs-small); }
 .app-tag { align-self: center; } .message-head .app-tag { font-size: 10px; padding: 0 5px; }
 .mention-roleMention { color: var(--role-color, var(--accent-text)); background: color-mix(in oklch, var(--role-color, var(--accent)) 18%, transparent); }
 .mention-roleMention.is-mine { background: color-mix(in oklch, var(--role-color, var(--accent)) 32%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--role-color, var(--accent)) 60%, transparent); }
 .message-time[title], .message-time-gutter { cursor: default; }
+.reply-preview.is-compact { gap: 4px; font-size: calc(var(--fs-meta) - 1px); } .reply-preview.is-compact .reply-text { max-width: 60ch; }
+
+/* Chat header: topic popout, pin actions, DM profile panel (client#93) */
+.channel-topic-wrap { position: relative; min-width: 0; }
+button.channel-topic { background: none; border: 0; border-left: 1px solid var(--hairline-strong); max-width: 100%; cursor: pointer; text-align: left; } button.channel-topic:hover { color: var(--fg); }
+.topic-popout { position: absolute; top: calc(100% + 10px); left: 8px; z-index: 30; width: min(420px, 70vw); padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; }
+.topic-popout h3 { font-size: var(--fs-body); } .topic-full { max-height: 260px; overflow-y: auto; overflow-wrap: anywhere; } .topic-edit { width: 100%; resize: vertical; }
+.pin-card .embeds, .pin-card .attachments { margin-top: 6px; } .pin-actions { display: flex; gap: 6px; margin-top: 8px; }
+.dm-profile { display: flex; flex-direction: column; gap: 12px; } .dm-profile-head { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }

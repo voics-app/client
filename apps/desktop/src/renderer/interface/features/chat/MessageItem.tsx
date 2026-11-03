@@ -5,6 +5,8 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { replyPreviewText } from '@renderer/domain/chatDisplay';
 import { Permission } from '@shared/contracts/permissions';
 import { MessageFlag, type Reaction } from '@shared/contracts/rest';
 import { buildReactionMenu } from '@renderer/domain/messageMenuModel';
@@ -37,20 +39,21 @@ import { isSystemType } from '@renderer/domain/systemMessage';
 
 function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
+  const compact = usePrefsStore((s) => s.compactReplyPreview);
   if (!message.message_reference || isForward(message)) return null;
   return (
     <div
-      className={`reply-preview${message.message_reference?.message_id ? ' is-link' : ''}`}
+      className={`reply-preview${message.message_reference?.message_id ? ' is-link' : ''}${compact ? ' is-compact' : ''}`}
       onClick={() => message.message_reference?.message_id && jumpToMessage(message.channel_id, message.message_reference.message_id)}
     >
       <span className="reply-hook" aria-hidden="true" />
       {ref ? (
         <>
           <UserMenuTarget userId={ref.author.id} name={displayName(ref.author)} guildId={guildId} user={ref.author}>
-            <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
+            {!compact && <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />}
             <span className="reply-name">@{displayName(ref.author)}</span>
           </UserMenuTarget>
-          <span className="reply-text">{ref.content || 'Click to see attachment'}</span>
+          <span className="reply-text">{replyPreviewText(ref.content, compact) || 'Click to see attachment'}</span>
         </>
       ) : (
         <span className="reply-text is-missing">{message.referenced_message === null ? 'Original message was deleted' : 'Original message unavailable'}</span>
@@ -181,10 +184,11 @@ function ReactionChip({ message, reaction, canReact, canManage }: { message: Cha
 }
 
 function Reactions({ message }: { message: ChatMessage }) {
+  const show = usePrefsStore((s) => s.showReactions);
   const perms = useChannelPermissions(message.channel_id);
   const canReact = can(perms, Permission.ADD_REACTIONS);
   const canManage = can(perms, Permission.MANAGE_MESSAGES);
-  if (!message.reactions || message.reactions.length === 0) return null;
+  if (!show || !message.reactions || message.reactions.length === 0) return null;
   return (
     <div className="reactions">
       {message.reactions.map((r) => (

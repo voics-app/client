@@ -47,7 +47,7 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
   const recent = usePrefsStore((s) => s.recentReactions);
   // Developer mode arrives with the Advanced settings tab; until the pref exists, Copy ID stays visible.
-  const developerMode = usePrefsStore((s) => (s as { developerMode?: boolean }).developerMode);
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const inCallHere = useVoiceStore((s) => s.call.channelId === message.channel_id && s.call.status !== 'idle');
   const setSidePanel = useUiStore((s) => s.setSidePanel);
   const openDialog = useUiStore((s) => s.openDialog);
