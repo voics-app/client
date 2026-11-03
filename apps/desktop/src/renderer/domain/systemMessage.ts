@@ -170,7 +170,7 @@ export function systemSpec(input: SystemInput): SystemSpec {
 
 export interface SystemMenuContext {
   canManageMessages: boolean;
-  /** Developer mode. `undefined` means the setting does not exist yet, so Copy ID stays visible as before. */
+  /** Developer mode: Copy ID is shown only when on. */
   developerMode?: boolean;
 }
 
@@ -178,7 +178,7 @@ export interface SystemMenuContext {
 export function buildSystemMenu(ctx: SystemMenuContext): MenuModel[] {
   const out: MenuModel[] = [item('markUnread', 'Mark Unread')];
   if (ctx.canManageMessages) out.push(sep(), item('delete', 'Delete Message', { danger: true }));
-  if (ctx.developerMode !== false) out.push(sep(), item('copyId', 'Copy Message ID'));
+  if (ctx.developerMode) out.push(sep(), item('copyId', 'Copy Message ID'));
   return tidy(out);
 }
 
