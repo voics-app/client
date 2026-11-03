@@ -1,39 +1,15 @@
-import { PushPin, X } from '@phosphor-icons/react';
+import { X } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { jumpToMessage } from '../../app/actions';
-import { getRuntime } from '../../app/runtime';
 import { gentle } from '../../shared/ui/motion';
 import { IconButton } from '../../shared/ui/IconButton';
-import { EmptyState } from '../../shared/ui/Misc';
-import { MarkdownView } from '../chat/MarkdownView';
 import { MemberList } from '../members/MemberList';
-import { Avatar } from '../../shared/ui/Avatar';
-import { displayName } from '../../shared/hooks/useNames';
 import { SearchPanel } from '../search/SearchPanel';
+import { DmProfilePanel } from './DmProfilePanel';
+import { PinsPanel } from './PinsPanel';
 import { ThreadPanel } from './ThreadPanel';
 import { WatchPanel } from './WatchPanel';
-
-function PinsPanel({ channelId }: { channelId: string }) {
-  const pins = useQuery({ queryKey: ['channel', channelId, 'pins'], queryFn: () => getRuntime().api.pins(channelId) });
-  return (
-    <div className="panel-body">
-      {pins.isLoading && <p className="panel-note">Loading pins</p>}
-      {pins.isError && <p className="panel-note">Could not load pins.</p>}
-      {pins.data?.length === 0 && <EmptyState icon={<PushPin size={32} weight="light" />} title="No pinned messages" body="Pin important messages so they are easy to find." />}
-      <ul className="pin-list">
-        {pins.data?.map((m) => (
-          <li key={m.id} className="pin-card is-link" onClick={() => jumpToMessage(channelId, m.id)} title="Jump to message">
-            <header><Avatar id={m.author.id} name={displayName(m.author)} avatar={m.author.avatar} size={22} /><strong>{displayName(m.author)}</strong><time>{new Date(m.timestamp).toLocaleDateString()}</time></header>
-            <MarkdownView source={m.content} guildId={m.guild_id} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 export function SidePanelHost() {
   const panel = useUiStore((s) => s.sidePanel);
@@ -42,7 +18,7 @@ export function SidePanelHost() {
   const channel = useGuildStore((s) => (view.channelId ? s.channels[view.channelId] : undefined));
   const isGuildView = view.kind === 'guild';
   const effective = panel?.kind === 'members' && !isGuildView ? null : panel;
-  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : null;
+  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : effective?.kind === 'profile' ? 'Profile' : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -59,6 +35,7 @@ export function SidePanelHost() {
           {effective.kind === 'search' && <SearchPanel channelId={view.channelId} />}
           {effective.kind === 'thread' && <ThreadPanel threadId={effective.threadId} />}
           {effective.kind === 'watch' && <WatchPanel channelId={view.channelId} />}
+          {effective.kind === 'profile' && channel && <DmProfilePanel channelId={channel.id} />}
         </motion.div>
       )}
     </AnimatePresence>
