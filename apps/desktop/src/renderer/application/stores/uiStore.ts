@@ -4,6 +4,7 @@ import type { ChatMessage } from './messageStore';
 
 export type View =
   | { kind: 'home'; channelId: string | null }
+  | { kind: 'discover'; channelId: null }
   | { kind: 'guild'; guildId: string; channelId: string | null };
 
 export type SettingsTarget =
@@ -25,7 +26,7 @@ export type UserSettingsTab =
   | 'desktop'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'bans' | 'audit';
+export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'discovery' | 'bans' | 'audit';
 
 export type Dialog =
   | { kind: 'createGuild' }

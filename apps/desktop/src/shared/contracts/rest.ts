@@ -698,3 +698,40 @@ export interface ReadyPayload {
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;
 }
+
+/** One server card of `GET /discovery/guilds`. */
+export interface DiscoveryGuild {
+  id: string;
+  name: string;
+  icon: string | null;
+  description: string | null;
+  category: string;
+  tags: string[];
+  approximate_member_count: number;
+  approximate_presence_count: number | null;
+}
+
+export interface DiscoveryPage {
+  guilds: DiscoveryGuild[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface DiscoveryQuery {
+  query?: string;
+  category?: string;
+  tag?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** `GET|PUT /guilds/{id}/discovery`: a server's opt-in listing and what blocks it. */
+export interface GuildDiscoverySettings {
+  enabled: boolean;
+  category: string | null;
+  tags: string[];
+  listed_at: string | null;
+  member_count: number;
+  blockers: string[];
+}
