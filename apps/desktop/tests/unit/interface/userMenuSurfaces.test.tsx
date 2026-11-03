@@ -6,6 +6,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { ALL_PERMISSIONS } from '@shared/contracts/permissions';
 import type { GuildMember, Role, VoiceState } from '@shared/contracts/rest';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { VoiceOccupant } from '@renderer/interface/features/channels/ChannelSidebar';
 import { UserMenuTarget } from '@renderer/interface/features/members/UserContextMenu';
 
@@ -52,6 +53,7 @@ const voiceState = (userId: string): VoiceState =>
 const labels = () => screen.getAllByRole('menuitem').map((el) => el.textContent ?? '');
 
 beforeEach(() => {
+  usePrefsStore.setState({ developerMode: true });
   useVoiceStore.setState({ states: { [G]: { bob: voiceState('bob') } } } as never);
 });
 afterEach(cleanup);

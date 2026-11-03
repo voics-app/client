@@ -79,6 +79,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const recent = usePrefsStore((s) => s.recentReactions);
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const setReplyTo = useUiStore((s) => s.setReplyTo);
   const setEditing = useUiStore((s) => s.setEditing);
   const openDialog = useUiStore((s) => s.openDialog);
@@ -191,6 +192,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
         (can(guildPerms, Permission.CREATE_GUILD_EXPRESSIONS) || can(guildPerms, Permission.MANAGE_GUILD_EXPRESSIONS)) &&
         !(guild?.emojis ?? []).some((e) => e.id === target.id),
       quick,
+      developerMode,
     },
     target,
   );
@@ -200,7 +202,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     if (e.kind === 'submenu' && e.label === 'Add Reaction') e.entries.forEach((sub, i) => { if (sub.kind === 'item' && i < quick.length && quick[i]!.id) sub.icon = <EmojiGlyph emoji={quick[i]!} />; });
   }
 
-  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift });
+  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift, developerMode });
   const toolbar = visible ? (
     <div className="message-toolbar glass" role="toolbar" aria-label="Message actions" data-shift={shift || undefined}>
       {toolbarActions.map((a, i) => {

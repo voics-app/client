@@ -8,6 +8,7 @@ import { DEFAULT_QUICK_REACTIONS, parseApiEmoji, quickReactions, recordReaction 
 import type { Channel } from '@shared/contracts/rest';
 
 const ctx = (over: Partial<MessageMenuContext> = {}): MessageMenuContext => ({
+  developerMode: true,
   isMine: false,
   standard: true,
   canReact: true,
@@ -98,8 +99,24 @@ describe('message menu', () => {
   });
 });
 
+describe('developer mode gate (client#89)', () => {
+  it('hides every Copy ID entry unless developer mode is on', () => {
+    const msg = { kind: 'message' } as const;
+    expect(idsOf(buildMessageMenu(ctx({ developerMode: false }), msg))).not.toContain('copyId');
+    expect(idsOf(buildMessageMenu(ctx({ developerMode: undefined }), msg))).not.toContain('copyId');
+    const toolbar = { isMine: false, standard: true, canReact: true, canManageMessages: false, forwardSupported: false, pinned: false, quick: DEFAULT_QUICK_REACTIONS, shift: true };
+    expect(buildToolbar({ ...toolbar, developerMode: false }).map((a) => a.id)).not.toContain('copyId');
+    const channel = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false };
+    expect(idsOf(buildChannelMenu(channel))).not.toContain('copyId');
+    expect(idsOf(buildChannelMenu({ ...channel, developerMode: true }))).toContain('copyId');
+    const category = { canManage: true, hasUnread: true, muted: false, collapsed: false, hasOtherCategories: true };
+    expect(idsOf(buildCategoryMenu(category))).not.toContain('copyId');
+    expect(idsOf(buildCategoryMenu({ ...category, developerMode: true }))).toContain('copyId');
+  });
+});
+
 describe('message toolbar', () => {
-  const base = { isMine: false, standard: true, canReact: true, canManageMessages: false, forwardSupported: false, pinned: false, quick: DEFAULT_QUICK_REACTIONS, shift: false };
+  const base = { isMine: false, standard: true, canReact: true, canManageMessages: false, forwardSupported: false, pinned: false, quick: DEFAULT_QUICK_REACTIONS, shift: false, developerMode: true };
   const ids = (o: Partial<typeof base> = {}) => buildToolbar({ ...base, ...o }).map((a) => a.id);
 
   it('shows four quick reactions, add reaction, reply and more', () => {
@@ -150,7 +167,7 @@ describe('mute durations', () => {
 });
 
 describe('channel menu', () => {
-  const full = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false };
+  const full = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false, developerMode: true };
   it('manager with invite permission gets every entry', () => {
     const ids = idsOf(buildChannelMenu(full));
     expect(ids).toEqual(['markRead', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
@@ -183,7 +200,7 @@ describe('channel menu', () => {
 });
 
 describe('category menu', () => {
-  const full = { canManage: true, hasUnread: true, muted: false, collapsed: false, hasOtherCategories: true };
+  const full = { canManage: true, hasUnread: true, muted: false, collapsed: false, hasOtherCategories: true, developerMode: true };
   it('manager entries', () => {
     expect(idsOf(buildCategoryMenu(full))).toEqual(['markRead', 'toggleCollapse', 'collapseAll', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'create', 'delete', 'copyId']);
   });

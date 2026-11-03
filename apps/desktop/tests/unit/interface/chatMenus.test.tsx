@@ -78,7 +78,7 @@ const toolbarLabels = () => within(screen.getByRole('toolbar')).getAllByRole('bu
 const menuLabels = () => screen.getAllByRole('menuitem').map((el) => (el.textContent ?? '').replace('›', ''));
 
 beforeEach(() => {
-  usePrefsStore.setState({ ...DEFAULT_PREFS });
+  usePrefsStore.setState({ ...DEFAULT_PREFS, developerMode: true });
   useNotificationSettingsStore.getState().reset();
   seed();
 });

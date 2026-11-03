@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { MagnifyingGlass, SignOut } from '@phosphor-icons/react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore, type ServerSettingsTab, type SettingsTarget, type UserSettingsTab } from '@renderer/application/stores/uiStore';
@@ -13,38 +14,27 @@ import { ServerDiscovery } from './server/ServerDiscovery';
 import { ServerTemplate } from './server/ServerTemplate';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers, ServerOverview } from './server/ServerTabs';
 import { RolesEditor } from './server/RolesEditor';
-import { AboutTab, AccessibilityTab, AccountTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
+import { closeSettings, useUnsavedStore } from '@renderer/application/stores/unsavedStore';
+import { confirmLogout } from './logout';
+import { searchSettings } from './searchIndex';
+import { USER_TABS } from './userTabs';
+import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
 
-const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
-  { id: 'account', label: 'My account', group: 'User settings' },
-  { id: 'profile', label: 'Profile', group: 'User settings' },
-  { id: 'privacy', label: 'Privacy and delivery', group: 'User settings' },
-  { id: 'devices', label: 'Devices', group: 'User settings' },
-  { id: 'voice', label: 'Voice and video', group: 'App settings' },
-  { id: 'keybinds', label: 'Keybinds', group: 'App settings' },
-  { id: 'appearance', label: 'Appearance', group: 'App settings' },
-  { id: 'accessibility', label: 'Accessibility', group: 'App settings' },
-  { id: 'notifications', label: 'Notifications', group: 'App settings' },
-  { id: 'connection', label: 'Connection', group: 'App settings' },
-  { id: 'desktop', label: 'Desktop', group: 'App settings' },
-  { id: 'about', label: 'About and updates', group: 'App settings' },
-];
-
-function Layout({ title, nav, children, onClose, footer }: { title: string; nav: ReactNode; children: ReactNode; onClose: () => void; footer?: ReactNode }) {
+function Layout({ title, nav, children, footer }: { title: string; nav: ReactNode; children: ReactNode; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useDialogFocus(ref);
   useEffect(() => {
     // Dialogs and menus opened on top of settings stop Escape in the capture phase, so only a bare Escape arrives here.
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSettings(true);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
   return (
     <div ref={ref} tabIndex={-1} className="settings" role="dialog" aria-modal="true" aria-label={title}>
       <nav className="settings-nav">{nav}{footer}</nav>
       <div className="settings-content">
         <div className="settings-inner">{children}</div>
-        <SettingsCloseButton onClose={onClose} />
+        <SettingsCloseButton onClose={() => closeSettings()} />
       </div>
     </div>
   );
@@ -58,16 +48,66 @@ function NavItem({ active, onClick, children, danger }: { active: boolean; onCli
   return <button type="button" className={`settings-item${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}`} onClick={onClick} aria-current={active || undefined}>{children}</button>;
 }
 
+/** Switches tab unless the current page holds unsaved edits, in which case the bar shakes instead. */
+const guarded = (go: () => void) => () => { if (useUnsavedStore.getState().requestLeave()) go(); };
+
+/** Scrolls to a row after its tab has rendered and flashes it. Retries for a few frames while the tab mounts. */
+function revealRow(rowId: string, tries = 20): void {
+  const el = document.querySelector<HTMLElement>(`.settings-inner [data-row="${rowId}"]`);
+  if (!el) {
+    if (tries > 0) requestAnimationFrame(() => revealRow(rowId, tries - 1));
+    return;
+  }
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el.classList.remove('is-found');
+  void el.offsetWidth;
+  el.classList.add('is-found');
+  window.setTimeout(() => el.classList.remove('is-found'), 2000);
+}
+
+function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
+  const open = useUiStore((s) => s.openSettings);
+  const [query, setQuery] = useState('');
+  const hits = useMemo(() => searchSettings(query), [query]);
+  const go = (i: number) => {
+    const hit = hits[i];
+    if (!hit) return;
+    guarded(() => {
+      if (hit.tab !== tab) open({ kind: 'user', tab: hit.tab });
+      if (hit.rowId) revealRow(hit.rowId);
+      setQuery('');
+    })();
+  };
+  return (
+    <div className="settings-search">
+      <label className="settings-search-field">
+        <MagnifyingGlass size={14} aria-hidden="true" />
+        <input type="search" aria-label="Search settings" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(0); if (e.key === 'Escape' && query) { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setQuery(''); } }} />
+      </label>
+      {query.trim() && (
+        <ul className="settings-search-results" aria-label="Search results">
+          {hits.map((h, i) => <li key={`${h.tab}-${h.rowId ?? 'tab'}`}><button type="button" className="settings-item" onClick={() => go(i)}><span>{h.label}</span>{h.rowId && <small className="settings-hit-tab">{h.tabLabel}</small>}</button></li>)}
+          {hits.length === 0 && <li className="pick-empty">No settings match.</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, about: <AboutTab /> }[tab];
   return (
-    <Layout title="User settings" onClose={() => open(null)} nav={USER_TABS.map((t) => {
-      const heading = t.group !== lastGroup ? <h3 key={`h-${t.group}`}>{t.group}</h3> : null;
-      lastGroup = t.group;
-      return <div key={t.id}>{heading}<NavItem active={tab === t.id} onClick={() => open({ kind: 'user', tab: t.id })}>{t.label}</NavItem></div>;
-    })}>
+    <Layout
+      title="User settings"
+      nav={<><SettingsSearch tab={tab} />{USER_TABS.map((t) => {
+        const heading = t.group !== lastGroup ? <h3 key={`h-${t.group}`}>{t.group}</h3> : null;
+        lastGroup = t.group;
+        return <div key={t.id}>{heading}<NavItem active={tab === t.id} onClick={guarded(() => open({ kind: 'user', tab: t.id }))}>{t.label}</NavItem></div>;
+      })}</>}
+      footer={<div className="settings-group settings-logout"><NavItem active={false} danger onClick={confirmLogout}><SignOut size={15} /> Log out</NavItem></div>}
+    >
       {body}
     </Layout>
   );
@@ -91,7 +131,7 @@ function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettings
   ];
   const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} /> }[tab];
   return (
-    <Layout title="Server settings" onClose={() => open(null)} nav={<NavGroup title={guild.name}>{tabs.filter((t) => t.show).map((t) => <NavItem key={t.id} active={tab === t.id} onClick={() => open({ kind: 'server', guildId, tab: t.id })}>{t.label}</NavItem>)}</NavGroup>}>
+    <Layout title="Server settings" nav={<NavGroup title={guild.name}>{tabs.filter((t) => t.show).map((t) => <NavItem key={t.id} active={tab === t.id} onClick={guarded(() => open({ kind: 'server', guildId, tab: t.id }))}>{t.label}</NavItem>)}</NavGroup>}>
       {body}
     </Layout>
   );

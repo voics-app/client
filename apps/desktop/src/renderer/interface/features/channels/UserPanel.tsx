@@ -5,6 +5,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { PresenceStatus } from '@shared/contracts/rest';
+import { menuTopAbove } from '@renderer/domain/menuPlacement';
 import { activeCustomStatus } from '@renderer/domain/selfPresence';
 import { setAutoIdle } from '@renderer/application/selfPresence';
 import { publishPresence } from '../../app/presenceActions';
@@ -46,7 +47,8 @@ export function UserPanel() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!user) return null;
   const status = (presence && presence !== 'offline' ? presence : settingsStatus) ?? 'online';
-  const customStatus = activeCustomStatus(storedCustom, Date.now())?.text;
+  const active = activeCustomStatus(storedCustom, Date.now());
+  const customStatus = active ? [active.emoji_id ? '' : active.emoji_name, active.text].filter(Boolean).join(' ') : '';
 
   const entries: MenuEntry[] = [
     { kind: 'label', label: 'Status' },
@@ -63,7 +65,7 @@ export function UserPanel() {
         className="user-panel-id"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          setMenu({ x: r.left, y: r.top - 280 });
+          setMenu({ x: r.left, y: menuTopAbove(r, entries.length, window.innerHeight) });
         }}
         aria-haspopup="menu"
         aria-label="Account and status"

@@ -23,8 +23,10 @@ export type UserSettingsTab =
   | 'appearance'
   | 'accessibility'
   | 'notifications'
+  | 'chat'
   | 'connection'
   | 'desktop'
+  | 'advanced'
   | 'about';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit';
