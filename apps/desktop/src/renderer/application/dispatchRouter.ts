@@ -1,4 +1,5 @@
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
+import { becameFriends } from '@renderer/domain/dmIntro';
 import { inboxEntryOf } from '@renderer/domain/mentionInbox';
 import { isMentioned } from '@renderer/domain/notificationPolicy';
 import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
@@ -38,6 +39,8 @@ export interface DispatchContext {
   invalidate(queryKey: readonly unknown[]): void;
   /** The account settings arrived (READY) or changed (USER_SETTINGS_UPDATE). */
   onUserSettings?(settings: Partial<UserSettings>, ready: boolean, userId?: string): void;
+  /** A friend request became a friendship (accepted by either side): the DM with this user should exist. */
+  onFriendship?(userId: string): void;
 }
 
 type Handler = (data: never) => void;
@@ -207,7 +210,12 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     },
     USER_GUILD_SETTINGS_UPDATE: (d: GuildNotificationSettings) => useNotificationSettingsStore.getState().upsert(d),
     USER_NOTE_UPDATE: (d: { id: string; note: string }) => useUserNotesStore.getState().set(d.id, d.note),
-    RELATIONSHIP_ADD: (d: Relationship) => useRelationshipStore.getState().upsert(d),
+    RELATIONSHIP_ADD: (d: Relationship) => {
+      const store = useRelationshipStore.getState();
+      const friends = becameFriends(store.byUser[d.id], d);
+      store.upsert(d);
+      if (friends) ctx.onFriendship?.(d.id);
+    },
     RELATIONSHIP_REMOVE: (d: { id: string }) => useRelationshipStore.getState().remove(d.id),
     SESSIONS_REPLACE: () => undefined,
 
