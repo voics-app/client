@@ -33,3 +33,20 @@ export function landingOrigin(apiUrl: string): string {
 export function inviteWebUrl(code: string, apiUrl: string): string {
   return `${landingOrigin(apiUrl)}/invite/${encodeURIComponent(code)}`;
 }
+
+/** Invite codes in `text` for links to this instance's invite page (host from the brand module or the connection). Deduplicated, in order. */
+export function instanceInviteCodes(text: string, apiUrl: string): string[] {
+  const hosts = new Set<string>();
+  for (const origin of [landingOrigin(apiUrl), PROD_LANDING]) {
+    try {
+      hosts.add(new URL(origin).host.toLowerCase());
+    } catch {
+      // ignore a malformed origin
+    }
+  }
+  const codes: string[] = [];
+  for (const m of text.matchAll(/https?:\/\/([^\s/<>]+)\/invite\/([A-Za-z0-9-]{2,32})(?![\w-])/gi)) {
+    if (hosts.has(m[1]!.toLowerCase()) && !codes.includes(m[2]!)) codes.push(m[2]!);
+  }
+  return codes;
+}
