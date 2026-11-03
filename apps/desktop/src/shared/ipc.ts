@@ -45,6 +45,11 @@ export interface CaptureSelection {
 export interface DesktopSettings {
   openAtLogin: boolean;
   startMinimized: boolean;
+  /** Show the system tray icon at all; with it off, closing the window quits. */
+  showTray: boolean;
+  /** The minimize button hides the window to the tray. */
+  minimizeToTray: boolean;
+  /** The close button hides the window to the tray instead of quitting. */
   closeToTray: boolean;
   hardwareAcceleration: boolean;
   /** Minutes without keyboard or mouse input before the status turns Idle; 0 turns automatic idle off. */

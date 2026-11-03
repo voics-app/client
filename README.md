@@ -6,7 +6,7 @@ Electron + React desktop client for Discordy: servers, channels, threads, DMs, v
 
 | Path | Purpose |
 |---|---|
-| `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray, deep links, capture, push-to-talk, updater, crypto host |
+| `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
 | `apps/desktop/src/shared` | IPC contract and local `contracts` module (REST P9, gateway P7, voice P8) |
 | `apps/desktop/src/renderer/domain` | Pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format |
