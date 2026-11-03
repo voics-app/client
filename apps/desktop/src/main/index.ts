@@ -160,6 +160,8 @@ if (!app.requestSingleInstanceLock()) {
   registerProtocol();
   navigate(findDeepLink(process.argv));
 
+  // Belt and braces with the window's autoplayPolicy: no web contents may block audio that lacks a click.
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   void app.whenReady().then(() => {
     bootstrap();
     app.on('activate', () => mainWindow?.show());

@@ -3,6 +3,7 @@
  * One shared AudioContext is kept, resumed on use, and routed to the selected output device.
  */
 import type { SoundId } from '@renderer/domain/sounds';
+import { sharedAudioContext, wakeContext } from './sharedContext';
 
 interface Blip {
   hz: number;
@@ -20,18 +21,19 @@ export const SOUND_PATTERNS: Record<SoundId, { blips: readonly Blip[]; wave: Osc
   deafen: { blips: [{ hz: 392, at: 0, dur: 0.1 }, { hz: 294, at: 0.08, dur: 0.1 }, { hz: 220, at: 0.16, dur: 0.14 }], wave: 'sine', gain: 0.25 },
   undeafen: { blips: [{ hz: 220, at: 0, dur: 0.1 }, { hz: 294, at: 0.08, dur: 0.1 }, { hz: 392, at: 0.16, dur: 0.14 }], wave: 'sine', gain: 0.25 },
   message: { blips: [{ hz: 880, at: 0, dur: 0.08 }, { hz: 1175, at: 0.07, dur: 0.14 }], wave: 'sine', gain: 0.22 },
+  friendRequest: { blips: [{ hz: 784, at: 0, dur: 0.1 }, { hz: 988, at: 0.1, dur: 0.1 }, { hz: 1319, at: 0.2, dur: 0.2 }], wave: 'triangle', gain: 0.26 },
 };
 
 export class SoundEffects {
   private context: AudioContext | null = null;
   private sink: string | null = null;
 
-  constructor(private readonly createContext: () => AudioContext = () => new AudioContext({ latencyHint: 'interactive' })) {}
+  constructor(private readonly createContext: () => AudioContext = sharedAudioContext) {}
 
   /** Plays `sound` at `volume` (0..1) on `outputDeviceId` (null: system default). */
   play(sound: SoundId, volume: number, outputDeviceId: string | null): void {
     const context = this.ensure(outputDeviceId);
-    if (context.state === 'suspended') void context.resume().catch(() => undefined);
+    wakeContext(context);
     const spec = SOUND_PATTERNS[sound];
     const level = spec.gain * Math.min(1, Math.max(0, volume));
     for (const { hz, at: offset, dur } of spec.blips) {

@@ -5,10 +5,12 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { isMentioned, isSilent, shouldNotify, type NotifyLevel } from '@renderer/domain/notificationPolicy';
+import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@renderer/domain/notificationPolicy';
 import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@renderer/domain/notificationSettings';
 import { summarizeActivity } from '@renderer/domain/unread';
 import { toPlainText, parseMarkdown } from '@renderer/domain/markdown';
+import { shouldPlaySound } from '@renderer/domain/sounds';
+import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { ChannelType } from '@shared/contracts/rest';
 import { bridge } from './bridge';
 
@@ -42,20 +44,35 @@ export function notifyIncoming(message: ChatMessage): void {
   const level: NotifyLevel = synced === 2 ? 'none' : synced === 1 || prefs.notifyOnlyMentions ? 'mentions' : 'all';
   const myRoleIds = (message.guild_id ? useGuildStore.getState().members[message.guild_id]?.[me.id]?.roles : undefined) ?? [];
   const mentioned = isMentioned(message, { meId: me.id, myRoleIds, suppressEveryone: settings?.suppress_everyone, suppressRoles: settings?.suppress_roles });
-  const notify = shouldNotify({
+  const doNotDisturb = useSessionStore.getState().settings.status === 'dnd';
+  const alert = shouldAlert({
     mentioned,
     level,
     muted: isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now()),
     viewingChannel: document.hasFocus() && activeChannelId() === message.channel_id,
-    desktopEnabled: prefs.notifyDesktop,
-    doNotDisturb: useSessionStore.getState().settings.status === 'dnd',
+    doNotDisturb,
   });
-  if (!notify) return;
+  if (!alert) return;
+  // The sound is ours (a toast's own sound depends on the OS and is off for background apps), so it
+  // plays whether or not desktop notifications are enabled.
+  if (shouldPlaySound('message', { enabled: prefs.notifySounds, toggles: prefs.soundToggles, doNotDisturb })) {
+    soundEffects.play('message', prefs.outputVolume, prefs.outputDeviceId);
+  }
+  if (!prefs.notifyDesktop) return;
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
   // Private (E2EE/P2P) plaintext never goes to the OS notification centre.
   const isPrivate = message.deliveryMode === 'ephemeral' || message.deliveryMode === 'p2p';
   const body = isPrivate ? 'Sent a private message' : toPlainText(parseMarkdown(message.content)).slice(0, 180) || 'Sent an attachment';
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
-  bridge?.app.notify({ title, body, route, silent: !prefs.notifySounds });
+  bridge?.app.notify({ title, body, route, silent: true });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();
+}
+
+/** Sound for a friend request from someone else; follows the sound switches and Do Not Disturb. */
+export function playFriendRequestSound(): void {
+  const prefs = usePrefsStore.getState();
+  const doNotDisturb = useSessionStore.getState().settings.status === 'dnd';
+  if (shouldPlaySound('friendRequest', { enabled: prefs.notifySounds, toggles: prefs.soundToggles, doNotDisturb })) {
+    soundEffects.play('friendRequest', prefs.outputVolume, prefs.outputDeviceId);
+  }
 }

@@ -75,3 +75,10 @@ describe('audio resume (ringtone regression)', () => {
     expect(context.setSinkId).toHaveBeenCalledWith('spk');
   });
 });
+
+describe('new sounds default on', () => {
+  it.each(['message', 'friendRequest'] as const)('%s plays with the default (empty) toggles', (sound) => {
+    expect(shouldPlaySound(sound, { enabled: true, toggles: {}, doNotDisturb: false })).toBe(true);
+    expect(shouldPlaySound(sound, { enabled: true, toggles: {}, doNotDisturb: true })).toBe(false);
+  });
+});
