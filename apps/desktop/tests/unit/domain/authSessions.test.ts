@@ -1,3 +1,4 @@
+import { BRAND } from '@shared/brand';
 import { describe, expect, it } from 'vitest';
 import { orderSessions, regionName, sessionDetail, sessionTitle } from '@renderer/domain/authSessions';
 import type { AuthSession } from '@shared/contracts/rest';
@@ -6,7 +7,7 @@ const NOW = Date.parse('2026-11-04T12:00:00Z');
 
 const session = (patch: Partial<AuthSession>): AuthSession => ({
   id: 's',
-  client: 'Discordy Desktop',
+  client: 'Desktop app',
   os: 'Windows',
   device_name: null,
   location: null,
@@ -33,7 +34,7 @@ describe('auth sessions model', () => {
   });
 
   it('titles a session by client and OS, dropping an unknown OS', () => {
-    expect(sessionTitle(session({}))).toBe('Discordy Desktop on Windows');
+    expect(sessionTitle(session({}))).toBe(`${BRAND.displayName} on Windows`);
     expect(sessionTitle(session({ client: 'Firefox', os: 'Unknown' }))).toBe('Firefox');
   });
 

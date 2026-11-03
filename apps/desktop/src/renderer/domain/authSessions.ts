@@ -1,4 +1,5 @@
 import type { AuthSession } from '@shared/contracts/rest';
+import { BRAND } from '@shared/brand';
 import { relativeTime } from './timestamp';
 
 /** The current session first, then the most recently used. */
@@ -9,9 +10,17 @@ export function orderSessions(sessions: readonly AuthSession[]): AuthSession[] {
   });
 }
 
+/** The api names the desktop app generically; the client shows it with the brand name. */
+const DESKTOP_APP = 'Desktop app';
+
+function clientName(client: string): string {
+  return client === DESKTOP_APP ? BRAND.displayName : client;
+}
+
 /** "Firefox on Windows"; just the client when the OS is unknown. */
 export function sessionTitle(session: AuthSession): string {
-  return session.os === 'Unknown' ? session.client : `${session.client} on ${session.os}`;
+  const client = clientName(session.client);
+  return session.os === 'Unknown' ? client : `${client} on ${session.os}`;
 }
 
 /** Country name for an ISO 3166-1 code, or the code itself when the runtime cannot name it. */

@@ -1,3 +1,4 @@
+import { BRAND } from '@shared/brand';
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -7,7 +8,7 @@ import type { AuthSession } from '@shared/contracts/rest';
 
 const base: AuthSession = {
   id: 'here',
-  client: 'Discordy Desktop',
+  client: 'Desktop app',
   os: 'Windows',
   device_name: null,
   location: 'NL',
@@ -44,7 +45,7 @@ describe('SessionsList', () => {
     renderList();
     const rows = await screen.findAllByTestId(/^session-/);
     const first = rows[0]!;
-    expect(first.textContent).toContain('Discordy Desktop on Windows (this device)');
+    expect(first.textContent).toContain(`${BRAND.displayName} on Windows (this device)`);
     expect(first.textContent).toContain('Netherlands');
     expect(first.querySelector('button')).toBeNull();
     expect(screen.getAllByRole('button', { name: /^Log out (Safari|Firefox)/ })).toHaveLength(2);
