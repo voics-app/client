@@ -5,7 +5,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { useDraftStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
+import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel, Message, User } from '@shared/contracts/rest';
 
@@ -42,6 +42,7 @@ beforeEach(() => {
   send.mockClear();
   useDraftStore.setState({ drafts: {} });
   useSlowmodeStore.setState({ lastSent: {} });
+  useReplyPingStore.setState({ ping: true });
   useUiStore.setState({ replyTo: {}, editing: null, toasts: [] } as never);
   useMessageStore.getState().reset();
 });
@@ -59,6 +60,52 @@ describe('Composer: sending and newlines', () => {
     expect(send).not.toHaveBeenCalled();
     fireEvent.keyDown(input(), { key: 'Enter' });
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Composer: reply ping and @silent', () => {
+  const replyTarget = (author: string) => ({ id: 'm9', channel_id: 'dm1', author: user(author), content: 'original' }) as unknown as Message;
+
+  it('toggles the reply ping, remembers it, and sends pingReplied false', () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    render(<Composer channel={c} mode="standard" />);
+    const toggle = screen.getByRole('button', { name: /Mention bob: on/ });
+    expect(toggle.textContent).toContain('ON');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: /Mention bob: off/ }).textContent).toContain('OFF');
+    expect(useReplyPingStore.getState().ping).toBe(false);
+    type('answer');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ replyTo: 'm9', pingReplied: false }));
+  });
+
+  it('starts from the last remembered choice and hides the toggle for your own message', () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useReplyPingStore.setState({ ping: false });
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    render(<Composer channel={c} mode="standard" />);
+    expect(screen.getByRole('button', { name: /Mention bob: off/ })).toBeTruthy();
+    cleanup();
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget(ME) } } as never);
+    render(<Composer channel={c} mode="standard" />);
+    expect(screen.queryByRole('button', { name: /Mention/ })).toBeNull();
+  });
+
+  it('strips the @silent prefix and sends silent', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    type('@silent psst');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ content: 'psst', silent: true }));
+  });
+
+  it('leaves a bare @silent as ordinary text', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    type('@silent');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ content: '@silent', silent: false }));
   });
 });
 

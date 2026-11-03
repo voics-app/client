@@ -7,13 +7,13 @@ import { useUiStore } from '@renderer/application/stores/uiStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { acceptFiles, charsRemaining, formatCountdown, lastOwnEditable, MAX_MESSAGE_LENGTH, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@renderer/domain/composerLimits';
 import { searchShortcodes } from '@renderer/domain/emojiShortcodes';
-import { useDraftStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
+import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { maxFileBytes } from '@renderer/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
 import { Permission } from '@shared/contracts/permissions';
-import { parseTtsCommand } from '@renderer/domain/appearance';
+import { parseSilentPrefix, parseTtsCommand } from '@renderer/domain/appearance';
 import { speak } from '@renderer/infrastructure/tts';
 import type { Channel, DeliveryMode } from '@shared/contracts/rest';
 import { reportError } from '../../app/actions';
@@ -85,6 +85,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const editing = useUiStore((s) => s.editing);
   const setEditing = useUiStore((s) => s.setEditing);
   const me = useSessionStore((s) => s.user?.id ?? null);
+  const pingReplied = useReplyPingStore((s) => s.ping);
+  const setPingReplied = useReplyPingStore((s) => s.setPing);
   const lastSent = useSlowmodeStore((s) => s.lastSent[channel.id]);
   const [now, setNow] = useState(() => Date.now());
   const members = useGuildStore((s) => (channel.guild_id ? s.members[channel.guild_id] : undefined));
@@ -300,6 +302,12 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       content = ttsText;
       tts = true;
     }
+    let silent = false;
+    const silentText = standard && !tts ? parseSilentPrefix(content) : null;
+    if (silentText !== null) {
+      content = silentText;
+      silent = true;
+    }
     if (!content && files.length === 0) return;
     if (tooLong) {
       reportError(new Error(`Messages are limited to ${MAX_MESSAGE_LENGTH} characters. Remove ${-remainingChars} to send.`), 'Message too long');
@@ -313,6 +321,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       fileOptions: files.map((f) => ({ description: descriptions.get(f) })),
       replyTo: replyTo?.id ?? null,
       tts,
+      silent,
+      pingReplied: replyTo && replyTo.author.id !== me ? pingReplied : true,
     };
     const draft = { text, files, descriptions };
     setText('');
@@ -394,6 +404,18 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           <div className="composer-reply">
             <ArrowBendUpLeft size={14} /> Replying to <strong>{replyName}</strong>
             <span className="composer-reply-text">{replyTo.content}</span>
+            {replyTo.author.id !== me && (
+              <button
+                type="button"
+                className={`composer-reply-ping${pingReplied ? ' is-on' : ''}`}
+                aria-pressed={pingReplied}
+                aria-label={pingReplied ? `Mention ${replyName}: on` : `Mention ${replyName}: off`}
+                title={pingReplied ? 'Mention on' : 'Mention off'}
+                onClick={() => setPingReplied(!pingReplied)}
+              >
+                @ {pingReplied ? 'ON' : 'OFF'}
+              </button>
+            )}
             <IconButton label="Cancel reply" size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
           </div>
         )}

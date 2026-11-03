@@ -1,6 +1,6 @@
 import { compareSnowflakes } from '@renderer/domain/snowflake';
 /** Routes outgoing messages by effective delivery mode (P11) and owns the per-chat / account mode switches. */
-import { ApiErrorCode, type Channel, type CreateMessageBody, type DeliveryMode } from '@shared/contracts/rest';
+import { ApiErrorCode, MessageFlag, type Channel, type CreateMessageBody, type DeliveryMode } from '@shared/contracts/rest';
 import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
@@ -210,6 +210,7 @@ export class MessageSender {
       nonce,
       message_reference: input.replyTo ? { message_id: input.replyTo, channel_id: channel.id, guild_id: channel.guild_id ?? undefined } : undefined,
       deliveryMode: 'standard',
+      ...(input.silent ? { flags: MessageFlag.SUPPRESS_NOTIFICATIONS } : {}),
     };
     messages.addOptimistic(optimistic);
     try {
@@ -217,6 +218,8 @@ export class MessageSender {
         content: input.content,
         nonce,
         ...(input.tts ? { tts: true } : {}),
+        ...(input.silent ? { flags: MessageFlag.SUPPRESS_NOTIFICATIONS } : {}),
+        ...(input.replyTo && input.pingReplied === false ? { allowed_mentions: { replied_user: false } } : {}),
         message_reference: optimistic.message_reference,
         attachments: await this.uploadFiles(channel.id, nonce, input),
       };

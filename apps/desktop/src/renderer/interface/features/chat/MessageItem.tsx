@@ -1,5 +1,5 @@
-import { ArrowClockwise, ChatTeardropText, Eye, LockKey, Plugs, WarningCircle } from '@phosphor-icons/react';
-import { isMentioned } from '@renderer/domain/notificationPolicy';
+import { ArrowClockwise, BellSlash, ChatTeardropText, Eye, LockKey, Plugs, WarningCircle } from '@phosphor-icons/react';
+import { isMentioned, isSilent } from '@renderer/domain/notificationPolicy';
 import { memo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
@@ -265,6 +265,11 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           ) : (
             <>
               {message.content && <MarkdownView source={message.content} guildId={guildId} />}
+              {isSilent(message) && (
+                <Tooltip label="Sent silently: no notification">
+                  <span className="silent-mark" tabIndex={0} role="img" aria-label="Silent message"><BellSlash size={12} /></span>
+                </Tooltip>
+              )}
               {message.edited_timestamp && (
                 <Tooltip label={`Edited ${new Date(message.edited_timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}`}>
                   <span className="edited" tabIndex={0}>(edited)</span>

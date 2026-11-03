@@ -38,6 +38,12 @@ export function roleColorStyle(color: string | undefined, mode: RoleColorMode): 
   return mode === 'dot' ? { dot: color } : { tint: color };
 }
 
+/** A message starting with `@silent ` is sent without notifications; returns the text without the prefix, or null when not silent. */
+export function parseSilentPrefix(input: string): string | null {
+  const m = /^@silent\s+([\s\S]*\S[\s\S]*)$/i.exec(input.trim());
+  return m ? m[1]!.trim() : null;
+}
+
 /** `/tts message` sends a text-to-speech message; returns the text to send, or null when the input is not that command. */
 export function parseTtsCommand(input: string): string | null {
   const m = /^\/tts(?:\s+([\s\S]*))?$/i.exec(input.trim());

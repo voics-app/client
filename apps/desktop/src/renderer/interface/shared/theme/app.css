@@ -285,6 +285,8 @@ button.mode-badge:active { transform: scale(0.96); }
 .composer-input { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; outline: none; padding: 8px 6px; line-height: 1.5; font-size: var(--fs-body); max-height: 320px; align-self: center; }
 .composer-row .mode-switcher { align-self: center; margin: 0 4px; }
 .composer-reply { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--hairline); font-size: var(--fs-meta); color: var(--fg-muted); } .composer-reply-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.7; }
+.composer-reply-ping { padding: 2px 8px; border-radius: 8px; font-size: var(--fs-caption); font-weight: 650; color: var(--fg-muted); background: var(--bg-3); } .composer-reply-ping.is-on { color: var(--accent-text); background: var(--accent-soft); }
+.silent-mark { display: inline-flex; vertical-align: -1px; margin-left: 6px; color: var(--fg-subtle); }
 .composer-files { list-style: none; margin: 0; padding: 12px 12px 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .composer-files li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 112px; padding: 8px; border-radius: 12px; background: var(--bg-3); font-size: var(--fs-caption); }
 .composer-files img { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; } .composer-files span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

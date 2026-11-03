@@ -55,6 +55,24 @@ describe('MessageSender routing', () => {
     expect(timeline.byId['8001']?.localState).toBeUndefined();
   });
 
+  it('sends @silent as SUPPRESS_NOTIFICATIONS and a ping-off reply as replied_user false', async () => {
+    const { sender, api } = setup();
+    api.sendMessage.mockImplementation(async (_c: string, body: { nonce: string; content: string }) => serverMessage({ content: body.content, nonce: body.nonce }));
+    await sender.send(dm('standard'), { content: 'psst', silent: true, replyTo: '7000', pingReplied: false });
+    const body = api.sendMessage.mock.calls[0]![1] as { flags?: number; allowed_mentions?: { replied_user?: boolean } };
+    expect(body.flags).toBe(4096);
+    expect(body.allowed_mentions).toEqual({ replied_user: false });
+  });
+
+  it('omits flags and allowed_mentions for a plain pinging reply', async () => {
+    const { sender, api } = setup();
+    api.sendMessage.mockImplementation(async (_c: string, body: { nonce: string; content: string }) => serverMessage({ content: body.content, nonce: body.nonce }));
+    await sender.send(dm('standard'), { content: 'hi', replyTo: '7000', pingReplied: true });
+    const body = api.sendMessage.mock.calls[0]![1] as Record<string, unknown>;
+    expect(body).not.toHaveProperty('flags');
+    expect(body).not.toHaveProperty('allowed_mentions');
+  });
+
   it('marks a failed standard send as failed', async () => {
     const { sender, api } = setup();
     api.sendMessage.mockRejectedValue(new Error('boom'));

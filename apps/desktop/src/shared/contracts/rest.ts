@@ -319,6 +319,8 @@ export const MessageFlag = {
   SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,
+  /** `@silent`: no push, desktop or unread-mention notification. */
+  SUPPRESS_NOTIFICATIONS: 1 << 12,
 } as const;
 
 export const CommandType = { CHAT_INPUT: 1, USER: 2, MESSAGE: 3 } as const;
@@ -611,6 +613,10 @@ export interface CreateMessageBody {
   message_reference?: MessageReference;
   embeds?: Embed[];
   tts?: boolean;
+  /** Only SUPPRESS_NOTIFICATIONS is accepted from users. */
+  flags?: number;
+  /** `replied_user: false` replies without pinging the replied-to author. */
+  allowed_mentions?: { replied_user?: boolean };
 }
 
 export interface AttachmentUploadSlot {
