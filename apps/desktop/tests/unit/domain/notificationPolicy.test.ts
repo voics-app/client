@@ -15,6 +15,13 @@ describe('isMentioned', () => {
     expect(isMentioned(msg({ mention_everyone: true }), ctx)).toBe(true);
     expect(isMentioned(msg({ mention_everyone: true }), { ...ctx, suppressEveryone: true })).toBe(false);
   });
+  it('never counts a silent message, even a DM or a direct mention', () => {
+    const flags = 1 << 12;
+    expect(isMentioned(msg({ guild_id: null, flags }), ctx)).toBe(false);
+    expect(isMentioned(msg({ mentions: [{ id: 'me' }], flags }), ctx)).toBe(false);
+    expect(isMentioned(msg({ mention_everyone: true, flags }), ctx)).toBe(false);
+  });
+  it('a reply with the ping off does not mention the replied author', () => expect(isMentioned(msg({ mentions: [] }), ctx)).toBe(false));
   it('is false for a plain guild message', () => expect(isMentioned(msg(), ctx)).toBe(false));
 });
 

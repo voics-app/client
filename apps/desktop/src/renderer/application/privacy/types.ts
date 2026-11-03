@@ -19,6 +19,10 @@ export interface SendInput {
   fileOptions?: { description?: string }[];
   /** Text-to-speech message (`/tts`); standard chats only. */
   tts?: boolean;
+  /** `@silent`: sent with SUPPRESS_NOTIFICATIONS (standard chats only). */
+  silent?: boolean;
+  /** False when the reply ping is toggled off (`allowed_mentions.replied_user = false`). */
+  pingReplied?: boolean;
 }
 
 export interface PrivatePayload {

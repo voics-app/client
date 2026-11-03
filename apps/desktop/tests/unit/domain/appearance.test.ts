@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { clampZoom, effectiveReduceMotion, effectiveTheme, parseTtsCommand, roleColorStyle, stepZoom, zoomActionOf } from '@renderer/domain/appearance';
+import { clampZoom, effectiveReduceMotion, effectiveTheme, parseSilentPrefix, parseTtsCommand, roleColorStyle, stepZoom, zoomActionOf } from '@renderer/domain/appearance';
 import { looksAnimated } from '@renderer/domain/stillFrame';
 import { speak } from '@renderer/infrastructure/tts';
 
@@ -48,6 +48,14 @@ describe('role colours and tts', () => {
     expect(parseTtsCommand('/tts')).toBeNull();
     expect(parseTtsCommand('/ttsx hi')).toBeNull();
     expect(parseTtsCommand('hello /tts hi')).toBeNull();
+  });
+  it('parses the @silent prefix', () => {
+    expect(parseSilentPrefix('@silent hello there')).toBe('hello there');
+    expect(parseSilentPrefix('@SILENT   hi')).toBe('hi');
+    expect(parseSilentPrefix('@silent')).toBeNull();
+    expect(parseSilentPrefix('@silent   ')).toBeNull();
+    expect(parseSilentPrefix('@silenthello')).toBeNull();
+    expect(parseSilentPrefix('hey @silent hi')).toBeNull();
   });
   it('speaks cleaned text at a clamped rate', () => {
     const synth = { speak: vi.fn(), cancel: vi.fn() };
