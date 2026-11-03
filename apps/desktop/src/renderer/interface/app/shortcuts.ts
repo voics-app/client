@@ -10,12 +10,11 @@ import { pickUnreadChannel } from '@renderer/domain/unreadNav';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@renderer/domain/rovingFocus';
 import { fixedShortcutAction, type FixedShortcutAction } from '@renderer/domain/shortcutCatalog';
-import { isTextChannel, openChannel, openGuild } from './navigation';
+import { isTextChannel, isVoiceChannel, openChannel, openGuild } from './navigation';
 import { markChannelRead, markGuildRead } from './actions';
 import { handleZoomKey } from './appearance';
 import { pushToMute, toggleCamera, toggleDeafen, toggleMute, toggleScreenShare } from './voiceActions';
 import { answerRingingCall, declineRingingCall } from './callActions';
-import { goHistory, startNavHistory } from './navHistory';
 import { isGloballyHandled, startGlobalKeybinds } from './globalKeybinds';
 
 export function describeEvent(e: KeyboardEvent): string {
@@ -28,27 +27,38 @@ export function describeEvent(e: KeyboardEvent): string {
   return parts.join('+');
 }
 
+/** Alt+Up/Down: previous/next channel of the open server, voice channels included (they are opened to look at, never joined). */
 function adjacentChannel(delta: 1 | -1): void {
   const view = useUiStore.getState().view;
   if (view.kind !== 'guild') return;
   const list = Object.values(useGuildStore.getState().channels)
-    .filter((c) => c.guild_id === view.guildId && isTextChannel(c))
+    .filter((c) => c.guild_id === view.guildId && (isTextChannel(c) || isVoiceChannel(c)))
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const next = list[wrapIndex(list.length, list.findIndex((c) => c.id === view.channelId), delta)];
   if (next) openChannel(next.id);
 }
 
-/** Next or previous unread, unmuted text channel of the open server (or of the DM list at home), wrapping around. */
-function adjacentUnread(delta: 1 | -1): void {
+/**
+ * Next or previous unread, unmuted channel, wrapping around; channels with unread mentions come first.
+ * `all` spans every server (DMs, then servers in rail order); otherwise only the open server (the DM list at home).
+ */
+function adjacentUnread(delta: 1 | -1, all = false): void {
   const view = useUiStore.getState().view;
   const guildId = view.kind === 'guild' ? view.guildId : null;
   const reads = useReadStateStore.getState().byChannel;
   const settings = useNotificationSettingsStore.getState().byScope;
+  const order = useGuildStore.getState().order;
+  const rank = (id: string | null | undefined): number => (id ? order.indexOf(id) : -1);
+  const byRecency = (a: { last_message_id?: string | null }, b: { last_message_id?: string | null }) => (b.last_message_id ?? '').localeCompare(a.last_message_id ?? '');
   const list = Object.values(useGuildStore.getState().channels)
-    .filter((c) => (c.guild_id ?? null) === guildId && isTextChannel(c))
-    .sort(guildId ? (a, b) => (a.position ?? 0) - (b.position ?? 0) : (a, b) => (b.last_message_id ?? '').localeCompare(a.last_message_id ?? ''))
-    .map((c) => ({ id: c.id, unread: !isChannelMutedDeep(settings[scopeKey(c.guild_id)], c, Date.now()) && isUnread(c.last_message_id, reads[c.id]?.lastReadId) }));
-  const next = pickUnreadChannel(list, view.channelId, delta);
+    .filter((c) => isTextChannel(c) && (all || (c.guild_id ?? null) === guildId))
+    .sort((a, b) => (a.guild_id && b.guild_id ? rank(a.guild_id) - rank(b.guild_id) || (a.position ?? 0) - (b.position ?? 0) : !a.guild_id && !b.guild_id ? byRecency(a, b) : a.guild_id ? 1 : -1))
+    .map((c) => ({
+      id: c.id,
+      mentions: reads[c.id]?.mentionCount ?? 0,
+      unread: !isChannelMutedDeep(settings[scopeKey(c.guild_id)], c, Date.now()) && isUnread(c.last_message_id, reads[c.id]?.lastReadId),
+    }));
+  const next = pickUnreadChannel(list, view.channelId, delta, true);
   if (next) openChannel(next);
 }
 
@@ -103,8 +113,8 @@ const ACTIONS: Record<KeybindAction, (ctx: RunContext) => void> = {
   nextChannel: () => adjacentChannel(1),
   prevUnread: () => adjacentUnread(-1),
   nextUnread: () => adjacentUnread(1),
-  historyBack: () => goHistory(-1),
-  historyForward: () => goHistory(1),
+  historyBack: () => void useUiStore.getState().back(),
+  historyForward: () => void useUiStore.getState().forward(),
   toggleMembers: () => useUiStore.getState().toggleSidePanel('members'),
 };
 
@@ -116,6 +126,10 @@ export function runKeybindAction(action: KeybindAction, pressed = true, shift = 
 const FIXED: Record<FixedShortcutAction, () => void> = {
   prevServer: () => adjacentServer(-1),
   nextServer: () => adjacentServer(1),
+  prevUnreadServer: () => adjacentUnread(-1, true),
+  nextUnreadServer: () => adjacentUnread(1, true),
+  historyBack: () => void useUiStore.getState().back(),
+  historyForward: () => void useUiStore.getState().forward(),
   showShortcuts: toggleShortcutsDialog,
   inbox: () => {
     const ui = useUiStore.getState();
@@ -149,10 +163,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && target.matches('input, textarea, select, [contenteditable="true"]');
 }
 
-/** Registers the user-configurable in-app shortcuts plus the fixed navigation ones, the nav history and the global (system-wide) binds. */
+/** Registers the user-configurable in-app shortcuts plus the fixed navigation ones (including history and mouse back/forward) and the global (system-wide) binds. */
 export function useGlobalShortcuts(): void {
   useEffect(() => {
-    const stopHistory = startNavHistory();
     const stopGlobal = startGlobalKeybinds((action, pressed) => runKeybindAction(action, pressed));
     const heldBinds = new Map<string, string>();
     const onKey = (e: KeyboardEvent) => {
@@ -191,15 +204,24 @@ export function useGlobalShortcuts(): void {
         if (key.toLowerCase() === e.key.toLowerCase() || (modifier !== null && keys.split('+').includes(modifier))) release(bindId);
       }
     };
+    /** Mouse back/forward buttons (4th and 5th) walk the history like Ctrl+[ and Ctrl+]. */
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      e.preventDefault();
+      if (e.type === 'mouseup') runKeybindAction(e.button === 3 ? 'historyBack' : 'historyForward');
+    };
     const onBlur = () => release();
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+    window.addEventListener('mousedown', onMouse);
+    window.addEventListener('mouseup', onMouse);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
-      stopHistory();
+      window.removeEventListener('mousedown', onMouse);
+      window.removeEventListener('mouseup', onMouse);
       stopGlobal();
     };
   }, []);
