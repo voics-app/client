@@ -201,6 +201,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .older-loader { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; color: var(--fg-subtle); font-size: var(--fs-meta); }
 .channel-start { padding: 48px 16px 16px; display: flex; flex-direction: column; gap: 8px; color: var(--fg-muted); }
 .channel-start svg { color: var(--accent-text); } .channel-start h2 { font-size: var(--fs-hero); color: var(--fg); letter-spacing: -0.02em; }
+.dm-intro { align-items: flex-start; } .dm-intro .dm-intro-username { font-size: var(--fs-meta); color: var(--fg-subtle); } .dm-intro-wave { margin-top: 8px; }
 .day-divider, .new-divider { display: flex; align-items: center; gap: 12px; margin: 16px 16px 4px; font-size: var(--fs-caption); font-weight: 650; color: var(--fg-subtle); }
 .day-divider::before, .day-divider::after, .new-divider::before, .new-divider::after { content: ''; flex: 1; height: 1px; background: var(--hairline-strong); }
 .new-divider { color: var(--danger); } .new-divider::after { background: color-mix(in oklch, var(--danger) 60%, transparent); } .new-divider::before { display: none; }

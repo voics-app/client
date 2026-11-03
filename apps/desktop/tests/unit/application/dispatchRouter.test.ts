@@ -202,6 +202,17 @@ describe('dispatchRouter', () => {
     expect(useRelationshipStore.getState().byUser['2']).toEqual({ id: '2', type: 1, user: friend });
   });
 
+  it('asks for the DM when a request becomes a friendship, once', () => {
+    const onFriendship = vi.fn();
+    const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate: vi.fn(), onFriendship });
+    route('RELATIONSHIP_ADD', { id: '2', type: 4, user: friend });
+    expect(onFriendship).not.toHaveBeenCalled();
+    route('RELATIONSHIP_ADD', { id: '2', type: 1, user: friend });
+    route('RELATIONSHIP_ADD', { id: '2', type: 1, user: friend });
+    expect(onFriendship).toHaveBeenCalledTimes(1);
+    expect(onFriendship).toHaveBeenCalledWith('2');
+  });
+
   it('reports a new incoming friend request once, not on a replay or an accept', () => {
     const ctx = { onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), onFriendRequest: vi.fn(), invalidate: vi.fn() };
     const route = createDispatchRouter(ctx);

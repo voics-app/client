@@ -12,6 +12,15 @@ export function closeDm(channelId: string): void {
   if (ui.view.channelId === channelId) ui.navigate({ kind: 'home', channelId: null });
 }
 
+/** Makes sure the 1:1 DM with a user exists and is listed (a closed one is reopened); resolves to its id. */
+export async function ensureDm(userId: string): Promise<string | null> {
+  const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
+  if (!channel) return null;
+  useGuildStore.getState().upsertChannel(channel);
+  useClosedDmStore.getState().reopen(channel.id);
+  return channel.id;
+}
+
 /** Leaves a group DM (ownership moves to a remaining member when the owner leaves). */
 export async function leaveGroupDm(channelId: string): Promise<void> {
   const ok = await attempt(async () => {
