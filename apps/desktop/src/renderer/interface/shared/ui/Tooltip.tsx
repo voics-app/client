@@ -7,6 +7,8 @@ interface Props {
   side?: Side;
   children: ReactElement<TriggerProps>;
   delay?: number;
+  /** Hide and never open while true, e.g. while the trigger's own menu or popover is open (like Discord). */
+  suppressed?: boolean;
 }
 
 interface TriggerProps {
@@ -23,7 +25,7 @@ interface Shown {
 
 /** Glass tooltip rendered in a body-level portal (so no overflow:hidden ancestor can clip it), clamped to the viewport.
  * Triggered by hover and keyboard focus; dismissed on scroll or resize so it never floats detached from its trigger. */
-export function Tooltip({ label, side = 'top', children, delay = 350 }: Props) {
+export function Tooltip({ label, side = 'top', children, delay = 350, suppressed = false }: Props) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -37,18 +39,23 @@ export function Tooltip({ label, side = 'top', children, delay = 350 }: Props) {
   const show = useCallback(
     (el: HTMLElement) => {
       cancelTimer();
+      if (suppressed) return;
       timer.current = setTimeout(() => {
         const r = el.getBoundingClientRect();
         setShown({ rect: { top: r.top, right: r.right, bottom: r.bottom, left: r.left, width: r.width, height: r.height }, side });
       }, delay);
     },
-    [cancelTimer, delay, side],
+    [cancelTimer, delay, side, suppressed],
   );
   const hide = useCallback(() => {
     cancelTimer();
     setShown(null);
     setPlacement(null);
   }, [cancelTimer]);
+
+  useEffect(() => {
+    if (suppressed) hide();
+  }, [suppressed, hide]);
 
   useLayoutEffect(() => {
     const tip = tipRef.current;

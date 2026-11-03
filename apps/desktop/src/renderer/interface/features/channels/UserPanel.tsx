@@ -15,6 +15,7 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';
+import { DeviceArrow, useKeyHint } from '../voice/DeviceMenus';
 
 const STATUSES: { id: Exclude<PresenceStatus, 'offline'>; label: string; hint: string }[] = [
   { id: 'online', label: 'Online', hint: '' },
@@ -40,6 +41,8 @@ export function UserPanel() {
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
   const openSettings = useUiStore((s) => s.openSettings);
   const openDialog = useUiStore((s) => s.openDialog);
+  const muteKeys = useKeyHint('toggleMute');
+  const deafenKeys = useKeyHint('toggleDeafen');
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!user) return null;
   const status = (presence && presence !== 'offline' ? presence : settingsStatus) ?? 'online';
@@ -72,12 +75,18 @@ export function UserPanel() {
         </span>
       </button>
       <div className="user-panel-actions">
-        <IconButton label={selfMute ? 'Unmute' : 'Mute'} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
-          {selfMute ? <MicrophoneSlash size={20} /> : <Microphone size={20} />}
-        </IconButton>
-        <IconButton label={selfDeaf ? 'Undeafen' : 'Deafen'} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
-          {selfDeaf ? <SpeakerSlash size={20} /> : <Headphones size={20} />}
-        </IconButton>
+        <span className="split-control">
+          <IconButton label={selfMute ? 'Unmute' : 'Mute'} hint={muteKeys} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
+            {selfMute ? <MicrophoneSlash size={20} /> : <Microphone size={20} />}
+          </IconButton>
+          <DeviceArrow kind="input" />
+        </span>
+        <span className="split-control">
+          <IconButton label={selfDeaf ? 'Undeafen' : 'Deafen'} hint={deafenKeys} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
+            {selfDeaf ? <SpeakerSlash size={20} /> : <Headphones size={20} />}
+          </IconButton>
+          <DeviceArrow kind="output" />
+        </span>
         <IconButton label="User settings" onClick={() => openSettings({ kind: 'user', tab: 'account' })}>
           <Gear size={20} />
         </IconButton>

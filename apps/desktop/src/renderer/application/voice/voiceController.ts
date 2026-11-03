@@ -111,7 +111,7 @@ export class VoiceController {
     const token = ++this.joinToken;
     const store = useVoiceStore.getState();
     this.target = target;
-    store.setCall({ status: 'requesting', guildId: target.guildId, channelId: target.channelId, error: null, e2ee: false, quality: null });
+    store.setCall({ status: 'requesting', guildId: target.guildId, channelId: target.channelId, error: null, e2ee: false, quality: null, rttHistory: [] });
     try {
       this.micTrack = await this.deps.mic.start();
       if (token !== this.joinToken) return;
