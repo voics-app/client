@@ -200,8 +200,12 @@ test("production smoke", async () => {
     await step("2 member list shows both connected accounts ONLINE (client#135)", async () => {
       for (const i of [A, B]) {
         await i.page.getByText("general", { exact: true }).first().click().catch(() => undefined);
-        await expect(i.page.locator(".members section", { hasText: /^Online/ })).toContainText(nameA, { timeout: 15_000 });
-        await expect(i.page.locator(".members section", { hasText: /^Online/ })).toContainText(nameB, { timeout: 15_000 });
+        // The list is flat (virtualised since 0.4.2): an "Online <count>" heading, then the member rows.
+        const members = i.page.getByRole("complementary", { name: "Members" });
+        await expect(members.locator(".members-heading-btn", { hasText: /^Online/ })).toHaveText(/^Online\s*2$/, { timeout: 15_000 });
+        await expect(members.locator(".members-heading-btn", { hasText: /^Offline/ })).toHaveCount(0);
+        await expect(members).toContainText(nameA);
+        await expect(members).toContainText(nameB);
       }
     });
 
