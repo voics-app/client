@@ -3,12 +3,14 @@ import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
+import { closeSettings, useUnsavedStore } from '@renderer/application/stores/unsavedStore';
 import { permissionsByGroup } from '@renderer/domain/permissionCatalog';
 import { overwriteStateOf, withOverwriteState, type OverwriteState } from '@renderer/domain/permissions';
 import { ChannelType, type PermissionOverwrite } from '@shared/contracts/rest';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { displayName } from '../../../shared/hooks/useNames';
+import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Segmented, Switch, TextArea } from '../../../shared/ui/Form';
 import { Menu, useMenu } from '../../../shared/ui/Menu';
@@ -98,13 +100,7 @@ function Overwrites({ channelId }: { channelId: string }) {
           </section>
         ))}
       </div>
-      {dirty && (
-        <div className="save-bar glass" role="status">
-          <span>You have unsaved changes.</span>
-          <Button variant="ghost" onClick={() => setDraft(saved)}>Reset</Button>
-          <Button variant="primary" loading={saving} onClick={() => void save()}>Save changes</Button>
-        </div>
-      )}
+      <UnsavedBar dirty={dirty} saving={saving} onReset={() => setDraft(saved)} onSave={() => void save()} />
     </div>
   );
 }
@@ -123,6 +119,9 @@ function Overview({ channelId }: { channelId: string }) {
   const isVoice = channel?.type === ChannelType.GUILD_VOICE || channel?.type === ChannelType.GUILD_STAGE_VOICE;
   const mode = useMemo(() => (channel ? getRuntime().privacy.sender.resolveMode(channel) : 'standard'), [channel]);
   if (!channel) return null;
+  const saved = { name: channel.name ?? '', topic: channel.topic ?? '', slow: String(channel.rate_limit_per_user ?? 0), nsfw: channel.nsfw ?? false, limit: String(channel.user_limit ?? 0), bitrate: String(Math.round((channel.bitrate ?? 64000) / 1000)) };
+  const dirty = name !== saved.name || (!isVoice && topic !== saved.topic) || (!isVoice && slow !== saved.slow) || nsfw !== saved.nsfw || (isVoice && (limit !== saved.limit || bitrate !== saved.bitrate));
+  const reset = () => { setName(saved.name); setTopic(saved.topic); setSlow(saved.slow); setNsfw(saved.nsfw); setLimit(saved.limit); setBitrate(saved.bitrate); };
   const save = async () => {
     setSaving(true);
     const updated = await attempt(() => getRuntime().api.updateChannel(channelId, { name, topic: topic || null, nsfw, rate_limit_per_user: Number(slow), ...(isVoice ? { user_limit: Math.max(0, Math.min(99, Math.floor(Number(limit)) || 0)), bitrate: Math.max(8, Math.min(384, Math.floor(Number(bitrate)) || 64)) * 1000 } : {}) }), 'Could not save channel');
@@ -153,8 +152,8 @@ function Overview({ channelId }: { channelId: string }) {
       </div>
       <div className="row-end">
         <Button variant="danger" onClick={() => openDialog({ kind: 'confirm', title: `Delete #${channel.name}?`, body: 'Messages in this channel will be lost for everyone.', confirmLabel: 'Delete channel', danger: true, onConfirm: async () => { await attempt(() => getRuntime().api.deleteChannel(channelId), 'Could not delete channel'); openSettings(null); } })}>Delete channel</Button>
-        <Button variant="primary" loading={saving} onClick={() => void save()}>Save changes</Button>
       </div>
+      <UnsavedBar dirty={dirty} saving={saving} onReset={reset} onSave={() => void save()} />
     </div>
   );
 }
@@ -163,7 +162,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
   const open = useUiStore((s) => s.openSettings);
   const channel = useGuildStore((s) => s.channels[channelId]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && open(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSettings(true);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
@@ -174,7 +173,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
       <nav className="settings-nav">
         <div className="settings-group">
           <h3>#{channel.name}</h3>
-          {tabs.map((t) => <button key={t.id} type="button" className={`settings-item${tab === t.id ? ' is-active' : ''}`} onClick={() => open({ kind: 'channel', channelId, tab: t.id })}>{t.label}</button>)}
+          {tabs.map((t) => <button key={t.id} type="button" className={`settings-item${tab === t.id ? ' is-active' : ''}`} onClick={() => useUnsavedStore.getState().requestLeave() && open({ kind: 'channel', channelId, tab: t.id })}>{t.label}</button>)}
         </div>
       </nav>
       <div className="settings-content">
@@ -183,7 +182,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
           {tab === 'permissions' && <div className="settings-page"><h1>Permissions</h1><p className="page-sub">Overwrites win over role permissions. Deny beats allow within the same layer.</p><Overwrites channelId={channelId} /></div>}
           {tab === 'invites' && channel.guild_id && <ServerInvites guildId={channel.guild_id} />}
         </div>
-        <SettingsCloseButton onClose={() => open(null)} />
+        <SettingsCloseButton onClose={() => closeSettings()} />
       </div>
     </div>
   );

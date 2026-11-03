@@ -36,6 +36,8 @@ export interface UserMenuInput {
   isBot: boolean;
   /** The actor currently sits in the same call, so volume and local mute apply. */
   hasVoiceAudio: boolean;
+  /** Developer mode (Settings, Advanced): shows Copy user ID. */
+  developerMode?: boolean;
 }
 
 export type FriendAction = "add" | "remove" | "pending" | "accept" | "none";
@@ -85,7 +87,7 @@ export function userMenuGroups(input: UserMenuInput): UserMenuItemId[][] {
     ...(inGuild && caps.canKick ? (["kick"] as const) : []),
     ...(inGuild && caps.canBan ? (["ban"] as const) : []),
   ];
-  const groups: UserMenuItemId[][] = [social, audio, manage, danger, ["copyId"]];
+  const groups: UserMenuItemId[][] = [social, audio, manage, danger, input.developerMode ? ["copyId"] : []];
   return groups.filter((g) => g.length > 0);
 }
 

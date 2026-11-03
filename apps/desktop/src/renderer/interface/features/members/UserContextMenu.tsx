@@ -7,6 +7,7 @@ import { useUserNotesStore } from '@renderer/application/stores/notificationSett
 import { saveUserNote } from '@renderer/application/notificationSync';
 import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -103,6 +104,7 @@ export function UserContextMenu({
   /** Known account data when the surface has it (DM recipient, friend, message author). */
   user?: User;
 }) {
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [panelAt, setPanelAt] = useState({ x: 0, y: 0 });
   const me = useSessionStore((s) => s.user?.id) ?? null;
@@ -309,6 +311,7 @@ export function UserContextMenu({
     relationship: relationship?.type,
     isBot,
     hasVoiceAudio: true,
+    developerMode,
   });
   const showRoles = Boolean(guildId && member && member.roles.some((r) => r !== guildId));
   const entries: MenuEntry[] = groups.flatMap((g, i) => [

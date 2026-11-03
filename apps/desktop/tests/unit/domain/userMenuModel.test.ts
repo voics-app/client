@@ -54,6 +54,7 @@ const base = (c: MemberCapabilities, over: Partial<UserMenuInput> = {}): UserMen
   relationship: undefined,
   isBot: false,
   hasVoiceAudio: true,
+  developerMode: true,
   ...over,
 });
 
@@ -155,6 +156,14 @@ describe('userMenuGroups: visibility', () => {
     const groups = userMenuGroups(base(caps(0n, [], [])));
     expect(groups.every((g) => g.length > 0)).toBe(true);
     expect(groups.at(-1)).toEqual(['copyId']);
+  });
+});
+
+describe('userMenuGroups: developer mode', () => {
+  it('only offers copy id with developer mode on', () => {
+    const c = caps(0n, [], []);
+    expect(flat(base(c, { developerMode: false }))).not.toContain('copyId');
+    expect(flat(base(c))).toContain('copyId');
   });
 });
 

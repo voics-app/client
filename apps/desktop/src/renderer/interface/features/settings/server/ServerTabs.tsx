@@ -13,6 +13,7 @@ import { getRuntime } from '../../../app/runtime';
 import { displayName } from '../../../shared/hooks/useNames';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Button } from '../../../shared/ui/Button';
+import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { Field, Input, Select, TextArea } from '../../../shared/ui/Form';
 import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
@@ -90,13 +91,7 @@ export function ServerOverview({ guildId }: { guildId: string }) {
           </Field>
         </div>
       </div>
-      {dirty && (
-        <div className="save-bar glass" role="status">
-          <span>You have unsaved changes.</span>
-          <Button variant="ghost" onClick={() => { setName(guild.name); setDescription(guild.description ?? ''); setRegion(guild.voice_region ?? ''); setIcon(undefined); }}>Reset</Button>
-          <Button variant="primary" loading={saving} onClick={() => void save()}>Save changes</Button>
-        </div>
-      )}
+      <UnsavedBar dirty={dirty} saving={saving} onReset={() => { setName(guild.name); setDescription(guild.description ?? ''); setRegion(guild.voice_region ?? ''); setIcon(undefined); setIconError(null); }} onSave={() => void save()} />
     </Page>
   );
 }
