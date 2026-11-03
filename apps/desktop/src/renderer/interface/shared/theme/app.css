@@ -719,6 +719,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .mention-roleMention { color: var(--role-color, var(--accent-text)); background: color-mix(in oklch, var(--role-color, var(--accent)) 18%, transparent); }
 .mention-roleMention.is-mine { background: color-mix(in oklch, var(--role-color, var(--accent)) 32%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--role-color, var(--accent)) 60%, transparent); }
 .message-time[title], .message-time-gutter { cursor: default; }
+.reply-preview.is-compact { gap: 4px; font-size: calc(var(--fs-meta) - 1px); } .reply-preview.is-compact .reply-text { max-width: 60ch; }
 
 /* Chat header: topic popout, pin actions, DM profile panel (client#93) */
 .channel-topic-wrap { position: relative; min-width: 0; }

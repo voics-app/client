@@ -125,9 +125,10 @@ function EmbedItem({ embed }: { embed: Embed }) {
 /** The embeds of a message. Link previews can be hidden in settings, and removed with the hover "x" by the author or a moderator. */
 export function MessageEmbeds({ message }: { message: ChatMessage }) {
   const showPreviews = usePrefsStore((s) => s.linkPreviews);
+  const showEmbeds = usePrefsStore((s) => s.inlineEmbeds);
   const me = useSessionStore((s) => s.user?.id);
   const permissions = useChannelPermissions(message.channel_id);
-  const visible = message.embeds.filter((embed) => showPreviews || !isLinkPreview(embed));
+  const visible = showEmbeds ? message.embeds.filter((embed) => showPreviews || !isLinkPreview(embed)) : [];
   if (visible.length === 0) return null;
   const hasPreview = visible.some(isLinkPreview);
   const removable = hasPreview && message.deliveryMode !== 'ephemeral' && message.deliveryMode !== 'p2p'

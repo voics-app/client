@@ -12,6 +12,10 @@ import { copyText } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
 import { useTrustedDomainStore } from '@renderer/application/stores/composerStores';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { Permission } from '@shared/contracts/permissions';
+import { spoilersOpen } from '@renderer/domain/chatDisplay';
+import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { hostOf, isTrustedLink } from '@renderer/domain/linkTrust';
 import { formatTimestamp, isValidUnix, relativeTickMs, timestampTooltip } from '@renderer/domain/timestamp';
 import type { HighlightNode } from '@renderer/domain/highlightHtml';
@@ -22,8 +26,12 @@ import { Tooltip } from '../../shared/ui/Tooltip';
 import { highlightCode } from './highlighter';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
 
-function Spoiler({ children }: { children: ReactNode }) {
-  const [shown, setShown] = useState(false);
+function Spoiler({ children, guildId }: { children: ReactNode; guildId: string | null | undefined }) {
+  const [clicked, setClicked] = useState(false);
+  const mode = usePrefsStore((s) => s.spoilerDisplay);
+  const canManage = can(useGuildPermissions(guildId), Permission.MANAGE_MESSAGES);
+  const shown = clicked || spoilersOpen(mode, canManage);
+  const setShown = (v: boolean) => setClicked(v);
   return (
     <span className={`spoiler${shown ? ' is-shown' : ''}`} role="button" tabIndex={0} onClick={() => setShown(true)} onKeyDown={(e) => e.key === 'Enter' && setShown(true)}>
       {children}
@@ -187,7 +195,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
           case 'strike':
             return <s key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></s>;
           case 'spoiler':
-            return <Spoiler key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></Spoiler>;
+            return <Spoiler key={i} guildId={guildId}><Nodes nodes={node.children} guildId={guildId} big={false} /></Spoiler>;
           case 'quote':
             return <blockquote key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></blockquote>;
           case 'heading': {
