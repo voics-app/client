@@ -6,7 +6,6 @@ import { reactionKey, useMessageStore, type ChatMessage } from '@renderer/applic
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { Permission } from '@shared/contracts/permissions';
-import { systemMessageText } from '@renderer/domain/dmModel';
 import { MessageFlag, type Reaction } from '@shared/contracts/rest';
 import { buildReactionMenu } from '@renderer/domain/messageMenuModel';
 import { reactionSummary } from '@renderer/domain/emojiModel';
@@ -33,6 +32,8 @@ import { MarkdownView } from './MarkdownView';
 import { InviteCards } from './InviteCard';
 import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
+import { SystemMessage } from './SystemMessage';
+import { isSystemType } from '@renderer/domain/systemMessage';
 
 function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
@@ -218,23 +219,11 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
   const interactions = useMessageInteractions(message, guildId, { me, editing, blocked: sending || failed });
   const mentionsMe = me ? isMentioned(message, { meId: me, myRoleIds: myRoles ?? [] }) && !!message.guild_id : false;
   const ephemeral = ((message.flags ?? 0) & MessageFlag.EPHEMERAL) !== 0;
-  const system = message.type !== 0 && message.type !== 19 && message.type !== 20;
-
-  const target = message.mentions?.[0];
-  const groupText = system ? systemMessageText(message.type, name, target ? displayName(target) : null, message.content ?? '') : null;
+  const system = isSystemType(message.type);
 
   if (ephemeral && message.interaction_metadata && message.interaction_metadata.user.id !== me) return null;
 
-  if (system) {
-    return (
-      <div className="message system" data-message-id={message.id}>
-        <span className="system-text">
-          {groupText ?? <><strong>{name}</strong> {message.type === 7 ? 'joined the server.' : message.type === 6 ? 'pinned a message to this channel.' : 'did something.'}</>}
-        </span>
-        <time className="message-time-inline">{formatTime(message.timestamp)}</time>
-      </div>
-    );
-  }
+  if (system) return <SystemMessage message={message} name={name} reactions={<Reactions message={message} />} />;
 
   return (
     <div
