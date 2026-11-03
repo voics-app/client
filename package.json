@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @discordy/desktop dev",
+    "dev2": "pnpm --filter @discordy/desktop dev2",
     "build": "pnpm --filter @discordy/crypto build && pnpm --filter @discordy/desktop build",
     "build:native": "pnpm --filter @discordy/crypto build",
     "test": "pnpm --filter @discordy/desktop test && pnpm --filter @discordy/crypto test",
