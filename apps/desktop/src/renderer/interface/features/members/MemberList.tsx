@@ -8,13 +8,14 @@ import { useMemberGroupStore } from '@renderer/application/stores/memberGroupSto
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { assetCandidates } from '@renderer/domain/assets';
-import { activityLine, flattenSections, roleIconOf, voiceChannelOf, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@renderer/domain/memberList';
+import { flattenSections, roleIconOf, voiceChannelOf, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@renderer/domain/memberList';
 import { buildMemberSections } from '@renderer/domain/memberModeration';
 import { GatewayOp } from '@shared/contracts/gateway';
 import type { GuildMember, Role } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { useConnectionStore } from '../../app/connectionStore';
+import { StatusLine } from './StatusLine';
 import { Avatar } from '../../shared/ui/Avatar';
 import { AppTag } from '../../shared/ui/AppTag';
 import { AssetImage } from '../../shared/ui/AssetImage';
@@ -68,7 +69,6 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
   const presence = usePresenceStore((s) => s.byUser[member.user.id]);
   const status = presence?.status ?? 'offline';
   const name = displayName(member.user, member.nick);
-  const line = activityLine(presence?.activities ?? []);
   const top = Math.max(8, Math.min(anchor.top, window.innerHeight - 220));
   return createPortal(
     <div className='member-hover-card' role='tooltip' style={{ left: anchor.left - 8, top }}>
@@ -83,7 +83,7 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
         </div>
         {guild?.owner_id === member.user.id && <OwnerCrown />}
       </div>
-      {line && <p className='member-hover-activity'>{line}</p>}
+      <StatusLine className='member-hover-activity' activities={presence?.activities} />
       <RolePills guildId={guildId} userId={member.user.id} />
     </div>,
     document.body,
@@ -98,7 +98,6 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
   const menu = useMenu();
   const name = displayName(member.user, member.nick);
   const roleStyle = useRoleColorDisplay(roleColor(guild?.roles, member));
-  const line = activityLine(presence?.activities ?? []);
   const isOwner = guild?.owner_id === member.user.id;
   const roleIcon = roleIconOf(guild?.roles, member);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -142,7 +141,7 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
             {isOwner && <OwnerCrown />}
             {member.user.bot && <AppTag />}
           </span>
-          {line && <span className='member-activity'>{line}</span>}
+          <StatusLine className='member-activity' activities={presence?.activities} />
         </span>
         <VoiceIndicator guildId={guildId} userId={member.user.id} />
       </button>

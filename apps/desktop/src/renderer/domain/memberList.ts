@@ -68,3 +68,29 @@ export function roleIconOf(roles: readonly Role[] | undefined, member: GuildMemb
 export function voiceChannelOf(states: Record<string, { channel_id: string | null }> | undefined, userId: string): string | null {
   return states?.[userId]?.channel_id ?? null;
 }
+
+export interface StatusLine {
+  emoji: { name: string; id?: string | null } | null;
+  text: string;
+  /** Full text for the tooltip. */
+  title: string;
+}
+
+/** Cuts text to `max` characters with an ellipsis; the full text belongs in a tooltip. */
+export function truncateText(text: string, max: number): string {
+  const chars = [...text];
+  return chars.length <= max ? text : `${chars.slice(0, Math.max(0, max - 1)).join('').trimEnd()}…`;
+}
+
+/** Structured form of `activityLine`, so the custom status emoji can be drawn as an image. */
+export function statusLine(activities: readonly Activity[] | undefined, max = 128): StatusLine | null {
+  const list = activities ?? [];
+  const real = list.find((a) => a.type !== CUSTOM_STATUS_ACTIVITY_TYPE);
+  const custom = list.find((a) => a.type === CUSTOM_STATUS_ACTIVITY_TYPE);
+  if (real) {
+    const full = activityText(real);
+    return full ? { emoji: null, text: truncateText(full, max), title: full } : null;
+  }
+  if (!custom || !(custom.state || custom.emoji?.name)) return null;
+  return { emoji: custom.emoji ?? null, text: truncateText(custom.state ?? '', max), title: activityText(custom) };
+}
