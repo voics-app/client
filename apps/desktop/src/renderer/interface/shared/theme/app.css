@@ -685,3 +685,11 @@ button.mode-badge:active { transform: scale(0.96); }
 .template-group h4 { margin: 0 0 4px; font-size: var(--fs-meta); letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
 .template-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--fs-small); } .template-group li span { display: inline-block; width: 1.2em; color: var(--fg-subtle); }
 .palette-mode { flex: none; padding: 2px 8px; border-radius: var(--radius-pill, 999px); background: var(--accent-soft, var(--hairline)); color: var(--fg); font-size: var(--fs-caption, 12px); font-weight: 600; white-space: nowrap; }
+
+/* Chat header: topic popout, pin actions, DM profile panel (client#93) */
+.channel-topic-wrap { position: relative; min-width: 0; }
+button.channel-topic { background: none; border: 0; border-left: 1px solid var(--hairline-strong); max-width: 100%; cursor: pointer; text-align: left; } button.channel-topic:hover { color: var(--fg); }
+.topic-popout { position: absolute; top: calc(100% + 10px); left: 8px; z-index: 30; width: min(420px, 70vw); padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; }
+.topic-popout h3 { font-size: var(--fs-body); } .topic-full { max-height: 260px; overflow-y: auto; overflow-wrap: anywhere; } .topic-edit { width: 100%; resize: vertical; }
+.pin-card .embeds, .pin-card .attachments { margin-top: 6px; } .pin-actions { display: flex; gap: 6px; margin-top: 8px; }
+.dm-profile { display: flex; flex-direction: column; gap: 12px; } .dm-profile-head { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }

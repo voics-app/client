@@ -1,22 +1,14 @@
-import { Hash, Megaphone, Phone, PushPin, Users, Television, ChatsCircle, At, Gear } from '@phosphor-icons/react';
 import { useEffect } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { typingUsers, useTypingStore } from '@renderer/application/stores/peopleStores';
-import { useCallStore } from '@renderer/application/stores/callStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { hasParticipants } from '@renderer/domain/calls';
 import { ChannelType } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
-import { joinVoiceChannel } from '../../app/voiceActions';
 import { displayName } from '../../shared/hooks/useNames';
 import { useNow } from '../../shared/hooks/useNow';
-import { Avatar } from '../../shared/ui/Avatar';
-import { IconButton } from '../../shared/ui/IconButton';
-import { ModeBadge } from '../privacy/ModeBadge';
 import { CallStrip } from '../voice/CallStrip';
-import { SearchBar } from '../search/SearchBar';
+import { ChannelHeader } from './ChannelHeader';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 
@@ -49,46 +41,16 @@ function TypingBar({ channelId }: { channelId: string }) {
 
 export function ChatView({ channelId }: { channelId: string }) {
   const channel = useGuildStore((s) => s.channels[channelId]);
-  const sidePanel = useUiStore((s) => s.sidePanel);
-  const toggle = useUiStore((s) => s.toggleSidePanel);
   const inCall = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
-  const callInProgress = useCallStore((s) => hasParticipants(s.calls[channelId]));
   useSessionStore((s) => s.settings); // re-resolve the mode when account defaults or overrides change
   const mode = channel ? getRuntime().privacy.sender.resolveMode(channel) : 'standard';
 
   if (!channel) return <div className="stage-empty" />;
-  const isDm = channel.type === ChannelType.DM || channel.type === ChannelType.GROUP_DM;
-  const isThread = channel.type >= 10 && channel.type <= 12;
-  const peers = channel.recipients ?? [];
-  const title = isDm ? (channel.name || peers.map((u) => displayName(u)).join(', ') || 'Direct message') : (channel.name ?? '');
-  const Icon = channel.type === ChannelType.GUILD_ANNOUNCEMENT ? Megaphone : isThread ? ChatsCircle : Hash;
+  const title = channel.type === ChannelType.DM || channel.type === ChannelType.GROUP_DM ? (channel.name || (channel.recipients ?? []).map((u) => displayName(u)).join(', ') || 'Direct message') : (channel.name ?? '');
 
   return (
     <section className="chat" aria-label={title}>
-      <header className="channel-header">
-        <div className="channel-header-title">
-          {isDm ? (
-            channel.type === ChannelType.GROUP_DM ? <Avatar id={channel.id} name={title} avatar={channel.icon ?? null} size={26} kind="channel-icons" /> : peers.length === 1 ? <Avatar id={peers[0]!.id} name={displayName(peers[0]!)} avatar={peers[0]!.avatar} size={26} /> : <At size={22} className="channel-header-icon" />
-          ) : (
-            <Icon size={22} className="channel-header-icon" />
-          )}
-          <h1>{title}</h1>
-          {channel.topic && <span className="channel-topic" title={channel.topic}>{channel.topic}</span>}
-        </div>
-        <div className="channel-header-actions">
-          <ModeBadge mode={mode} />
-          <SearchBar channelId={channelId} />
-          {isDm && (
-            <IconButton label={inCall ? 'In call' : callInProgress ? 'Join call' : 'Start voice call'} active={inCall} disabled={inCall} onClick={() => void joinVoiceChannel(null, channel.id)}>
-              <Phone size={20} weight={inCall ? 'fill' : 'regular'} />
-            </IconButton>
-          )}
-          <IconButton label="Pinned messages" active={sidePanel?.kind === 'pins'} onClick={() => toggle('pins')}><PushPin size={20} /></IconButton>
-          <IconButton label="Watch Together" active={sidePanel?.kind === 'watch'} onClick={() => toggle('watch')}><Television size={20} /></IconButton>
-          {channel.type === ChannelType.GROUP_DM && <IconButton label="Group settings" onClick={() => useUiStore.getState().openDialog({ kind: 'groupDm', channelId })}><Gear size={20} /></IconButton>}
-          {!isDm && <IconButton label="Member list" active={sidePanel?.kind === 'members'} onClick={() => toggle('members')}><Users size={20} /></IconButton>}
-        </div>
-      </header>
+      <ChannelHeader channel={channel} mode={mode} />
       {inCall && <CallStrip channelId={channelId} />}
       <MessageList channelId={channelId} />
       <TypingBar channelId={channelId} />

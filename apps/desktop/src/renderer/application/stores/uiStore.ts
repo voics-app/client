@@ -39,7 +39,7 @@ export type Dialog =
   | { kind: 'guildNotifications'; guildId: string }
   | { kind: 'folderSettings'; folderId: number }
   | { kind: 'inbox' }
-  | { kind: 'newDm' }
+  | { kind: 'newDm'; preselect?: string[] }
   | { kind: 'groupDm'; channelId: string }
   | { kind: 'screenPicker' }
   | { kind: 'profile'; userId: string; guildId: string | null }
@@ -51,7 +51,7 @@ export type Dialog =
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
-export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | null;
+export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | { kind: 'profile' } | null;
 
 export interface Toast {
   id: number;
@@ -82,7 +82,7 @@ export interface UiState {
   openSettings(target: SettingsTarget | null): void;
   openDialog(dialog: Dialog | null): void;
   setSidePanel(panel: SidePanel): void;
-  toggleSidePanel(kind: 'members' | 'pins' | 'watch' | 'search'): void;
+  toggleSidePanel(kind: 'members' | 'pins' | 'watch' | 'search' | 'profile'): void;
   /** Bumped by Ctrl+F so the channel header search box takes focus. */
   searchFocus: number;
   focusSearch(): void;

@@ -225,9 +225,9 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
   );
 }
 
-function NewDmDialog() {
+function NewDmDialog({ preselect }: { preselect?: string[] }) {
   const [query, setQuery] = useState('');
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(preselect ?? []);
   const [busy, setBusy] = useState(false);
   const close = useClose();
   const members = useGuildStore((s) => s.members);
@@ -361,7 +361,7 @@ function ActiveDialog() {
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
-    case 'newDm': return <NewDmDialog />;
+    case 'newDm': return <NewDmDialog preselect={dialog.preselect} />;
     case 'groupDm': return <GroupDmDialog channelId={dialog.channelId} />;
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;
