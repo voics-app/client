@@ -13,6 +13,7 @@ import { setMemberRole } from '../../members/RolePills';
 import type { Role } from '@shared/contracts/rest';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
+import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Switch } from '../../../shared/ui/Form';
 import { Menu } from '../../../shared/ui/Menu';
@@ -245,13 +246,7 @@ export function RolesEditor({ guildId }: { guildId: string }) {
           {activeTab === 'members' && !isEveryone && <RoleMembers guildId={guildId} roleId={draft.id} canEdit={editable && !draft.managed} />}
         </div>
       </div>
-      {dirty && editable && (
-        <div className="save-bar glass" role="status">
-          <span>You have unsaved changes.</span>
-          <Button variant="ghost" onClick={() => setDraft(selected)}>Reset</Button>
-          <Button variant="primary" loading={saving} onClick={() => void save()}>Save changes</Button>
-        </div>
-      )}
+      <UnsavedBar dirty={dirty && editable} saving={saving} onReset={() => setDraft(selected)} onSave={() => void save()} />
     </div>
   );
 }

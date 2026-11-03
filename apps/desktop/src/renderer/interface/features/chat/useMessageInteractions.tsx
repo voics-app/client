@@ -20,6 +20,7 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { selectionWithin, targetFromElement } from './contextTarget';
+import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
 import { useEmojiPopover } from './EmojiPopover';
 
 /** Forwarding is stored server-side as a snapshot (messages#13); E2EE and P2P chats are excluded in the menu model. */
@@ -79,6 +80,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const recent = usePrefsStore((s) => s.recentReactions);
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const setReplyTo = useUiStore((s) => s.setReplyTo);
   const setEditing = useUiStore((s) => s.setEditing);
   const openDialog = useUiStore((s) => s.openDialog);
@@ -138,6 +140,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       },
     });
 
+  const appCommands = useContextCommands(can(perms, Permission.USE_APPLICATION_COMMANDS) ? message.channel_id : null, menu.open && standard);
   const canManage = can(perms, Permission.MANAGE_MESSAGES);
   const canReact = can(perms, Permission.ADD_REACTIONS);
 
@@ -169,6 +172,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'copyLink': return arg && void copyText(arg, 'Link copied');
       case 'copyImage': return arg && void copyImage(arg);
       case 'saveImage': return arg && void saveImage(arg, target.kind === 'image' ? target.filename : 'image');
+      case 'appCommand': return runContextCommand(channel, appCommands?.find((c) => c.id === arg), message.id);
       case 'addEmoji': return target.kind === 'emoji' && guildId && void addEmojiToGuild(guildId, target.name, target.url);
     }
   };
@@ -191,6 +195,8 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
         (can(guildPerms, Permission.CREATE_GUILD_EXPRESSIONS) || can(guildPerms, Permission.MANAGE_GUILD_EXPRESSIONS)) &&
         !(guild?.emojis ?? []).some((e) => e.id === target.id),
       quick,
+      developerMode,
+      appCommands,
     },
     target,
   );
@@ -200,7 +206,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     if (e.kind === 'submenu' && e.label === 'Add Reaction') e.entries.forEach((sub, i) => { if (sub.kind === 'item' && i < quick.length && quick[i]!.id) sub.icon = <EmojiGlyph emoji={quick[i]!} />; });
   }
 
-  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift });
+  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift, developerMode });
   const toolbar = visible ? (
     <div className="message-toolbar glass" role="toolbar" aria-label="Message actions" data-shift={shift || undefined}>
       {toolbarActions.map((a, i) => {

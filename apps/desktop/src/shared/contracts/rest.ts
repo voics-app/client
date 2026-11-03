@@ -40,6 +40,7 @@ export interface User {
 
 export interface CustomStatus {
   text: string | null;
+  emoji_id?: Snowflake | null;
   emoji_name?: string | null;
   expires_at?: string | null;
 }
@@ -275,6 +276,11 @@ export interface MessageSnapshot {
   message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'embeds' | 'type' | 'flags'>;
 }
 
+export interface MessageCall {
+  participants?: Snowflake[];
+  ended_timestamp?: string | null;
+}
+
 export interface Message {
   id: Snowflake;
   channel_id: Snowflake;
@@ -300,6 +306,8 @@ export interface Message {
   /** Present when `message_reference.type` is 1 (forward). */
   message_snapshots?: MessageSnapshot[];
   thread?: Channel;
+  /** Type 3 (CALL): participants and when it ended (Discord shape). Not produced by the backend yet. */
+  call?: MessageCall;
   application_id?: Snowflake;
   components?: MessageComponent[];
   interaction_metadata?: InteractionMetadata;
@@ -319,6 +327,8 @@ export const MessageFlag = {
   SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,
+  /** `@silent`: no push, desktop or unread-mention notification. */
+  SUPPRESS_NOTIFICATIONS: 1 << 12,
 } as const;
 
 export const CommandType = { CHAT_INPUT: 1, USER: 2, MESSAGE: 3 } as const;
@@ -375,6 +385,8 @@ export interface ApplicationSummary {
   name: string;
   icon?: string | null;
   unicode_emoji?: string | null;
+  description?: string;
+  bot_id?: Snowflake;
   bot?: User;
 }
 
@@ -611,6 +623,10 @@ export interface CreateMessageBody {
   message_reference?: MessageReference;
   embeds?: Embed[];
   tts?: boolean;
+  /** Only SUPPRESS_NOTIFICATIONS is accepted from users. */
+  flags?: number;
+  /** `replied_user: false` replies without pinging the replied-to author. */
+  allowed_mentions?: { replied_user?: boolean };
 }
 
 export interface AttachmentUploadSlot {
@@ -697,4 +713,94 @@ export interface ReadyPayload {
   read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;
+}
+
+/** A role of a server template; ids are template-local (0 is @everyone). */
+export interface TemplateRole {
+  id: number;
+  name: string;
+  permissions: string;
+  color: number;
+  hoist: boolean;
+  mentionable: boolean;
+}
+
+export interface TemplateOverwrite {
+  id: number;
+  type: number;
+  allow: string;
+  deny: string;
+}
+
+export interface TemplateChannel {
+  id: number;
+  type: number;
+  name: string;
+  position: number;
+  topic: string | null;
+  nsfw: boolean;
+  parent_id: number | null;
+  permission_overwrites: TemplateOverwrite[];
+}
+
+/** The structure a template creates. */
+export interface TemplateSourceGuild {
+  name: string;
+  description: string | null;
+  afk_channel_id: number | null;
+  system_channel_id: number | null;
+  roles: TemplateRole[];
+  channels: TemplateChannel[];
+}
+
+/** A server template (Discord guild template). Built-ins have a `builtin-` code and no creator. */
+export interface GuildTemplate {
+  code: string;
+  name: string;
+  description: string | null;
+  usage_count: number;
+  creator_id: string | null;
+  creator: User | null;
+  created_at: string;
+  updated_at: string;
+  source_guild_id: string | null;
+  serialized_source_guild: TemplateSourceGuild;
+  is_dirty: boolean;
+}
+
+/** One server card of `GET /discovery/guilds`. */
+export interface DiscoveryGuild {
+  id: string;
+  name: string;
+  icon: string | null;
+  description: string | null;
+  category: string;
+  tags: string[];
+  approximate_member_count: number;
+  approximate_presence_count: number | null;
+}
+
+export interface DiscoveryPage {
+  guilds: DiscoveryGuild[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface DiscoveryQuery {
+  query?: string;
+  category?: string;
+  tag?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** `GET|PUT /guilds/{id}/discovery`: a server's opt-in listing and what blocks it. */
+export interface GuildDiscoverySettings {
+  enabled: boolean;
+  category: string | null;
+  tags: string[];
+  listed_at: string | null;
+  member_count: number;
+  blockers: string[];
 }

@@ -1,17 +1,24 @@
-import { CaretDown, CaretRight, Crown, MagnifyingGlass } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, Crown, MagnifyingGlass, SpeakerHigh } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
+import { useMemberGroupStore } from '@renderer/application/stores/memberGroupStore';
+import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { activityLine, flattenSections, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@renderer/domain/memberList';
+import { assetCandidates } from '@renderer/domain/assets';
+import { flattenSections, roleIconOf, voiceChannelOf, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@renderer/domain/memberList';
 import { buildMemberSections } from '@renderer/domain/memberModeration';
 import { GatewayOp } from '@shared/contracts/gateway';
-import type { GuildMember } from '@shared/contracts/rest';
+import type { GuildMember, Role } from '@shared/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
+import { useConnectionStore } from '../../app/connectionStore';
+import { StatusLine } from './StatusLine';
 import { Avatar } from '../../shared/ui/Avatar';
+import { AppTag } from '../../shared/ui/AppTag';
+import { AssetImage } from '../../shared/ui/AssetImage';
 import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
 import { useMenu } from '../../shared/ui/Menu';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
@@ -28,8 +35,25 @@ function roleColor(guildRoles: { id: string; color: number; position: number }[]
   return top ? `#${top.color.toString(16).padStart(6, '0')}` : undefined;
 }
 
-function BotTag() {
-  return <span className='member-tag'>BOT</span>;
+function RoleIcon({ role }: { role: Role }) {
+  const cdn = useConnectionStore((s) => s.cdnUrl);
+  return (
+    <span className='member-role-icon' title={role.name} role='img' aria-label={role.name}>
+      {role.icon ? <AssetImage candidates={assetCandidates(cdn, 'role-icons', role.id, role.icon, 32)} /> : <span aria-hidden>{role.unicode_emoji}</span>}
+    </span>
+  );
+}
+
+function VoiceIndicator({ guildId, userId }: { guildId: string; userId: string }) {
+  const channelId = useVoiceStore((s) => voiceChannelOf(s.states[guildId], userId));
+  const channelName = useGuildStore((s) => (channelId ? s.channels[channelId]?.name : undefined));
+  if (!channelId) return null;
+  const label = channelName ? `In voice: ${channelName}` : 'In voice';
+  return (
+    <span className='member-voice' title={label} role='img' aria-label={label}>
+      <SpeakerHigh size={14} weight='fill' />
+    </span>
+  );
 }
 
 function OwnerCrown() {
@@ -45,7 +69,6 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
   const presence = usePresenceStore((s) => s.byUser[member.user.id]);
   const status = presence?.status ?? 'offline';
   const name = displayName(member.user, member.nick);
-  const line = activityLine(presence?.activities ?? []);
   const top = Math.max(8, Math.min(anchor.top, window.innerHeight - 220));
   return createPortal(
     <div className='member-hover-card' role='tooltip' style={{ left: anchor.left - 8, top }}>
@@ -55,12 +78,12 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
           <strong style={{ color: roleColor(guild?.roles, member) }}>{name}</strong>
           <span className='member-hover-user'>
             {member.user.username}
-            {member.user.bot && <BotTag />}
+            {member.user.bot && <AppTag />}
           </span>
         </div>
         {guild?.owner_id === member.user.id && <OwnerCrown />}
       </div>
-      {line && <p className='member-hover-activity'>{line}</p>}
+      <StatusLine className='member-hover-activity' activities={presence?.activities} />
       <RolePills guildId={guildId} userId={member.user.id} />
     </div>,
     document.body,
@@ -75,8 +98,8 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
   const menu = useMenu();
   const name = displayName(member.user, member.nick);
   const roleStyle = useRoleColorDisplay(roleColor(guild?.roles, member));
-  const line = activityLine(presence?.activities ?? []);
   const isOwner = guild?.owner_id === member.user.id;
+  const roleIcon = roleIconOf(guild?.roles, member);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const show = (el: HTMLElement) => {
@@ -114,11 +137,13 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
               <RoleDot color={roleStyle.dot} />
               {name}
             </span>
+            {roleIcon && <RoleIcon role={roleIcon} />}
             {isOwner && <OwnerCrown />}
-            {member.user.bot && <BotTag />}
+            {member.user.bot && <AppTag />}
           </span>
-          {line && <span className='member-activity'>{line}</span>}
+          <StatusLine className='member-activity' activities={presence?.activities} />
         </span>
+        <VoiceIndicator guildId={guildId} userId={member.user.id} />
       </button>
       {anchor && <HoverCard guildId={guildId} member={member} anchor={anchor} />}
       <UserContextMenu userId={member.user.id} name={name} guildId={guildId} menu={menu} />
@@ -147,7 +172,9 @@ export function MemberList({ guildId }: { guildId: string }) {
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const presence = usePresenceStore((s) => s.byUser);
   const [query, setQuery] = useState('');
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const collapsedIds = useMemberGroupStore((s) => s.collapsed[guildId]);
+  const toggleGroup = useMemberGroupStore((s) => s.toggle);
+  const collapsed = useMemo<ReadonlySet<string>>(() => new Set(collapsedIds ?? []), [collapsedIds]);
 
   useEffect(() => {
     getRuntime().gateway.send(GatewayOp.REQUEST_GUILD_MEMBERS, {
@@ -158,7 +185,6 @@ export function MemberList({ guildId }: { guildId: string }) {
       nonce: `members-${guildId}`,
     });
     setQuery('');
-    setCollapsed(new Set());
   }, [guildId]);
 
   const needle = query.trim();
@@ -191,12 +217,7 @@ export function MemberList({ guildId }: { guildId: string }) {
     return flattenSections(sections, collapsed);
   }, [members, guild, presence, collapsed, needle]);
 
-  const toggle = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+  const toggle = (id: string) => toggleGroup(guildId, id);
 
   const asideRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

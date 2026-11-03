@@ -1,5 +1,6 @@
 /** Which items the shared user context menu shows, as a pure function of permissions and relationship state. */
 import { RelationshipType } from "@shared/contracts/rest";
+import { appsSubmenu, type ContextCommand } from "./contextCommands";
 import type { MemberCapabilities } from "./memberModeration";
 
 export type UserMenuItemId =
@@ -22,6 +23,7 @@ export type UserMenuItemId =
   | "serverDeafen"
   | "moveTo"
   | "disconnect"
+  | "apps"
   | "copyId";
 
 export interface UserMenuInput {
@@ -36,6 +38,10 @@ export interface UserMenuInput {
   isBot: boolean;
   /** The actor currently sits in the same call, so volume and local mute apply. */
   hasVoiceAudio: boolean;
+  /** Developer mode (Settings, Advanced): shows Copy user ID. */
+  developerMode?: boolean;
+  /** Installed applications' USER and MESSAGE commands; USER ones fill the Apps submenu. */
+  appCommands?: ContextCommand[];
 }
 
 export type FriendAction = "add" | "remove" | "pending" | "accept" | "none";
@@ -85,7 +91,8 @@ export function userMenuGroups(input: UserMenuInput): UserMenuItemId[][] {
     ...(inGuild && caps.canKick ? (["kick"] as const) : []),
     ...(inGuild && caps.canBan ? (["ban"] as const) : []),
   ];
-  const groups: UserMenuItemId[][] = [social, audio, manage, danger, ["copyId"]];
+  const apps: UserMenuItemId[] = appsSubmenu(input.appCommands, "user") ? ["apps"] : [];
+  const groups: UserMenuItemId[][] = [social, audio, manage, danger, apps, input.developerMode ? ["copyId"] : []];
   return groups.filter((g) => g.length > 0);
 }
 

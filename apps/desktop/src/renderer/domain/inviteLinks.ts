@@ -1,13 +1,16 @@
 /** Invite codes and the shareable web links that open them. */
 
-const PROD_API_HOST = 'discordy-api.voics.nl';
-const PROD_LANDING = 'https://discordy.voics.nl';
+import { BRAND } from '@shared/brand';
+
+const PROD_API_HOST = new URL(BRAND.apiUrl).hostname;
+const PROD_LANDING = BRAND.landingUrl;
+const INVITE_INPUT = new RegExp(`(?:invite/|${BRAND.protocolScheme}://invite/|/)?([\\w-]{2,32})/?(?:[?#].*)?$`);
 const CODE = /^[A-Za-z0-9-]{2,32}$/;
 
-/** Extracts the code from a bare code, a web invite URL, or a `discordy://invite/<code>` link. */
+/** Extracts the code from a bare code, a web invite URL, or a `<scheme>://invite/<code>` deep link. */
 export function parseInviteCode(input: string): string {
   const text = input.trim();
-  const m = /(?:invite\/|discordy:\/\/invite\/|\/)?([\w-]{2,32})\/?(?:[?#].*)?$/.exec(text);
+  const m = INVITE_INPUT.exec(text);
   return m?.[1] ?? text;
 }
 
@@ -29,4 +32,21 @@ export function landingOrigin(apiUrl: string): string {
 /** Clickable invite link: opens the web invite page, which launches the desktop app. */
 export function inviteWebUrl(code: string, apiUrl: string): string {
   return `${landingOrigin(apiUrl)}/invite/${encodeURIComponent(code)}`;
+}
+
+/** Invite codes in `text` for links to this instance's invite page (host from the brand module or the connection). Deduplicated, in order. */
+export function instanceInviteCodes(text: string, apiUrl: string): string[] {
+  const hosts = new Set<string>();
+  for (const origin of [landingOrigin(apiUrl), PROD_LANDING]) {
+    try {
+      hosts.add(new URL(origin).host.toLowerCase());
+    } catch {
+      // ignore a malformed origin
+    }
+  }
+  const codes: string[] = [];
+  for (const m of text.matchAll(/https?:\/\/([^\s/<>]+)\/invite\/([A-Za-z0-9-]{2,32})(?![\w-])/gi)) {
+    if (hosts.has(m[1]!.toLowerCase()) && !codes.includes(m[2]!)) codes.push(m[2]!);
+  }
+  return codes;
 }

@@ -58,6 +58,7 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
     canManage: can(perms, Permission.MANAGE_CHANNELS),
     hasUnread: h.hasUnread,
     muted: ownMute(channel),
+    developerMode: usePrefsStore.getState().developerMode,
     canMoveUp: !channel.guild_id || canStep(channel.guild_id, channel.id, 'channel', -1),
     canMoveDown: !channel.guild_id || canStep(channel.guild_id, channel.id, 'channel', 1),
   });
@@ -105,6 +106,7 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
     canManage: can(perms, Permission.MANAGE_CHANNELS),
     hasUnread: h.hasUnread,
     muted: ownMute(category),
+    developerMode: usePrefsStore.getState().developerMode,
     collapsed,
     hasOtherCategories: siblings.length > 1,
     canMoveUp: canStep(h.guildId, category.id, 'category', -1),

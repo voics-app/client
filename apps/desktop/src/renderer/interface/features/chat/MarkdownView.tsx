@@ -2,6 +2,9 @@ import { Check, Copy } from '@phosphor-icons/react';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { isEmojiOnly } from '@renderer/domain/emojiOnly';
+import { roleColorCss } from '@renderer/domain/userMenuModel';
 import { parseMarkdown, type MarkdownNode } from '@renderer/domain/markdown';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { openExternalUrl as openLink } from '../../app/links';
@@ -9,6 +12,10 @@ import { copyText } from '../../app/actions';
 import { openChannel } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
 import { useTrustedDomainStore } from '@renderer/application/stores/composerStores';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { Permission } from '@shared/contracts/permissions';
+import { spoilersOpen } from '@renderer/domain/chatDisplay';
+import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { hostOf, isTrustedLink } from '@renderer/domain/linkTrust';
 import { formatTimestamp, isValidUnix, relativeTickMs, timestampTooltip } from '@renderer/domain/timestamp';
 import type { HighlightNode } from '@renderer/domain/highlightHtml';
@@ -19,8 +26,12 @@ import { Tooltip } from '../../shared/ui/Tooltip';
 import { highlightCode } from './highlighter';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
 
-function Spoiler({ children }: { children: ReactNode }) {
-  const [shown, setShown] = useState(false);
+function Spoiler({ children, guildId }: { children: ReactNode; guildId: string | null | undefined }) {
+  const [clicked, setClicked] = useState(false);
+  const mode = usePrefsStore((s) => s.spoilerDisplay);
+  const canManage = can(useGuildPermissions(guildId), Permission.MANAGE_MESSAGES);
+  const shown = clicked || spoilersOpen(mode, canManage);
+  const setShown = (v: boolean) => setClicked(v);
   return (
     <span className={`spoiler${shown ? ' is-shown' : ''}`} role="button" tabIndex={0} onClick={() => setShown(true)} onKeyDown={(e) => e.key === 'Enter' && setShown(true)}>
       {children}
@@ -80,10 +91,15 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
     const user = member?.user;
     return `@${member?.nick ?? user?.global_name ?? user?.username ?? 'unknown-user'}`;
   });
+  const role = useGuildStore((s) => (kind === 'roleMention' && guildId ? s.guilds[guildId]?.roles.find((r) => r.id === id) : undefined));
+  const meId = useSessionStore((s) => s.user?.id);
+  const mine = useGuildStore((s) => (kind === 'roleMention' && guildId && meId ? !!s.members[guildId]?.[meId]?.roles.includes(id) : false));
+  const roleCss = role ? roleColorCss(role.color) : undefined;
   const button = (
     <button
       type="button"
-      className={`mention mention-${kind}`}
+      className={`mention mention-${kind}${mine ? ' is-mine' : ''}`}
+      style={roleCss ? ({ '--role-color': roleCss } as React.CSSProperties) : undefined}
       onClick={() => (kind === 'channelMention' ? openChannel(id) : kind === 'userMention' ? openDialog({ kind: 'profile', userId: id, guildId: guildId ?? null }) : undefined)}
     >
       {label}
@@ -179,7 +195,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
           case 'strike':
             return <s key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></s>;
           case 'spoiler':
-            return <Spoiler key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></Spoiler>;
+            return <Spoiler key={i} guildId={guildId}><Nodes nodes={node.children} guildId={guildId} big={false} /></Spoiler>;
           case 'quote':
             return <blockquote key={i}><Nodes nodes={node.children} guildId={guildId} big={false} /></blockquote>;
           case 'heading': {
@@ -225,10 +241,8 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
   );
 }
 
-const EMOJI_ONLY = /^(?:\s*(?:\p{Extended_Pictographic}|<a?:\w+:\d+>)\s*){1,27}$/u;
-
 export function MarkdownView({ source, guildId }: { source: string; guildId?: string | null }) {
-  const big = EMOJI_ONLY.test(source);
+  const big = isEmojiOnly(source);
   return (
     <div className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
       <Nodes nodes={parseMarkdown(source)} guildId={guildId} big={big} />

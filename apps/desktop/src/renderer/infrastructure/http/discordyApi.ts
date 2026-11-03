@@ -18,6 +18,10 @@ import type {
   Device,
   Emoji,
   Guild,
+  DiscoveryPage,
+  GuildTemplate,
+  DiscoveryQuery,
+  GuildDiscoverySettings,
   GuildFull,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
@@ -177,6 +181,30 @@ export class DiscordyApi implements ApiPort {
   createGuild(body: { name: string; icon?: string | null }) {
     return this.post<GuildFull>('/guilds', body);
   }
+  builtinGuildTemplates() {
+    return this.get<GuildTemplate[]>('/guilds/templates');
+  }
+  guildTemplate(code: string) {
+    return this.get<GuildTemplate>(`/guilds/templates/${encodeURIComponent(code)}`);
+  }
+  createGuildFromTemplate(code: string, body: { name: string; icon?: string | null }) {
+    return this.post<GuildFull>(`/guilds/templates/${encodeURIComponent(code)}`, body);
+  }
+  guildTemplates(guildId: string) {
+    return this.get<GuildTemplate[]>(`/guilds/${guildId}/templates`);
+  }
+  createGuildTemplate(guildId: string, body: { name: string; description?: string | null }) {
+    return this.post<GuildTemplate>(`/guilds/${guildId}/templates`, body);
+  }
+  modifyGuildTemplate(guildId: string, code: string, body: { name?: string; description?: string | null }) {
+    return this.patch<GuildTemplate>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`, body);
+  }
+  syncGuildTemplate(guildId: string, code: string) {
+    return this.put<GuildTemplate>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`);
+  }
+  deleteGuildTemplate(guildId: string, code: string) {
+    return this.del<void>(`/guilds/${guildId}/templates/${encodeURIComponent(code)}`);
+  }
   guild(guildId: string) {
     return this.get<Guild>(`/guilds/${guildId}`);
   }
@@ -284,6 +312,22 @@ export class DiscordyApi implements ApiPort {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
   }
 
+  discoveryGuilds(query: DiscoveryQuery = {}) {
+    return this.get<DiscoveryPage>('/discovery/guilds', query as Record<string, string>);
+  }
+  async discoveryCategories() {
+    return (await this.get<{ categories: string[] }>('/discovery/categories')).categories;
+  }
+  joinDiscoveryGuild(guildId: string) {
+    return this.post<void>(`/discovery/guilds/${guildId}/join`);
+  }
+  guildDiscovery(guildId: string) {
+    return this.get<GuildDiscoverySettings>(`/guilds/${guildId}/discovery`);
+  }
+  putGuildDiscovery(guildId: string, body: { enabled: boolean; category?: string | null; tags?: string[] }) {
+    return this.put<GuildDiscoverySettings>(`/guilds/${guildId}/discovery`, body);
+  }
+
   invite(code: string) {
     return this.get<Invite>(`/invites/${enc(code)}`, { with_counts: 'true' } as Record<string, string>);
   }
@@ -361,6 +405,18 @@ export class DiscordyApi implements ApiPort {
   }
   globalCommands(applicationId: string) {
     return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);
+  }
+  createApplication(body: { name: string; description?: string }) {
+    return this.post<ApplicationSummary>('/applications', body);
+  }
+  resetBotToken(applicationId: string) {
+    return this.post<{ token: string }>(`/applications/${enc(applicationId)}/bot/reset-token`);
+  }
+  createCommand(applicationId: string, body: { type: number; name: string; description: string }) {
+    return this.post<ApplicationCommand>(`/applications/${enc(applicationId)}/commands`, body);
+  }
+  deleteCommand(applicationId: string, commandId: string) {
+    return this.del<void>(`/applications/${enc(applicationId)}/commands/${enc(commandId)}`);
   }
   commandIndex(guildId: string) {
     return this.get<CommandIndex>(`/guilds/${guildId}/application-command-index`);

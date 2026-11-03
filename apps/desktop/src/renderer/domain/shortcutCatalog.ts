@@ -1,9 +1,13 @@
 /** Fixed (non-rebindable) in-app shortcuts, shown in the keyboard-shortcuts dialog and handled by useGlobalShortcuts. */
-export type FixedShortcutAction = 'prevServer' | 'nextServer' | 'showShortcuts' | 'inbox';
+export type FixedShortcutAction = 'prevServer' | 'nextServer' | 'prevUnreadServer' | 'nextUnreadServer' | 'historyBack' | 'historyForward' | 'showShortcuts' | 'inbox';
 
 export const FIXED_SHORTCUTS: readonly { keys: string; action: FixedShortcutAction | null; label: string }[] = [
   { keys: 'Ctrl+Alt+ArrowUp', action: 'prevServer', label: 'Previous server' },
   { keys: 'Ctrl+Alt+ArrowDown', action: 'nextServer', label: 'Next server' },
+  { keys: 'Ctrl+Alt+Shift+ArrowUp', action: 'prevUnreadServer', label: 'Previous unread channel across all servers (mentions first)' },
+  { keys: 'Ctrl+Alt+Shift+ArrowDown', action: 'nextUnreadServer', label: 'Next unread channel across all servers (mentions first)' },
+  { keys: 'Ctrl+[', action: 'historyBack', label: 'Go back in history (also the mouse back button)' },
+  { keys: 'Ctrl+]', action: 'historyForward', label: 'Go forward in history (also the mouse forward button)' },
   { keys: 'Ctrl+/', action: 'showShortcuts', label: 'Show keyboard shortcuts' },
   { keys: 'Ctrl+I', action: 'inbox', label: 'Open the Mentions inbox' },
   { keys: 'Ctrl+Plus / Ctrl+Minus / Ctrl+0', action: null, label: 'Zoom the interface in, out, or back to 100%' },

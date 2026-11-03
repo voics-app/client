@@ -15,7 +15,10 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
-import { EXPIRY_CHOICES, expiryFor, type ExpiryChoice } from '@renderer/domain/selfPresence';
+import { Smiley } from '@phosphor-icons/react';
+import { CUSTOM_STATUS_MAX, EXPIRY_CHOICES, expiryFor, statusCharsLeft, type ExpiryChoice } from '@renderer/domain/selfPresence';
+import { useEmojiPopover } from '../chat/EmojiPopover';
+import { IconButton } from '../../shared/ui/IconButton';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
@@ -23,52 +26,18 @@ import { ForwardDialog } from '../chat/ForwardDialog';
 import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
+import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
-import { setStatusText } from './customStatus';
+import { setStatusText, type StatusEmoji } from './customStatus';
+import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
 
 function useClose() {
   return () => useUiStore.getState().openDialog(null);
-}
-
-function CreateGuildDialog() {
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const close = useClose();
-  const me = useSessionStore((s) => s.user);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const guild = await getRuntime().api.createGuild({ name: name.trim() });
-      useGuildStore.getState().upsertGuild(guild);
-      close();
-      openGuild(guild.id);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal open onClose={close} title="Create your server" description="A server is where you and your friends hang out. Make yours and start talking.">
-      <form onSubmit={submit} className="stack">
-        <Field label="Server name" error={error}>
-          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={`${me ? displayName(me) : 'My'}'s server`} onChange={(e) => setName(e.target.value)} />}
-        </Field>
-        <div className="row-end">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 2}>Create server</Button>
-        </div>
-      </form>
-    </Modal>
-  );
 }
 
 function JoinGuildDialog({ initial }: { initial?: string }) {
@@ -143,7 +112,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       ) : (
         <form onSubmit={lookup} className="stack">
           <Field label="Invite link or code" error={error}>
-            {(id) => <Input id={id} data-autofocus value={code} placeholder="https://discordy.voics.nl/invite/hTKzmak" onChange={(e) => setCode(e.target.value)} />}
+            {(id) => <Input id={id} data-autofocus value={code} placeholder={`${BRAND.landingUrl}/invite/hTKzmak`} onChange={(e) => setCode(e.target.value)} />}
           </Field>
           <div className="row-end">
             <Button variant="ghost" onClick={close}>Cancel</Button>
@@ -259,9 +228,9 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
   );
 }
 
-function NewDmDialog() {
+function NewDmDialog({ preselect }: { preselect?: string[] }) {
   const [query, setQuery] = useState('');
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(preselect ?? []);
   const [busy, setBusy] = useState(false);
   const close = useClose();
   const members = useGuildStore((s) => s.members);
@@ -309,18 +278,33 @@ function NewDmDialog() {
 function CustomStatusDialog() {
   const current = useSessionStore((s) => s.settings.custom_status);
   const [text, setText] = useState(current?.text ?? '');
+  const cdn = useConnectionStore((s) => s.cdnUrl);
+  const [emoji, setEmoji] = useState<StatusEmoji | null>(current?.emoji_name ? { name: current.emoji_name, id: current.emoji_id } : null);
   const [expiry, setExpiry] = useState<ExpiryChoice>('never');
+  const picker = useEmojiPopover(null, (e) => setEmoji({ name: e.emoji.name ?? e.api, id: e.emoji.id }));
   const close = useClose();
+  const left = statusCharsLeft(text);
   return (
     <Modal open onClose={close} title="Set a custom status" width={420}>
       <div className="stack">
-        <Field label="What's happening?">{(id) => <Input id={id} data-autofocus value={text} maxLength={128} onChange={(e) => setText(e.target.value)} />}</Field>
+        <Field label="What's happening?" hint={<span className="status-counter" aria-live="polite">{left} characters left</span>}>
+          {(id) => (
+            <div className="status-field">
+              <IconButton label={emoji ? 'Change emoji' : 'Add emoji'} onClick={(e) => picker.open(e.currentTarget, false)}>
+                {emoji?.id ? <img className="status-emoji" src={`${cdn}/emojis/${emoji.id}.png`} alt={emoji.name} /> : emoji ? <span>{emoji.name}</span> : <Smiley size={20} />}
+              </IconButton>
+              <Input id={id} data-autofocus value={text} maxLength={CUSTOM_STATUS_MAX} onChange={(e) => setText(e.target.value)} />
+            </div>
+          )}
+        </Field>
+        {emoji && <Button variant="ghost" onClick={() => setEmoji(null)}>Remove emoji</Button>}
         <Field label="Clear after">{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select>}</Field>
         <div className="row-end">
           <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>Clear</Button>
-          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date())); close(); }}>Save</Button>
+          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date()), emoji); close(); }}>Save</Button>
         </div>
       </div>
+      {picker.node}
     </Modal>
   );
 }
@@ -391,10 +375,11 @@ function ActiveDialog() {
   if (!dialog) return null;
   switch (dialog.kind) {
     case 'createGuild': return <CreateGuildDialog />;
+    case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
-    case 'newDm': return <NewDmDialog />;
+    case 'newDm': return <NewDmDialog preselect={dialog.preselect} />;
     case 'groupDm': return <GroupDmDialog channelId={dialog.channelId} />;
     case 'screenPicker': return <ScreenPickerDialog />;
     case 'profile': return <ProfileDialog userId={dialog.userId} guildId={dialog.guildId} />;

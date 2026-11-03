@@ -1,5 +1,5 @@
 /** Member list view model: flat virtualisable rows, collapsible groups, search and activity text. */
-import type { Activity, GuildMember } from '@shared/contracts/rest';
+import type { Activity, GuildMember, Role } from '@shared/contracts/rest';
 import type { MemberSection } from './memberModeration';
 import { CUSTOM_STATUS_ACTIVITY_TYPE } from './selfPresence';
 
@@ -57,3 +57,40 @@ export function activityLine(activities: readonly Activity[]): string | null {
 
 /** Above this many rows the list renders only the visible window. */
 export const VIRTUALISE_ABOVE = 150;
+
+/** The highest role the member holds that carries an icon or unicode emoji, as Discord shows beside the name. */
+export function roleIconOf(roles: readonly Role[] | undefined, member: GuildMember): Role | null {
+  const held = (roles ?? []).filter((r) => member.roles.includes(r.id) && (r.icon || r.unicode_emoji));
+  return held.sort((a, b) => b.position - a.position)[0] ?? null;
+}
+
+/** Voice channel the user is connected to in this guild, or null. */
+export function voiceChannelOf(states: Record<string, { channel_id: string | null }> | undefined, userId: string): string | null {
+  return states?.[userId]?.channel_id ?? null;
+}
+
+export interface StatusLine {
+  emoji: { name: string; id?: string | null } | null;
+  text: string;
+  /** Full text for the tooltip. */
+  title: string;
+}
+
+/** Cuts text to `max` characters with an ellipsis; the full text belongs in a tooltip. */
+export function truncateText(text: string, max: number): string {
+  const chars = [...text];
+  return chars.length <= max ? text : `${chars.slice(0, Math.max(0, max - 1)).join('').trimEnd()}…`;
+}
+
+/** Structured form of `activityLine`, so the custom status emoji can be drawn as an image. */
+export function statusLine(activities: readonly Activity[] | undefined, max = 128): StatusLine | null {
+  const list = activities ?? [];
+  const real = list.find((a) => a.type !== CUSTOM_STATUS_ACTIVITY_TYPE);
+  const custom = list.find((a) => a.type === CUSTOM_STATUS_ACTIVITY_TYPE);
+  if (real) {
+    const full = activityText(real);
+    return full ? { emoji: null, text: truncateText(full, max), title: full } : null;
+  }
+  if (!custom || !(custom.state || custom.emoji?.name)) return null;
+  return { emoji: custom.emoji ?? null, text: truncateText(custom.state ?? '', max), title: activityText(custom) };
+}

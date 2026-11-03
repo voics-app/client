@@ -16,7 +16,7 @@ function walk(dir: string): string[] {
 
 describe('brand module', () => {
   it('exposes every brand field as a non-empty string', () => {
-    for (const key of ['displayName', 'productName', 'shortName', 'appId', 'protocolScheme', 'description', 'publisher', 'updateFeedHost'] as const) {
+    for (const key of ['displayName', 'productName', 'shortName', 'appId', 'protocolScheme', 'description', 'publisher', 'updateFeedHost', 'baseDomain', 'landingUrl', 'apiUrl', 'gatewayUrl', 'cdnUrl'] as const) {
       expect(typeof BRAND[key]).toBe('string');
       expect(BRAND[key].length).toBeGreaterThan(0);
     }
@@ -32,6 +32,15 @@ describe('brand module', () => {
       .filter((f) => /\.(ts|tsx|html|css|json)$/.test(f))
       .filter((f) => !ALLOWED.has(relative(srcDir, f).split(sep).join('/')))
       .filter((f) => name.test(readFileSync(f, 'utf8')))
+      .map((f) => relative(srcDir, f));
+    expect(offenders).toEqual([]);
+  });
+
+  it('does not hardcode the brand domain in src outside the brand files', () => {
+    const offenders = walk(srcDir)
+      .filter((f) => /\.(ts|tsx|html|css|json)$/.test(f))
+      .filter((f) => !ALLOWED.has(relative(srcDir, f).split(sep).join('/')))
+      .filter((f) => readFileSync(f, 'utf8').includes(BRAND.baseDomain))
       .map((f) => relative(srcDir, f));
     expect(offenders).toEqual([]);
   });

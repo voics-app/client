@@ -5,6 +5,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { PresenceStatus } from '@shared/contracts/rest';
+import { menuTopAbove } from '@renderer/domain/menuPlacement';
 import { activeCustomStatus } from '@renderer/domain/selfPresence';
 import { setAutoIdle } from '@renderer/application/selfPresence';
 import { publishPresence } from '../../app/presenceActions';
@@ -15,6 +16,7 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';
+import { DeviceArrow, useKeyHint } from '../voice/DeviceMenus';
 
 const STATUSES: { id: Exclude<PresenceStatus, 'offline'>; label: string; hint: string }[] = [
   { id: 'online', label: 'Online', hint: '' },
@@ -40,10 +42,13 @@ export function UserPanel() {
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
   const openSettings = useUiStore((s) => s.openSettings);
   const openDialog = useUiStore((s) => s.openDialog);
+  const muteKeys = useKeyHint('toggleMute');
+  const deafenKeys = useKeyHint('toggleDeafen');
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!user) return null;
   const status = (presence && presence !== 'offline' ? presence : settingsStatus) ?? 'online';
-  const customStatus = activeCustomStatus(storedCustom, Date.now())?.text;
+  const active = activeCustomStatus(storedCustom, Date.now());
+  const customStatus = active ? [active.emoji_id ? '' : active.emoji_name, active.text].filter(Boolean).join(' ') : '';
 
   const entries: MenuEntry[] = [
     { kind: 'label', label: 'Status' },
@@ -60,7 +65,7 @@ export function UserPanel() {
         className="user-panel-id"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          setMenu({ x: r.left, y: r.top - 280 });
+          setMenu({ x: r.left, y: menuTopAbove(r, entries.length, window.innerHeight) });
         }}
         aria-haspopup="menu"
         aria-label="Account and status"
@@ -72,12 +77,18 @@ export function UserPanel() {
         </span>
       </button>
       <div className="user-panel-actions">
-        <IconButton label={selfMute ? 'Unmute' : 'Mute'} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
-          {selfMute ? <MicrophoneSlash size={20} /> : <Microphone size={20} />}
-        </IconButton>
-        <IconButton label={selfDeaf ? 'Undeafen' : 'Deafen'} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
-          {selfDeaf ? <SpeakerSlash size={20} /> : <Headphones size={20} />}
-        </IconButton>
+        <span className="split-control">
+          <IconButton label={selfMute ? 'Unmute' : 'Mute'} hint={muteKeys} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
+            {selfMute ? <MicrophoneSlash size={20} /> : <Microphone size={20} />}
+          </IconButton>
+          <DeviceArrow kind="input" />
+        </span>
+        <span className="split-control">
+          <IconButton label={selfDeaf ? 'Undeafen' : 'Deafen'} hint={deafenKeys} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
+            {selfDeaf ? <SpeakerSlash size={20} /> : <Headphones size={20} />}
+          </IconButton>
+          <DeviceArrow kind="output" />
+        </span>
         <IconButton label="User settings" onClick={() => openSettings({ kind: 'user', tab: 'account' })}>
           <Gear size={20} />
         </IconButton>

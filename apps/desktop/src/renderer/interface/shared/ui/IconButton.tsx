@@ -3,6 +3,8 @@ import { Tooltip } from './Tooltip';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
+  /** Shortcut shown after the label in the tooltip (not part of the accessible name). */
+  hint?: string;
   children: ReactNode;
   active?: boolean;
   tone?: 'default' | 'danger' | 'accent';
@@ -11,11 +13,16 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButton(
-  { label, children, active, tone = 'default', size = 'md', tooltipSide = 'top', className, type = 'button', ...rest },
+  { label, hint, children, active, tone = 'default', size = 'md', tooltipSide = 'top', className, type = 'button', ...rest },
   ref,
 ) {
   return (
-    <Tooltip label={label} side={tooltipSide}>
+    // No tooltip while this button's own menu/popover is open (aria-expanded), as in Discord.
+    <Tooltip
+      label={hint ? <>{label} <kbd className="kbd tooltip-kbd">{hint}</kbd></> : label}
+      side={tooltipSide}
+      suppressed={rest['aria-expanded'] === true || rest['aria-expanded'] === 'true'}
+    >
       <button
         ref={ref}
         type={type}

@@ -10,6 +10,12 @@ export interface Brand {
   readonly description: string;
   readonly publisher: string;
   readonly updateFeedHost: string;
+  /** Parent domain of every brand host (no scheme). Used for the CSP wildcard and the trusted-link list. */
+  readonly baseDomain: string;
+  readonly landingUrl: string;
+  readonly apiUrl: string;
+  readonly gatewayUrl: string;
+  readonly cdnUrl: string;
 }
 
 export const BRAND: Brand = brand;

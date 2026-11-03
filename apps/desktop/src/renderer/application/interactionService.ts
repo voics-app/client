@@ -6,6 +6,7 @@ import {
   type Message,
   type MessageComponent,
 } from '@shared/contracts/rest';
+import { buildContextCommandData, extractContextCommands, type ContextCommand } from '@renderer/domain/contextCommands';
 import {
   buildCommandData,
   buildComponentData,
@@ -35,6 +36,7 @@ export class InteractionService {
     const index = await this.api.commandIndex(guildId);
     for (const app of index.applications) store.setAppName(app.id, app.name);
     const entries = flattenCommands(index.application_commands);
+    store.setContextCommands(guildId, extractContextCommands(index.application_commands, useInteractionStore.getState().appNames));
     store.setCommands(guildId, entries);
     return entries;
   }
@@ -57,6 +59,7 @@ export class InteractionService {
     const unique = new Map<string, ApplicationCommand>();
     for (const c of fetched.flat()) unique.set(c.id, c);
     const entries = flattenCommands([...unique.values()]);
+    store.setContextCommands(DM_SCOPE, extractContextCommands([...unique.values()], useInteractionStore.getState().appNames));
     store.setCommands(DM_SCOPE, entries);
     return entries;
   }
@@ -82,6 +85,20 @@ export class InteractionService {
       label: entry.label,
       startedAt: Date.now(),
     });
+    return id;
+  }
+
+  /** Runs a USER or MESSAGE command on `targetId`; the bot's answer arrives as a message (type 23) or a modal. */
+  async invokeContext(channel: Channel, command: ContextCommand, targetId: string): Promise<string> {
+    const { id } = await this.api.createInteraction({
+      type: InteractionType.APPLICATION_COMMAND,
+      application_id: command.applicationId,
+      channel_id: channel.id,
+      ...(channel.guild_id ? { guild_id: channel.guild_id } : {}),
+      data: buildContextCommandData(command, targetId),
+    });
+    const store = useInteractionStore.getState();
+    store.addPending({ id, channelId: channel.id, applicationId: command.applicationId, appName: command.appName, label: command.name, startedAt: Date.now() });
     return id;
   }
 

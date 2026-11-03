@@ -15,6 +15,7 @@ import { selectionWithin, targetFromElement } from '@renderer/interface/features
 
 vi.mock('@renderer/interface/app/runtime', () => ({
   getRuntime: () => ({
+    interactions: { loadGuildCommands: async () => [], loadDirectCommands: async () => [], invokeContext: async () => 'i1' },
     api: {
       // The server echoes the optimistic state the client just wrote.
       updateGuildNotificationSettings: async (guildId: string | null) => useNotificationSettingsStore.getState().byScope[guildId ?? '@me'],
@@ -78,7 +79,7 @@ const toolbarLabels = () => within(screen.getByRole('toolbar')).getAllByRole('bu
 const menuLabels = () => screen.getAllByRole('menuitem').map((el) => (el.textContent ?? '').replace('›', ''));
 
 beforeEach(() => {
-  usePrefsStore.setState({ ...DEFAULT_PREFS });
+  usePrefsStore.setState({ ...DEFAULT_PREFS, developerMode: true });
   useNotificationSettingsStore.getState().reset();
   seed();
 });

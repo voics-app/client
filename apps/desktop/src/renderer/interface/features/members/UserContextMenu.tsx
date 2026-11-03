@@ -7,6 +7,7 @@ import { useUserNotesStore } from '@renderer/application/stores/notificationSett
 import { saveUserNote } from '@renderer/application/notificationSync';
 import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -33,6 +34,10 @@ import { setUserVolume } from '../../app/voiceActions';
 import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
+import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
+import { appsSubmenu } from '@renderer/domain/contextCommands';
+import type { MenuItemModel } from '@renderer/domain/menuModel';
+import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { RolePills, setMemberRole } from './RolePills';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 
@@ -103,6 +108,7 @@ export function UserContextMenu({
   /** Known account data when the surface has it (DM recipient, friend, message author). */
   user?: User;
 }) {
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [panelAt, setPanelAt] = useState({ x: 0, y: 0 });
   const me = useSessionStore((s) => s.user?.id) ?? null;
@@ -129,6 +135,10 @@ export function UserContextMenu({
   const viewChannelId = useUiStore((s) => s.view.channelId);
   const perms = useGuildPermissions(guildId);
   const self = me === userId;
+  // Apps run in the channel being viewed, which must belong to the same scope as the menu.
+  const viewChannel = useGuildStore((s) => (viewChannelId ? s.channels[viewChannelId] : undefined));
+  const appChannelId = viewChannel && (guildId ? viewChannel.guild_id === guildId : !viewChannel.guild_id) ? viewChannel.id : null;
+  const appCommands = useContextCommands(appChannelId, menu.open);
 
   const caps: MemberCapabilities =
     guild && member && me
@@ -297,6 +307,14 @@ export function UserContextMenu({
         return item(`Kick ${name}`, kick, true);
       case 'ban':
         return item(`Ban ${name}`, ban, true);
+      case 'apps': {
+        const submenu = appsSubmenu(appCommands, 'user');
+        return {
+          kind: 'submenu',
+          label: 'Apps',
+          entries: toMenuEntries(submenu?.kind === 'submenu' ? submenu.items : [], (it: MenuItemModel) => runContextCommand(viewChannel, appCommands?.find((c) => c.id === it.arg), userId)),
+        };
+      }
       case 'copyId':
         return item('Copy user ID', () => void copyText(userId, 'User ID copied'));
     }
@@ -309,6 +327,8 @@ export function UserContextMenu({
     relationship: relationship?.type,
     isBot,
     hasVoiceAudio: true,
+    developerMode,
+    appCommands: appChannelId ? appCommands : undefined,
   });
   const showRoles = Boolean(guildId && member && member.roles.some((r) => r !== guildId));
   const entries: MenuEntry[] = groups.flatMap((g, i) => [

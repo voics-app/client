@@ -123,6 +123,14 @@ describe('dispatchRouter', () => {
     expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '502', mentionCount: 0 });
   });
 
+  it('adds no mention badge for a silent message or a reply with the ping off', () => {
+    const { route } = setup();
+    route('MESSAGE_CREATE', message('504', { mentions: [me], flags: 1 << 12 }));
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount ?? 0).toBe(0);
+    route('MESSAGE_CREATE', message('505', { type: 19, mentions: [] }));
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount ?? 0).toBe(0);
+  });
+
   it('clears typing when the author sends', () => {
     const { route } = setup();
     route('TYPING_START', { channel_id: '200', user_id: '2', timestamp: Date.now() / 1000 });

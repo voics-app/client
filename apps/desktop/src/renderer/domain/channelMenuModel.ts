@@ -1,3 +1,4 @@
+import { BRAND } from '@shared/brand';
 import type { Channel } from '@shared/contracts/rest';
 import { item, sep, tidy, type MenuModel } from './menuModel';
 import { MUTE_DURATIONS } from './notificationSettings';
@@ -12,6 +13,8 @@ export interface ChannelMenuContext {
   /** Keyboard alternative to dragging (MANAGE_CHANNELS); the entry is disabled at the edge of the list. */
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  /** Developer mode (Settings, Advanced): shows the Copy ID entry. */
+  developerMode?: boolean;
 }
 
 export interface CategoryMenuContext {
@@ -23,6 +26,7 @@ export interface CategoryMenuContext {
   hasOtherCategories: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  developerMode?: boolean;
 }
 
 function muteEntry(noun: 'Channel' | 'Category', muted: boolean): MenuModel {
@@ -40,8 +44,7 @@ export function buildChannelMenu(ctx: ChannelMenuContext): MenuModel[] {
     muteEntry('Channel', ctx.muted),
     item('notifications', 'Notification Settings'),
     ...(manage ? [sep(), item('moveUp', 'Move Up', { disabled: ctx.canMoveUp === false }), item('moveDown', 'Move Down', { disabled: ctx.canMoveDown === false }), item('edit', 'Edit Channel'), item('duplicate', 'Duplicate Channel'), item('create', 'Create Channel'), item('delete', 'Delete Channel', { danger: true })] : []),
-    sep(),
-    item('copyId', 'Copy Channel ID'),
+    ...(ctx.developerMode ? [sep(), item('copyId', 'Copy Channel ID')] : []),
   ]);
 }
 
@@ -54,13 +57,12 @@ export function buildCategoryMenu(ctx: CategoryMenuContext): MenuModel[] {
     muteEntry('Category', ctx.muted),
     item('notifications', 'Notification Settings'),
     ...(ctx.canManage ? [sep(), item('moveUp', 'Move Up', { disabled: ctx.canMoveUp === false }), item('moveDown', 'Move Down', { disabled: ctx.canMoveDown === false }), item('edit', 'Edit Category'), item('create', 'Create Channel'), item('delete', 'Delete Category', { danger: true })] : []),
-    sep(),
-    item('copyId', 'Copy Category ID'),
+    ...(ctx.developerMode ? [sep(), item('copyId', 'Copy Category ID')] : []),
   ]);
 }
 
 export function channelLink(guildId: string | null | undefined, channelId: string, messageId?: string): string {
-  return `discordy://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
+  return `${BRAND.protocolScheme}://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
 }
 
 /** Body for "Duplicate channel": same type, topic, slowmode, overwrites and parent under a new name. */

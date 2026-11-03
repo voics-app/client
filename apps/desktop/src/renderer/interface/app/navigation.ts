@@ -27,7 +27,7 @@ export function openGuild(guildId: string): void {
   ui.navigate({ kind: 'guild', guildId, channelId: remembered && state.channels[remembered] ? remembered : (first?.id ?? null) });
 }
 
-/** Handles `/channels/<guild|@me>/<channel>` and `/invite/<code>` routes from deep links and notifications. */
+/** Handles `/channels/<guild|@me>/<channel>` `/invite/<code>` and `/template/<code>` routes from deep links and notifications. */
 function applyRoute(route: string): void {
   const ui = useUiStore.getState();
   const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?(?:\/(\d+))?/.exec(route);
@@ -39,7 +39,12 @@ function applyRoute(route: string): void {
     return;
   }
   const invite = /^\/invite\/([\w-]+)/.exec(route);
-  if (invite) ui.openDialog({ kind: 'joinGuild', code: invite[1] });
+  if (invite) {
+    ui.openDialog({ kind: 'joinGuild', code: invite[1] });
+    return;
+  }
+  const template = /^\/template\/([\w-]+)/.exec(route);
+  if (template) ui.openDialog({ kind: 'template', code: template[1]! });
 }
 
 const routeQueue = new RouteQueue(() => useSessionStore.getState().status === 'ready', applyRoute);

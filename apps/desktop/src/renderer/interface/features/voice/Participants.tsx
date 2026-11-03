@@ -1,4 +1,4 @@
-import { ArrowsOut, CornersIn, CornersOut, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, CornersIn, CornersOut, Eye, EyeSlash, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -7,6 +7,7 @@ import type { VoiceState } from '@shared/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
+import { Button } from '../../shared/ui/Button';
 import { IconButton } from '../../shared/ui/IconButton';
 import { useMenu } from '../../shared/ui/Menu';
 import { UserContextMenu } from '../members/UserContextMenu';
@@ -59,10 +60,16 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
   const deaf = participant.state.self_deaf || participant.state.deaf;
   const live = kind === 'screen';
   const hasVideo = Boolean(stream) && kind !== 'avatar';
+  // Someone else's screen share is a blurred preview until the user opts in with Watch Stream.
+  const key = streamKey({ userId: participant.state.user_id, kind: 'screen' });
+  const watching = useVoiceStore((s) => s.watching.includes(key));
+  const previewOnly = live && hasVideo && !participant.isSelf && !watching;
+  const watchStream = useVoiceStore((s) => s.watchStream);
+  const stopWatching = useVoiceStore((s) => s.stopWatching);
 
   // Double-click toggles fullscreen, but not when the double-click lands on the tile's own tools.
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hasVideo || (e.target as HTMLElement).closest('.tile-tools')) return;
+    if (!hasVideo || previewOnly || (e.target as HTMLElement).closest('.tile-tools')) return;
     fullscreen.toggle();
   };
 
@@ -70,7 +77,7 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
     <>
       <div
         ref={tileRef}
-        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${pinned ? ' is-pinned' : ''}${hasVideo ? '' : ' is-avatar'}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
+        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${pinned ? ' is-pinned' : ''}${hasVideo ? '' : ' is-avatar'}${previewOnly ? ' is-preview' : ''}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
         style={{ '--speak': speaking } as React.CSSProperties}
         onContextMenu={menu.openAt}
         onDoubleClick={onDoubleClick}
@@ -82,6 +89,11 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
             <Avatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} size={focused ? 112 : 76} speaking={speaking} />
           </div>
         )}
+        {previewOnly && (
+          <div className="tile-watch">
+            <Button variant="primary" onClick={() => watchStream(key)}><Eye size={16} weight="fill" /> Watch Stream</Button>
+          </div>
+        )}
         <div className="tile-label">
           <span className="tile-name">{participant.name}{live ? ' · screen' : ''}</span>
           {muted && <MicrophoneSlash size={14} weight="fill" />}
@@ -91,10 +103,11 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
           <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
         )}
         {pinned && <span className="tile-pin" title="Pinned"><PushPin size={12} weight="fill" /></span>}
-        {(hasVideo || onPin) && (
+        {(hasVideo || onPin) && !previewOnly && (
           <div className="tile-tools">
             {onPin && <IconButton label={pinned ? 'Unpin' : 'Pin'} size="sm" onClick={onPin}>{pinned ? <PushPinSlash size={16} /> : <PushPin size={16} />}</IconButton>}
             {hasVideo && onFocus && <IconButton label={focused ? 'Unfocus' : 'Focus'} size="sm" onClick={onFocus}><ArrowsOut size={16} /></IconButton>}
+            {live && !participant.isSelf && <IconButton label="Stop watching" size="sm" onClick={() => stopWatching(key)}><EyeSlash size={16} /></IconButton>}
             {hasVideo && <IconButton label={fullscreen.active ? 'Exit full screen' : 'Full screen'} size="sm" onClick={fullscreen.toggle}>
               {fullscreen.active ? <CornersIn size={16} /> : <CornersOut size={16} />}
             </IconButton>}

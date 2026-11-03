@@ -9,7 +9,7 @@ import { Modal } from '../../shared/ui/Modal';
 import { BRAND } from '@shared/brand';
 
 const PRESETS: Record<'production' | 'local', ConnectionProfile> = {
-  production: { id: 'production', apiUrl: 'https://discordy-api.voics.nl', gatewayUrl: 'wss://discordy-gateway.voics.nl', cdnUrl: 'https://discordy-cdn.voics.nl' },
+  production: { id: 'production', apiUrl: BRAND.apiUrl, gatewayUrl: BRAND.gatewayUrl, cdnUrl: BRAND.cdnUrl },
   local: { id: 'local', apiUrl: 'http://127.0.0.1:18000', gatewayUrl: 'ws://127.0.0.1:18000', cdnUrl: 'http://127.0.0.1:18000/cdn' },
 };
 

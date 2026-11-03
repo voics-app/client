@@ -95,6 +95,7 @@ test('the delivery mode badge is always visible', async () => {
 
 test('creates a guild', async () => {
   await page.getByRole('button', { name: 'Create a server' }).click();
+  await page.getByRole('button', { name: 'Create My Own' }).click();
   await page.getByLabel('Server name').fill('Playwright Palace');
   await page.getByRole('button', { name: 'Create server' }).click();
   await expect(page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Playwright Palace' })).toBeVisible({ timeout: 15_000 });

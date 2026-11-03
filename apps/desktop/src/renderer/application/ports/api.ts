@@ -20,6 +20,10 @@ import type {
   Guild,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
+  DiscoveryPage,
+  GuildTemplate,
+  DiscoveryQuery,
+  GuildDiscoverySettings,
   GuildFull,
   GuildMember,
   Invite,
@@ -99,6 +103,14 @@ export interface ApiPort {
   deleteRelationship(userId: string): Promise<void>;
 
   createGuild(body: { name: string; icon?: string | null }): Promise<GuildFull>;
+  builtinGuildTemplates(): Promise<GuildTemplate[]>;
+  guildTemplate(code: string): Promise<GuildTemplate>;
+  createGuildFromTemplate(code: string, body: { name: string; icon?: string | null }): Promise<GuildFull>;
+  guildTemplates(guildId: string): Promise<GuildTemplate[]>;
+  createGuildTemplate(guildId: string, body: { name: string; description?: string | null }): Promise<GuildTemplate>;
+  modifyGuildTemplate(guildId: string, code: string, body: { name?: string; description?: string | null }): Promise<GuildTemplate>;
+  syncGuildTemplate(guildId: string, code: string): Promise<GuildTemplate>;
+  deleteGuildTemplate(guildId: string, code: string): Promise<void>;
   guild(guildId: string): Promise<Guild>;
   updateGuild(guildId: string, patch: Partial<Guild>): Promise<Guild>;
   deleteGuild(guildId: string): Promise<void>;
@@ -137,6 +149,12 @@ export interface ApiPort {
   typing(channelId: string): Promise<void>;
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
 
+  discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
+  discoveryCategories(): Promise<string[]>;
+  joinDiscoveryGuild(guildId: string): Promise<void>;
+  guildDiscovery(guildId: string): Promise<GuildDiscoverySettings>;
+  putGuildDiscovery(guildId: string, body: { enabled: boolean; category?: string | null; tags?: string[] }): Promise<GuildDiscoverySettings>;
+
   invite(code: string): Promise<Invite>;
   acceptInvite(code: string): Promise<Invite>;
   deleteInvite(code: string): Promise<void>;
@@ -163,6 +181,11 @@ export interface ApiPort {
 
   applications(): Promise<ApplicationSummary[]>;
   globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
+  createApplication(body: { name: string; description?: string }): Promise<ApplicationSummary>;
+  /** Issues a new bot token and invalidates the old one. The token is returned once; callers must not persist or log it. */
+  resetBotToken(applicationId: string): Promise<{ token: string }>;
+  createCommand(applicationId: string, body: { type: number; name: string; description: string }): Promise<ApplicationCommand>;
+  deleteCommand(applicationId: string, commandId: string): Promise<void>;
   commandIndex(guildId: string): Promise<CommandIndex>;
   createInteraction(body: CreateInteractionBody): Promise<{ id: string }>;
 }

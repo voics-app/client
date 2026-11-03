@@ -5,7 +5,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { isMentioned, shouldNotify, type NotifyLevel } from '@renderer/domain/notificationPolicy';
+import { isMentioned, isSilent, shouldNotify, type NotifyLevel } from '@renderer/domain/notificationPolicy';
 import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@renderer/domain/notificationSettings';
 import { summarizeActivity } from '@renderer/domain/unread';
 import { toPlainText, parseMarkdown } from '@renderer/domain/markdown';
@@ -33,7 +33,7 @@ export function currentActivity(): { mentions: number; unread: number } {
 /** Desktop notification and taskbar flash for an incoming message, following the notification rules. */
 export function notifyIncoming(message: ChatMessage): void {
   const me = useSessionStore.getState().user;
-  if (!me || message.author.id === me.id) return;
+  if (!me || message.author.id === me.id || isSilent(message)) return;
   const prefs = usePrefsStore.getState();
   const channel = useGuildStore.getState().channels[message.channel_id];
   const settings = useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)];

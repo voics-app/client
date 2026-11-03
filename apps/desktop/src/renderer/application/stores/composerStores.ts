@@ -79,6 +79,16 @@ export const useTrustedDomainStore = create<TrustedDomainState>()(
   ),
 );
 
+/** The reply bar's "@ ON/OFF" choice; Discord remembers the last one. */
+interface ReplyPingState {
+  ping: boolean;
+  setPing(ping: boolean): void;
+}
+
+export const useReplyPingStore = create<ReplyPingState>()(
+  persist((set) => ({ ping: true, setPing: (ping) => set({ ping }) }), { name: 'discordy.reply-ping.v1', storage: createJSONStorage(storage) }),
+);
+
 export interface SlowmodeState {
   /** channelId -> epoch ms of the last message this user sent (or the server-reported cooldown end minus the rate). */
   lastSent: Record<string, number>;
