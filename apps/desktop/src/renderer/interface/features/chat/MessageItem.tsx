@@ -17,7 +17,9 @@ import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName, useRoleColor } from '../../shared/hooks/useNames';
 import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
-import { formatTime } from '../../shared/hooks/useNow';
+import { formatTime, useNow } from '../../shared/hooks/useNow';
+import { formatMessageTime, fullMessageTime } from '@renderer/domain/messageTime';
+import { AppTag } from '../../shared/ui/AppTag';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
@@ -28,6 +30,7 @@ import { ForwardedMessage } from './ForwardedMessage';
 import { useMessageInteractions } from './useMessageInteractions';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { MarkdownView } from './MarkdownView';
+import { InviteCards } from './InviteCard';
 import { MessageComponents } from './MessageComponents';
 import { MessageEditor } from './MessageEditor';
 
@@ -44,7 +47,7 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
         <>
           <UserMenuTarget userId={ref.author.id} name={displayName(ref.author)} guildId={guildId} user={ref.author}>
             <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />
-            <span className="reply-name">{displayName(ref.author)}</span>
+            <span className="reply-name">@{displayName(ref.author)}</span>
           </UserMenuTarget>
           <span className="reply-text">{ref.content || 'Click to see attachment'}</span>
         </>
@@ -52,6 +55,16 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
         <span className="reply-text is-missing">{message.referenced_message === null ? 'Original message was deleted' : 'Original message unavailable'}</span>
       )}
     </div>
+  );
+}
+
+/** Header timestamp: Today at / Yesterday at / date, with the full date on hover. Re-evaluated each minute so it rolls over at midnight. */
+function HeaderTime({ iso }: { iso: string }) {
+  const now = useNow(60_000);
+  return (
+    <Tooltip label={fullMessageTime(iso)}>
+      <time className="message-time tnum" dateTime={iso} tabIndex={0}>{formatMessageTime(iso, now)}</time>
+    </Tooltip>
   );
 }
 
@@ -240,7 +253,9 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               </button>
             </UserMenuTarget>
           ) : (
-            <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
+            <Tooltip label={fullMessageTime(message.timestamp)}>
+              <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
+            </Tooltip>
           )}
         </div>
         <div className="message-main">
@@ -251,13 +266,14 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
                   <RoleDot color={roleColor.dot} />{name}
                 </button>
               </UserMenuTarget>
+              {message.author.bot && <AppTag />}
               {message.deliveryMode === 'ephemeral' && (
                 <Tooltip label="Delivered end-to-end encrypted. Stored only on your devices."><span className="message-mode mode-ephemeral" tabIndex={0}><LockKey size={12} weight="fill" /></span></Tooltip>
               )}
               {message.deliveryMode === 'p2p' && (
                 <Tooltip label="Delivered directly peer-to-peer. Stored only on your devices."><span className="message-mode mode-p2p" tabIndex={0}><Plugs size={12} weight="fill" /></span></Tooltip>
               )}
-              <time className="message-time tnum" dateTime={message.timestamp}>{new Date(message.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</time>
+              <HeaderTime iso={message.timestamp} />
             </header>
           )}
           {editing ? (
@@ -265,13 +281,14 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           ) : (
             <>
               {message.content && <MarkdownView source={message.content} guildId={guildId} />}
+              {message.content && <InviteCards content={message.content} />}
               {isSilent(message) && (
                 <Tooltip label="Sent silently: no notification">
                   <span className="silent-mark" tabIndex={0} role="img" aria-label="Silent message"><BellSlash size={12} /></span>
                 </Tooltip>
               )}
               {message.edited_timestamp && (
-                <Tooltip label={`Edited ${new Date(message.edited_timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}`}>
+                <Tooltip label={`Edited ${fullMessageTime(message.edited_timestamp)}`}>
                   <span className="edited" tabIndex={0}>(edited)</span>
                 </Tooltip>
               )}
