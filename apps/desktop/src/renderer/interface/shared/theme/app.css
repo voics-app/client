@@ -225,7 +225,15 @@ button.mode-badge:active { transform: scale(0.96); }
 .message-mode { display: inline-grid; place-items: center; align-self: center; width: 18px; height: 18px; border-radius: 6px; background: color-mix(in oklch, currentColor 14%, transparent); }
 .edited { font-size: var(--fs-caption); color: var(--fg-subtle); margin-left: 4px; }
 .message-toolbar { position: absolute; right: 16px; top: -16px; display: flex; padding: 2px; border-radius: 10px; z-index: 2; animation: pop-in 120ms var(--ease-out); }
-.message.system { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 72px; color: var(--fg-muted); font-size: var(--fs-small); }
+.message.system { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 6px 16px; color: var(--fg-muted); font-size: var(--fs-small); }
+.message.system .system-icon { flex: none; width: 40px; display: grid; place-items: center; padding-top: 1px; color: var(--fg-muted); }
+.message.system.tone-positive .system-icon { color: var(--success, oklch(0.72 0.17 150)); }
+.message.system.tone-negative .system-icon { color: var(--danger); }
+.message.system .system-body { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.message.system .system-text strong { color: var(--fg); font-weight: 650; }
+.message.system .system-link { color: var(--accent-text); } .message.system .system-link:hover { text-decoration: underline; }
+.message.system .reactions { flex-basis: 100%; }
+.message.system:hover, .message.system.is-toolbar-open { background: color-mix(in oklch, var(--fg) 4%, transparent); }
 .message-time-inline { font-size: var(--fs-caption); color: var(--fg-subtle); }
 .reply-preview { display: flex; align-items: center; gap: 6px; margin: 0 0 2px 56px; font-size: var(--fs-meta); color: var(--fg-muted); position: relative; overflow: hidden; }
 .reply-hook { position: absolute; left: -36px; top: 50%; width: 30px; height: 12px; border-left: 2px solid var(--hairline-strong); border-top: 2px solid var(--hairline-strong); border-top-left-radius: 8px; }
