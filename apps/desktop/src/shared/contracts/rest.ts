@@ -377,6 +377,8 @@ export interface ApplicationSummary {
   name: string;
   icon?: string | null;
   unicode_emoji?: string | null;
+  description?: string;
+  bot_id?: Snowflake;
   bot?: User;
 }
 

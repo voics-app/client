@@ -40,6 +40,7 @@ const TAB_KEYWORDS: Record<UserSettingsTab, string> = {
   connection: 'server api gateway cdn profile url',
   desktop: 'tray startup idle window launch',
   advanced: 'developer mode copy id debug',
+  developer: 'applications bots bot token commands slash context menu api portal',
   about: 'version update platform',
 };
 

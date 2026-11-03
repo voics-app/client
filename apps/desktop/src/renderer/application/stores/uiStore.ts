@@ -26,6 +26,7 @@ export type UserSettingsTab =
   | 'connection'
   | 'desktop'
   | 'advanced'
+  | 'developer'
   | 'about';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit';

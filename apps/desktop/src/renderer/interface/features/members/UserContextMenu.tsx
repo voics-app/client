@@ -34,6 +34,10 @@ import { setUserVolume } from '../../app/voiceActions';
 import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
+import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
+import { appsSubmenu } from '@renderer/domain/contextCommands';
+import type { MenuItemModel } from '@renderer/domain/menuModel';
+import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { RolePills, setMemberRole } from './RolePills';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 
@@ -131,6 +135,10 @@ export function UserContextMenu({
   const viewChannelId = useUiStore((s) => s.view.channelId);
   const perms = useGuildPermissions(guildId);
   const self = me === userId;
+  // Apps run in the channel being viewed, which must belong to the same scope as the menu.
+  const viewChannel = useGuildStore((s) => (viewChannelId ? s.channels[viewChannelId] : undefined));
+  const appChannelId = viewChannel && (guildId ? viewChannel.guild_id === guildId : !viewChannel.guild_id) ? viewChannel.id : null;
+  const appCommands = useContextCommands(appChannelId, menu.open);
 
   const caps: MemberCapabilities =
     guild && member && me
@@ -299,6 +307,14 @@ export function UserContextMenu({
         return item(`Kick ${name}`, kick, true);
       case 'ban':
         return item(`Ban ${name}`, ban, true);
+      case 'apps': {
+        const submenu = appsSubmenu(appCommands, 'user');
+        return {
+          kind: 'submenu',
+          label: 'Apps',
+          entries: toMenuEntries(submenu?.kind === 'submenu' ? submenu.items : [], (it: MenuItemModel) => runContextCommand(viewChannel, appCommands?.find((c) => c.id === it.arg), userId)),
+        };
+      }
       case 'copyId':
         return item('Copy user ID', () => void copyText(userId, 'User ID copied'));
     }
@@ -312,6 +328,7 @@ export function UserContextMenu({
     isBot,
     hasVoiceAudio: true,
     developerMode,
+    appCommands: appChannelId ? appCommands : undefined,
   });
   const showRoles = Boolean(guildId && member && member.roles.some((r) => r !== guildId));
   const entries: MenuEntry[] = groups.flatMap((g, i) => [
