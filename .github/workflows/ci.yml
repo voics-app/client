@@ -21,7 +21,7 @@ jobs:
       contents: read
       actions: read   # shared workflow: tag builds look up the main run of this commit
       packages: read  # private npm packages (GitHub Packages)
-    uses: discordy-voics/.github/.github/workflows/node.yml@main
+    uses: discordy-voics/.github/.github/workflows/node.yml@feature/node-cold-pnpm-corepack
     with:
       image-name: discordy-client
       lint-script: lint
