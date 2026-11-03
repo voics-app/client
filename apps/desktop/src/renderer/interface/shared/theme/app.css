@@ -123,6 +123,7 @@
 .user-panel-name { font-weight: 620; font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-panel-sub { font-size: var(--fs-caption); color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-panel-actions { display: flex; flex: none; }
+.voice-dock.glass { background: var(--bg-2); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .voice-dock { flex: none; margin: 0 8px 8px; padding: 10px 10px 8px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; }
 .voice-dock-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .voice-dock-id { text-align: left; min-width: 0; display: flex; flex-direction: column; }

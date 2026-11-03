@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed components at the bottom of the window lagging and leaving a trail while resizing on Windows: the voice dock is opaque, and blur and transitions are suspended during a resize.
+
 ## 0.2.0
 
 Calls, privacy and servers catch up with Discord.

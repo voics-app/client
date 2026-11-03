@@ -16,6 +16,7 @@ import { useDesktopIntegration } from './desktopIntegration';
 import { UpdateBanner } from '../features/updates/UpdateBanner';
 import { useGlobalShortcuts } from './shortcuts';
 import { useAppearance } from './appearance';
+import { useWindowResizing } from '../shared/hooks/useWindowResizing';
 import { createRuntime, type Runtime } from './runtime';
 import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
@@ -36,6 +37,7 @@ export function App() {
   const [failure, setFailure] = useState<string | null>(null);
   const status = useSessionStore((s) => s.status);
   useAppearance();
+  useWindowResizing();
   useGlobalShortcuts();
   useActivityReporting();
   useDesktopIntegration();
