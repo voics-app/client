@@ -13,6 +13,8 @@ interface Props {
   src: string;
   label: string;
   autoPlay?: boolean;
+  /** The native fullscreen button of a video; off inside the lightbox, which is already full-screen and has its own close. */
+  fullscreen?: boolean;
   onError?: () => void;
 }
 
@@ -20,7 +22,7 @@ interface Props {
  * Audio and video player with a styled control bar. Volume and mute are shared by every player and
  * remembered in the preferences, so a quiet clip stays quiet in the next message.
  */
-export function MediaPlayer({ kind, src, label, autoPlay, onError }: Props) {
+export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onError }: Props) {
   const media = useRef<HTMLMediaElement | null>(null);
   const volume = usePrefsStore((s) => s.mediaVolume);
   const muted = usePrefsStore((s) => s.mediaMuted);
@@ -95,7 +97,7 @@ export function MediaPlayer({ kind, src, label, autoPlay, onError }: Props) {
             setPref('mediaMuted', next === 0);
           }}
         />
-        {kind === 'video' && (
+        {kind === 'video' && fullscreen && (
           <button type="button" className="media-player-btn" aria-label="Fullscreen" onClick={() => void media.current?.requestFullscreen?.().catch(() => undefined)}>
             <CornersOut size={16} />
           </button>
