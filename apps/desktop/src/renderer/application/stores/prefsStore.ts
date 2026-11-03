@@ -18,6 +18,9 @@ export type NotifyLevel = 'all' | 'mentions' | 'none';
 import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@renderer/domain/keybinds';
 export type { Keybind };
 
+/** When spoiler text is revealed without a click (Settings, Chat). */
+export type SpoilerDisplay = 'click' | 'moderated' | 'always';
+
 export interface PrefsState {
   theme: ThemeId;
   accent: AccentId;
@@ -77,6 +80,21 @@ export interface PrefsState {
   keybinds: Keybind[];
   /** Show previews of links in messages (Standard chats). */
   linkPreviews: boolean;
+  /** Show attached images and videos inline (device-local). */
+  inlineMedia: boolean;
+  /** Show embeds and rich link cards under messages (device-local). */
+  inlineEmbeds: boolean;
+  spoilerDisplay: SpoilerDisplay;
+  /** Turn typed emoticons such as :) into emoji when sending (device-local). */
+  convertEmoticons: boolean;
+  /** Show reaction chips under messages (device-local). */
+  showReactions: boolean;
+  /** Enter inserts a newline and Ctrl+Enter sends. Read by the composer (device-local). */
+  sendWithCtrlEnter: boolean;
+  /** Shrink the quoted message above a reply to a single line (device-local). */
+  compactReplyPreview: boolean;
+  /** Developer mode: shows every Copy ID entry (device-local). */
+  developerMode: boolean;
   /** Playback volume of the audio and video players, remembered across messages. */
   mediaVolume: number;
   mediaMuted: boolean;
@@ -140,6 +158,14 @@ export const DEFAULT_PREFS: PrefsData = {
   stageLayouts: {},
   keybinds: DEFAULT_KEYBINDS,
   linkPreviews: true,
+  inlineMedia: true,
+  inlineEmbeds: true,
+  spoilerDisplay: 'click',
+  convertEmoticons: true,
+  showReactions: true,
+  sendWithCtrlEnter: false,
+  compactReplyPreview: false,
+  developerMode: false,
   mediaVolume: 1,
   mediaMuted: false,
 };
@@ -183,3 +209,6 @@ export const usePrefsStore = create<PrefsState>()(
     },
   ),
 );
+
+/** Selector for the composer: true when Ctrl+Enter sends and plain Enter makes a new line. */
+export const selectSendWithCtrlEnter = (s: Pick<PrefsData, 'sendWithCtrlEnter'>): boolean => s.sendWithCtrlEnter;

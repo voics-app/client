@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { RelationshipType, type User } from '@shared/contracts/rest';
@@ -77,6 +78,7 @@ function Mutuals({ userId }: { userId: string }) {
 export function ProfileDialog({ userId, guildId }: { userId: string; guildId: string | null }) {
   const close = () => useUiStore.getState().openDialog(null);
   const me = useSessionStore((s) => s.user);
+  const developerMode = usePrefsStore((s) => s.developerMode);
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[userId] : undefined));
   const status = usePresenceStore((s) => s.byUser[userId]?.status ?? 'offline');
   const relationship = useRelationshipStore((s) => s.byUser[userId]);
@@ -144,7 +146,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
             {!isMe && !user.bot && <Mutuals userId={userId} />}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}
             {!isMe && <SafetyNumber userId={userId} />}
-            <button type="button" className="link-btn" onClick={() => void copyText(user.id, 'User ID copied')}><Copy size={13} /> Copy user ID</button>
+            {developerMode && <button type="button" className="link-btn" onClick={() => void copyText(user.id, 'User ID copied')}><Copy size={13} /> Copy user ID</button>}
           </div>
         </div>
       )}
