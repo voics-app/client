@@ -31,6 +31,19 @@ export function expiryFor(choice: ExpiryChoice, now: Date): string | null {
   }
 }
 
+/** Longest custom status text the gateway accepts. */
+export const CUSTOM_STATUS_MAX = 128;
+
+/** Trims the text and caps it at 128 characters (by code point, so an emoji is never cut in half). */
+export function clampStatusText(text: string): string {
+  return [...text.trim()].slice(0, CUSTOM_STATUS_MAX).join('');
+}
+
+/** Characters left in the editor. */
+export function statusCharsLeft(text: string): number {
+  return CUSTOM_STATUS_MAX - [...text].length;
+}
+
 export function isExpired(status: CustomStatus | null | undefined, nowMs: number): boolean {
   if (!status?.expires_at) return false;
   const at = Date.parse(status.expires_at);
@@ -39,7 +52,7 @@ export function isExpired(status: CustomStatus | null | undefined, nowMs: number
 
 /** The custom status that still applies, or null when unset, empty or expired. */
 export function activeCustomStatus(status: CustomStatus | null | undefined, nowMs: number): CustomStatus | null {
-  if (!status?.text || isExpired(status, nowMs)) return null;
+  if (!(status?.text || status?.emoji_name) || isExpired(status, nowMs)) return null;
   return status;
 }
 
@@ -47,7 +60,8 @@ export function activeCustomStatus(status: CustomStatus | null | undefined, nowM
 export function customStatusActivities(status: CustomStatus | null | undefined, nowMs: number): Activity[] {
   const active = activeCustomStatus(status, nowMs);
   if (!active) return [];
-  return [{ name: 'Custom Status', type: CUSTOM_STATUS_ACTIVITY_TYPE, state: active.text, emoji: active.emoji_name ? { name: active.emoji_name } : null }];
+  const emoji = active.emoji_name ? (active.emoji_id ? { name: active.emoji_name, id: active.emoji_id } : { name: active.emoji_name }) : null;
+  return [{ name: 'Custom Status', type: CUSTOM_STATUS_ACTIVITY_TYPE, state: active.text || null, emoji }];
 }
 
 /** Idle only ever replaces Online: a deliberate Idle, Do Not Disturb or Invisible is never overridden. */

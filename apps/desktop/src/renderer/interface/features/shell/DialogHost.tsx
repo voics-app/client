@@ -15,7 +15,10 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
-import { EXPIRY_CHOICES, expiryFor, type ExpiryChoice } from '@renderer/domain/selfPresence';
+import { Smiley } from '@phosphor-icons/react';
+import { CUSTOM_STATUS_MAX, EXPIRY_CHOICES, expiryFor, statusCharsLeft, type ExpiryChoice } from '@renderer/domain/selfPresence';
+import { useEmojiPopover } from '../chat/EmojiPopover';
+import { IconButton } from '../../shared/ui/IconButton';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
@@ -28,7 +31,7 @@ import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
-import { setStatusText } from './customStatus';
+import { setStatusText, type StatusEmoji } from './customStatus';
 import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
@@ -275,18 +278,33 @@ function NewDmDialog() {
 function CustomStatusDialog() {
   const current = useSessionStore((s) => s.settings.custom_status);
   const [text, setText] = useState(current?.text ?? '');
+  const cdn = useConnectionStore((s) => s.cdnUrl);
+  const [emoji, setEmoji] = useState<StatusEmoji | null>(current?.emoji_name ? { name: current.emoji_name, id: current.emoji_id } : null);
   const [expiry, setExpiry] = useState<ExpiryChoice>('never');
+  const picker = useEmojiPopover(null, (e) => setEmoji({ name: e.emoji.name ?? e.api, id: e.emoji.id }));
   const close = useClose();
+  const left = statusCharsLeft(text);
   return (
     <Modal open onClose={close} title="Set a custom status" width={420}>
       <div className="stack">
-        <Field label="What's happening?">{(id) => <Input id={id} data-autofocus value={text} maxLength={128} onChange={(e) => setText(e.target.value)} />}</Field>
+        <Field label="What's happening?" hint={<span className="status-counter" aria-live="polite">{left} characters left</span>}>
+          {(id) => (
+            <div className="status-field">
+              <IconButton label={emoji ? 'Change emoji' : 'Add emoji'} onClick={(e) => picker.open(e.currentTarget, false)}>
+                {emoji?.id ? <img className="status-emoji" src={`${cdn}/emojis/${emoji.id}.png`} alt={emoji.name} /> : emoji ? <span>{emoji.name}</span> : <Smiley size={20} />}
+              </IconButton>
+              <Input id={id} data-autofocus value={text} maxLength={CUSTOM_STATUS_MAX} onChange={(e) => setText(e.target.value)} />
+            </div>
+          )}
+        </Field>
+        {emoji && <Button variant="ghost" onClick={() => setEmoji(null)}>Remove emoji</Button>}
         <Field label="Clear after">{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select>}</Field>
         <div className="row-end">
           <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>Clear</Button>
-          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date())); close(); }}>Save</Button>
+          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date()), emoji); close(); }}>Save</Button>
         </div>
       </div>
+      {picker.node}
     </Modal>
   );
 }

@@ -7,13 +7,14 @@ import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@renderer/domain/notif
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, RelationshipType, type Channel, type PresenceStatus } from '@shared/contracts/rest';
+import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@shared/contracts/rest';
 import { isUnread } from '@renderer/domain/unread';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';
 import { closeDm, leaveGroupDm } from '../../app/dmActions';
 import { openChannel } from '../../app/navigation';
 import { displayName } from '../../shared/hooks/useNames';
+import { StatusLine } from '../members/StatusLine';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
@@ -22,7 +23,7 @@ import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 
 /** One DM row with its context menu: mark as read, profile, group settings, mute, close, leave. */
-function DmRow({ channel: c, name, unread, mentions, active, status }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null }) {
+function DmRow({ channel: c, name, unread, mentions, active, status, activities }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[] }) {
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
   const muted = useNotificationSettingsStore((s) => isChannelMuted(s.byScope[DM_SCOPE], c.id, Date.now()));
@@ -45,7 +46,10 @@ function DmRow({ channel: c, name, unread, mentions, active, status }: { channel
     <li onContextMenu={menu.openAt}>
       <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
         {peer ? <Avatar id={peer.id} name={name} avatar={peer.avatar} size={34} status={status} /> : <Avatar id={c.id} name={name} avatar={c.icon ?? null} size={34} kind="channel-icons" />}
-        <span className="dm-name">{name}</span>
+        <span className="dm-copy">
+          <span className="dm-name">{name}</span>
+          <StatusLine className="dm-status" activities={activities} max={60} />
+        </span>
         {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
         {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
         <Count value={mentions} tone="danger" />
@@ -90,7 +94,7 @@ export function HomeSidebar() {
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
             const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
-            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} status={status} />;
+            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} status={status} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>

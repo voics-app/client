@@ -2,6 +2,9 @@ import { Check, Copy } from '@phosphor-icons/react';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { isEmojiOnly } from '@renderer/domain/emojiOnly';
+import { roleColorCss } from '@renderer/domain/userMenuModel';
 import { parseMarkdown, type MarkdownNode } from '@renderer/domain/markdown';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { openExternalUrl as openLink } from '../../app/links';
@@ -80,10 +83,15 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
     const user = member?.user;
     return `@${member?.nick ?? user?.global_name ?? user?.username ?? 'unknown-user'}`;
   });
+  const role = useGuildStore((s) => (kind === 'roleMention' && guildId ? s.guilds[guildId]?.roles.find((r) => r.id === id) : undefined));
+  const meId = useSessionStore((s) => s.user?.id);
+  const mine = useGuildStore((s) => (kind === 'roleMention' && guildId && meId ? !!s.members[guildId]?.[meId]?.roles.includes(id) : false));
+  const roleCss = role ? roleColorCss(role.color) : undefined;
   const button = (
     <button
       type="button"
-      className={`mention mention-${kind}`}
+      className={`mention mention-${kind}${mine ? ' is-mine' : ''}`}
+      style={roleCss ? ({ '--role-color': roleCss } as React.CSSProperties) : undefined}
       onClick={() => (kind === 'channelMention' ? openChannel(id) : kind === 'userMention' ? openDialog({ kind: 'profile', userId: id, guildId: guildId ?? null }) : undefined)}
     >
       {label}
@@ -225,10 +233,8 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
   );
 }
 
-const EMOJI_ONLY = /^(?:\s*(?:\p{Extended_Pictographic}|<a?:\w+:\d+>)\s*){1,27}$/u;
-
 export function MarkdownView({ source, guildId }: { source: string; guildId?: string | null }) {
-  const big = EMOJI_ONLY.test(source);
+  const big = isEmojiOnly(source);
   return (
     <div className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
       <Nodes nodes={parseMarkdown(source)} guildId={guildId} big={big} />
