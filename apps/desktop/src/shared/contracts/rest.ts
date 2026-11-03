@@ -699,6 +699,59 @@ export interface ReadyPayload {
   turn?: TurnCredentials;
 }
 
+/** A role of a server template; ids are template-local (0 is @everyone). */
+export interface TemplateRole {
+  id: number;
+  name: string;
+  permissions: string;
+  color: number;
+  hoist: boolean;
+  mentionable: boolean;
+}
+
+export interface TemplateOverwrite {
+  id: number;
+  type: number;
+  allow: string;
+  deny: string;
+}
+
+export interface TemplateChannel {
+  id: number;
+  type: number;
+  name: string;
+  position: number;
+  topic: string | null;
+  nsfw: boolean;
+  parent_id: number | null;
+  permission_overwrites: TemplateOverwrite[];
+}
+
+/** The structure a template creates. */
+export interface TemplateSourceGuild {
+  name: string;
+  description: string | null;
+  afk_channel_id: number | null;
+  system_channel_id: number | null;
+  roles: TemplateRole[];
+  channels: TemplateChannel[];
+}
+
+/** A server template (Discord guild template). Built-ins have a `builtin-` code and no creator. */
+export interface GuildTemplate {
+  code: string;
+  name: string;
+  description: string | null;
+  usage_count: number;
+  creator_id: string | null;
+  creator: User | null;
+  created_at: string;
+  updated_at: string;
+  source_guild_id: string | null;
+  serialized_source_guild: TemplateSourceGuild;
+  is_dirty: boolean;
+}
+
 /** One server card of `GET /discovery/guilds`. */
 export interface DiscoveryGuild {
   id: string;

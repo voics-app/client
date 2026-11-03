@@ -59,6 +59,13 @@ describe('routeFromDeepLink', () => {
     expect(routeFromDeepLink('discordy://channels/1/2/x')).toBeNull();
   });
 
+  it('maps template links', () => {
+    expect(routeFromDeepLink('discordy://template/AbC123xyz')).toBe('/template/AbC123xyz');
+    expect(routeFromDeepLink('discordy://template/builtin-gaming')).toBe('/template/builtin-gaming');
+    expect(routeFromDeepLink('discordy://template/<script>')).toBeNull();
+    expect(routeFromDeepLink('discordy://template/a/b')).toBeNull();
+  });
+
   it('ignores unknown or malicious links', () => {
     expect(routeFromDeepLink('https://evil.test')).toBeNull();
     expect(routeFromDeepLink('discordy://settings/../../x')).toBeNull();

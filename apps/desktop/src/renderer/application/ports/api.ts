@@ -21,6 +21,7 @@ import type {
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   DiscoveryPage,
+  GuildTemplate,
   DiscoveryQuery,
   GuildDiscoverySettings,
   GuildFull,
@@ -102,6 +103,14 @@ export interface ApiPort {
   deleteRelationship(userId: string): Promise<void>;
 
   createGuild(body: { name: string; icon?: string | null }): Promise<GuildFull>;
+  builtinGuildTemplates(): Promise<GuildTemplate[]>;
+  guildTemplate(code: string): Promise<GuildTemplate>;
+  createGuildFromTemplate(code: string, body: { name: string; icon?: string | null }): Promise<GuildFull>;
+  guildTemplates(guildId: string): Promise<GuildTemplate[]>;
+  createGuildTemplate(guildId: string, body: { name: string; description?: string | null }): Promise<GuildTemplate>;
+  modifyGuildTemplate(guildId: string, code: string, body: { name?: string; description?: string | null }): Promise<GuildTemplate>;
+  syncGuildTemplate(guildId: string, code: string): Promise<GuildTemplate>;
+  deleteGuildTemplate(guildId: string, code: string): Promise<void>;
   guild(guildId: string): Promise<Guild>;
   updateGuild(guildId: string, patch: Partial<Guild>): Promise<Guild>;
   deleteGuild(guildId: string): Promise<void>;
