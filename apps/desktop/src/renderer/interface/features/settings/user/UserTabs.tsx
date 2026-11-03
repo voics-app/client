@@ -489,8 +489,10 @@ export function DesktopTab() {
   return (
     <Page title="Desktop" sub="Saved on this device only; they do not follow your account.">
       {row('openAtLogin', `Open ${BRAND.displayName}`, 'Start the app when you sign in to your computer.')}
-      {row('startMinimized', 'Start minimized', 'When started at login, stay in the tray instead of opening the window.', !settings?.openAtLogin)}
-      {row('closeToTray', 'Minimize to tray', 'The close button hides the window to the tray. Quit from the tray menu.')}
+      {row('showTray', 'Show in system tray', 'Keep an icon in the system tray with a menu and your unread state. When off, closing the window quits the app.')}
+      {row('startMinimized', 'Start minimized', 'When started at login, stay in the tray instead of opening the window.', !settings?.openAtLogin || !settings.showTray)}
+      {row('minimizeToTray', 'Minimize to tray', 'The minimize button hides the window to the tray instead of the taskbar.', !settings?.showTray)}
+      {row('closeToTray', 'Close button minimizes to tray', 'The close button hides the window to the tray. Quit from the tray menu.', !settings?.showTray)}
       {row('hardwareAcceleration', 'Hardware acceleration', 'Use the GPU for rendering. Turn off if you see glitches. Takes effect after a restart.')}
       <SettingRow title="Go idle automatically" description="Show as Idle after this long without keyboard or mouse input, and when the screen locks. Do Not Disturb and Invisible are never changed.">
         <Select aria-label="Idle timeout" value={String(settings?.idleTimeoutMinutes ?? 10)} disabled={!settings} onChange={(e) => change({ idleTimeoutMinutes: Number(e.target.value) })}>

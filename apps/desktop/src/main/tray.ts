@@ -13,6 +13,7 @@ export interface TrayHandle {
   setState(image: Bitmap | null, tooltip: string): void;
   setActivity(activity: ActivityCounts): void;
   setVoice(voice: VoiceState): void;
+  destroy(): void;
 }
 
 function loadBase(): NativeImage {
@@ -22,7 +23,13 @@ function loadBase(): NativeImage {
   return icon.isEmpty() ? icon : icon.resize({ width: 16, height: 16 });
 }
 
-export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => void, onCommand: (command: TrayCommand) => void): TrayHandle {
+export interface TrayActions {
+  onQuit(): void;
+  onCheckUpdates(): void;
+  onCommand(command: TrayCommand): void;
+}
+
+export function createTray(getWindow: () => BrowserWindow | null, { onQuit, onCheckUpdates, onCommand }: TrayActions): TrayHandle {
   const icon = loadBase();
   const tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
   const show = () => {
@@ -39,6 +46,7 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
     const run = () => {
       if (item.action === 'open') show();
       else if (item.action === 'quit') onQuit();
+      else if (item.action === 'checkUpdates') onCheckUpdates();
       else if (item.action) onCommand(item.action);
     };
     return {
@@ -69,6 +77,9 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
     setVoice(next) {
       voice = next;
       rebuild();
+    },
+    destroy() {
+      tray.destroy();
     },
   };
 }
