@@ -159,11 +159,16 @@ test("production smoke", async () => {
     await step("1 gateway websocket connected (READY)", async () => {
       if (![...A.urls].some((u) => u.startsWith("wss://discordy-gateway.voics.nl") || (!PROD && u.startsWith("ws")))) throw new Error(`no gateway ws origin in ${[...A.urls].join(",")}`);
     });
-    await step("1 logout then login again", async () => {
+    await step("1 logout, wrong password shows a clear error, login again", async () => {
       await openSettingsTab(A.page, "My account");
       await A.page.getByRole("button", { name: "Log out" }).first().click();
       await A.page.getByRole("dialog", { name: /Log out/ }).getByRole("button", { name: "Log out" }).or(A.page.getByRole("button", { name: "Log out" }).last()).last().click();
       await A.page.getByLabel("Email", { exact: true }).last().fill(emailA, { timeout: 30_000 });
+      // A wrong password shows only the fixed vague message (no "Invalid form body", nothing about which field).
+      await A.page.getByLabel("Password", { exact: true }).last().fill(`${PASSWORD}-wrong`);
+      await A.page.getByRole("button", { name: "Sign in" }).click();
+      await expect(A.page.getByText("Wrong credentials. Please try again.")).toBeVisible({ timeout: 15_000 });
+      await expect(A.page.getByText("Invalid form body")).toHaveCount(0);
       await A.page.getByLabel("Password", { exact: true }).last().fill(PASSWORD);
       await A.page.getByRole("button", { name: "Sign in" }).click();
       await expect(A.page.getByRole("navigation", { name: "Servers" })).toBeVisible({ timeout: 60_000 });
