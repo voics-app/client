@@ -13,11 +13,10 @@ import { getRuntime } from '../../../app/runtime';
 import { displayName } from '../../../shared/hooks/useNames';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Button } from '../../../shared/ui/Button';
-import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
-import { Field, Input, Select, TextArea } from '../../../shared/ui/Form';
+import { Input, Select } from '../../../shared/ui/Form';
 import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
-import { readAsDataUrl, readImageUpload } from '../imageUpload';
+import { readAsDataUrl } from '../imageUpload';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -31,69 +30,6 @@ function Page({ title, sub, children }: { title: string; sub?: string; children:
 
 function Loading() {
   return <div className="list-loading">{[0, 1, 2].map((i) => <Skeleton key={i} height={44} radius={12} />)}</div>;
-}
-
-export function ServerOverview({ guildId }: { guildId: string }) {
-  const guild = useGuildStore((s) => s.guilds[guildId]);
-  const [name, setName] = useState(guild?.name ?? '');
-  const [description, setDescription] = useState(guild?.description ?? '');
-  const [region, setRegion] = useState(guild?.voice_region ?? '');
-  const [icon, setIcon] = useState<string | null | undefined>(undefined);
-  const [iconError, setIconError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const regions = useQuery({ queryKey: ['voice', 'regions'], queryFn: () => getRuntime().api.voiceRegions(), staleTime: 300_000 });
-  if (!guild) return null;
-  const dirty = name !== guild.name || description !== (guild.description ?? '') || region !== (guild.voice_region ?? '') || icon !== undefined;
-
-  const chooseIcon = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      setIcon(await readImageUpload(file));
-      setIconError(null);
-    } catch (error) {
-      setIconError(error instanceof Error ? error.message : 'Could not read the image.');
-    }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const updated = await attempt(() => getRuntime().api.updateGuild(guildId, { name, description: description || null, voice_region: region || null, ...(icon !== undefined ? { icon } : {}) }), 'Could not save server');
-      if (updated) {
-        useGuildStore.getState().patchGuild({ ...updated, id: guildId });
-        setIcon(undefined);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Page title="Server overview" sub="Name, icon and where voice runs.">
-      <div className="overview-row">
-        <button type="button" className="icon-upload" onClick={() => fileRef.current?.click()} aria-label="Change server icon">
-          {icon ? <img src={icon} alt="" /> : <Avatar id={guild.id} name={guild.name} avatar={guild.icon} size={96} square kind="icons" />}
-          <span><Upload size={18} /> Change</span>
-        </button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => void chooseIcon(e.target.files?.[0])} />
-        {iconError && <p className="field-error" role="alert">{iconError}</p>}
-        <div className="stack grow">
-          <Field label="Server name">{(id) => <Input id={id} value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />}</Field>
-          <Field label="Description">{(id) => <TextArea id={id} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />}</Field>
-          <Field label="Voice region" hint="Everyone in a call shares one voice node in this region.">
-            {(id) => (
-              <Select id={id} value={region} onChange={(e) => setRegion(e.target.value)}>
-                <option value="">Automatic</option>
-                {regions.data?.map((r) => <option key={r.id} value={r.id}>{r.name}{r.optimal ? ' (recommended)' : ''}</option>)}
-              </Select>
-            )}
-          </Field>
-        </div>
-      </div>
-      <UnsavedBar dirty={dirty} saving={saving} onReset={() => { setName(guild.name); setDescription(guild.description ?? ''); setRegion(guild.voice_region ?? ''); setIcon(undefined); setIconError(null); }} onSave={() => void save()} />
-    </Page>
-  );
 }
 
 export function ServerEmoji({ guildId }: { guildId: string }) {
