@@ -13,6 +13,7 @@ export const VoiceOp = {
   VIDEO: 12,
   CLIENT_DISCONNECT: 13,
   MEDIA_SINK_WANTS: 15,
+  STREAM_VIEWERS: 40,
   DAVE_PREPARE_TRANSITION: 21,
   DAVE_EXECUTE_TRANSITION: 22,
   DAVE_MLS_EXTERNAL_SENDER: 25,
@@ -127,6 +128,12 @@ export interface VideoPayload {
 
 export interface ClientDisconnect {
   user_id: string;
+}
+
+/** Sent only to the streamer: everyone currently watching their screen share (the complete list, empty = nobody). */
+export interface StreamViewers {
+  ssrc: number;
+  user_ids: string[];
 }
 
 /** `{"<ssrc>": quality 0-100}` */

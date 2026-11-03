@@ -2,7 +2,7 @@
 import { GatewayOp } from '@shared/contracts/gateway';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useCallStore } from '@renderer/application/stores/callStore';
-import { ringingCallFor } from '@renderer/domain/calls';
+import { callRingPayload, ringingCallFor } from '@renderer/domain/calls';
 import { getRuntime } from './runtime';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
@@ -20,6 +20,12 @@ export function declineCall(channelId: string): void {
   const me = useSessionStore.getState().user?.id;
   if (me) useCallStore.getState().stopRinging(channelId, me);
   getRuntime().gateway.send(GatewayOp.CALL_DECLINE, { channel_id: channelId });
+}
+
+/** Rings recipients of a DM or group DM into its running call. */
+export function ringIntoCall(channelId: string, userIds: readonly string[]): void {
+  const payload = callRingPayload(channelId, userIds);
+  if (payload) getRuntime().gateway.send(GatewayOp.CALL_RING, payload);
 }
 
 /** Opens (or creates) the DM with a user, joins its call and optionally turns the camera on. */

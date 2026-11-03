@@ -49,6 +49,10 @@ export interface VoiceStoreState {
   pipStream: string | null;
   /** Stream keys (`userId:screen`) of remote screen shares the user opted to watch. */
   watching: string[];
+  /** Publisher screen SSRCs of remote shares, keyed like `watching`; drives MEDIA_SINK_WANTS. */
+  screenSsrcs: Record<string, number>;
+  /** Users watching the local screen share, as reported to the streamer (STREAM_VIEWERS). */
+  streamViewers: string[];
   /** Hides the user's own camera and screen preview tiles on the stage. */
   hideSelfPreview: boolean;
   upsertState(state: VoiceState): void;
@@ -58,6 +62,8 @@ export interface VoiceStoreState {
   setSpeaking(userId: string, level: number): void;
   setRemoteStream(stream: RemoteStream): void;
   removeRemoteStreams(userId: string, kind?: RemoteStream['kind']): void;
+  setScreenSsrc(streamKey: string, ssrc: number): void;
+  setStreamViewers(userIds: string[]): void;
   setLocalMedia(patch: Partial<Pick<VoiceStoreState, 'localCamera' | 'localScreen'>>): void;
   setUserVolume(userId: string, volume: number): void;
   focus(streamKey: string | null): void;
@@ -88,6 +94,8 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   focusedStream: null,
   pipStream: null,
   watching: [],
+  screenSsrcs: {},
+  streamViewers: [],
   hideSelfPreview: false,
   upsertState: (state) =>
     set((s) => {
@@ -120,7 +128,16 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
       watching: s.watching.filter((k) => !k.startsWith(`${userId}:`) || (kind !== undefined && k !== `${userId}:${kind}`)),
       focusedStream: s.focusedStream && s.focusedStream.startsWith(`${userId}:`) && (kind === undefined || s.focusedStream === `${userId}:${kind}`) ? null : s.focusedStream,
     })),
-  setLocalMedia: (patch) => set(patch),
+  setScreenSsrc: (key, ssrc) =>
+    set((s) => {
+      if (ssrc > 0) return s.screenSsrcs[key] === ssrc ? s : { screenSsrcs: { ...s.screenSsrcs, [key]: ssrc } };
+      if (!(key in s.screenSsrcs)) return s;
+      const { [key]: _gone, ...screenSsrcs } = s.screenSsrcs;
+      return { screenSsrcs };
+    }),
+  setStreamViewers: (streamViewers) => set({ streamViewers }),
+  // Nobody watches a share that has stopped.
+  setLocalMedia: (patch) => set(patch.localScreen === null ? { ...patch, streamViewers: [] } : patch),
   setUserVolume: (userId, volume) => set((s) => ({ userVolumes: { ...s.userVolumes, [userId]: Math.max(0, Math.min(2, volume)) } })),
   focus: (focusedStream) => set({ focusedStream }),
   popOut: (pipStream) => set({ pipStream }),
@@ -128,7 +145,7 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   stopWatching: (key) => set((s) => ({ watching: s.watching.filter((k) => k !== key), focusedStream: s.focusedStream === key ? null : s.focusedStream, pipStream: s.pipStream === key ? null : s.pipStream })),
   setHideSelfPreview: (hideSelfPreview) => set({ hideSelfPreview }),
   resetCall: () =>
-    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [] }),
+    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [], screenSsrcs: {}, streamViewers: [] }),
 }));
 
 export function usersInChannel(states: VoiceStoreState['states'], scopeId: string | null | undefined, channelId: string): VoiceState[] {

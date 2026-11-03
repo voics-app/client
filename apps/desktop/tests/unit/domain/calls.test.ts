@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { callerOf, dmCallOf, hasParticipants, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
+import { callRingPayload, callerOf, dmCallOf, ringableRecipients, hasParticipants, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
 import type { CallEvent } from '@shared/contracts/gateway';
 import type { VoiceState } from '@shared/contracts/rest';
 
@@ -37,5 +37,22 @@ describe('DM call ringing helpers', () => {
     expect(hasParticipants(undefined)).toBe(false);
     expect(hasParticipants(call({ voiceStates: [voice('1', null)] }))).toBe(false);
     expect(hasParticipants(call())).toBe(true);
+  });
+});
+
+describe('ringing more people into a call', () => {
+  const people = [{ id: '1' }, { id: '2' }, { id: '3' }];
+
+  it('offers recipients who are not in the call, never the user', () => {
+    expect(ringableRecipients(people, [voice('1'), voice('2')], '1')).toEqual([{ id: '3' }]);
+    expect(ringableRecipients(people, [voice('2', null)], '1')).toEqual([{ id: '2' }, { id: '3' }]);
+    expect(ringableRecipients(people, [], '1')).toEqual([{ id: '2' }, { id: '3' }]);
+  });
+
+  it('builds a CALL_RING body, deduplicated and capped at ten', () => {
+    expect(callRingPayload('900', ['2', '3', '2'])).toEqual({ channel_id: '900', user_ids: ['2', '3'] });
+    expect(callRingPayload('900', [])).toBeNull();
+    const many = Array.from({ length: 14 }, (_, i) => String(i));
+    expect(callRingPayload('900', many)?.user_ids).toHaveLength(10);
   });
 });
