@@ -1,12 +1,13 @@
 import { convertEmoticons } from '@renderer/domain/emoticons';
-import { ArrowBendUpLeft, LockSimple, PaperPlaneRight, PlusCircle, Smiley, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
+import { ArrowBendUpLeft, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
 import { useMentionStore } from '@renderer/application/stores/mentionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore, selectSendWithCtrlEnter } from '@renderer/application/stores/prefsStore';
 import { acceptFiles, charsRemaining, formatCountdown, lastOwnEditable, MAX_MESSAGE_LENGTH, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@renderer/domain/composerLimits';
+import { applyFormat, enterAction, plusMenuEntries, type FormatKind } from '@renderer/domain/composerFormat';
 import { searchShortcodes } from '@renderer/domain/emojiShortcodes';
 import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
@@ -23,6 +24,7 @@ import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
+import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
@@ -74,6 +76,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [command, setCommand] = useState<SlashEntry | null>(null);
   const [commandValues, setCommandValues] = useState<OptionValues>({});
   const [running, setRunning] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const plusMenu = useMenu();
+  const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
   const ref = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef(text);
   textRef.current = text;
@@ -218,7 +224,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         .slice(0, 4)
         .map<Suggestion>((r) => ({ kind: 'role', key: r.id, label: r.name, detail: 'Role', insert: `@${r.name}`, mention: { token: `@${r.name}`, wire: `<@&${r.id}>` } }));
       const everyone = can(perms, Permission.MENTION_EVERYONE) && 'everyone'.startsWith(token.query) ? [{ kind: 'role', key: 'everyone', label: 'everyone', detail: 'Notify everyone', insert: '@everyone' } satisfies Suggestion] : [];
-      return [...users, ...roles, ...everyone].slice(0, 8);
+      const here = can(perms, Permission.MENTION_EVERYONE) && 'here'.startsWith(token.query) ? [{ kind: 'role', key: 'here', label: 'here', detail: 'Notify everyone', insert: '@here' } satisfies Suggestion] : [];
+      return [...users, ...roles, ...everyone, ...here].slice(0, 8);
     }
     if (token.trigger === '#') {
       return Object.values(channels)
@@ -354,13 +361,16 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     void getRuntime().api.typing(channel.id).catch(() => undefined);
   };
 
-  const wrapSelection = (mark: string) => {
+  const format = (kind: FormatKind) => {
     const el = ref.current;
     if (!el) return;
-    const { selectionStart: a, selectionEnd: b } = el;
-    const next = `${text.slice(0, a)}${mark}${text.slice(a, b)}${mark}${text.slice(b)}`;
-    setText(next);
-    requestAnimationFrame(() => el.setSelectionRange(a + mark.length, b + mark.length));
+    const edit = applyFormat(text, el.selectionStart, el.selectionEnd, kind);
+    setText(edit.text);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(edit.start, edit.end);
+      setCaret(edit.end);
+    });
   };
 
   const onDrop = (e: DragEvent) => {
@@ -378,9 +388,30 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     const pastedText = e.clipboardData.getData('text/plain');
     if (canAttach && shouldPasteAsFile(pastedText)) {
       e.preventDefault();
-      addFiles([new File([pastedText], 'message.txt', { type: 'text/plain' })]);
+      setPendingPaste(pastedText);
     }
   };
+  const resolvePaste = (asFile: boolean) => {
+    const pasted = pendingPaste;
+    setPendingPaste(null);
+    if (pasted === null) return;
+    if (asFile) addFiles([new File([pasted], 'message.txt', { type: 'text/plain' })]);
+    else insertAtCaret(pasted);
+  };
+
+  const plusEntries: MenuEntry[] = plusMenuEntries().map((id): MenuEntry => {
+    if (id === 'upload') return { kind: 'item', label: 'Upload a file', icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : 'Attachments unavailable here', onSelect: () => fileInput.current?.click() };
+    const label = id === 'thread' ? 'Create thread' : id === 'poll' ? 'Create poll' : 'Use apps';
+    return { kind: 'item', label, disabled: true, onSelect: () => undefined };
+  });
+  const FORMATS: { kind: FormatKind; label: string; icon: ReactNode }[] = [
+    { kind: 'bold', label: 'Bold', icon: <TextB size={16} /> },
+    { kind: 'italic', label: 'Italic', icon: <TextItalic size={16} /> },
+    { kind: 'strike', label: 'Strikethrough', icon: <TextStrikethrough size={16} /> },
+    { kind: 'spoiler', label: 'Spoiler', icon: <EyeSlash size={16} /> },
+    { kind: 'code', label: 'Code', icon: <Code size={16} /> },
+    { kind: 'quote', label: 'Quote', icon: <Quotes size={16} /> },
+  ];
 
   const placeholder = !canSend ? 'You do not have permission to send messages in this channel' : `Message ${channel.guild_id ? `#${channel.name}` : channel.recipients?.length === 1 ? `@${displayName(channel.recipients[0]!)}` : 'group'}`;
   const replyName = replyTo ? displayName(replyTo.author) : '';
@@ -425,10 +456,26 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {command && (
           <SlashCommandPanel entry={command} values={commandValues} channel={channel} busy={running} onChange={setCommandValues} onRun={() => void runCommand()} onCancel={() => { setCommand(null); ref.current?.focus(); }} />
         )}
+        {pendingPaste !== null && (
+          <div className="composer-paste" role="alertdialog" aria-label="Long paste">
+            <span>That is {[...pendingPaste].length.toLocaleString()} characters, over the {MAX_MESSAGE_LENGTH} limit.</span>
+            <button type="button" className="composer-paste-btn is-primary" autoFocus onClick={() => resolvePaste(true)}>Convert to file</button>
+            <button type="button" className="composer-paste-btn" onClick={() => resolvePaste(false)}>Send as message</button>
+            <IconButton label="Dismiss" size="sm" onClick={() => { setPendingPaste(null); ref.current?.focus(); }}><X size={14} /></IconButton>
+          </div>
+        )}
+        {hasSelection && canSend && !command && (
+          <div className="composer-format" role="toolbar" aria-label="Text formatting">
+            {FORMATS.map((f) => (
+              <IconButton key={f.kind} label={f.label} size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => format(f.kind)}>{f.icon}</IconButton>
+            ))}
+          </div>
+        )}
         <div className="composer-row">
-          <IconButton label={canAttach ? 'Attach files' : 'Attachments unavailable in this mode'} disabled={!canAttach || !canSend} onClick={() => fileInput.current?.click()}>
+          <IconButton label="Add to message" aria-haspopup="menu" aria-expanded={plusMenu.open} disabled={!canSend} onClick={plusMenu.openBelow}>
             <PlusCircle size={22} />
           </IconButton>
+          <Menu open={plusMenu.open} x={plusMenu.anchor?.x ?? 0} y={plusMenu.anchor?.y ?? 0} entries={plusEntries} onClose={plusMenu.close} minWidth={180} />
           <input ref={fileInput} type="file" multiple hidden onChange={(e) => { addFiles([...(e.target.files ?? [])]); e.target.value = ''; }} />
           <textarea
             ref={ref}
@@ -439,7 +486,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
             placeholder={placeholder}
             aria-label={placeholder}
             onChange={(e) => { setText(e.target.value); setCaret(e.target.selectionStart); notifyTyping(); }}
-            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onSelect={(e) => { setCaret(e.currentTarget.selectionStart); setHasSelection(e.currentTarget.selectionEnd > e.currentTarget.selectionStart); }}
             onPaste={onPaste}
             onKeyDown={(e) => {
               if (suggestions.length > 0) {
@@ -453,9 +500,11 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
                 const last = lastOwnEditable(timeline ? timeline.ids.map((id) => timeline.byId[id]!).filter(Boolean) : [], me);
                 if (last) { e.preventDefault(); setEditing({ channelId: channel.id, messageId: last.id }); return; }
               }
-              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); wrapSelection('**'); return; }
-              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') { e.preventDefault(); wrapSelection('*'); return; }
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); }
+              if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'x') { e.preventDefault(); format('strike'); return; }
+              if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b') { e.preventDefault(); format('bold'); return; }
+              if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); format('italic'); return; }
+              const action = enterAction({ key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, isComposing: e.nativeEvent.isComposing }, sendWithCtrlEnter);
+              if (action === 'send') { e.preventDefault(); void send(); }
               if (e.key === 'Escape') {
                 if (editing?.channelId === channel.id) setEditing(null);
                 else if (replyTo) setReplyTo(channel.id, null);
