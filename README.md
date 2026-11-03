@@ -25,11 +25,11 @@ pnpm build:native   # builds native/crypto for this platform
 pnpm dev            # electron-vite dev server with HMR
 ```
 
-A second dev client (another account) needs its own renderer port and user data folder. In PowerShell:
+Run these from this `client` folder (the parent `voics` folder is not a pnpm project).
 
-```powershell
-$env:RENDERER_PORT=5174; $env:DISCORDY_USER_DATA_DIR="$env:TEMP\discordy-dev-2"; pnpm dev
-```
+**A second dev client** (another account, side by side): `pnpm dev2`. It uses renderer port 5174 and its own user data folder `%TEMP%\discordy-dev2`, so it has a separate login, settings, E2EE keys and single-instance lock. Delete that folder to start fresh. Override with `RENDERER_PORT` and `DISCORDY_USER_DATA_DIR` (for a third instance, give both new values). The script is `apps/desktop/scripts/dev2.mjs`.
+
+**Dev clients and production:** production's CORS list only allows the packaged app (`null` origin). So in dev builds only, the main process rewrites `Access-Control-Allow-Origin` on cross-origin responses to the dev server origin (`withDevServerCors` in `src/main/window.ts`). Without that, every request fails with status 0 and the client shows "You appear to be offline". The **Local** connection needs the local backend running (docs `runbooks/local-development.md`).
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
 
