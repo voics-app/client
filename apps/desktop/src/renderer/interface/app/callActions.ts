@@ -47,3 +47,12 @@ export function declineRingingCall(): void {
   const id = ringingChannel();
   if (id) declineCall(id);
 }
+
+/** Starts or joins the call of an open DM; with `video` the camera goes on once connected. */
+export async function startDmCall(channelId: string, video = false): Promise<void> {
+  const joined = await attempt(async () => {
+    await joinVoiceChannel(null, channelId);
+    return true;
+  }, 'Could not start call');
+  if (joined && video && !useVoiceStore.getState().selfVideo) await attempt(() => toggleCamera(), 'Could not turn the camera on');
+}
