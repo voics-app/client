@@ -24,7 +24,7 @@ describe('registerEngines', () => {
     created.length = 0;
     vi.resetModules();
     // resetModules also drops the brand the setup file installed, so install it on the fresh module graph.
-    await import('../../support/installBrand');
+    await import('@renderer/infrastructure/brand/installBrand');
   });
 
   it('rebinds to the runtime that actually boots (React StrictMode creates two in dev)', async () => {
