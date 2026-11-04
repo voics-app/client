@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Mobile app: sign in (with the two-factor step and sign out), a live gateway connection that resumes after the app returns from the background, and the Servers tab with your servers and their text channels. Tokens are kept in the iOS Keychain (Android Keystore). Messages, DMs and attachments follow; nothing is published to an app store yet.
+- Internal: the gateway client has `resumeNow()` (replace the socket at once and resume the session) and the failed-command text `errorMessage` moved into `@discordy/core`. No change in desktop behaviour.
+
 - Profiles: click an avatar to see it full size (the image viewer, with zoom), a friend's profile shows Friends since, and About me can be up to 300 characters (was 190; the api limit follows in a separate change).
 - Screen shares zoom and pan: scroll or pinch to zoom toward the pointer (up to 8x), drag to pan, double-click or the zoom badge to reset.
 - Messages with more than four images show a compact grid of four with a "+N" on the last tile, and swiping left or right in the image viewer turns to the next or previous image.

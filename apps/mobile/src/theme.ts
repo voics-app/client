@@ -4,4 +4,5 @@ export const theme = {
   text: '#f2f3f5',
   muted: '#949ba4',
   accent: '#5865f2',
+  danger: '#f23f43',
 } as const;
