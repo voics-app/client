@@ -1,10 +1,10 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { SectionList, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { channelSections } from '../../../src/servers/serverModel';
-import { theme } from '../../../src/theme';
+import { channelSections } from '../../../../src/servers/serverModel';
+import { theme } from '../../../../src/theme';
 
 export default function ChannelListScreen() {
   const { guildId } = useLocalSearchParams<{ guildId: string }>();
@@ -32,10 +32,15 @@ export default function ChannelListScreen() {
         }
         renderSectionHeader={({ section }) => (section.title ? <Text style={styles.category}>{section.title.toUpperCase()}</Text> : null)}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open #${item.name}`}
+            style={styles.row}
+            onPress={() => router.push(`/servers/${guildId}/${item.id}`)}
+          >
             <Text style={styles.hash}>#</Text>
             <Text style={styles.name}>{item.name}</Text>
-          </View>
+          </Pressable>
         )}
       />
     </>

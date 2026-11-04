@@ -1,6 +1,6 @@
 # Discordy mobile (Expo, React Native)
 
-iOS first, Android from the same code ([client#203](https://github.com/discordy-voics/client/issues/203), plan: docs `plans/2026-11-03-mobile-app.md`, stack: ADR 0024). The app signs in (with two-factor), keeps a gateway connection that resumes when the app returns to the foreground, and lists your servers and their text channels. Messages, DMs and attachments are next (client#206 follow-ups). It has not been run on a device or simulator yet; the tests use Jest with mocks.
+iOS first, Android from the same code ([client#203](https://github.com/discordy-voics/client/issues/203), plan: docs `plans/2026-11-03-mobile-app.md`, stack: ADR 0024). The app signs in (with two-factor), keeps a gateway connection that resumes when the app returns to the foreground, and lists your servers and their text channels. Tapping a text channel opens its messages (read, send, reply, edit, delete, reactions). DMs and attachments are next (client#206 follow-ups). It has not been run on a device or simulator yet; the tests use Jest with mocks.
 
 - Expo SDK 58, React Native 0.88, React 19.3, TypeScript strict. All versions are pinned; check them with `npx expo install --check`.
 - `app.config.ts` reads the display name, URL scheme (`discordy://`) and bundle id/package from `../desktop/brand.json` (`displayName`, `protocolScheme`, `appId`). The icon is `../desktop/build/icon.png`. The bundle id `nl.voics.discordy` is a **placeholder** until the owner decides (docs#10).
@@ -34,6 +34,6 @@ Full walkthrough: docs repo `runbooks/run-the-mobile-app.md`.
 | `app/` | expo-router screens: `index` (redirect), `sign-in`, `(tabs)/` (`servers/` has the server list and a server channel list) |
 | `src/adapters/` | Keychain session vault, key-value storage, WebSocket factory (ports from `@discordy/core`) |
 | `src/runtime/` | composition root (`createRuntime`), foreground resume policy, the app runtime |
-| `src/signIn/`, `src/servers/` | sign-in screen and error handling, server and channel list models |
+| `src/signIn/`, `src/servers/`, `src/messages/` | sign-in screen and error handling, server and channel list models, the channel screen with its message service and permission model |
 | `src/` | brand (installed first), theme |
 | `tests/` | Jest tests with fakes for the keychain, storage and sockets |
