@@ -155,6 +155,12 @@ export function ServerOverview({ guildId }: { guildId: string }) {
         </Field>
       </Section>
 
+      <Section title="Safety">
+        <SettingRow title="Only administrators can prune members" description="When on, pruning inactive members needs the Administrator permission instead of Kick Members.">
+          <Switch label="Only administrators can prune members" checked={current.pruneAdminOnly} onChange={(on) => change({ pruneAdminOnly: on })} />
+        </SettingRow>
+      </Section>
+
       <Section title="Default notification settings">
         <Field label="For new members" hint="Members can change this for themselves in their notification settings.">
           {(id) => (
