@@ -1,21 +1,21 @@
 import { ArrowClockwise, File as FileIcon, FilePdf, LockSimple, Play, WarningCircle, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { Permission } from '@shared/contracts/permissions';
-import { spoilersOpen } from '@renderer/domain/chatDisplay';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { spoilersOpen } from '@discordy/core/domain/chatDisplay';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
-import { useLightboxStore, type LightboxItem } from '@renderer/application/stores/lightboxStore';
+import { useLightboxStore, type LightboxItem } from '@discordy/core/application/stores/lightboxStore';
 import { fractionOf, useTransferStore, type TransferState } from '@renderer/application/stores/transferStore';
-import { uploadFraction, useUploadStore } from '@renderer/application/stores/uploadStore';
-import { displayFilename, formatBytes, gridLayout, isSpoiler, previewKind, previewLines, splitAttachments } from '@renderer/domain/media';
-import { privateRefOf } from '@renderer/domain/privateAttachment';
-import { isExpiring, signedUrlExpiryMs } from '@renderer/domain/signedUrl';
-import type { Attachment } from '@shared/contracts/rest';
+import { uploadFraction, useUploadStore } from '@discordy/core/application/stores/uploadStore';
+import { displayFilename, formatBytes, gridLayout, gridTiles, isSpoiler, previewKind, previewLines, splitAttachments } from '@discordy/core/domain/media';
+import { privateRefOf } from '@discordy/core/domain/privateAttachment';
+import { isExpiring, signedUrlExpiryMs } from '@discordy/core/domain/signedUrl';
+import type { Attachment } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { MediaPlayer } from './MediaPlayer';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
-import { looksAnimated } from '@renderer/domain/stillFrame';
+import { looksAnimated } from '@discordy/core/domain/stillFrame';
 
 const STATE_LABEL: Record<TransferState, string> = {
   encrypting: 'Encrypting',
@@ -260,17 +260,19 @@ export function MessageAttachments({ attachments, channelId }: { attachments: At
   const split = splitAttachments(attachments);
   const media = inlineMedia ? split.media : [];
   const files = inlineMedia ? split.files : attachments;
-  const layout = media.length > 1 ? gridLayout(media.length) : null;
-  const shown = layout ? media.slice(0, layout.cells.length) : media;
+  const { shown: tiles, hidden } = gridTiles(media.length);
+  const layout = media.length > 1 ? gridLayout(tiles) : null;
+  const shown = media.slice(0, tiles);
   return (
     <div className="attachments">
       {media.length > 0 && (
-        <div className={`media-grid${layout ? ' is-multi' : ''}`} data-count={Math.min(media.length, 10)} style={layout ? { gridTemplateRows: `repeat(${layout.rows}, 140px)` } : undefined}>
+        <div className={`media-grid${layout ? ' is-multi' : ''}`} data-count={tiles} style={layout ? { gridTemplateRows: `repeat(${layout.rows}, 140px)` } : undefined}>
           {shown.map((a, i) => {
             const cell = layout?.cells[i];
             return (
               <div key={a.id} className="media-cell" style={cell ? { gridColumn: `${cell.colStart} / span ${cell.colSpan}`, gridRow: `${cell.rowStart} / span ${cell.rowSpan}` } : undefined}>
                 <AttachmentView attachment={a} channelId={channelId} tile={Boolean(layout)} siblings={media} />
+                {hidden > 0 && i === tiles - 1 && <span className="media-more" aria-hidden="true">+{hidden}</span>}
               </div>
             );
           })}

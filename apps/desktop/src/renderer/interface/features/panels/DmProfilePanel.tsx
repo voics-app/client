@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore } from '@renderer/application/stores/peopleStores';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import type { User } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import type { User } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
+import { FriendsSince } from '../members/FriendsSince';
+import { ProfileAvatar } from '../members/ProfileAvatar';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Misc';
@@ -21,11 +23,12 @@ export function DmProfilePanel({ channelId }: { channelId: string }) {
   return (
     <div className="panel-body dm-profile">
       <div className="dm-profile-head">
-        <Avatar id={u.id} name={displayName(u)} avatar={u.avatar} size={72} status={status} bot={u.bot} />
+        <ProfileAvatar user={u} size={72} status={status} />
         <h3>{displayName(u)}</h3>
         <p className="mono">{u.username}</p>
       </div>
       {u.bio && <section className="profile-section"><h4>About me</h4><p className="selectable">{u.bio}</p></section>}
+      <FriendsSince userId={u.id} />
       {profile.isLoading && <Skeleton height={48} />}
       {profile.data && (
         <>

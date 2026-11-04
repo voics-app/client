@@ -2,15 +2,15 @@ import { Copy, DownloadSimple, ShieldCheck, ShieldWarning } from '@phosphor-icon
 import QRCode from 'qrcode';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import {
   backupCodesFile,
   confirmationMatches,
   groupSecret,
   looksLikeSecondFactor,
   newPasswordProblem,
-} from '@renderer/domain/accountSecurity';
-import type { BackupCode, TotpEnrollment, User } from '@shared/contracts/rest';
+} from '@discordy/core/domain/accountSecurity';
+import type { BackupCode, TotpEnrollment, User } from '@discordy/core/contracts/rest';
 import { BRAND } from '@shared/brand';
 import { copyText, errorMessage, reportError } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';

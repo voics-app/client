@@ -1,11 +1,13 @@
-import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { attempt } from './actions';
+import { pinnedDmIds, setDmPinned } from './pinActions';
 import { getRuntime } from './runtime';
 
-/** Hides a DM from the list until a newer message arrives; leaves the conversation view if it was open. */
+/** Hides a DM from the list until a newer message arrives (a pinned DM is unpinned); leaves the conversation view if it was open. */
 export function closeDm(channelId: string): void {
+  if (pinnedDmIds().includes(channelId)) void setDmPinned(channelId, false);
   const channel = useGuildStore.getState().channels[channelId];
   useClosedDmStore.getState().close(channelId, channel?.last_message_id);
   const ui = useUiStore.getState();

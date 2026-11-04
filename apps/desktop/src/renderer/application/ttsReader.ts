@@ -1,7 +1,7 @@
-import type { Message } from '@shared/contracts/rest';
+import type { Message } from '@discordy/core/contracts/rest';
 import { speak } from '@renderer/infrastructure/tts';
-import { usePrefsStore } from './stores/prefsStore';
-import { useUiStore } from './stores/uiStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 
 /** Reads a text-to-speech message aloud when the person allows it and is looking at that channel. */
 export function readAloudIfWanted(message: Message, meId: string | undefined): boolean {

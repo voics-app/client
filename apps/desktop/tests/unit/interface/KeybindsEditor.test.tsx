@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_KEYBINDS } from '@renderer/domain/keybinds';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { DEFAULT_KEYBINDS } from '@discordy/core/domain/keybinds';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { KeybindsEditor } from '@renderer/interface/features/settings/user/KeybindsEditor';
 
 const keysOf = (id: string) => usePrefsStore.getState().keybinds.find((k) => k.id === id)?.keys;

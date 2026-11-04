@@ -1,11 +1,11 @@
 /** Auth lifecycle: boot from the OS-keychain vault, login/register, device registration, logout. */
-import type { AuthResponse } from '@shared/contracts/rest';
+import type { AuthResponse } from '@discordy/core/contracts/rest';
 import type { StoredSession } from '@shared/ipc';
-import type { ApiPort } from './ports/api';
-import { useGuildStore } from './stores/guildStore';
-import { useMessageStore } from './stores/messageStore';
-import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
-import { usePresenceStore, useReadStateStore, useRelationshipStore } from './stores/peopleStores';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useNotificationSettingsStore, useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from './stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
 import { BRAND } from '@shared/brand';

@@ -1,6 +1,6 @@
 /** Composition root: builds the HTTP/gateway clients, session manager and dispatch routing once per app start. */
 import { QueryClient } from '@tanstack/react-query';
-import { ALL_INTENTS, type VoiceServerUpdate } from '@shared/contracts/gateway';
+import { ALL_INTENTS, type VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import type { AppInfo } from '@shared/ipc';
 import { PrefsSync } from '@renderer/application/syncedPrefs';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
@@ -9,22 +9,22 @@ import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/a
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
 import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
-import type { IceServer } from '@renderer/domain/turn';
+import type { IceServer } from '@discordy/core/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
 import { HttpClient } from '@renderer/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
-import type { AuthResponse, ReadyPayload, VoiceState } from '@shared/contracts/rest';
+import type { AuthResponse, ReadyPayload, VoiceState } from '@discordy/core/contracts/rest';
 import { currentPresence } from '@renderer/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { registerIncoming } from '@renderer/application/dispatchRouter';
 import { ensureDm } from './dmActions';
 import { notifyIncoming, playFriendRequestSound } from './notifications';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { DEVICE_UNREGISTERED_REASON } from '@renderer/domain/deliveryMode';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { DEVICE_UNREGISTERED_REASON } from '@discordy/core/domain/deliveryMode';
 import { BRAND } from '@shared/brand';
 
 export interface Runtime {

@@ -1,9 +1,9 @@
 import { Command, X } from '@phosphor-icons/react';
 import { useMemo, type KeyboardEvent } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useInteractionStore } from '@renderer/application/stores/interactionStore';
-import { validateValues, type OptionValues, type SlashEntry } from '@renderer/domain/slashCommand';
-import { ChannelType, CommandOptionType as OptionType, type ApplicationCommandOption, type Channel } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
+import { validateValues, type OptionValues, type SlashEntry } from '@discordy/core/domain/slashCommand';
+import { ChannelType, CommandOptionType as OptionType, type ApplicationCommandOption, type Channel } from '@discordy/core/contracts/rest';
 import { displayName } from '../../shared/hooks/useNames';
 import { Button } from '../../shared/ui/Button';
 import { Input, Select, Switch } from '../../shared/ui/Form';

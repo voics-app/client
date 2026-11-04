@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ALL_PERMISSIONS } from '@shared/contracts/permissions';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
-import { DEFAULT_PREFS, usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUploadStore } from '@renderer/application/stores/uploadStore';
+import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 
 const editMessage = vi.fn(async () => ({}));
@@ -94,6 +94,22 @@ describe('attachments', () => {
     const { items, index } = useLightboxStore.getState();
     expect(items.map((i) => i.filename)).toEqual(['a.png', 'b.png', 'c.png']);
     expect(index).toBe(1);
+  });
+
+  it('shows at most four tiles with a +N on the last and opens the carousel from there', () => {
+    renderMessage(message({ attachments: ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => image(id)) as never }));
+    expect(document.querySelector('.media-grid')?.getAttribute('data-count')).toBe('4');
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(4);
+    expect(document.querySelector('.media-more')?.textContent).toBe('+2');
+    fireEvent.click(screen.getByRole('button', { name: 'Open d.png' }));
+    const { items, index } = useLightboxStore.getState();
+    expect(items).toHaveLength(6);
+    expect(index).toBe(3);
+  });
+
+  it('shows no +N when everything fits', () => {
+    renderMessage(message({ attachments: ['a', 'b', 'c', 'd'].map((id) => image(id)) as never }));
+    expect(document.querySelector('.media-more')).toBeNull();
   });
 
   it('keeps files out of the grid and shows a PDF card', () => {

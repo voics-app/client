@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatTimestamp, relativeTickMs, relativeTime, timestampTooltip } from '@renderer/domain/timestamp';
-import { hostOf, isTrustedLink } from '@renderer/domain/linkTrust';
-import { parseHighlightHtml } from '@renderer/domain/highlightHtml';
-import { searchShortcodes } from '@renderer/domain/emojiShortcodes';
-import { acceptFiles, charsRemaining, formatCountdown, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@renderer/domain/composerLimits';
+import { formatTimestamp, relativeTickMs, relativeTime, timestampTooltip } from '@discordy/core/domain/timestamp';
+import { hostOf, isTrustedLink } from '@discordy/core/domain/linkTrust';
+import { parseHighlightHtml } from '@discordy/core/domain/highlightHtml';
+import { searchShortcodes } from '@discordy/core/domain/emojiShortcodes';
+import { acceptFiles, charsRemaining, formatCountdown, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@discordy/core/domain/composerLimits';
 
 const UNIX = 1700000000; // 2023-11-14T22:13:20Z
 const UTC = 'UTC';

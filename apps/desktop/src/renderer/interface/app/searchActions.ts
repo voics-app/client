@@ -1,10 +1,10 @@
 /** Wires message search to the runtime: builds the search target from the open chat and runs it. */
 import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useSearchStore } from '@renderer/application/stores/searchStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSearchStore } from '@discordy/core/application/stores/searchStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType } from '@shared/contracts/rest';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { displayName } from '../shared/hooks/useNames';
 import { getRuntime } from './runtime';
 

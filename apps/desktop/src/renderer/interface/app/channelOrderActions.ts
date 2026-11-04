@@ -1,8 +1,8 @@
 /** Commands that reorder channels and categories: optimistic update, bulk PATCH, revert on failure (client#59). */
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { diffMoves, isListed, layoutOf, newParentOf, overwritesDiffer, stepCategory, stepChannel, type ChannelLayout, type ChannelMove } from '@renderer/domain/channelOrder';
-import type { Channel } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { diffMoves, isListed, layoutOf, newParentOf, overwritesDiffer, stepCategory, stepChannel, type ChannelLayout, type ChannelMove } from '@discordy/core/domain/channelOrder';
+import type { Channel } from '@discordy/core/contracts/rest';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';
 

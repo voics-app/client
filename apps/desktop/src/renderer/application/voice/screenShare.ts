@@ -5,7 +5,7 @@
  * `protected_content` so the UI can suggest Watch Together. We never bypass DRM.
  */
 import type { CaptureSelection, CaptureSource } from '@shared/ipc';
-import { presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
+import { presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { detectProtectedContent, type FrameSampler } from './blackFrame';
 import type { ScreenTrackOptions } from './ports';

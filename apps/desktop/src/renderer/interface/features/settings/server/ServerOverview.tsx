@@ -1,10 +1,10 @@
 import { Upload } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChannelType } from '@shared/contracts/rest';
-import { assetCandidates, type AssetKind } from '@renderer/domain/assets';
-import { AFK_TIMEOUTS, NOTIFICATION_LEVELS, SystemFlag, draftFromGuild, flagEnabled, overviewPatch, withFlag, type OverviewDraft } from '@renderer/domain/guildOverview';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { ChannelType } from '@discordy/core/contracts/rest';
+import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
+import { AFK_TIMEOUTS, NOTIFICATION_LEVELS, SystemFlag, draftFromGuild, flagEnabled, overviewPatch, withFlag, type OverviewDraft } from '@discordy/core/domain/guildOverview';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { attempt } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';
 import { getRuntime } from '../../../app/runtime';
@@ -153,6 +153,12 @@ export function ServerOverview({ guildId }: { guildId: string }) {
             </Select>
           )}
         </Field>
+      </Section>
+
+      <Section title="Safety">
+        <SettingRow title="Only administrators can prune members" description="When on, pruning inactive members needs the Administrator permission instead of Kick Members.">
+          <Switch label="Only administrators can prune members" checked={current.pruneAdminOnly} onChange={(on) => change({ pruneAdminOnly: on })} />
+        </SettingRow>
       </Section>
 
       <Section title="Default notification settings">

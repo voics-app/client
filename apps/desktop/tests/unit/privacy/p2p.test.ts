@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GatewayOp, type P2PSignal } from '@shared/contracts/gateway';
+import { GatewayOp, type P2PSignal } from '@discordy/core/contracts/gateway';
 import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { P2PService } from '@renderer/application/privacy/p2pService';
-import { fingerprintSigningPayload } from '@renderer/domain/p2pIdentity';
+import { fingerprintSigningPayload } from '@discordy/core/domain/p2pIdentity';
 import { utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { BOB, FakeGateway, FakePeerConnection, SDP, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores, tick } from './fakes';
 
 function setup() {

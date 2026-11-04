@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
-import type { PresenceStatus } from '@shared/contracts/rest';
-import { assetCandidates, type AssetKind } from '@renderer/domain/assets';
+import type { PresenceStatus } from '@discordy/core/contracts/rest';
+import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
 import { useConnectionStore } from '../../app/connectionStore';
 import { AssetImage } from './AssetImage';
 

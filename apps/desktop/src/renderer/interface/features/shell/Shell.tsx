@@ -1,4 +1,4 @@
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelSidebar } from '../channels/ChannelSidebar';
 import { UserPanel } from '../channels/UserPanel';
 import { HomeSidebar } from '../home/HomeSidebar';

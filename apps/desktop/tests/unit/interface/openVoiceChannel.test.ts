@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { openVoiceChannel, registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
 
 const voiceChannel = { id: 'vc1', guild_id: 'g1', type: ChannelType.GUILD_VOICE, name: 'Lounge' } as unknown as Channel;

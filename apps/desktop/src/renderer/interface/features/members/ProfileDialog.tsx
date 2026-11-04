@@ -1,12 +1,12 @@
 import { Chat, Copy, Phone, Fingerprint, UserMinus, UserPlus, Prohibit } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { RelationshipType, type User } from '@shared/contracts/rest';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
@@ -15,8 +15,10 @@ import { displayName } from '../../shared/hooks/useNames';
 import { StatusLine } from './StatusLine';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
+import { FriendsSince } from './FriendsSince';
+import { ProfileAvatar } from './ProfileAvatar';
 import { RolePills } from './RolePills';
-import { useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { saveUserNote } from '@renderer/application/notificationSync';
 import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
@@ -109,7 +111,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
         <div className="profile">
           <div className="profile-banner" style={user.accent_color ? { background: `#${user.accent_color.toString(16).padStart(6, '0')}` } : undefined} />
           <div className="profile-head">
-            <Avatar id={user.id} name={displayName(user)} avatar={user.avatar} size={84} status={status} bot={user.bot} />
+            <ProfileAvatar user={user} size={84} status={status} />
             <div className="profile-names">
               <h2>{displayName(user, member?.nick)}</h2>
               <p className="mono">{user.username}</p>
@@ -147,6 +149,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
               </section>
             )}
             {!isMe && !user.bot && <Mutuals userId={userId} />}
+            {!isMe && <FriendsSince userId={userId} />}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}
             {!isMe && <SafetyNumber userId={userId} />}
             {developerMode && <button type="button" className="link-btn" onClick={() => void copyText(user.id, 'User ID copied')}><Copy size={13} /> Copy user ID</button>}

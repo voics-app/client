@@ -1,11 +1,11 @@
 import { Check, Globe, LockKey, Plugs } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { DELIVERY_MODES, MODE_COPY, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
-import { Permission } from '@shared/contracts/permissions';
-import type { Channel, DeliveryMode } from '@shared/contracts/rest';
+import { DELIVERY_MODES, MODE_COPY, validateModeForChannel, validateModeForDevice } from '@discordy/core/domain/deliveryMode';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';

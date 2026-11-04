@@ -1,11 +1,13 @@
+import { deviceStorage } from '@discordy/core/application/ports/deviceStorage';
+
 /**
- * Opt-in diagnostics for the private delivery modes: `localStorage['discordy.debug.privacy'] = '1'`
+ * Opt-in diagnostics for the private delivery modes: the device-storage key `discordy.debug.privacy` set to `'1'` (localStorage on desktop)
  * logs each step of sending and receiving (never message content or key material).
  */
 export function privacyDebug(step: string, detail: Record<string, unknown> = {}): void {
   let enabled = false;
   try {
-    enabled = globalThis.localStorage?.getItem('discordy.debug.privacy') === '1';
+    enabled = deviceStorage.getItem('discordy.debug.privacy') === '1';
   } catch {
     enabled = false;
   }

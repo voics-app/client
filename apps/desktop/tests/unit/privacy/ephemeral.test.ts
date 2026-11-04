@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GatewayOp, type E2EEEnvelope } from '@shared/contracts/gateway';
+import { GatewayOp, type E2EEEnvelope } from '@discordy/core/contracts/gateway';
 import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { EphemeralService } from '@renderer/application/privacy/ephemeralService';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { PrivateDeliveryError, utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { BOB, FakeGateway, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores } from './fakes';
 
 const SECRET = 'meet at the old bridge at nine';

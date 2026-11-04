@@ -2,11 +2,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadNavStore } from '@renderer/application/stores/readNavStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { Permission } from '@shared/contracts/permissions';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { Permission } from '@discordy/core/contracts/permissions';
 import { TopicPopout } from '@renderer/interface/features/chat/ChannelHeader';
 import { PinsPanel } from '@renderer/interface/features/panels/PinsPanel';
 

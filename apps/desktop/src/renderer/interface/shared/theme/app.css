@@ -106,6 +106,8 @@
 .dm-row.is-active { background: var(--accent-soft); color: var(--fg); }
 .dm-row.is-unread { color: var(--fg); font-weight: 650; }
 .dm-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+/* Pin marker of pinned DMs and the Pinned section of a server (client#222, client#223). */
+.dm-pin, .channel-pin { flex: none; color: var(--fg-subtle); }
 .dm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-status, .profile-status { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); font-weight: 450; color: var(--fg-subtle); }
 .profile-status { font-size: var(--fs-small); color: var(--fg-muted); }
@@ -375,6 +377,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .stage-popped { flex: 1; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--fg-muted); }
 .voice-stage.is-popout { height: 100%; }
 .tile-live { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; background: var(--danger); color: white; }
+.tile.is-zoomed { cursor: grab; } .tile.is-zoomed .tile-video { will-change: transform; } .tile-zoom { position: absolute; left: 10px; bottom: 36px; padding: 2px 8px; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; background: oklch(0 0 0 / 0.55); color: white; cursor: pointer; } .tile-zoom:hover { background: oklch(0 0 0 / 0.75); }
 .tile-viewers { position: absolute; left: 10px; top: 36px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: oklch(0 0 0 / 0.55); color: white; }
 .tile-tools { position: absolute; right: 8px; top: 8px; display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: oklch(0 0 0 / 0.55); color: white; opacity: 0; transition: opacity var(--dur-fast); } .tile:hover .tile-tools, .tile:focus-within .tile-tools { opacity: 1; } .tile-tools .icon-btn { color: white; }
 .volume-pop { position: fixed; z-index: var(--z-toast); padding: 12px 16px; border-radius: 14px; width: 280px; } .volume-pop p { font-weight: 620; margin-bottom: 6px; }
@@ -390,7 +393,7 @@ button.mode-badge:active { transform: scale(0.96); }
 .picker-options { display: grid; gap: 16px; } .picker-audio { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .drm-note { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-radius: 10px; font-size: var(--fs-meta); background: var(--bg-1); color: var(--fg-muted); } .drm-note svg { flex: none; margin-top: 2px; color: var(--warning); }
 .picker-problem { display: flex; gap: 12px; padding: 14px; border-radius: 12px; background: color-mix(in oklch, var(--danger) 12%, transparent); color: var(--danger); } .picker-problem p { color: var(--fg-muted); font-size: var(--fs-small); margin: 4px 0 8px; }
-.profile { display: flex; flex-direction: column; } .profile-banner { height: 96px; background: linear-gradient(120deg, var(--accent), oklch(0.6 0.16 calc(var(--accent-h) + 60))); } .profile-head { display: flex; align-items: flex-end; gap: 16px; padding: 0 22px; margin-top: -42px; --ring-bg: var(--bg-2); } .profile-head .avatar { box-shadow: 0 0 0 6px var(--bg-2); } .profile-names { padding-bottom: 6px; } .profile-names h2 { font-size: var(--fs-section); } .profile-names p { color: var(--fg-muted); font-size: var(--fs-meta); }
+.profile { display: flex; flex-direction: column; } .profile-banner { height: 96px; background: linear-gradient(120deg, var(--accent), oklch(0.6 0.16 calc(var(--accent-h) + 60))); } .profile-head { display: flex; align-items: flex-end; gap: 16px; padding: 0 22px; margin-top: -42px; --ring-bg: var(--bg-2); } .profile-head .avatar { box-shadow: 0 0 0 6px var(--bg-2); } .profile-avatar-button { display: inline-flex; padding: 0; border: 0; background: none; border-radius: 50%; cursor: zoom-in; } .profile-avatar-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; } .profile-names { padding-bottom: 6px; } .profile-names h2 { font-size: var(--fs-section); } .profile-names p { color: var(--fg-muted); font-size: var(--fs-meta); }
 .profile-body { padding: 16px 22px 22px; display: flex; flex-direction: column; gap: 14px; } .profile-actions { display: flex; gap: 8px; flex-wrap: wrap; } .profile-section h4 { display: flex; align-items: center; gap: 6px; font-size: var(--fs-caption); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-subtle); margin-bottom: 4px; }
 .role-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; } .role-chips li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 8px; background: var(--bg-3); font-size: var(--fs-meta); } .role-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
 .safety-number { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px; border-radius: 10px; background: var(--bg-0); font-size: var(--fs-small); letter-spacing: 0.05em; }
@@ -547,7 +550,7 @@ button.mode-badge:active { transform: scale(0.96); }
 /* Media grid, tiles, spoilers, players, previews, lightbox, embeds (client#54, messages#12) */
 .media-grid { display: block; max-width: min(440px, 100%); }
 .media-grid.is-multi { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: min(440px, 100%); border-radius: 12px; overflow: hidden; }
-.media-cell { min-width: 0; min-height: 0; }
+.media-cell { position: relative; min-width: 0; min-height: 0; } .media-more { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.55); color: #fff; font-size: var(--fs-section); font-weight: 600; pointer-events: none; }
 .media-tile { position: relative; display: block; padding: 0; border: 0; background: var(--bg-2); border-radius: 12px; overflow: hidden; cursor: zoom-in; box-shadow: 0 0 0 1px var(--hairline); max-width: min(440px, 100%); max-height: 320px; }
 .media-tile.is-cell { width: 100%; height: 100%; border-radius: 0; box-shadow: none; max-width: none; max-height: none; }
 .media-tile-media { display: block; width: 100%; height: 100%; object-fit: cover; }

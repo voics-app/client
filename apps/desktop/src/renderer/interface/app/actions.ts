@@ -1,14 +1,14 @@
 /** UI-facing commands: wrap API calls with consistent error toasts. */
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { useReadNavStore } from '@renderer/application/stores/readNavStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { forwardBody } from '@renderer/domain/forward';
-import { idBefore } from '@renderer/domain/unread';
-import { flatten } from '@renderer/domain/railLayout';
-import { ChannelType, type GuildFolder, type Message } from '@shared/contracts/rest';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { forwardBody } from '@discordy/core/domain/forward';
+import { idBefore } from '@discordy/core/domain/unread';
+import { flatten } from '@discordy/core/domain/railLayout';
+import { ChannelType, type GuildFolder, type Message } from '@discordy/core/contracts/rest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';

@@ -2,7 +2,7 @@ import { ArrowRight, GlobeHemisphereWest, LockKey, Plugs, ShieldCheck } from '@p
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, type FormEvent } from 'react';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { authErrorDisplay } from '@renderer/domain/authErrors';
+import { authErrorDisplay } from '@discordy/core/domain/authErrors';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { errorMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

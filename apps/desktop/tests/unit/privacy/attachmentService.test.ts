@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AttachmentService } from '@renderer/application/privacy/attachmentService';
 import { AttachmentError } from '@renderer/application/privacy/attachmentCipher';
 import { useTransferStore } from '@renderer/application/stores/transferStore';
-import { EPHEMERAL_MAX_FILE_BYTES, privateRefOf } from '@renderer/domain/privateAttachment';
+import { EPHEMERAL_MAX_FILE_BYTES, privateRefOf } from '@discordy/core/domain/privateAttachment';
 
 const file = (name: string, text: string, type = 'text/plain') => new File([text], name, { type });
 

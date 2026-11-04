@@ -1,15 +1,15 @@
 import { callUser } from '../../app/callActions';
 import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
-import { useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
+import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { saveUserNote } from '@renderer/application/notificationSync';
-import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
-import { useMentionStore } from '@renderer/application/stores/mentionStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import {
   assignableRoles,
@@ -19,13 +19,13 @@ import {
   timeoutUntil,
   TIMEOUT_PRESETS,
   type MemberCapabilities,
-} from '@renderer/domain/memberModeration';
+} from '@discordy/core/domain/memberModeration';
 import {
   friendAction,
   userMenuGroups,
   type UserMenuItemId,
-} from '@renderer/domain/userMenuModel';
-import { RelationshipType, type GuildMember, type User } from '@shared/contracts/rest';
+} from '@discordy/core/domain/userMenuModel';
+import { RelationshipType, type GuildMember, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
 import { confirmPurgeRecentMessages } from '../../app/moderationActions';
 import { openChannel } from '../../app/navigation';
@@ -35,8 +35,8 @@ import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
 import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
-import { appsSubmenu } from '@renderer/domain/contextCommands';
-import type { MenuItemModel } from '@renderer/domain/menuModel';
+import { appsSubmenu } from '@discordy/core/domain/contextCommands';
+import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { RolePills, setMemberRole } from './RolePills';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';

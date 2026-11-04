@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { ALL_PERMISSIONS } from '@shared/contracts/permissions';
-import { computeBasePermissions, computeChannelPermissions, hasPermission } from '@renderer/domain/permissions';
+import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
+import { computeBasePermissions, computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
 
 /** Guild-level permissions of the current user (all bits in DMs). */
 export function useGuildPermissions(guildId: string | null | undefined): bigint {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useUnsavedStore } from '@renderer/application/stores/unsavedStore';
+import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { useUnsavedChanges } from '@renderer/interface/shared/hooks/useUnsavedChanges';
 import { UnsavedBar } from '@renderer/interface/shared/ui/UnsavedBar';
 

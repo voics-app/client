@@ -5,7 +5,7 @@ import {
   groupSecret,
   looksLikeSecondFactor,
   newPasswordProblem,
-} from '@renderer/domain/accountSecurity';
+} from '@discordy/core/domain/accountSecurity';
 import { SessionManager, type SessionRuntime, type SessionVault } from '@renderer/application/sessionManager';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';

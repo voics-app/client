@@ -1,12 +1,12 @@
 /** Mute and notification-level commands against the synced settings (optimistic, rolled back on failure). */
-import type { ApiPort } from './ports/api';
+import type { ApiPort } from '@discordy/core/application/ports/api';
 import { saveGuildNotificationSettings } from './notificationSync';
 import {
   muteConfigFor,
   withLevel,
   withMute,
-} from '@renderer/domain/notificationSettings';
-import type { GuildNotificationSettings, GuildNotificationSettingsPatch, NotificationLevel } from '@shared/contracts/rest';
+} from '@discordy/core/domain/notificationSettings';
+import type { GuildNotificationSettings, GuildNotificationSettingsPatch, NotificationLevel } from '@discordy/core/contracts/rest';
 
 type Api = Pick<ApiPort, 'updateGuildNotificationSettings' | 'putUserNote'>;
 

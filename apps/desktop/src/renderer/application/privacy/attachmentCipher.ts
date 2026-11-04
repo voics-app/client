@@ -1,5 +1,5 @@
 /** Per-file AES-256-GCM with a random key and nonce; the plaintext SHA-256 is verified after decryption. */
-import { FILE_HASH_BYTES, FILE_KEY_BYTES, FILE_NONCE_BYTES, GCM_TAG_BYTES } from '@renderer/domain/privateAttachment';
+import { FILE_HASH_BYTES, FILE_KEY_BYTES, FILE_NONCE_BYTES, GCM_TAG_BYTES } from '@discordy/core/domain/privateAttachment';
 
 export type AttachmentFailure =
   | 'too_large'

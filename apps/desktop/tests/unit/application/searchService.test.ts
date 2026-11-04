@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Channel, Message, MessageSearchResponse } from '@shared/contracts/rest';
+import type { Channel, Message, MessageSearchResponse } from '@discordy/core/contracts/rest';
 import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
-import { useSearchStore } from '@renderer/application/stores/searchStore';
+import { useSearchStore } from '@discordy/core/application/stores/searchStore';
 
 function msg(id: string, content: string, hit = false): Message {
   return {

@@ -1,8 +1,8 @@
 /** Moderator actions that span several messages or members. Each reports failure with a toast. */
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { bulkDeletePlan, purgeableMessageIds } from '@renderer/domain/moderationTools';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { bulkDeletePlan, purgeableMessageIds } from '@discordy/core/domain/moderationTools';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';
 

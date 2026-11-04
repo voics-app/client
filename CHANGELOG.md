@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Profiles: click an avatar to see it full size (the image viewer, with zoom), a friend's profile shows Friends since, and About me can be up to 300 characters (was 190; the api limit follows in a separate change).
+- Screen shares zoom and pan: scroll or pinch to zoom toward the pointer (up to 8x), drag to pan, double-click or the zoom badge to reset.
+- Messages with more than four images show a compact grid of four with a "+N" on the last tile, and swiping left or right in the image viewer turns to the next or previous image.
+- Internal: fixed a flaky P2P attachments test; it stopped waiting for the link after a fixed number of ticks while the files were still being encrypted. No change in behaviour.
+- Moderation: Duplicate role (role list context menu and role settings), Settings, Overview, Safety has Only administrators can prune members, Members has Prune members (pick 1 to 30 days, see how many would be removed, then confirm), and Mod View opens from a ban or an audit log entry to show a user who is no longer in the server with their ban reason and moderation history. Needs api#112 (prune) and the api#101 changes.
+- Group DMs can have up to 25 members (was 10); the new-group dialog follows. Needs the api change that raises the cap (api#100); an api configured with a lower `GROUP_DM_MAX_PARTICIPANTS` will refuse the extra members with an error.
+- Internal: the domain and application layers no longer touch `window`, `document` or `localStorage`; persistence goes through a storage port, a first step towards sharing the core with the mobile app. No change in behaviour.
+- Internal: the mobile app skeleton depends on `@discordy/core` (the sign-in screen shows its delivery-mode copy with the installed brand); Metro and Jest resolve the workspace package.
+- Internal: the application ports and 20 zustand stores (everything except the voice, session, update and transfer stores) moved into `@discordy/core` (`src/application`), which now depends on zustand. No change in behaviour.
+- Internal: the product identity the domain rules read (name, deep-link scheme, hosts) is now an installed `BrandConfig` (`@discordy/core/domain/brandConfig`) instead of an import of the desktop brand module, so the six brand-aware rules (sessions, channel links, delivery modes, invites, link trust, templates) moved into `@discordy/core`. No change in behaviour.
+- Internal: the domain rules and protocol contracts moved into the new `packages/core` workspace package (`@discordy/core`), which the desktop imports; the mobile app will share it.
 - The composer has a timestamp picker: type @time or press the clock button, choose a date, time and format (short or long time, short or long date, date and time, relative), and it inserts a timestamp that every reader sees in their own time zone, with the full date on hover.
 - Settings, Voice and Video has Confirm before calling (on by default, this device only): starting a voice or video call that nobody is in yet asks "Start a voice call with X?" before it rings.
 - Messages render GitHub-style pipe tables: a header row, per-column alignment (`:--`, `:-:`, `--:`) and horizontal scrolling when wide; limited to 12 columns and 50 rows.

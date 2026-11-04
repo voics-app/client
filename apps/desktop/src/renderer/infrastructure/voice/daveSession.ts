@@ -18,7 +18,7 @@
  *        ping-pong an ack), so epochs are activated as soon as their key is installed.
  *   31 MLS_INVALID_COMMIT<- { transition_id }
  */
-import { VoiceOp } from '@shared/contracts/voice';
+import { VoiceOp } from '@discordy/core/contracts/voice';
 import type { CryptoBridge } from '@shared/ipc';
 import type { FrameCryptorPort } from './frameCryptor';
 

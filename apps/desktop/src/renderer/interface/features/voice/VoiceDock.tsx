@@ -1,6 +1,6 @@
 import { LockKey, Monitor, MonitorArrowUp, PhoneDisconnect, VideoCamera, VideoCameraSlash, WifiHigh } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { stopShare, toggleCamera, leaveVoice } from '../../app/voiceActions';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -8,7 +8,7 @@ import { Tooltip } from '../../shared/ui/Tooltip';
 import { Spinner } from '../../shared/ui/Spinner';
 
 import { useState } from 'react';
-import { connectionRows, qualityTone } from '@renderer/domain/voicePanel';
+import { connectionRows, qualityTone } from '@discordy/core/domain/voicePanel';
 import { Menu } from '../../shared/ui/Menu';
 import { DeviceArrow, NoiseSuppressionButton, useKeyHint } from './DeviceMenus';
 

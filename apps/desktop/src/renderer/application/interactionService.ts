@@ -5,8 +5,8 @@ import {
   type Channel,
   type Message,
   type MessageComponent,
-} from '@shared/contracts/rest';
-import { buildContextCommandData, extractContextCommands, type ContextCommand } from '@renderer/domain/contextCommands';
+} from '@discordy/core/contracts/rest';
+import { buildContextCommandData, extractContextCommands, type ContextCommand } from '@discordy/core/domain/contextCommands';
 import {
   buildCommandData,
   buildComponentData,
@@ -15,10 +15,10 @@ import {
   validateValues,
   type OptionValues,
   type SlashEntry,
-} from '@renderer/domain/slashCommand';
-import type { ApiPort } from './ports/api';
-import { useGuildStore } from './stores/guildStore';
-import { DM_SCOPE, useInteractionStore } from './stores/interactionStore';
+} from '@discordy/core/domain/slashCommand';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 
 export interface CandidateApplication {
   id: string;

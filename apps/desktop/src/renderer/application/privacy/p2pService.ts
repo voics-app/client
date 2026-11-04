@@ -5,16 +5,16 @@
  * relaying gateway cannot splice itself into the session. Nothing is queued anywhere:
  * if the peer is offline the send fails.
  */
-import type { Channel, User } from '@shared/contracts/rest';
-import { GatewayOp, type P2PSignal, type P2PSignalFailed, type P2PSignalKind } from '@shared/contracts/gateway';
+import type { Channel, User } from '@discordy/core/contracts/rest';
+import { GatewayOp, type P2PSignal, type P2PSignalFailed, type P2PSignalKind } from '@discordy/core/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
-import { extractDtlsFingerprint, fingerprintSigningPayload, safetyNumberGroups } from '@renderer/domain/p2pIdentity';
-import type { GatewayPort } from '../ports/gateway';
-import { useGuildStore } from '../stores/guildStore';
-import { useMessageStore, type ChatMessage } from '../stores/messageStore';
-import { usePrivacyStore } from '../stores/privacyStore';
+import { extractDtlsFingerprint, fingerprintSigningPayload, safetyNumberGroups } from '@discordy/core/domain/p2pIdentity';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { useSessionStore } from '../stores/sessionStore';
-import { GCM_TAG_BYTES, type PrivateFileRef } from '@renderer/domain/privateAttachment';
+import { GCM_TAG_BYTES, type PrivateFileRef } from '@discordy/core/domain/privateAttachment';
 import { useTransferStore } from '../stores/transferStore';
 import { AttachmentError, type AttachmentFailure } from './attachmentCipher';
 import type { AttachmentService, OutgoingP2PFile } from './attachmentService';

@@ -1,8 +1,8 @@
 import { ChatsCircle, Plus } from '@phosphor-icons/react';
 import { useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';

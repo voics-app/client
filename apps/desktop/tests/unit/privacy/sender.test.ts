@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
-import { GatewayOp } from '@shared/contracts/gateway';
-import type { Channel, Message } from '@shared/contracts/rest';
+import { GatewayOp } from '@discordy/core/contracts/gateway';
+import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { MessageSender } from '@renderer/application/privacy/messageSender';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { FakeGateway, FakePeerConnection, SELF, asApi, bobUser, dm, fakeApi, fakeCrypto, resetStores, selfUser } from './fakes';
 

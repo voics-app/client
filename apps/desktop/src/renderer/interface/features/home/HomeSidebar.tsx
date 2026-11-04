@@ -1,17 +1,20 @@
-import { Plus, UsersThree, LockKey, Plugs } from '@phosphor-icons/react';
+import { Plus, UsersThree, LockKey, Plugs, PushPin } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
-import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { buildDmMenu, visibleDms } from '@renderer/domain/dmModel';
-import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@renderer/domain/notificationSettings';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@shared/contracts/rest';
-import { isUnread } from '@renderer/domain/unread';
+import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { buildDmMenu, visibleDms } from '@discordy/core/domain/dmModel';
+import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
+import { isUnread } from '@discordy/core/domain/unread';
+import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { isPinFull, MAX_PINNED_DMS, orderPinnedFirst } from '@discordy/core/domain/pins';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';
 import { closeDm, leaveGroupDm } from '../../app/dmActions';
+import { setDmPinned } from '../../app/pinActions';
 import { openChannel } from '../../app/navigation';
 import { displayName } from '../../shared/hooks/useNames';
 import { StatusLine } from '../members/StatusLine';
@@ -23,16 +26,18 @@ import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 
 /** One DM row with its context menu: mark as read, profile, group settings, mute, close, leave. */
-function DmRow({ channel: c, name, unread, mentions, active, status, activities }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[] }) {
+function DmRow({ channel: c, name, unread, mentions, active, status, activities, pinned, pinFull }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[]; pinned: boolean; pinFull: boolean }) {
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
   const muted = useNotificationSettingsStore((s) => isChannelMuted(s.byScope[DM_SCOPE], c.id, Date.now()));
   const group = c.type === ChannelType.GROUP_DM;
   const peer = group ? undefined : (c.recipients ?? [])[0];
-  const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted, hasPeer: Boolean(peer) });
+  const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted, hasPeer: Boolean(peer), pinned, pinFull });
   const entries = toMenuEntries(model, (it) => {
     switch (it.id) {
       case 'markRead': return markChannelRead(c.id);
+      case 'pin': return void setDmPinned(c.id, true);
+      case 'unpin': return void setDmPinned(c.id, false);
       case 'profile': return peer ? openDialog({ kind: 'profile', userId: peer.id, guildId: null }) : undefined;
       case 'settings': return openDialog({ kind: 'groupDm', channelId: c.id });
       case 'unmute': return void muteChannel(null, c.id, undefined);
@@ -50,6 +55,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities 
           <span className="dm-name">{name}</span>
           <StatusLine className="dm-status" activities={activities} max={60} />
         </span>
+        {pinned && <PushPin size={13} weight="fill" className="dm-pin" aria-label="Pinned" />}
         {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
         {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
         <Count value={mentions} tone="danger" />
@@ -68,7 +74,12 @@ export function HomeSidebar() {
   const openDialog = useUiStore((s) => s.openDialog);
   const pending = useRelationshipStore((s) => Object.values(s.byUser).filter((r) => r.type === RelationshipType.INCOMING).length);
   const closed = useClosedDmStore((s) => s.closed);
-  const dms = useMemo(() => visibleDms(channels, closed), [channels, closed]);
+  const pins = useSessionStore((s) => s.settings.pinned_dm_channel_ids);
+  const pinIds = useMemo(() => pins ?? [], [pins]);
+  const dms = useMemo(() => {
+    const { pinned, rest } = orderPinnedFirst(visibleDms(channels, closed), pinIds);
+    return [...pinned, ...rest];
+  }, [channels, closed, pinIds]);
   const scrollRef = useRef<HTMLDivElement>(null);
   useRovingFocus(scrollRef, { selector: '.nav-row, .dm-row' });
   const friendsActive = view.kind === 'home' && !view.channelId;
@@ -94,7 +105,7 @@ export function HomeSidebar() {
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
             const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
-            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} status={status} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
+            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>

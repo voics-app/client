@@ -1,6 +1,6 @@
 /** Registers the keybinds marked Global with the main process so they fire while the app is unfocused. */
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { globalSpecs, type KeybindAction } from '@renderer/domain/keybinds';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { globalSpecs, type KeybindAction } from '@discordy/core/domain/keybinds';
 import { bridge } from './bridge';
 
 let active = new Set<string>();

@@ -1,17 +1,17 @@
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@renderer/domain/notificationPolicy';
-import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@renderer/domain/notificationSettings';
-import { summarizeActivity } from '@renderer/domain/unread';
-import { toPlainText, parseMarkdown } from '@renderer/domain/markdown';
-import { shouldPlaySound } from '@renderer/domain/sounds';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@discordy/core/domain/notificationPolicy';
+import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@discordy/core/domain/notificationSettings';
+import { summarizeActivity } from '@discordy/core/domain/unread';
+import { toPlainText, parseMarkdown } from '@discordy/core/domain/markdown';
+import { shouldPlaySound } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
-import { ChannelType } from '@shared/contracts/rest';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { bridge } from './bridge';
 
 function activeChannelId(): string | null {

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from '@phosphor-icons/react';
-import { trapTarget } from '@renderer/domain/rovingFocus';
+import { trapTarget } from '@discordy/core/domain/rovingFocus';
 import { gentle } from './motion';
 import { IconButton } from './IconButton';
 

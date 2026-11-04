@@ -1,12 +1,13 @@
 import { Trash, Upload } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { inviteWebUrl } from '@renderer/domain/inviteLinks';
-import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, filterBans, filterMembers, isTimedOut, type MemberFilter, type MemberSort } from '@renderer/domain/moderationTools';
-import { timestampOf } from '@renderer/domain/snowflake';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, canPruneMembers, filterBans, filterMembers, isMemberAuditEntry, isTimedOut, type MemberFilter, type MemberSort } from '@discordy/core/domain/moderationTools';
+import { timestampOf } from '@discordy/core/domain/snowflake';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useGuildPermissions } from '../../../shared/hooks/usePermissions';
 import { attempt, copyText } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';
 import { getRuntime } from '../../../app/runtime';
@@ -17,6 +18,7 @@ import { Input, Select } from '../../../shared/ui/Form';
 import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
 import { readAsDataUrl } from '../imageUpload';
+import { AUDIT_ACTIONS } from './auditActions';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -75,6 +77,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
   const [filter, setFilter] = useState<MemberFilter>(DEFAULT_MEMBER_FILTER);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const openDialog = useUiStore((s) => s.openDialog);
+  const perms = useGuildPermissions(guildId);
   const all = useMemo(() => Object.values(members ?? {}), [members]);
   const list = useMemo(() => filterMembers(all, filter, (m) => displayName(m.user, m.nick)), [all, filter]);
   if (!guild) return null;
@@ -106,6 +109,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
   });
   return (
     <Page title="Members" sub={`${list.length} of ${all.length} members`}>
+      {canPruneMembers(perms, guild.prune_admin_only ?? false) && <div className="row"><Button size="sm" onClick={() => openDialog({ kind: 'prune', guildId })}>Prune members</Button></div>}
       <div className="member-filters row">
         <Input aria-label="Search members" placeholder="Search members" value={filter.query} onChange={(e) => patch({ query: e.target.value })} />
         <Select aria-label="Filter by role" value={filter.roleId} onChange={(e) => patch({ roleId: e.target.value })}>
@@ -183,6 +187,7 @@ export function ServerBans({ guildId }: { guildId: string }) {
             <li key={b.user.id}>
               <Avatar id={b.user.id} name={displayName(b.user)} avatar={b.user.avatar} size={34} />
               <div className="manage-copy"><strong>{displayName(b.user)}</strong><span>{b.reason ?? 'No reason given'}</span></div>
+              <Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openDialog({ kind: 'modView', guildId, userId: b.user.id })}>Mod View</Button>
               <Button size="sm" onClick={() => void attempt(async () => { await getRuntime().api.unban(guildId, b.user.id); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'bans'] }); }, 'Could not unban')}>Unban</Button>
             </li>
           ))}
@@ -191,12 +196,6 @@ export function ServerBans({ guildId }: { guildId: string }) {
     </Page>
   );
 }
-
-const AUDIT_ACTIONS: Record<number, string> = {
-  1: 'updated the server', 10: 'created a channel', 11: 'updated a channel', 12: 'deleted a channel', 13: 'created a permission overwrite', 14: 'updated a permission overwrite', 15: 'deleted a permission overwrite',
-  20: 'kicked a member', 22: 'banned a member', 23: 'unbanned a member', 24: 'updated a member', 25: 'updated a member’s roles', 30: 'created a role', 31: 'updated a role', 32: 'deleted a role',
-  40: 'created an invite', 42: 'deleted an invite', 60: 'created an emoji', 61: 'updated an emoji', 62: 'deleted an emoji', 72: 'deleted a message', 73: 'bulk-deleted messages', 74: 'pinned a message', 75: 'unpinned a message',
-};
 
 export function ServerAudit({ guildId }: { guildId: string }) {
   const [actionType, setActionType] = useState('');
@@ -233,6 +232,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
               <li key={e.id}>
                 <Avatar id={actor?.id} name={actor ? displayName(actor) : '?'} avatar={actor?.avatar} size={30} />
                 <div className="manage-copy"><strong>{actor ? displayName(actor) : 'Unknown'} {AUDIT_ACTIONS[e.action_type] ?? `performed action ${e.action_type}`}</strong>{e.reason && <span>Reason: {e.reason}</span>}</div>
+                {isMemberAuditEntry(e) && <Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openDialog({ kind: 'modView', guildId, userId: e.target_id as string })}>Mod View</Button>}
                 <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString()}</time>
               </li>
             );

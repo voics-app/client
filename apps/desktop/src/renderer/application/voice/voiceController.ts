@@ -4,17 +4,17 @@
  * changes. The dispatch router forwards VOICE_SERVER_UPDATE to
  * `onVoiceServerUpdate`.
  */
-import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '@shared/contracts/gateway';
-import type { VoiceState } from '@shared/contracts/rest';
-import { SpeakingFlag, type MediaSinkWants } from '@shared/contracts/voice';
-import { screenSinkWants } from '@renderer/domain/sinkWants';
-import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@renderer/domain/videoPresets';
-import { usePrefsStore, type PrefsData } from '@renderer/application/stores/prefsStore';
-import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
+import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '@discordy/core/contracts/gateway';
+import type { VoiceState } from '@discordy/core/contracts/rest';
+import { SpeakingFlag, type MediaSinkWants } from '@discordy/core/contracts/voice';
+import { screenSinkWants } from '@discordy/core/domain/sinkWants';
+import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
+import { usePrefsStore, type PrefsData } from '@discordy/core/application/stores/prefsStore';
+import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import type { GatewayPort } from '@renderer/application/ports/gateway';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import type { MicPort, MixerPort, ScreenTrackOptions, VoiceSessionPort } from './ports';
 import { ScreenShare, type ScreenShareDeps, type ScreenShareHost, type StartScreenShare, type ScreenShareOutcome } from './screenShare';
 

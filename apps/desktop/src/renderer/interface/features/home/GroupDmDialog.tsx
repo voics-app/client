@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { MAX_GROUP_DM_MEMBERS } from '@renderer/domain/dmModel';
-import { RelationshipType, type User } from '@shared/contracts/rest';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { MAX_GROUP_DM_MEMBERS } from '@discordy/core/domain/dmModel';
+import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { leaveGroupDm } from '../../app/dmActions';
 import { getRuntime } from '../../app/runtime';

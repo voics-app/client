@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { User, UserSettings } from '@shared/contracts/rest';
+import type { User, UserSettings } from '@discordy/core/contracts/rest';
 import type { AppInfo } from '@shared/ipc';
-import type { GatewayState } from '../ports/gateway';
+import type { GatewayState } from '@discordy/core/application/ports/gateway';
 
 export type SessionStatus = 'booting' | 'signedOut' | 'connecting' | 'ready';
 

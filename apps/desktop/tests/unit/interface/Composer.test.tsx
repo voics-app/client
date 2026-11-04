@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
-import { Permission } from '@shared/contracts/permissions';
-import type { Channel, Message, User } from '@shared/contracts/rest';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@discordy/core/application/stores/composerStores';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { Channel, Message, User } from '@discordy/core/contracts/rest';
 
 const send = vi.fn(async () => null);
 vi.mock('@renderer/interface/app/runtime', () => ({

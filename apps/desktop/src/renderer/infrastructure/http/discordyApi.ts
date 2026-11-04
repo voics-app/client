@@ -1,5 +1,5 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
-import type { ApiPort, CreateChannelBody, MessageQuery } from '@renderer/application/ports/api';
+import type { ApiPort, CreateChannelBody, MessageQuery } from '@discordy/core/application/ports/api';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -38,8 +38,8 @@ import type {
   UserNote,
   UserSettings,
   VoiceRegion,
-} from '@shared/contracts/rest';
-import { toQuery, type SearchParams } from '@renderer/domain/messageSearch';
+} from '@discordy/core/contracts/rest';
+import { toQuery, type SearchParams } from '@discordy/core/domain/messageSearch';
 import type { HttpClient, RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;
@@ -240,6 +240,9 @@ export class DiscordyApi implements ApiPort {
   updateRole(guildId: string, roleId: string, patch: Partial<Role>) {
     return this.patch<Role>(`/guilds/${guildId}/roles/${roleId}`, patch);
   }
+  duplicateRole(guildId: string, roleId: string) {
+    return this.post<Role>(`/guilds/${guildId}/roles/${roleId}/duplicate`);
+  }
   reorderRoles(guildId: string, positions: { id: string; position: number }[]) {
     return this.patch<Role[]>(`/guilds/${guildId}/roles`, positions);
   }
@@ -270,8 +273,17 @@ export class DiscordyApi implements ApiPort {
   unban(guildId: string, userId: string) {
     return this.del<void>(`/guilds/${guildId}/bans/${userId}`);
   }
-  auditLog(guildId: string, query: { limit?: number; before?: string; user_id?: string; action_type?: number } = {}) {
-    return this.get<AuditLog>(`/guilds/${guildId}/audit-logs`, { limit: query.limit ?? 50, before: query.before, user_id: query.user_id, action_type: query.action_type });
+  getBan(guildId: string, userId: string) {
+    return this.get<Ban>(`/guilds/${guildId}/bans/${userId}`);
+  }
+  pruneCount(guildId: string, days: number) {
+    return this.get<{ pruned: number }>(`/guilds/${guildId}/prune`, { days });
+  }
+  prune(guildId: string, days: number) {
+    return this.post<{ pruned: number }>(`/guilds/${guildId}/prune`, { days });
+  }
+  auditLog(guildId: string, query: { limit?: number; before?: string; user_id?: string; action_type?: number; target_id?: string } = {}) {
+    return this.get<AuditLog>(`/guilds/${guildId}/audit-logs`, { limit: query.limit ?? 50, before: query.before, user_id: query.user_id, action_type: query.action_type, target_id: query.target_id });
   }
   bulkDeleteMessages(channelId: string, messageIds: string[]) {
     return this.post<void>(`/channels/${channelId}/messages/bulk-delete`, { messages: messageIds });

@@ -1,8 +1,8 @@
 /** Side-effecting actions behind the message menus. Each reports failure with a toast. */
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { isLinkPreview, SUPPRESS_EMBEDS_FLAG } from '@renderer/domain/media';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { isLinkPreview, SUPPRESS_EMBEDS_FLAG } from '@discordy/core/domain/media';
 import { attempt } from './actions';
 import { googleSearchUrl, openExternalUrl } from './links';
 import { getRuntime } from './runtime';

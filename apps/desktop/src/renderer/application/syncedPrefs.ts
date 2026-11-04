@@ -6,27 +6,20 @@
  * On the first READY of an account on this device, values the user changed locally before sync
  * existed are migrated up when the server still has nothing for them.
  */
-import type { UserSettings } from '@shared/contracts/rest';
+import type { UserSettings } from '@discordy/core/contracts/rest';
 import { SYNCED_KEYS, fromServer, sameValue, serverIsDefault, syncedSlice, toServerPatch, type SyncedKey } from './syncedPrefsMap';
-import { DEFAULT_PREFS, usePrefsStore, type PrefsData } from './stores/prefsStore';
+import { deviceStorage, type KeyValueStorage } from '@discordy/core/application/ports/deviceStorage';
+import { DEFAULT_PREFS, usePrefsStore, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 
 export interface PrefsSyncDeps {
   updateSettings(patch: Partial<UserSettings>): Promise<unknown>;
   onError(error: unknown): void;
   debounceMs?: number;
-  storage?: Pick<Storage, 'getItem' | 'setItem'>;
+  storage?: Pick<KeyValueStorage, 'getItem' | 'setItem'>;
 }
 
 type Slice = Pick<PrefsData, SyncedKey>;
 type Loose = Record<string, unknown>;
-
-function defaultStorage(): PrefsSyncDeps['storage'] {
-  try {
-    return window.localStorage;
-  } catch {
-    return undefined;
-  }
-}
 
 export class PrefsSync {
   private confirmed: Slice | null = null;
@@ -59,7 +52,7 @@ export class PrefsSync {
     const migrate = new Set<SyncedKey>();
     if (ready && userId) {
       const flag = `discordy.prefs-sync.migrated.${userId}`;
-      const storage = this.deps.storage ?? defaultStorage();
+      const storage = this.deps.storage ?? deviceStorage;
       let done = true;
       try { done = storage?.getItem(flag) === '1'; } catch { done = true; }
       if (!done) {

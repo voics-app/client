@@ -1,7 +1,7 @@
 /** Cached lookup of user devices and their identity keys, plus channel participant resolution. */
-import type { Device } from '@shared/contracts/rest';
-import type { ApiPort } from '../ports/api';
-import { useGuildStore } from '../stores/guildStore';
+import type { Device } from '@discordy/core/contracts/rest';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 
 const TTL_MS = 60_000;
 

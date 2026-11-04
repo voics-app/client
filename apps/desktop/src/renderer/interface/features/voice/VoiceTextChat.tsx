@@ -1,7 +1,7 @@
 import { ChatsCircle, X } from '@phosphor-icons/react';
 import { create } from 'zustand';
-import type { Channel } from '@shared/contracts/rest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import type { Channel } from '@discordy/core/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { getRuntime } from '../../app/runtime';
 import { IconButton } from '../../shared/ui/IconButton';

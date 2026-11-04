@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
+import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { Lightbox } from '@renderer/interface/features/chat/Lightbox';
 
 const video = { kind: 'video' as const, src: 'https://cdn.test/clip.mp4', original: 'https://cdn.test/clip.mp4', filename: 'clip.mp4' };
@@ -15,6 +15,31 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useLightboxStore.getState().close();
+});
+
+describe('Lightbox carousel', () => {
+  const second = { ...image, src: 'https://cdn.test/b.png', original: 'https://cdn.test/b.png', filename: 'b.png' };
+  const swipe = (from: number, to: number) => {
+    const stage = document.querySelector('.lightbox-stage') as HTMLElement;
+    fireEvent.pointerDown(stage, { pointerId: 1, clientX: from, clientY: 100 });
+    fireEvent.pointerUp(stage, { pointerId: 1, clientX: to, clientY: 100 });
+  };
+
+  it('turns to the next image on a swipe left and back on a swipe right', () => {
+    useLightboxStore.getState().open([image, second]);
+    render(<Lightbox />);
+    swipe(300, 100);
+    expect(useLightboxStore.getState().index).toBe(1);
+    swipe(100, 300);
+    expect(useLightboxStore.getState().index).toBe(0);
+  });
+
+  it('does not turn on a tap or a short drag', () => {
+    useLightboxStore.getState().open([image, second]);
+    render(<Lightbox />);
+    swipe(200, 190);
+    expect(useLightboxStore.getState().index).toBe(0);
+  });
 });
 
 describe('Lightbox viewing a video', () => {

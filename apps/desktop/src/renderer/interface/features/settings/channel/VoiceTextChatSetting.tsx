@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { isVoiceChannel } from '../../../app/navigation';

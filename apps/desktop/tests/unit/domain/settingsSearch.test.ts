@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { rowSlug } from '@renderer/domain/rowSlug';
+import { rowSlug } from '@discordy/core/domain/rowSlug';
 import { searchSettings, USER_SETTINGS_INDEX } from '@renderer/interface/features/settings/searchIndex';
 import { USER_TABS } from '@renderer/interface/features/settings/userTabs';
 

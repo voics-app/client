@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { hasActivity, isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
-import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
-import { idsOf, tidy, item, sep } from '@renderer/domain/menuModel';
-import { buildMessageMenu, buildToolbar, type MessageMenuContext } from '@renderer/domain/messageMenuModel';
-import { emptySettings, isChannelMutedDeep, MUTE_DURATIONS, withMute } from '@renderer/domain/notificationSettings';
-import { DEFAULT_QUICK_REACTIONS, parseApiEmoji, quickReactions, recordReaction } from '@renderer/domain/quickReactions';
-import type { Channel } from '@shared/contracts/rest';
+import { hasActivity, isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@discordy/core/domain/channelActivity';
+import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@discordy/core/domain/channelMenuModel';
+import { idsOf, tidy, item, sep } from '@discordy/core/domain/menuModel';
+import { buildMessageMenu, buildToolbar, type MessageMenuContext } from '@discordy/core/domain/messageMenuModel';
+import { emptySettings, isChannelMutedDeep, MUTE_DURATIONS, withMute } from '@discordy/core/domain/notificationSettings';
+import { DEFAULT_QUICK_REACTIONS, parseApiEmoji, quickReactions, recordReaction } from '@discordy/core/domain/quickReactions';
+import type { Channel } from '@discordy/core/contracts/rest';
 
 const ctx = (over: Partial<MessageMenuContext> = {}): MessageMenuContext => ({
   developerMode: true,
@@ -170,7 +170,7 @@ describe('channel menu', () => {
   const full = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false, developerMode: true };
   it('manager with invite permission gets every entry', () => {
     const ids = idsOf(buildChannelMenu(full));
-    expect(ids).toEqual(['markRead', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
+    expect(ids).toEqual(['markRead', 'pin', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
   });
   it('hides management by MANAGE_CHANNELS and Invite by CREATE_INSTANT_INVITE independently', () => {
     const noManage = idsOf(buildChannelMenu({ ...full, canManage: false }));

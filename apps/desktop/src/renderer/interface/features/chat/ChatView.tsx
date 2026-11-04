@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { typingUsers, useTypingStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { typingUsers, useTypingStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { typingLine } from '@renderer/domain/composerFormat';
-import { ChannelType } from '@shared/contracts/rest';
+import { typingLine } from '@discordy/core/domain/composerFormat';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { useNow } from '../../shared/hooks/useNow';

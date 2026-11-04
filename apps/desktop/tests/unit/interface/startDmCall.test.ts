@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { useCallStore } from '@renderer/application/stores/callStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useCallStore } from '@discordy/core/application/stores/callStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { startDmCall } from '@renderer/interface/app/callActions';
 import { registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
 

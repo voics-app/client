@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_PREFS, usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { AccessibilityTab, AppearanceTab } from '@renderer/interface/features/settings/user/UserTabs';
 import { AnimatedImage } from '@renderer/interface/shared/ui/AnimatedImage';
 import { RoleDot } from '@renderer/interface/shared/ui/RoleDot';

@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { P2PSignal } from '@shared/contracts/gateway';
+import { GatewayOp } from '@discordy/core/contracts/gateway';
+import type { P2PSignal } from '@discordy/core/contracts/gateway';
 import { AttachmentService } from '@renderer/application/privacy/attachmentService';
 import { encryptFile } from '@renderer/application/privacy/attachmentCipher';
 import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { P2PService } from '@renderer/application/privacy/p2pService';
-import { fingerprintSigningPayload } from '@renderer/domain/p2pIdentity';
+import { fingerprintSigningPayload } from '@discordy/core/domain/p2pIdentity';
 import { utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useTransferStore } from '@renderer/application/stores/transferStore';
 import { BOB, FakeGateway, FakePeerConnection, SDP, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores, tick } from './fakes';
 
@@ -39,6 +40,7 @@ function setup() {
     },
     now: () => 1_800_000_000_000,
     connectTimeoutMs: 30_000,
+    iceGatherTimeoutMs: 0,
   });
   return { service, connections, attachments, gateway };
 }
@@ -59,7 +61,8 @@ const bobSignal = (over: Partial<P2PSignal>): P2PSignal => ({
 
 async function openOutgoing(ctx: ReturnType<typeof setup>, files: File[], opts: { hold?: boolean } = {}) {
   const pending = ctx.service.send(dm('p2p'), { content: 'file for you', files });
-  for (let i = 0; i < 50 && ctx.gateway.sent.length === 0; i++) await tick();
+  // The link (and its offer) only exists once the files are encrypted, which takes an unbounded number of macrotasks.
+  await vi.waitFor(() => expect(ctx.gateway.ofOp(GatewayOp.P2P_SIGNAL)).toHaveLength(1));
   await ctx.service.handleSignal(bobSignal({}));
   const channel = ctx.connections[0]!.channel;
   channel.holdBuffer = opts.hold ?? false;
@@ -105,7 +108,7 @@ describe('P2P attachments: sending', () => {
     const ctx = setup();
     const bytes = new Uint8Array(3 * 1024 * 1024).fill(1);
     const { channel } = await openOutgoing(ctx, [new File([bytes], 'big.bin')], { hold: true });
-    await tick();
+    await vi.waitFor(() => expect(channel.binary.length).toBeGreaterThan(0));
     const sentSoFar = channel.binary.length;
     expect(sentSoFar).toBeGreaterThan(0);
     expect(sentSoFar * CHUNK).toBeLessThanOrEqual(1024 * 1024 + CHUNK);
@@ -123,7 +126,7 @@ describe('P2P attachments: sending', () => {
   it('reports progress while streaming', async () => {
     const ctx = setup();
     const { channel } = await openOutgoing(ctx, [new File([new Uint8Array(2 * 1024 * 1024)], 'p.bin')], { hold: true });
-    await tick();
+    await vi.waitFor(() => expect(channel.binary.length).toBeGreaterThan(0));
     const id = JSON.parse(channel.sent[0]!).files[0].id as string;
     const t = useTransferStore.getState().transfers[id]!;
     expect(t.state).toBe('sending');
@@ -139,7 +142,7 @@ describe('P2P attachments: sending', () => {
   it('marks the transfer failed when the link drops mid-stream, without throwing from send', async () => {
     const ctx = setup();
     const { channel } = await openOutgoing(ctx, [new File([new Uint8Array(3 * 1024 * 1024)], 'drop.bin')], { hold: true });
-    await tick();
+    await vi.waitFor(() => expect(channel.binary.length).toBeGreaterThan(0));
     const id = JSON.parse(channel.sent[0]!).files[0].id as string;
     channel.close();
     channel.onclose?.();

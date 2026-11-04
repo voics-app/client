@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { ALL_PERMISSIONS, Permission } from '@shared/contracts/permissions';
+import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 
 const updateMember = vi.fn(async (_g: string, u: string, patch: { channel_id: string | null }) => ({ user: { id: u }, roles: [], ...patch }));

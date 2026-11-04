@@ -1,6 +1,6 @@
 import { Globe, LockKey, Plugs } from '@phosphor-icons/react';
-import type { DeliveryMode } from '@shared/contracts/rest';
-import { MODE_COPY } from '@renderer/domain/deliveryMode';
+import type { DeliveryMode } from '@discordy/core/contracts/rest';
+import { MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { Tooltip } from '../../shared/ui/Tooltip';
 
 const ICON = { standard: Globe, ephemeral: LockKey, p2p: Plugs } as const;

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, Info, Warning, WarningOctagon, X } from '@phosphor-icons/react';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { gentle } from './motion';
 
 const ICONS = { info: Info, success: CheckCircle, warning: Warning, danger: WarningOctagon };
