@@ -102,9 +102,7 @@ describe('MarkdownView', () => {
   });
 
   it('renders pipe tables with aligned cells in a scroll container', () => {
-    const { container } = render(<MarkdownView source={'| A | B |
-|:-:|--:|
-| **x** | <b>y</b> |'} />);
+    const { container } = render(<MarkdownView source={'| A | B |\n|:-:|--:|\n| **x** | <b>y</b> |'} />);
     expect(container.querySelector('.md-table-scroll table')).not.toBeNull();
     expect([...container.querySelectorAll('th')].map((c) => c.textContent)).toEqual(['A', 'B']);
     expect((container.querySelector('th') as HTMLElement).style.textAlign).toBe('center');
