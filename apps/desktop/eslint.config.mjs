@@ -1,12 +1,9 @@
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
+import { baseConfigs, reactHooks, sharedTsRules, tseslint } from '../../eslint.base.mjs';
 
 export default tseslint.config(
   { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'stage/**', 'electron-builder.config.cjs'] },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...baseConfigs,
   // Plain Node diagnostic scripts (e.g. tests/live/attach-watch.mjs).
   { files: ['**/*.mjs'], languageOptions: { globals: globals.node } },
   {
@@ -14,10 +11,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { 'react-hooks': reactHooks },
     rules: {
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/consistent-type-imports': 'error',
+      ...sharedTsRules,
       'no-restricted-imports': [
         'error',
         {
