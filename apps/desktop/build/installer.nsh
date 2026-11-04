@@ -16,6 +16,9 @@
 !include "WordFunc.nsh"
 !insertmacro un.WordReplace
 
+; The link scheme, read from brand.json at build time. The app registers it per user at every start.
+!searchparse /file "${BUILD_RESOURCES_DIR}/../brand.json" `"protocolScheme": "` APP_PROTOCOL `"`
+
 Var AppDeleteData
 Var AppKeepDataRadio
 Var AppRemoveDataRadio
@@ -64,6 +67,8 @@ FunctionEnd
 
 !macro customUnInstall
   ${IfNot} ${isUpdated}
+    ; Without the app this registration would point at a missing file.
+    DeleteRegKey HKCU "SoftwareClasses${APP_PROTOCOL}"
     ; Silent / scripted opt-in: Setup uninstaller started with /DELETEDATA (or electron-builder's --delete-app-data).
     ClearErrors
     ${GetParameters} $R8
