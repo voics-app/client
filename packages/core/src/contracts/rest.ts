@@ -209,6 +209,8 @@ export interface Guild {
   preferred_locale?: string;
   member_count?: number;
   voice_region?: string | null;
+  /** When true, pruning members needs ADMINISTRATOR instead of KICK_MEMBERS. */
+  prune_admin_only?: boolean;
 }
 
 /** GuildFull as delivered by READY / GUILD_CREATE (P4 `/state`). */

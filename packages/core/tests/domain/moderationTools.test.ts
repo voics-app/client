@@ -5,6 +5,10 @@ import {
   DEFAULT_MEMBER_FILTER,
   bulkDeletePlan,
   filterBans,
+  canPruneMembers,
+  isMemberAuditEntry,
+  PRUNE_DAY_CHOICES,
+  pruneSummary,
   filterMembers,
   isTimedOut,
   purgeableMessageIds,
@@ -79,5 +83,35 @@ describe('filterBans', () => {
     expect(filterBans(bans, 'advert')).toHaveLength(1);
     expect(filterBans(bans, 'big')).toHaveLength(1);
     expect(filterBans(bans, '2')).toHaveLength(1);
+  });
+});
+
+describe('isMemberAuditEntry', () => {
+  it('is true for entries about a user and false for the rest', () => {
+    expect(isMemberAuditEntry({ action_type: 22, target_id: '5' })).toBe(true);
+    expect(isMemberAuditEntry({ action_type: 20, target_id: '5' })).toBe(true);
+    expect(isMemberAuditEntry({ action_type: 25, target_id: '5' })).toBe(true);
+    expect(isMemberAuditEntry({ action_type: 22, target_id: null })).toBe(false);
+    expect(isMemberAuditEntry({ action_type: 30, target_id: '5' })).toBe(false);
+  });
+});
+
+describe('prune helpers', () => {
+  it('offers 1 to 30 days and summarises the count', () => {
+    expect(PRUNE_DAY_CHOICES).toEqual([1, 7, 14, 30]);
+    expect(pruneSummary(0, 7)).toBe('No members have been inactive for 7 days.');
+    expect(pruneSummary(1, 1)).toBe('1 member has been inactive for 1 day and would be removed.');
+    expect(pruneSummary(12, 30)).toBe('12 members have been inactive for 30 days and would be removed.');
+  });
+});
+
+describe('canPruneMembers', () => {
+  const KICK = 1n << 1n;
+  const ADMIN = 1n << 3n;
+  it('needs KICK_MEMBERS, or ADMINISTRATOR when the guild restricts pruning', () => {
+    expect(canPruneMembers(KICK, false)).toBe(true);
+    expect(canPruneMembers(0n, false)).toBe(false);
+    expect(canPruneMembers(KICK, true)).toBe(false);
+    expect(canPruneMembers(ADMIN, true)).toBe(true);
   });
 });

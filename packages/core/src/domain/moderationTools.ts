@@ -1,5 +1,7 @@
 /** Pure helpers behind the moderation tools: bulk message purge, member filters and audit filters. */
 import type { GuildMember } from "@discordy/core/contracts/rest";
+import { Permission } from "../contracts/permissions";
+import { hasPermission } from "./permissions";
 import { timestampOf } from "./snowflake";
 
 /** The API refuses to bulk-delete messages older than two weeks. */
@@ -77,6 +79,28 @@ export const AUDIT_FILTERS: readonly { label: string; value: number }[] = [
   { label: "Channel changes", value: 11 },
   { label: "Invites", value: 40 },
 ];
+
+/** Audit actions that are about a user (kick, ban, unban, member and role updates). */
+const MEMBER_ACTIONS: ReadonlySet<number> = new Set([20, 22, 23, 24, 25]);
+
+/** Whether an audit entry targets a user, so Mod View can open for it. */
+export function isMemberAuditEntry(entry: { action_type: number; target_id: string | null }): boolean {
+  return entry.target_id !== null && MEMBER_ACTIONS.has(entry.action_type);
+}
+
+/** KICK_MEMBERS prunes; once the guild is administrators-only, ADMINISTRATOR is required. */
+export function canPruneMembers(permissions: bigint, adminOnly: boolean): boolean {
+  return hasPermission(permissions, adminOnly ? Permission.ADMINISTRATOR : Permission.KICK_MEMBERS);
+}
+
+/** Inactivity windows offered by the prune dialog (the api accepts 1 to 30). */
+export const PRUNE_DAY_CHOICES: readonly number[] = [1, 7, 14, 30];
+
+export function pruneSummary(count: number, days: number): string {
+  const window = `${days} ${days === 1 ? "day" : "days"}`;
+  if (count === 0) return `No members have been inactive for ${window}.`;
+  return `${count} ${count === 1 ? "member has" : "members have"} been inactive for ${window} and would be removed.`;
+}
 
 /** Bans matching a free-text search over name, id and reason. */
 export function filterBans<T extends { user: { id: string; username: string; global_name?: string | null }; reason?: string | null }>(
