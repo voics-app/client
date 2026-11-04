@@ -13,14 +13,21 @@
     "dev2": "pnpm --filter @discordy/desktop dev2",
     "build": "pnpm --filter @discordy/crypto build && pnpm --filter @discordy/desktop build",
     "build:native": "pnpm --filter @discordy/crypto build",
-    "test": "pnpm --filter @discordy/desktop test && pnpm --filter @discordy/crypto test",
+    "test": "pnpm test:unit && pnpm --filter @discordy/crypto test",
     "test:e2e": "pnpm --filter @discordy/desktop test:e2e",
-    "lint": "pnpm --filter @discordy/desktop lint",
-    "typecheck": "pnpm --filter @discordy/desktop typecheck",
+    "lint": "pnpm --filter @discordy/desktop lint && pnpm --filter @discordy/mobile lint",
+    "typecheck": "pnpm --filter @discordy/desktop typecheck && pnpm --filter @discordy/mobile typecheck",
     "dist:win": "pnpm build:native && pnpm --filter @discordy/desktop dist:win",
     "dist:mac": "pnpm build:native && pnpm --filter @discordy/desktop dist:mac",
     "dist:linux": "pnpm build:native && pnpm --filter @discordy/desktop dist:linux",
-    "test:unit": "pnpm --filter @discordy/desktop test",
-    "lint:native": "pnpm --filter @discordy/crypto lint"
+    "test:unit": "pnpm --filter @discordy/desktop test && pnpm --filter @discordy/mobile test",
+    "lint:native": "pnpm --filter @discordy/crypto lint",
+    "dev:mobile": "pnpm --filter @discordy/mobile start"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "typescript-eslint": "8.46.3"
   }
 }
