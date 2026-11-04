@@ -71,7 +71,7 @@ function GuildItem({ guildId, active }: { guildId: string; active: boolean }) {
       unread={unread && !active}
       mentions={mentions}
       onPress={() => navigate({ kind: 'guild', guildId, channelId: null })}
-      tile={() => <ServerIcon guild={guild} />}
+      tile={(selected) => <ServerIcon guild={guild} active={selected} />}
     />
   );
 }
