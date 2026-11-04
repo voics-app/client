@@ -37,6 +37,11 @@ export function channelAccess({ guild, channel, members, userId }: ChannelAccess
   };
 }
 
+/** In a DM every participant may send, react and read; there are no roles to moderate with. */
+export function dmAccess(channel: Channel): ChannelAccess {
+  return { canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: channel.delivery_mode === 'standard' };
+}
+
 export interface MessageActions {
   reply: boolean;
   edit: boolean;

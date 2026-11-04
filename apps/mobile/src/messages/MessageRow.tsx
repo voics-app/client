@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { reactionKey, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import type { User } from '@discordy/core/contracts/rest';
 import { replyPreviewText } from '@discordy/core/domain/chatDisplay';
@@ -16,11 +17,13 @@ export interface MessageRowProps {
   showHeader: boolean;
   onLongPress(message: ChatMessage): void;
   onToggleReaction(message: ChatMessage, emoji: string): void;
+  onPressAuthor(user: User): void;
   onRetry(message: ChatMessage): void;
   onDiscard(message: ChatMessage): void;
 }
 
-function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onRetry, onDiscard }: MessageRowProps) {
+function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
+  const showReactions = usePrefsStore((s) => s.showReactions);
   if (isSystemType(message.type)) {
     return <Text style={styles.system}>{nameOf(message.author)} - system message</Text>;
   }
@@ -34,7 +37,9 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
       )}
       {showHeader && (
         <View style={styles.header}>
-          <Text style={styles.author}>{nameOf(message.author)}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`View profile of ${nameOf(message.author)}`} onPress={() => onPressAuthor(message.author)}>
+            <Text style={styles.author}>{nameOf(message.author)}</Text>
+          </Pressable>
           <Text style={styles.time}>{formatMessageTime(message.timestamp, Date.now())}</Text>
         </View>
       )}
@@ -43,7 +48,7 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
         {message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null}
       </Text>
       {message.attachments.length > 0 && <Text style={styles.edited}>{message.attachments.length} attachment(s), shown in a later release</Text>}
-      {message.reactions && message.reactions.length > 0 && (
+      {showReactions && message.reactions && message.reactions.length > 0 && (
         <View style={styles.reactions}>
           {message.reactions.map((r) => {
             const emoji = reactionKey(r.emoji);

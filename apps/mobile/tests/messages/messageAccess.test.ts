@@ -1,7 +1,7 @@
 import type { GuildMeta } from '@discordy/core/application/stores/guildStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import type { Channel, Message } from '@discordy/core/contracts/rest';
-import { channelAccess, messageActions } from '../../src/messages/messageAccess';
+import { channelAccess, dmAccess, messageActions } from '../../src/messages/messageAccess';
 
 const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS;
 const role = (permissions: bigint) => ({ id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(permissions), managed: false, mentionable: false });
@@ -59,5 +59,15 @@ describe('messageActions', () => {
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
     expect(a).toEqual({ reply: false, edit: false, delete: false, react: false });
+  });
+});
+
+describe('dmAccess', () => {
+  it('lets participants send, react and read, but never moderate', () => {
+    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: true });
+  });
+
+  it('marks private delivery as not standard', () => {
+    expect(dmAccess(channel({ guild_id: null, type: 1, delivery_mode: 'p2p' })).standard).toBe(false);
   });
 });
