@@ -2,14 +2,15 @@
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { reactionKey, useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
-import { snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
+import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
 
 export const PAGE_SIZE = 50;
 
-export type MessageApi = Pick<ApiPort, 'messages' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction'>;
+export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction'>;
 
 export interface SendInput {
   content: string;
@@ -28,6 +29,14 @@ export class MessageService {
   async loadLatest(channelId: string): Promise<void> {
     const page = await this.api.messages(channelId, { limit: PAGE_SIZE });
     useMessageStore.getState().setHistory(channelId, page, { prepend: false, hasMoreBefore: page.length >= PAGE_SIZE });
+  }
+
+  /** Tells the server (and this device's unread dots) that the channel is read up to the given message, as desktop does when a channel is open at its latest message. */
+  markRead(channelId: string, messageId: string): void {
+    const read = useReadStateStore.getState().byChannel[channelId];
+    if (read?.lastReadId && compareSnowflakes(read.lastReadId, messageId) >= 0 && read.mentionCount === 0) return;
+    useReadStateStore.getState().markRead(channelId, messageId);
+    void this.api.ack(channelId, messageId).catch(() => undefined);
   }
 
   /** Older history, from the oldest message the server has given us. One request per channel at a time. */

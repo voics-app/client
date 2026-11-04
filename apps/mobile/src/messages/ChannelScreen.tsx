@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -10,6 +11,8 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import type { User } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { groupMessages } from '@discordy/core/domain/messageGrouping';
+import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
+import { composerPlaceholder } from './composerPlaceholder';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
@@ -20,8 +23,6 @@ import { useKeyboardVisible } from './useKeyboardVisible';
 import { useMessageService } from './useMessageService';
 import { theme } from '../theme';
 
-/** The native stack header's height below the status bar; the keyboard offset is this plus the top inset. */
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const COMPOSE: ComposerMode = { kind: 'compose' };
 const PRIVATE_NOTICE = 'This channel uses private delivery, which the mobile app does not support yet.';
 const PRIVATE_HISTORY_NOTICE = 'Messages in this channel stay on devices, so there is no server history to show.';
@@ -32,6 +33,7 @@ const NO_HISTORY_NOTICE = 'You do not have permission to read the history of thi
 export function ChannelScreen({ guildId, channelId }: { guildId?: string; channelId: string }) {
   const service = useMessageService();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const keyboardVisible = useKeyboardVisible();
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
@@ -77,6 +79,14 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     return grouped.map((g) => ({ message: g.message.message, showHeader: g.startsGroup })).reverse();
   }, [timeline]);
 
+  const latestId = useMemo(() => {
+    const ids = timeline?.ids ?? [];
+    return ids.findLast((id) => !timeline?.byId[id]?.localState) ?? null;
+  }, [timeline]);
+  useEffect(() => {
+    if (readable && loaded && latestId) service.markRead(channelId, latestId);
+  }, [service, channelId, readable, loaded, latestId]);
+
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
 
   const submit = useCallback(
@@ -109,17 +119,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const close = () => setSelected(null);
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={insets.top + HEADER_HEIGHT}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={headerHeight}>
       <Stack.Screen
         options={{
-          title,
-          headerRight: peer
-            ? () => (
-                <Pressable accessibilityRole="button" accessibilityLabel="View profile" onPress={() => setProfileUser(peer)}>
-                  <Text style={styles.headerAction}>Profile</Text>
-                </Pressable>
-              )
-            : () => null,
+          headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
+          headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} />,
         }}
       />
       {error && (
@@ -146,6 +150,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           testID="message-list"
           style={styles.list}
           inverted
+          contentContainerStyle={styles.listContent}
           data={rows}
           keyExtractor={(row) => row.message.id}
           onEndReached={() => void service.loadOlder(channelId).catch(fail)}
@@ -167,7 +172,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         />
       )}
       <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-        <Composer mode={mode} blockedReason={blockedReason} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+        <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
       </View>
       <ProfileSheet user={profileUser} onClose={() => setProfileUser(null)} />
       <MessageActionSheet
@@ -197,10 +202,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.background },
   list: { flex: 1 },
+  /** The list is inverted, so top is the gap above the composer and bottom is the gap under the oldest message. */
+  listContent: { paddingTop: 16, paddingBottom: 16 },
   dock: { backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notice: { color: theme.muted, textAlign: 'center', padding: 32 },
-  headerAction: { color: theme.accent, fontSize: 16, fontWeight: '600' },
   retry: { color: theme.accent, fontSize: 16, fontWeight: '600' },
   error: { backgroundColor: theme.danger, paddingHorizontal: 14, paddingVertical: 8 },
   errorText: { color: '#ffffff', fontSize: 13 },
