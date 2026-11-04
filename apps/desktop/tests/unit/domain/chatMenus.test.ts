@@ -170,7 +170,7 @@ describe('channel menu', () => {
   const full = { inGuild: true, canInvite: true, canManage: true, hasUnread: true, muted: false, developerMode: true };
   it('manager with invite permission gets every entry', () => {
     const ids = idsOf(buildChannelMenu(full));
-    expect(ids).toEqual(['markRead', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
+    expect(ids).toEqual(['markRead', 'pin', 'invite', 'copyLink', 'mute', ...MUTE_DURATIONS.map(() => 'muteFor'), 'notifications', 'moveUp', 'moveDown', 'edit', 'duplicate', 'create', 'delete', 'copyId']);
   });
   it('hides management by MANAGE_CHANNELS and Invite by CREATE_INSTANT_INVITE independently', () => {
     const noManage = idsOf(buildChannelMenu({ ...full, canManage: false }));

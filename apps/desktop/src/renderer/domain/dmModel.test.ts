@@ -42,3 +42,17 @@ describe('systemMessageText', () => {
     expect(systemMessageText(0, 'Ann', null, '')).toBeNull();
   });
 });
+
+describe('buildDmMenu pinning', () => {
+  const base = { group: false, hasUnread: false, muted: false, hasPeer: true };
+  it('offers Pin, or Unpin when already pinned', () => {
+    expect(idsOf(buildDmMenu(base))).toContain('pin');
+    const unpinned = idsOf(buildDmMenu({ ...base, pinned: true }));
+    expect(unpinned).toContain('unpin');
+    expect(unpinned).not.toContain('pin');
+  });
+  it('disables Pin when the limit is reached', () => {
+    const pin = buildDmMenu({ ...base, pinFull: true }).find((m) => m.kind === 'item' && m.id === 'pin');
+    expect(pin).toMatchObject({ disabled: true });
+  });
+});

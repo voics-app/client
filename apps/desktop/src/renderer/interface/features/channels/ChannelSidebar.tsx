@@ -1,4 +1,4 @@
-import { Broadcast, CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, LockSimple, Megaphone, MicrophoneSlash, Plugs, Plus, SpeakerHigh, SpeakerSlash, UserPlus, VideoCamera } from '@phosphor-icons/react';
+import { Broadcast, CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, LockSimple, Megaphone, MicrophoneSlash, Plugs, Plus, PushPin, SpeakerHigh, SpeakerSlash, UserPlus, VideoCamera } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadStateStore } from '@renderer/application/stores/peopleStores';
@@ -6,6 +6,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
 import { isUnread } from '@renderer/domain/unread';
+import { orderPinnedFirst, pinnedChannelsOf } from '@renderer/domain/pins';
 import { LOOSE, layoutOf, resolveDrop, type ChannelDrag, type ChannelDropZone } from '@renderer/domain/channelOrder';
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@renderer/domain/channelActivity';
 import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
@@ -125,7 +126,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
   );
 }
 
-function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolean; dnd: ChannelDnd }) {
+function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel; active: boolean; dnd: ChannelDnd; pinned?: boolean }) {
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
   const muted = isChannelMutedDeep(settings, channel, Date.now());
@@ -195,6 +196,7 @@ function ChannelRow({ channel, active, dnd }: { channel: Channel; active: boolea
           {unread && <span className="channel-unread-dot" aria-label="Unread" />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
           <span className="channel-name">{channel.name}</span>
+          {pinned && <PushPin size={12} weight="fill" className="channel-pin" aria-label="Pinned" />}
           {isPrivateChannel(channel) && <LockSimple size={12} weight="fill" className="channel-lock" aria-label="Private channel" />}
           {channel.nsfw && <span className="channel-nsfw" title="Age-restricted" aria-label="Age-restricted">18+</span>}
           {channel.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
@@ -383,17 +385,22 @@ function AttentionPill({ scrollRef, version }: { scrollRef: RefObject<HTMLDivEle
 
 export function ChannelSidebar({ guildId }: { guildId: string }) {
   const channels = useGuildStore((s) => s.channels);
-  const groups = useMemo(() => {
-    const inGuild = Object.values(channels)
+  const pins = useSessionStore((s) => s.settings.pinned_channel_ids);
+  const { pinned, groups } = useMemo(() => {
+    const listed = Object.values(channels)
       .filter((c) => c.guild_id === guildId && !(c.type >= 10 && c.type <= 12))
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.id.localeCompare(b.id));
+    // Personal pins move to the Pinned section above the categories; categories themselves cannot be pinned.
+    const split = orderPinnedFirst(listed.filter((c) => c.type !== ChannelType.GUILD_CATEGORY), pinnedChannelsOf(pins, guildId));
+    const pinnedIds = new Set(split.pinned.map((c) => c.id));
+    const inGuild = listed.filter((c) => !pinnedIds.has(c.id));
     const categories = inGuild.filter((c) => c.type === ChannelType.GUILD_CATEGORY);
     const loose = inGuild.filter((c) => c.type !== ChannelType.GUILD_CATEGORY && !c.parent_id);
     const result: { category: Channel | null; children: Channel[] }[] = [];
     if (loose.length > 0) result.push({ category: null, children: loose });
     for (const category of categories) result.push({ category, children: inGuild.filter((c) => c.parent_id === category.id && c.type !== ChannelType.GUILD_CATEGORY) });
-    return result;
-  }, [channels, guildId]);
+    return { pinned: split.pinned, groups: result };
+  }, [channels, guildId, pins]);
 
   const categoryIds = useMemo(() => groups.flatMap((g) => (g.category ? [g.category.id] : [])), [groups]);
   const reads = useReadStateStore((s) => s.byChannel);
@@ -402,12 +409,25 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
   useRovingFocus(scrollRef, { selector: '.channel-main, .category-head > button' });
   const canManage = can(useGuildPermissions(guildId), Permission.MANAGE_CHANNELS);
   const dnd = useChannelDnd(guildId, canManage);
+  const activeChannelId = useUiStore((s) => s.view.channelId);
 
   return (
     <aside className="sidebar" aria-label="Channels">
       <GuildHeader guildId={guildId} />
-      <AttentionPill scrollRef={scrollRef} version={[groups, reads, collapsedMap]} />
+      <AttentionPill scrollRef={scrollRef} version={[groups, pinned, reads, collapsedMap]} />
       <div ref={scrollRef} className="sidebar-scroll">
+        {pinned.length > 0 && (
+          <section className="category is-pinned" aria-label="Pinned channels">
+            <header className="category-head is-static">
+              <span>Pinned</span>
+            </header>
+            <ul className="channel-list">
+              {pinned.map((c) => (
+                <ChannelRow key={c.id} channel={c} active={c.id === activeChannelId} dnd={{ ...dnd, enabled: false }} pinned />
+              ))}
+            </ul>
+          </section>
+        )}
         {groups.map((g) => (
           <Category key={g.category?.id ?? 'loose'} category={g.category} guildId={guildId} siblings={categoryIds} dnd={dnd}>
             {g.children}
