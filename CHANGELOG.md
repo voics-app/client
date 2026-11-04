@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Mobile app: sign in (with the two-factor step and sign out), a live gateway connection that resumes after the app returns from the background, and the Servers tab with your servers and their text channels. Tokens are kept in the iOS Keychain (Android Keystore). Messages, DMs and attachments follow; nothing is published to an app store yet.
+- Mobile app: sign in (with the two-factor step and sign out), a live gateway connection that resumes after the app returns from the background, and the Servers tab with your servers and their text channels. Tokens are kept in the iOS Keychain (Android Keystore). Tapping a text channel opens its messages: history that loads older messages as you scroll, live updates, sending, replying, editing and deleting your own messages and adding or removing reactions, with send failures shown and Retry. Edit and delete only appear where you may use them. DMs and attachments follow; nothing is published to an app store yet.
 - Internal: the gateway client has `resumeNow()` (replace the socket at once and resume the session) and the failed-command text `errorMessage` moved into `@discordy/core`. No change in desktop behaviour.
 
 - Profiles: click an avatar to see it full size (the image viewer, with zoom), a friend's profile shows Friends since, and About me can be up to 300 characters (was 190; the api limit follows in a separate change).

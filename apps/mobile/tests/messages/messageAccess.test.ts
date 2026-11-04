@@ -1,0 +1,63 @@
+import type { GuildMeta } from '@discordy/core/application/stores/guildStore';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { Channel, Message } from '@discordy/core/contracts/rest';
+import { channelAccess, messageActions } from '../../src/messages/messageAccess';
+
+const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS;
+const role = (permissions: bigint) => ({ id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(permissions), managed: false, mentionable: false });
+const guild = (permissions: bigint, owner = 'owner') => ({ id: 'g1', name: 'Home', icon: null, owner_id: owner, roles: [role(permissions)], emojis: [] }) as unknown as GuildMeta;
+const channel = (extra: Partial<Channel> = {}) => ({ id: 'c1', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard', ...extra }) as Channel;
+const msg = (authorId: string, extra: Partial<Message> = {}) => ({ id: 'm1', channel_id: 'c1', author: { id: authorId }, content: 'hi', ...extra }) as Message;
+const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: string) =>
+  channelAccess({ guild: guild(permissions, owner), channel: channel(extra), members: undefined, userId: 'me' });
+
+describe('channelAccess', () => {
+  it('allows sending, reacting and reading for a regular member', () => {
+    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: true });
+  });
+
+  it('blocks sending when SEND_MESSAGES is missing', () => {
+    expect(access(BASIC & ~Permission.SEND_MESSAGES).canSend).toBe(false);
+  });
+
+  it('blocks sending when the channel overwrite denies it for everyone', () => {
+    const overwrite = { id: 'g1', type: 0 as const, allow: '0', deny: String(Permission.SEND_MESSAGES) };
+    expect(access(BASIC, { permission_overwrites: [overwrite] }).canSend).toBe(false);
+  });
+
+  it('gives the owner everything', () => {
+    const owner = access(0n, {}, 'me');
+    expect(owner.canSend && owner.canManageMessages && owner.canReact).toBe(true);
+  });
+
+  it('marks channels that are not standard delivery', () => {
+    expect(access(BASIC, { delivery_mode: 'ephemeral' }).standard).toBe(false);
+  });
+});
+
+describe('messageActions', () => {
+  const mine = access(BASIC);
+
+  it('offers edit and delete on own messages', () => {
+    expect(messageActions(msg('me'), mine, 'me')).toMatchObject({ reply: true, edit: true, delete: true, react: true });
+  });
+
+  it('offers neither edit nor delete on other people messages without MANAGE_MESSAGES', () => {
+    expect(messageActions(msg('other'), mine, 'me')).toMatchObject({ reply: true, edit: false, delete: false });
+  });
+
+  it('lets moderators delete but not edit other people messages', () => {
+    const mod = access(BASIC | Permission.MANAGE_MESSAGES);
+    expect(messageActions(msg('other'), mod, 'me')).toMatchObject({ edit: false, delete: true });
+  });
+
+  it('hides reply and react when the user cannot send or react', () => {
+    const readOnly = access(Permission.VIEW_CHANNEL | Permission.READ_MESSAGE_HISTORY);
+    expect(messageActions(msg('other'), readOnly, 'me')).toMatchObject({ reply: false, react: false });
+  });
+
+  it('offers nothing on messages that are still sending or failed', () => {
+    const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false });
+  });
+});

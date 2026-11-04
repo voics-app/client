@@ -11,7 +11,6 @@ export default function ServersLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Servers' }} />
-      <Stack.Screen name="[guildId]" options={{ title: '' }} />
     </Stack>
   );
 }
