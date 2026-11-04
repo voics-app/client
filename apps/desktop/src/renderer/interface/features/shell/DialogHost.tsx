@@ -25,6 +25,8 @@ import { InteractionModal } from '../chat/InteractionModal';
 import { ForwardDialog } from '../chat/ForwardDialog';
 import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
+import { ModViewDialog } from '../members/ModViewDialog';
+import { PruneDialog } from '../members/PruneDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
 import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
@@ -391,6 +393,8 @@ function ActiveDialog() {
     case 'guildNotifications': return <GuildNotificationDialog guildId={dialog.guildId} />;
     case 'inbox': return <MentionsInbox />;
     case 'ban': return <BanDialog guildId={dialog.guildId} userId={dialog.userId} name={dialog.name} />;
+    case 'prune': return <PruneDialog guildId={dialog.guildId} />;
+    case 'modView': return <ModViewDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
     case 'forward': return <ForwardDialog message={dialog.message} />;
     case 'reactionUsers': return <ReactionUsersDialog channelId={dialog.channelId} messageId={dialog.messageId} emoji={dialog.emoji} />;
