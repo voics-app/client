@@ -114,6 +114,22 @@ export function gridLayout(count: number): GridLayout {
   return { columns: 6, rows: plan.length, cells };
 }
 
+/** Largest media grid in a message; any further images collapse into a "+N" on the last tile. */
+export const MAX_GRID_TILES = 4;
+
+export function gridTiles(count: number): { shown: number; hidden: number } {
+  const shown = Math.min(count, MAX_GRID_TILES);
+  return { shown, hidden: count - shown };
+}
+
+const SWIPE_DISTANCE = 50;
+
+/** +1 (next) for a swipe left, -1 (previous) for a swipe right, 0 for a tap or a mostly vertical drag. */
+export function swipeDirection(dx: number, dy: number): -1 | 0 | 1 {
+  if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < Math.abs(dy)) return 0;
+  return dx < 0 ? 1 : -1;
+}
+
 /** Next index in a ring of `count` items. */
 export function stepIndex(index: number, count: number, delta: number): number {
   if (count <= 0) return 0;
