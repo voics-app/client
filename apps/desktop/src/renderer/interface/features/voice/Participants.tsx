@@ -6,6 +6,7 @@ import { STREAM_VIEWER_REPORTING } from '@discordy/core/domain/stageLayout';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
 import type { VoiceState } from '@discordy/core/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
+import { usePanZoom } from '../../shared/hooks/usePanZoom';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
@@ -39,14 +40,14 @@ export function streamKey(s: Pick<RemoteStream, 'userId' | 'kind'>): string {
   return `${s.userId}:${s.kind}`;
 }
 
-function MediaElement({ stream, muted, className, onReady }: { stream: MediaStream; muted?: boolean; className?: string; onReady?: (el: HTMLVideoElement | null) => void }) {
+function MediaElement({ stream, muted, className, style, onReady }: { stream: MediaStream; muted?: boolean; className?: string; style?: React.CSSProperties; onReady?: (el: HTMLVideoElement | null) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (el && el.srcObject !== stream) el.srcObject = stream;
     onReady?.(el);
   }, [stream, onReady]);
-  return <video ref={ref} className={className} autoPlay playsInline muted={muted} />;
+  return <video ref={ref} className={className} style={style} autoPlay playsInline muted={muted} />;
 }
 
 /** On your own screen share: how many people watch it, with their names on hover. */
@@ -80,23 +81,29 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
   const watchStream = useVoiceStore((s) => s.watchStream);
   const stopWatching = useVoiceStore((s) => s.stopWatching);
 
-  // Double-click toggles fullscreen, but not when the double-click lands on the tile's own tools.
+  // Screen shares zoom and pan; the picture goes back to 1x when the tile changes size.
+  const panZoom = usePanZoom(tileRef, live && hasVideo && !previewOnly);
+  const resetZoom = panZoom.reset;
+  useEffect(() => resetZoom(), [fullscreen.active, resetZoom]);
+
+  // Double-click resets a zoomed share, else toggles fullscreen; never when it lands on the tile's own tools.
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hasVideo || previewOnly || (e.target as HTMLElement).closest('.tile-tools')) return;
-    fullscreen.toggle();
+    if (!hasVideo || previewOnly || (e.target as HTMLElement).closest('.tile-tools, .tile-zoom')) return;
+    if (panZoom.zoomed) resetZoom();
+    else fullscreen.toggle();
   };
 
   return (
     <>
       <div
         ref={tileRef}
-        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${pinned ? ' is-pinned' : ''}${hasVideo ? '' : ' is-avatar'}${previewOnly ? ' is-preview' : ''}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
+        className={`tile${live ? ' is-screen' : ''}${focused ? ' is-focused' : ''}${pinned ? ' is-pinned' : ''}${hasVideo ? '' : ' is-avatar'}${previewOnly ? ' is-preview' : ''}${panZoom.zoomed ? ' is-zoomed' : ''}${speaking > 0.05 && kind !== 'screen' ? ' is-speaking' : ''}`}
         style={{ '--speak': speaking } as React.CSSProperties}
         onContextMenu={menu.openAt}
         onDoubleClick={onDoubleClick}
       >
         {stream && hasVideo ? (
-          <MediaElement stream={stream} muted className="tile-video" onReady={setVideo} />
+          <MediaElement stream={stream} muted className="tile-video" style={panZoom.style} onReady={setVideo} />
         ) : (
           <div className="tile-avatar">
             <Avatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} size={focused ? 112 : 76} speaking={speaking} />
@@ -114,6 +121,9 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
         </div>
         {live && (
           <span className="tile-live"><MonitorArrowUp size={12} weight="fill" /> LIVE</span>
+        )}
+        {panZoom.zoomed && (
+          <button type="button" className="tile-zoom tnum" aria-label="Reset zoom" title="Reset zoom (double-click)" onClick={resetZoom}>{Math.round(panZoom.view.zoom * 100)}%</button>
         )}
         {STREAM_VIEWER_REPORTING && live && participant.isSelf && participant.state.channel_id && <ViewerBadge guildId={guildId} channelId={participant.state.channel_id} />}
         {pinned && <span className="tile-pin" title="Pinned"><PushPin size={12} weight="fill" /></span>}
