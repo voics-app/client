@@ -3,7 +3,7 @@
 ; brand.json (productName) and package.json (name), never from literals in this file.
 ;
 ; Uninstall behaviour for user data:
-;   - interactive uninstall: an extra page with an UNCHECKED "Also delete my <product> data" checkbox
+;   - interactive uninstall: an extra page with two choices, "Keep my data" (selected) and "Remove everything"
 ;   - silent uninstall (/S): data is kept, unless the uninstaller is started with /DELETEDATA
 ;   - auto-update (electron-updater runs the old uninstaller with --updated): data is always kept
 ; Only these folders are ever removed, nothing else outside the install dir:
@@ -16,15 +16,16 @@
 !include "WordFunc.nsh"
 !insertmacro un.WordReplace
 
-Var DiscordyDeleteData
-Var DiscordyDeleteCheckbox
+Var AppDeleteData
+Var AppKeepDataRadio
+Var AppRemoveDataRadio
 
 !macro customUnWelcomePage
   !insertmacro MUI_UNPAGE_WELCOME
-  UninstPage custom un.discordyDataPage un.discordyDataPageLeave
+  UninstPage custom un.dataChoicePage un.dataChoicePageLeave
 !macroend
 
-Function un.discordyDataPage
+Function un.dataChoicePage
   ; Nothing to ask during silent uninstalls or when the app updates itself.
   ${If} ${Silent}
     Abort
@@ -40,19 +41,24 @@ Function un.discordyDataPage
   ${If} $0 == error
     Abort
   ${EndIf}
-  ${NSD_CreateLabel} 0 0 100% 24u "Uninstalling ${PRODUCT_NAME} removes the app but keeps your data (settings, local message store, encryption keys, logs) so a reinstall picks up where you left off."
+  ${NSD_CreateLabel} 0 0 100% 12u "What should happen to your data on this computer?"
   Pop $0
-  ${NSD_CreateCheckbox} 0 40u 100% 12u "Also delete my ${PRODUCT_NAME} data"
-  Pop $DiscordyDeleteCheckbox
-  ${NSD_CreateLabel} 12u 56u 95% 36u "This permanently removes everything ${PRODUCT_NAME} stored on this computer, including local encryption keys. Messages in encrypted conversations that are only readable with those keys cannot be recovered afterwards."
+  ${NSD_CreateRadioButton} 0 16u 100% 12u "Keep my data"
+  Pop $AppKeepDataRadio
+  ${NSD_CreateLabel} 12u 29u 95% 20u "Removes the app only. Your settings and saved messages stay on this computer, so everything is back if you reinstall."
   Pop $0
+  ${NSD_CreateRadioButton} 0 54u 100% 12u "Remove everything"
+  Pop $AppRemoveDataRadio
+  ${NSD_CreateLabel} 12u 67u 95% 32u "Also deletes your settings, saved messages and encryption keys from this computer. Encrypted messages that only these keys can open can't be recovered. Your ${PRODUCT_NAME} account is not deleted."
+  Pop $0
+  ${NSD_Check} $AppKeepDataRadio
   nsDialogs::Show
 FunctionEnd
 
-Function un.discordyDataPageLeave
-  ${NSD_GetState} $DiscordyDeleteCheckbox $0
+Function un.dataChoicePageLeave
+  ${NSD_GetState} $AppRemoveDataRadio $0
   ${If} $0 == ${BST_CHECKED}
-    StrCpy $DiscordyDeleteData "1"
+    StrCpy $AppDeleteData "1"
   ${EndIf}
 FunctionEnd
 
@@ -63,9 +69,9 @@ FunctionEnd
     ${GetParameters} $R8
     ${GetOptions} $R8 "/DELETEDATA" $R9
     ${IfNot} ${Errors}
-      StrCpy $DiscordyDeleteData "1"
+      StrCpy $AppDeleteData "1"
     ${EndIf}
-    ${If} $DiscordyDeleteData == "1"
+    ${If} $AppDeleteData == "1"
       ; Electron always uses the per-user profile, even for all-users installs.
       SetShellVarContext current
       ${If} "${PRODUCT_FILENAME}" != ""

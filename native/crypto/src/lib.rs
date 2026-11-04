@@ -1,4 +1,4 @@
-//! Node-API interface (napi-rs) over the Discordy crypto engine.
+//! Node-API interface (napi-rs) over the Voics crypto engine.
 //! Loaded only by the Electron main process; the sandboxed renderer reaches it
 //! through the typed IPC bridge.
 #![deny(clippy::all)]

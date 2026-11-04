@@ -18,7 +18,7 @@ module.exports = {
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
-    // Data is kept by default; build/installer.nsh adds an opt-in checkbox and a /DELETEDATA flag.
+    // Data is kept by default; build/installer.nsh adds a keep or remove choice and a /DELETEDATA flag.
     deleteAppDataOnUninstall: false,
     include: 'build/installer.nsh',
     // NSIS 3.0.4 emits warning 6020 for the uninstaller-only pass; electron-builder would fail the build on it.

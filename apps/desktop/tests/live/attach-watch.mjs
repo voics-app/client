@@ -5,7 +5,7 @@ import { chromium } from '@playwright/test';
 
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
 const page = browser.contexts().flatMap((c) => c.pages()).find((p) => p.url().includes('5173') || p.url().startsWith('file:'));
-if (!page) throw new Error('no Discordy window found on :9222');
+if (!page) throw new Error('no Voics window found on :9222');
 const stamp = () => new Date().toISOString().slice(11, 23);
 console.log(`${stamp()} attached to ${page.url()}`);
 

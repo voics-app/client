@@ -1,5 +1,5 @@
 // Production smoke test: drives the real desktop client (production defaults, no DISCORDY_* URL overrides)
-// against the live Discordy production stack with two throwaway accounts. Not part of CI.
+// against the live Voics production stack with two throwaway accounts. Not part of CI.
 // Run: LIVE_BASE=https://discordy-api.voics.nl pnpm exec playwright test -c tests/live/playwright.live.config.ts prod-smoke
 // Results are printed as a checklist and written to $PROD_SMOKE_OUT (default: prod-smoke-results.json).
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
