@@ -6,7 +6,7 @@ import { PENDING_TTL_MS, useInteractionStore, type PendingInteraction } from '@d
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { dmIntro } from '@discordy/core/domain/dmIntro';
 import { groupMessages } from '@discordy/core/domain/messageGrouping';

@@ -1,7 +1,7 @@
 import { ArrowsOut, Users, CornersIn, CornersOut, Eye, EyeSlash, MicrophoneSlash, MonitorArrowUp, PictureInPicture, PushPin, PushPinSlash, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { STREAM_VIEWER_REPORTING } from '@discordy/core/domain/stageLayout';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
 import type { VoiceState } from '@discordy/core/contracts/rest';

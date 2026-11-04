@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { IdleMonitor } from '@renderer/application/idleMonitor';
-import type { ManualStatus } from '@discordy/core/domain/selfPresence';
+import { IdleMonitor } from '../../src/application/idleMonitor';
+import type { ManualStatus } from '../../src/domain/selfPresence';
 
 function setup(manual: ManualStatus | undefined = undefined, timeoutMinutes = 5) {
   const state = { idle: 0, flag: false, manual, changes: [] as boolean[], timeoutMinutes };

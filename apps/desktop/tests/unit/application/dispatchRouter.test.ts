@@ -3,7 +3,7 @@ import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { GuildFull, Message } from '@discordy/core/contracts';
 

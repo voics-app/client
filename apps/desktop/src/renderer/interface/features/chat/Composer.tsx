@@ -12,7 +12,7 @@ import { searchShortcodes } from '@discordy/core/domain/emojiShortcodes';
 import { timeTriggerMatches } from '@discordy/core/domain/timestampPicker';
 import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@discordy/core/application/stores/composerStores';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { maxFileBytes } from '@discordy/core/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@discordy/core/domain/slashCommand';
 import { Permission } from '@discordy/core/contracts/permissions';

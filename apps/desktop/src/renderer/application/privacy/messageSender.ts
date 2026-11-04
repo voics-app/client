@@ -4,7 +4,7 @@ import { ApiErrorCode, MessageFlag, type Channel, type CreateMessageBody, type D
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '../stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';

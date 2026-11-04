@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bannerFor } from '@renderer/application/stores/updateStore';
+import { bannerFor } from '../../src/application/stores/updateStore';
 
 describe('update banner model', () => {
   it('maps statuses', () => {

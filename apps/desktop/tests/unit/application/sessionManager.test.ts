@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionManager, type SessionVault, type SessionRuntime } from '@renderer/application/sessionManager';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { StoredSession } from '@shared/ipc';
 

@@ -1,7 +1,7 @@
 import { LockKey, SpeakerHigh, Users } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { joinVoiceChannel } from '../../app/voiceActions';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/Misc';

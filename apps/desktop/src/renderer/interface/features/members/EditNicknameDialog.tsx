@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

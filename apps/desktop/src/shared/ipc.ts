@@ -3,22 +3,10 @@
  * sandboxed; everything privileged goes through `window.discordy`.
  */
 
-export type ConnectionProfileId = 'production' | 'local' | 'custom';
+import type { AppInfo, ConnectionProfile, ConnectionProfileId } from '@discordy/core/domain/appInfo';
+import type { UpdateStatus } from '@discordy/core/domain/updateStatus';
 
-export interface ConnectionProfile {
-  id: ConnectionProfileId;
-  apiUrl: string;
-  gatewayUrl: string;
-  cdnUrl: string;
-}
-
-export interface AppInfo {
-  version: string;
-  platform: string;
-  updateFeedUrl: string;
-  connection: ConnectionProfile;
-  e2eTest: boolean;
-}
+export type { AppInfo, ConnectionProfile, ConnectionProfileId, UpdateStatus };
 
 export interface StoredSession {
   accessToken: string;
@@ -66,15 +54,6 @@ export interface VoiceState {
   muted: boolean;
   deafened: boolean;
 }
-
-export type UpdateStatus =
-  | { state: 'idle' }
-  | { state: 'checking' }
-  | { state: 'available'; version: string; notes?: string }
-  | { state: 'not-available' }
-  | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string; notes?: string }
-  | { state: 'error'; message: string };
 
 /** Unread/mention totals the renderer pushes to main so it can drive the taskbar, tray and window title. */
 export interface ActivityCounts {

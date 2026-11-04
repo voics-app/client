@@ -1,5 +1,5 @@
-import { RouteQueue } from '@renderer/application/routeQueue';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { RouteQueue } from '@discordy/core/application/routeQueue';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';

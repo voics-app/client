@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { UpdateStatus } from '@shared/ipc';
+import type { UpdateStatus } from '../../domain/updateStatus';
 
 interface UpdateStoreState {
   status: UpdateStatus;

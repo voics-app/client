@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fractionOf, useTransferStore } from '@renderer/application/stores/transferStore';
+import { fractionOf, useTransferStore } from '../../src/application/stores/transferStore';
 
 describe('transferStore', () => {
   beforeEach(() => useTransferStore.getState().reset());

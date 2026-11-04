@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { InteractionService } from '@renderer/application/interactionService';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
-import type { ApiPort } from '@discordy/core/application/ports/api';
-import type { Channel } from '@discordy/core/contracts/rest';
+import { InteractionService } from '../../src/application/interactionService';
+import { useGuildStore } from '../../src/application/stores/guildStore';
+import { useInteractionStore } from '../../src/application/stores/interactionStore';
+import type { ApiPort } from '../../src/application/ports/api';
+import type { Channel } from '../../src/contracts/rest';
 
 const channel = { id: '200', type: 0, guild_id: '100', name: 'general', delivery_mode: 'standard', last_message_id: null } as Channel;
 

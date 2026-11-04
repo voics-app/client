@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RouteQueue } from '../../../src/renderer/application/routeQueue';
+import { RouteQueue } from '../../src/application/routeQueue';
 
 describe('RouteQueue', () => {
   it('applies immediately when ready', () => {
