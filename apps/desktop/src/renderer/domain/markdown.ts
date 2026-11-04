@@ -12,7 +12,14 @@ export type MarkdownNode =
   | { type: 'heading'; level: 1 | 2 | 3; children: MarkdownNode[] }
   | { type: 'subtext'; children: MarkdownNode[] }
   | { type: 'list'; ordered: boolean; start: number; items: MarkdownNode[][] }
+  | { type: 'table'; align: TableAlign[]; header: MarkdownNode[][]; rows: MarkdownNode[][][] }
   | { type: 'timestamp'; unix: number; style: TimestampStyle };
+
+export type TableAlign = 'left' | 'center' | 'right' | null;
+
+/** Table limits: wider or longer input stays literal text (rows) or is not a table at all (columns). */
+export const MAX_TABLE_COLUMNS = 12;
+export const MAX_TABLE_ROWS = 50;
 
 export type TimestampStyle = 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R';
 
@@ -66,6 +73,53 @@ function buildList(lines: ListLine[], from: number, indent: number): { node: Mar
   return { node: { type: 'list', ordered: first.ordered, start: first.ordered ? first.number : 1, items }, next: i };
 }
 
+/** Splits one pipe-table line into raw cells, honouring escaped pipes\|` escapes and optional outer pipes. */
+function splitTableRow(line: string): string[] {
+  const cells: string[] = [];
+  let cell = '';
+  for (let i = 0; i < line.length; i += 1) {
+    if (line[i] === '\\' && line[i + 1] === '|') {
+      cell += '|';
+      i += 1;
+    } else if (line[i] === '|') {
+      cells.push(cell);
+      cell = '';
+    } else cell += line[i];
+  }
+  cells.push(cell);
+  if (cells[0]!.trim() === '') cells.shift();
+  if (cells.length > 0 && cells[cells.length - 1]!.trim() === '') cells.pop();
+  return cells.map((c) => c.trim());
+}
+
+function delimiterAlign(cell: string): TableAlign | undefined {
+  if (!/^:?-+:?$/.test(cell)) return undefined;
+  const left = cell.startsWith(':');
+  const right = cell.endsWith(':');
+  return left && right ? 'center' : right ? 'right' : left ? 'left' : null;
+}
+
+/** GitHub-style pipe table: header row, delimiter row, then body rows until the first non-pipe line. */
+function parseTable(rest: string): { node: MarkdownNode; length: number } | null {
+  const lines = rest.split('\n');
+  if (lines.length < 2 || !lines[0]!.includes('|') || !lines[1]!.includes('-')) return null;
+  const header = splitTableRow(lines[0]!);
+  const aligns = splitTableRow(lines[1]!).map(delimiterAlign);
+  if (header.length === 0 || header.length > MAX_TABLE_COLUMNS || aligns.length !== header.length) return null;
+  if (aligns.some((a) => a === undefined)) return null;
+  const columns = header.length;
+  const cell = (raw: string | undefined): MarkdownNode[] => (raw ? parseMarkdown(raw) : []);
+  const rows: MarkdownNode[][][] = [];
+  let used = 2;
+  while (used < lines.length && rows.length < MAX_TABLE_ROWS && lines[used]!.includes('|')) {
+    const raw = splitTableRow(lines[used]!);
+    rows.push(Array.from({ length: columns }, (_, c) => cell(raw[c])));
+    used += 1;
+  }
+  const length = Math.min(lines.slice(0, used).join('\n').length + 1, rest.length);
+  return { node: { type: 'table', align: aligns as TableAlign[], header: header.map(cell), rows }, length };
+}
+
 /** Block-level constructs that only start at the beginning of a line. */
 function parseBlock(rest: string): { node: MarkdownNode; length: number } | null {
   const heading = /^(#{1,3}) +([^\n]*\S)[ \t]*(?:\n|$)/.exec(rest);
@@ -102,7 +156,7 @@ function parseBlock(rest: string): { node: MarkdownNode; length: number } | null
     const used = rest.split('\n').slice(0, built.next).join('\n').length;
     return { node: built.node, length: Math.min(used + 1, rest.length) };
   }
-  return null;
+  return parseTable(rest);
 }
 
 const RULES: Rule[] = [
@@ -224,6 +278,8 @@ export function toPlainText(nodes: readonly MarkdownNode[], resolve: (node: Mark
           return n.label ? toPlainText(n.label, resolve) : n.url;
         case 'timestamp':
           return new Date(n.unix * 1000).toLocaleString();
+        case 'table':
+          return [n.header, ...n.rows].map((row) => row.map((c) => toPlainText(c, resolve)).join('\t')).join('\n');
         case 'list':
           return n.items.map((item) => `• ${toPlainText(item, resolve)}`).join('\n');
         case 'customEmoji':
