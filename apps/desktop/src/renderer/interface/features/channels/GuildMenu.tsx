@@ -5,6 +5,7 @@ import { useNotificationSettingsStore } from '@discordy/core/application/stores/
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { canOpenServerSettings } from '@discordy/core/domain/serverSettings';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { attempt, deleteGuild, leaveGuild, markGuildRead } from '../../app/actions';
@@ -51,8 +52,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
       onSelect: () => firstChannel && ui.openDialog({ kind: 'invite', guildId, channelId: firstChannel.id }),
     },
   ];
-  const canManageGuild = can(perms, Permission.MANAGE_GUILD) || can(perms, Permission.MANAGE_ROLES) || can(perms, Permission.MANAGE_CHANNELS);
-  if (canManageGuild) {
+  if (canOpenServerSettings(perms)) {
     entries.push({ kind: 'separator' });
     entries.push({ kind: 'item', label: 'Server settings', icon: <Gear size={16} />, onSelect: () => ui.openSettings({ kind: 'server', guildId, tab: 'overview' }) });
   }

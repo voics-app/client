@@ -19,6 +19,7 @@ import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
+import { MembersButton } from '../members/MembersButton';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useKeyboardVisible } from './useKeyboardVisible';
@@ -128,7 +129,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       <Stack.Screen
         options={{
           headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
-          headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} />,
+          headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} />,
         }}
       />
       {error && (
@@ -179,7 +180,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
         <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
       </View>
-      <ProfileSheet user={profileUser} onClose={() => setProfileUser(null)} />
+      <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
       <MessageActionSheet
         actions={actions}
         onClose={close}

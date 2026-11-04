@@ -69,6 +69,8 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
 }
 
 const SIZE = 44;
+/** Plus, send and one line of input share this height, so a single-line field centres all three on one line. */
+const BUTTON = 40;
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: theme.surface, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10, borderTopWidth: 1, borderTopColor: theme.hairline },
@@ -86,9 +88,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minHeight: SIZE + 4,
   },
-  plus: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: 21, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, maxHeight: 132 },
-  send: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  plus: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: 21, paddingHorizontal: 8, paddingTop: 9.5, paddingBottom: 9.5, minHeight: BUTTON, maxHeight: 132 },
+  send: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
   counter: { color: theme.muted, fontSize: 12, alignSelf: 'flex-end', paddingTop: 4 },
   over: { color: theme.danger },
   blocked: { backgroundColor: theme.surface, padding: 18 },

@@ -61,17 +61,22 @@ describe('channelSections', () => {
     expect(sections.find((s) => s.id === 'cat')?.channels.map((c) => c.id)).toEqual(['general']);
   });
 
-  it('lists only text channels, not voice, threads or empty categories', () => {
+  it('lists every kind the desktop sidebar lists, but not threads or empty categories', () => {
     const sections = channelSections(
       input([
         channel('cat', ChannelType.GUILD_CATEGORY),
-        channel('talk', ChannelType.GUILD_VOICE, { parent_id: 'cat' }),
+        channel('empty', ChannelType.GUILD_CATEGORY, { position: 5 }),
+        channel('talk', ChannelType.GUILD_VOICE, { parent_id: 'cat', position: 1 }),
+        channel('stage', ChannelType.GUILD_STAGE_VOICE, { parent_id: 'cat', position: 2 }),
+        channel('ideas', ChannelType.GUILD_FORUM, { parent_id: 'cat', position: 3 }),
         channel('thread', ChannelType.PUBLIC_THREAD),
         channel('chat', ChannelType.GUILD_TEXT),
       ]),
     );
-    expect(sections).toHaveLength(1);
-    expect(sections[0]?.channels.map((c) => c.id)).toEqual(['chat']);
+    expect(sections.map((s) => [s.title, s.channels.map((c) => c.id)])).toEqual([
+      [null, ['chat']],
+      ['cat', ['talk', 'stage', 'ideas']],
+    ]);
   });
 
   it('hides channels the user may not view', () => {

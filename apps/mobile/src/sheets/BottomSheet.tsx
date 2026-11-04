@@ -10,6 +10,8 @@ export interface BottomSheetProps {
   onClose(): void;
   /** Spoken name of the sheet. */
   label: string;
+  /** Accessibility label of the backdrop button; defaults to `Close <label>`. */
+  closeLabel?: string;
   children: ReactNode;
   /** Fill most of the screen instead of fitting the content (long text, pickers). */
   tall?: boolean;
@@ -21,7 +23,7 @@ const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
  * One bottom sheet for the whole app. The dim backdrop fades in on its own while only the sheet slides up, so an open keyboard never shows
  * a black layer riding along. Tap outside or drag the handle down to dismiss; the keyboard closes first.
  */
-export function BottomSheet({ visible, onClose, label, children, tall }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, label, closeLabel, children, tall }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const screen = Dimensions.get('window').height;
@@ -71,7 +73,7 @@ export function BottomSheet({ visible, onClose, label, children, tall }: BottomS
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.root} pointerEvents="box-none">
         <Animated.View testID="sheet-backdrop" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdrop }]} />
-        <Pressable accessibilityRole="button" accessibilityLabel={`Close ${label}`} style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel={closeLabel ?? `Close ${label}`} style={StyleSheet.absoluteFill} onPress={onClose} />
         <Animated.View
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
