@@ -48,6 +48,19 @@ describe('channelSections', () => {
     ]);
   });
 
+  it('lists a channel once, whether or not its category exists', () => {
+    const sections = channelSections(
+      input([
+        channel('cat', ChannelType.GUILD_CATEGORY, { name: 'Text Channels' }),
+        channel('general', ChannelType.GUILD_TEXT, { parent_id: 'cat' }),
+        channel('orphan', ChannelType.GUILD_TEXT, { parent_id: 'deleted-category' }),
+      ]),
+    );
+    const ids = sections.flatMap((s) => s.channels.map((c) => c.id));
+    expect(ids.sort()).toEqual(['general', 'orphan']);
+    expect(sections.find((s) => s.id === 'cat')?.channels.map((c) => c.id)).toEqual(['general']);
+  });
+
   it('lists only text channels, not voice, threads or empty categories', () => {
     const sections = channelSections(
       input([
