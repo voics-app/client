@@ -2,7 +2,7 @@
  * Short UI sound effects synthesised with Web Audio (original, no audio assets, no licensing).
  * One shared AudioContext is kept, resumed on use, and routed to the selected output device.
  */
-import type { SoundId } from '@renderer/domain/sounds';
+import type { SoundId } from '@discordy/core/domain/sounds';
 import { sharedAudioContext, wakeContext } from './sharedContext';
 
 interface Blip {

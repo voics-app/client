@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { BAN_HISTORY_OPTIONS } from '@renderer/domain/userMenuModel';
+import { BAN_HISTORY_OPTIONS } from '@discordy/core/domain/userMenuModel';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';

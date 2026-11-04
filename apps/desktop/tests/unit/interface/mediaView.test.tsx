@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ALL_PERMISSIONS } from '@shared/contracts/permissions';
+import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
 import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';

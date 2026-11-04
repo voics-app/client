@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { rovingTarget, type RovingOrientation } from '@renderer/domain/rovingFocus';
+import { rovingTarget, type RovingOrientation } from '@discordy/core/domain/rovingFocus';
 
 interface Options {
   /** CSS selector matching the navigable items inside the container. */

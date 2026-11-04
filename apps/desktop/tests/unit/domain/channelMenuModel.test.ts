@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildChannelMenu } from '@renderer/domain/channelMenuModel';
-import { idsOf } from '@renderer/domain/menuModel';
+import { idsOf } from '@discordy/core/domain/menuModel';
 
 const base = { inGuild: true, canInvite: false, canManage: false, hasUnread: false, muted: false };
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore, type ServerSettingsTab, type SettingsTarget, type UserSettingsTab } from '@renderer/application/stores/uiStore';
-import { Permission } from '@shared/contracts/permissions';
+import { Permission } from '@discordy/core/contracts/permissions';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { useDialogFocus } from '../../shared/hooks/useDialogFocus';
 import { gentle } from '../../shared/ui/motion';

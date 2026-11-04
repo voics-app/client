@@ -1,4 +1,4 @@
-import { RelationshipType, type GuildMember, type Relationship, type User, type Channel } from '@shared/contracts/rest';
+import { RelationshipType, type GuildMember, type Relationship, type User, type Channel } from '@discordy/core/contracts/rest';
 
 export interface DmCandidate {
   id: string;

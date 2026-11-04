@@ -2,8 +2,8 @@ import { LockKey, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/reac
 import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '@renderer/application/stores/searchStore';
-import { parseQuery, splitHighlight, withoutFilter, FILTER_KEYS } from '@renderer/domain/messageSearch';
-import type { Message } from '@shared/contracts/rest';
+import { parseQuery, splitHighlight, withoutFilter, FILTER_KEYS } from '@discordy/core/domain/messageSearch';
+import type { Message } from '@discordy/core/contracts/rest';
 import { jumpToMessage, rerunSearch, submitSearch } from '../../app/searchActions';
 import { displayName } from '../../shared/hooks/useNames';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';

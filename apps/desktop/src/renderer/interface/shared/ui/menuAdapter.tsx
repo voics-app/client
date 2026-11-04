@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MenuItemModel, MenuModel } from '@renderer/domain/menuModel';
+import type { MenuItemModel, MenuModel } from '@discordy/core/domain/menuModel';
 import type { MenuEntry } from './Menu';
 
 /** Renders a framework-free menu model into Menu entries; `run` receives the chosen item. */

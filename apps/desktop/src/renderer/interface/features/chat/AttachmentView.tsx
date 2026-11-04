@@ -2,20 +2,20 @@ import { ArrowClockwise, File as FileIcon, FilePdf, LockSimple, Play, WarningCir
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { Permission } from '@shared/contracts/permissions';
-import { spoilersOpen } from '@renderer/domain/chatDisplay';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { spoilersOpen } from '@discordy/core/domain/chatDisplay';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { useLightboxStore, type LightboxItem } from '@renderer/application/stores/lightboxStore';
 import { fractionOf, useTransferStore, type TransferState } from '@renderer/application/stores/transferStore';
 import { uploadFraction, useUploadStore } from '@renderer/application/stores/uploadStore';
-import { displayFilename, formatBytes, gridLayout, isSpoiler, previewKind, previewLines, splitAttachments } from '@renderer/domain/media';
-import { privateRefOf } from '@renderer/domain/privateAttachment';
-import { isExpiring, signedUrlExpiryMs } from '@renderer/domain/signedUrl';
-import type { Attachment } from '@shared/contracts/rest';
+import { displayFilename, formatBytes, gridLayout, isSpoiler, previewKind, previewLines, splitAttachments } from '@discordy/core/domain/media';
+import { privateRefOf } from '@discordy/core/domain/privateAttachment';
+import { isExpiring, signedUrlExpiryMs } from '@discordy/core/domain/signedUrl';
+import type { Attachment } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { MediaPlayer } from './MediaPlayer';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
-import { looksAnimated } from '@renderer/domain/stillFrame';
+import { looksAnimated } from '@discordy/core/domain/stillFrame';
 
 const STATE_LABEL: Record<TransferState, string> = {
   encrypting: 'Encrypting',

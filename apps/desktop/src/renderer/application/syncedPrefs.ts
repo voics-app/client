@@ -6,7 +6,7 @@
  * On the first READY of an account on this device, values the user changed locally before sync
  * existed are migrated up when the server still has nothing for them.
  */
-import type { UserSettings } from '@shared/contracts/rest';
+import type { UserSettings } from '@discordy/core/contracts/rest';
 import { SYNCED_KEYS, fromServer, sameValue, serverIsDefault, syncedSlice, toServerPatch, type SyncedKey } from './syncedPrefsMap';
 import { deviceStorage, type KeyValueStorage } from './ports/deviceStorage';
 import { DEFAULT_PREFS, usePrefsStore, type PrefsData } from './stores/prefsStore';

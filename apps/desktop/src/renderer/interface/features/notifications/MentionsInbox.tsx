@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMentionInboxStore } from '@renderer/application/stores/mentionInboxStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { entriesByGuild } from '@renderer/domain/mentionInbox';
+import { entriesByGuild } from '@discordy/core/domain/mentionInbox';
 import { jumpToMessage } from '../../app/actions';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/Misc';

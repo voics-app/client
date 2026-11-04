@@ -1,7 +1,7 @@
 /** Runs message searches: on the server for Standard chats, in the local store for Ephemeral and P2P chats. */
-import type { Channel, DeliveryMode, Message } from '@shared/contracts/rest';
-import { highlightTerms, matchesLocal, parseQuery, toSearchParams, type SearchParams, type SuggestionContext } from '@renderer/domain/messageSearch';
-import { compareSnowflakes } from '@renderer/domain/snowflake';
+import type { Channel, DeliveryMode, Message } from '@discordy/core/contracts/rest';
+import { highlightTerms, matchesLocal, parseQuery, toSearchParams, type SearchParams, type SuggestionContext } from '@discordy/core/domain/messageSearch';
+import { compareSnowflakes } from '@discordy/core/domain/snowflake';
 import type { ApiPort } from '../ports/api';
 import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '../stores/searchStore';
 

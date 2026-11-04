@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../stores/messageStore';
 /** Facade over the private delivery modes; the composition root wires one instance per signed-in session. */
-import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '@shared/contracts/gateway';
+import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '@discordy/core/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
 import type { ApiPort } from '../ports/api';
 import type { GatewayPort } from '../ports/gateway';

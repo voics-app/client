@@ -1,6 +1,6 @@
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { MAX_PINNED_DMS, MAX_PINNED_PER_GUILD, pinnedChannelsOf, withPin, withoutPin } from '@renderer/domain/pins';
-import type { UserSettings } from '@shared/contracts/rest';
+import { MAX_PINNED_DMS, MAX_PINNED_PER_GUILD, pinnedChannelsOf, withPin, withoutPin } from '@discordy/core/domain/pins';
+import type { UserSettings } from '@discordy/core/contracts/rest';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';
 

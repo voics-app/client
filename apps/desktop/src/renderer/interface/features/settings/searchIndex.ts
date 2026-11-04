@@ -4,7 +4,7 @@
  * A new setting registers itself by adding one line here, next to its tab's other rows.
  */
 import type { UserSettingsTab } from '@renderer/application/stores/uiStore';
-import { rowSlug } from '@renderer/domain/rowSlug';
+import { rowSlug } from '@discordy/core/domain/rowSlug';
 import { USER_TABS } from './userTabs';
 
 export interface SettingEntry {

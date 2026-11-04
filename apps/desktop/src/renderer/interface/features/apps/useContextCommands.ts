@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
-import type { ContextCommand } from '@renderer/domain/contextCommands';
-import type { Channel } from '@shared/contracts/rest';
+import type { ContextCommand } from '@discordy/core/domain/contextCommands';
+import type { Channel } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';

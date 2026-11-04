@@ -3,8 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { Permission } from '@shared/contracts/permissions';
-import type { User } from '@shared/contracts/rest';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { User } from '@discordy/core/contracts/rest';
 
 const reorderRoles = vi.fn(async (_g: string, changes: { id: string; position: number }[]) => changes);
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { reorderRoles, addMemberRole: async () => undefined, removeMemberRole: async () => undefined } }) }));

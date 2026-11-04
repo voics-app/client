@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import type { Invite } from '@shared/contracts/rest';
+import type { Invite } from '@discordy/core/contracts/rest';
 import { instanceInviteCodes } from '@renderer/domain/inviteLinks';
 import { attempt } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';

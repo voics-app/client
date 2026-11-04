@@ -8,8 +8,9 @@ Electron + React desktop client for Discordy: servers, channels, threads, DMs, v
 |---|---|
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
-| `apps/desktop/src/shared` | IPC contract and local `contracts` module (REST P9, gateway P7, voice P8) |
-| `apps/desktop/src/renderer/domain` | Pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format |
+| `packages/core` | `@discordy/core`, shared by desktop and (next) mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format) and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
+| `apps/desktop/src/shared` | IPC contract and the brand |
+| `apps/desktop/src/renderer/domain` | The few domain modules that still read the brand (`BRAND`); they move once the brand is injected |
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |
 | `apps/desktop/src/renderer/infrastructure` | HTTP and gateway clients, WebRTC, audio, workers |
 | `apps/desktop/src/renderer/interface` | React UI: design system, features, composition root |
@@ -91,7 +92,7 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 
 - Code signing certificates for Windows and macOS (installers are unsigned).
 - A STUN/TURN server for P2P across restrictive NATs. The gateway READY payload carries `turn` (coturn REST credentials, 1h TTL); the client builds `iceServers` from it (plus a derived STUN entry) and re-identifies at 80% of the TTL to refresh them.
-- The generated `@discordy-voics/contracts` package, once published, replaces `apps/desktop/src/shared/contracts`.
+- The generated `@discordy-voics/contracts` package, once published, replaces `packages/core/src/contracts`.
 
 ## Git hooks
 

@@ -4,9 +4,9 @@
  * notification sounds turned off; a new ringing call notifies only when the window is unfocused.
  * The caller hears a ringback while waiting alone in a call that rings someone else (not deafened).
  */
-import type { Snowflake } from '@shared/contracts/rest';
-import type { RingtoneId } from '@renderer/domain/ringtones';
-import { callerOf, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
+import type { Snowflake } from '@discordy/core/contracts/rest';
+import type { RingtoneId } from '@discordy/core/domain/ringtones';
+import { callerOf, isRingingFor, isRingingOut, type DmCall } from '@discordy/core/domain/calls';
 
 export interface RingerSettings {
   notifySounds: boolean;

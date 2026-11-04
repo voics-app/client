@@ -1,5 +1,5 @@
 /** Plays the Discord-style voice sounds as the local call and its participants change. */
-import { shouldPlaySound, voiceTransitionSounds, type SoundId, type SoundPolicyInput, type VoiceSoundSnapshot } from '@renderer/domain/sounds';
+import { shouldPlaySound, voiceTransitionSounds, type SoundId, type SoundPolicyInput, type VoiceSoundSnapshot } from '@discordy/core/domain/sounds';
 
 export interface VoiceSoundDeps {
   play(sound: SoundId): void;

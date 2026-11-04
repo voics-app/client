@@ -1,6 +1,6 @@
 /** Private delivery-mode session status per channel (Ephemeral MLS groups and P2P links), plus Watch Together. */
 import { create } from 'zustand';
-import type { WatchTogetherPayload } from '@shared/contracts/gateway';
+import type { WatchTogetherPayload } from '@discordy/core/contracts/gateway';
 
 export type P2PLinkState = 'idle' | 'connecting' | 'open' | 'peer_offline' | 'failed' | 'unverified';
 export type GroupState = 'none' | 'establishing' | 'ready' | 'error';

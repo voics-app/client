@@ -3,7 +3,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useCallStore } from '@renderer/application/stores/callStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { startDmCall } from '@renderer/interface/app/callActions';
 import { registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
 

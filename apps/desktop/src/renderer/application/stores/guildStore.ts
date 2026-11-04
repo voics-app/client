@@ -1,7 +1,7 @@
 /** Guilds, channels (guild, DM and thread), roles, members and emojis, fed by READY and guild events. */
 import { create } from 'zustand';
-import { flatten, moveGuildToIndex, normalizeRail, railFromPositions, single } from '@renderer/domain/railLayout';
-import type { Channel, Emoji, Guild, GuildFolder, GuildFull, GuildMember, Role } from '@shared/contracts/rest';
+import { flatten, moveGuildToIndex, normalizeRail, railFromPositions, single } from '@discordy/core/domain/railLayout';
+import type { Channel, Emoji, Guild, GuildFolder, GuildFull, GuildMember, Role } from '@discordy/core/contracts/rest';
 
 export type GuildMeta = Omit<GuildFull, 'channels' | 'members' | 'threads' | 'voice_states' | 'presences'>;
 

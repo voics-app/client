@@ -2,7 +2,7 @@ import { AppWindow, Desktop, ShieldWarning, SpeakerHigh, Television } from '@pho
 import { useEffect, useState } from 'react';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { VIDEO_PRESETS, type VideoPresetId } from '@renderer/domain/videoPresets';
+import { VIDEO_PRESETS, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import type { CaptureSource } from '@shared/ipc';
 import { bridge } from '../../app/bridge';
 import { startShare } from '../../app/voiceActions';

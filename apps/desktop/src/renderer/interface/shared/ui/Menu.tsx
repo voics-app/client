@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { wrapIndex } from '@renderer/domain/rovingFocus';
+import { wrapIndex } from '@discordy/core/domain/rovingFocus';
 import { snappy } from './motion';
 
 export type MenuEntry =

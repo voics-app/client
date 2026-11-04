@@ -2,11 +2,11 @@ import { Plus, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { assignableRoles, rankOf, toggleRoleId } from '@renderer/domain/memberModeration';
-import { addableRoles, removableRoleIds, roleColorCss } from '@renderer/domain/userMenuModel';
+import { assignableRoles, rankOf, toggleRoleId } from '@discordy/core/domain/memberModeration';
+import { addableRoles, removableRoleIds, roleColorCss } from '@discordy/core/domain/userMenuModel';
 import { useGuildPermissions } from '../../shared/hooks/usePermissions';
-import { Permission } from '@shared/contracts/permissions';
-import { hasPermission } from '@renderer/domain/permissions';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { hasPermission } from '@discordy/core/domain/permissions';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 

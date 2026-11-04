@@ -4,7 +4,7 @@ import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { isAutoIdle, manualStatus, setAutoIdle } from '@renderer/application/selfPresence';
 import { IdleMonitor } from '@renderer/application/idleMonitor';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { isExpired } from '@renderer/domain/selfPresence';
+import { isExpired } from '@discordy/core/domain/selfPresence';
 import { bridge } from './bridge';
 import { publishPresence } from './presenceActions';
 import { setStatusText } from '../features/shell/customStatus';

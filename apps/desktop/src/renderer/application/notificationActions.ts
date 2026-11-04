@@ -5,8 +5,8 @@ import {
   muteConfigFor,
   withLevel,
   withMute,
-} from '@renderer/domain/notificationSettings';
-import type { GuildNotificationSettings, GuildNotificationSettingsPatch, NotificationLevel } from '@shared/contracts/rest';
+} from '@discordy/core/domain/notificationSettings';
+import type { GuildNotificationSettings, GuildNotificationSettingsPatch, NotificationLevel } from '@discordy/core/contracts/rest';
 
 type Api = Pick<ApiPort, 'updateGuildNotificationSettings' | 'putUserNote'>;
 

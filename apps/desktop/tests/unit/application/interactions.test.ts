@@ -5,9 +5,9 @@ import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/inte
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { flattenCommands } from '@renderer/domain/slashCommand';
+import { flattenCommands } from '@discordy/core/domain/slashCommand';
 import type { ApiPort } from '@renderer/application/ports/api';
-import type { ApplicationCommand, Channel, Message, User } from '@shared/contracts/rest';
+import type { ApplicationCommand, Channel, Message, User } from '@discordy/core/contracts/rest';
 
 const me: User = { id: '1', username: 'me', global_name: 'Me', avatar: null };
 const bot: User = { id: '50', username: 'dicebot', global_name: 'Dice Bot', avatar: null, bot: true };

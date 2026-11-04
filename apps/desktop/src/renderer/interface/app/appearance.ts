@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { effectiveReduceMotion, effectiveTheme, zoomActionOf, stepZoom } from '@renderer/domain/appearance';
+import { effectiveReduceMotion, effectiveTheme, zoomActionOf, stepZoom } from '@discordy/core/domain/appearance';
 import { bridge } from './bridge';
 
 function useMedia(query: string): boolean {
