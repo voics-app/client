@@ -7,7 +7,7 @@ vi.mock('@renderer/interface/app/bridge', () => ({ bridge: { app: { notify, flas
 import { notifyIncoming } from '@renderer/interface/app/notifications';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 const me = { id: '1', username: 'me', global_name: null, avatar: null };

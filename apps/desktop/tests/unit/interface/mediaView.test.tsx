@@ -6,7 +6,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 

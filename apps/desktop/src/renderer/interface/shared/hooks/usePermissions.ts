@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
 import { computeBasePermissions, computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
 

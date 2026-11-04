@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { bannerFor, useUpdateStore } from '@renderer/application/stores/updateStore';
+import { bannerFor, useUpdateStore } from '@discordy/core/application/stores/updateStore';
 import { bridge } from '../../app/bridge';
 import { Button } from '../../shared/ui/Button';
 

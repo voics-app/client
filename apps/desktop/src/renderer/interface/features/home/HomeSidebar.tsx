@@ -9,7 +9,7 @@ import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@disc
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
 import { isUnread } from '@discordy/core/domain/unread';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { isPinFull, MAX_PINNED_DMS, orderPinnedFirst } from '@discordy/core/domain/pins';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';

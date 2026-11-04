@@ -2,7 +2,7 @@ import { BellRinging, BellSlash, CaretDoubleUp, Check, FolderPlus, Gear, Hash, S
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { Permission } from '@discordy/core/contracts/permissions';

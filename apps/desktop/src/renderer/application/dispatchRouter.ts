@@ -28,7 +28,7 @@ import { useMentionInboxStore } from '@discordy/core/application/stores/mentionI
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useNotificationSettingsStore, useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from './stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
 import { readAloudIfWanted } from './ttsReader';
 

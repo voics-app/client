@@ -6,7 +6,7 @@ import { Permission } from '@discordy/core/contracts/permissions';
 import { spoilersOpen } from '@discordy/core/domain/chatDisplay';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { useLightboxStore, type LightboxItem } from '@discordy/core/application/stores/lightboxStore';
-import { fractionOf, useTransferStore, type TransferState } from '@renderer/application/stores/transferStore';
+import { fractionOf, useTransferStore, type TransferState } from '@discordy/core/application/stores/transferStore';
 import { uploadFraction, useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { displayFilename, formatBytes, gridLayout, gridTiles, isSpoiler, previewKind, previewLines, splitAttachments } from '@discordy/core/domain/media';
 import { privateRefOf } from '@discordy/core/domain/privateAttachment';

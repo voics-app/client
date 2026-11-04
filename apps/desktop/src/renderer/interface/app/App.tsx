@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { AuthScreen } from '../features/auth/AuthScreen';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { DialogHost } from '../features/shell/DialogHost';

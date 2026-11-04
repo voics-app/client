@@ -8,7 +8,7 @@ import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging
 import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { FakeGateway, FakePeerConnection, SELF, asApi, bobUser, dm, fakeApi, fakeCrypto, resetStores, selfUser } from './fakes';
 
 const serverMessage = (over: Partial<Message> = {}): Message => ({

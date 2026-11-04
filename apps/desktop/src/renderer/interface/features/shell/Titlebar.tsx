@@ -1,5 +1,5 @@
 import { Tray, MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { BRAND } from '@shared/brand';
 

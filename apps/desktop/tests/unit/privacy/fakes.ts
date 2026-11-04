@@ -7,7 +7,7 @@ import type { DataChannelLike, PeerConnectionLike } from '@renderer/application/
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 
 export const SELF = { userId: '1', deviceId: '10', identityKeyB64: 'key-self' };
 export const BOB = { userId: '2', deviceId: '20', identityKeyB64: 'key-bob' };

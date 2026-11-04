@@ -1,4 +1,4 @@
-import { currentPresence } from '@renderer/application/selfPresence';
+import { currentPresence } from '@discordy/core/application/selfPresence';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import { getRuntime } from './runtime';
 

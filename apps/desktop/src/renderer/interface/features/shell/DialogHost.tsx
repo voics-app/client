@@ -1,10 +1,10 @@
 import { ChannelNotificationDialog, GuildNotificationDialog } from '../notifications/NotificationDialogs';
 import { MentionsInbox } from '../notifications/MentionsInbox';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { dmCandidates } from '@renderer/application/dmCandidates';
+import { dmCandidates } from '@discordy/core/application/dmCandidates';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
 import { ChannelType, type Invite } from '@discordy/core/contracts/rest';

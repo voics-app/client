@@ -5,7 +5,7 @@ import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
 import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, canPruneMembers, filterBans, filterMembers, isMemberAuditEntry, isTimedOut, type MemberFilter, type MemberSort } from '@discordy/core/domain/moderationTools';
 import { timestampOf } from '@discordy/core/domain/snowflake';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useGuildPermissions } from '../../../shared/hooks/usePermissions';
 import { attempt, copyText } from '../../../app/actions';

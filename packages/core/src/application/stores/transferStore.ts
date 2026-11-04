@@ -1,6 +1,6 @@
 /** Progress and error state of private attachment transfers, keyed by attachment id. */
 import { create } from 'zustand';
-import type { AttachmentFailure } from '../privacy/attachmentCipher';
+import type { AttachmentFailure } from '../../domain/attachmentFailure';
 
 export type TransferState = 'encrypting' | 'uploading' | 'sending' | 'downloading' | 'receiving' | 'decrypting' | 'done' | 'error';
 

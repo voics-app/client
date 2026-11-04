@@ -12,7 +12,7 @@ import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFa
 import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { DEAF_LABEL, MUTE_LABEL, canDragOccupant, canDropOccupant, channelCapacity, occupantFlags } from '@discordy/core/domain/voiceOccupant';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, type Channel, type VoiceState } from '@discordy/core/contracts/rest';
 import { channelIcon, openChannel } from '../../app/navigation';

@@ -3,7 +3,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { forwardBody } from '@discordy/core/domain/forward';
 import { idBefore } from '@discordy/core/domain/unread';

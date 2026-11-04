@@ -4,7 +4,7 @@ import { createStreamSampler } from './streamSampler';
 import { cameraCaptureConstraints } from '@discordy/core/domain/videoPresets';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { createBrowserMicPipeline, createBrowserMixer } from '../audio/browserAudio';
 import { browserSocketFactory } from '../net/socket';
 import { DaveSession } from './daveSession';

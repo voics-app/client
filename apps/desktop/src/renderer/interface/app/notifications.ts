@@ -2,7 +2,7 @@ import type { ChatMessage } from '@discordy/core/application/stores/messageStore
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@discordy/core/domain/notificationPolicy';

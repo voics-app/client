@@ -2,7 +2,7 @@
 import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSearchStore } from '@discordy/core/application/stores/searchStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { displayName } from '../shared/hooks/useNames';

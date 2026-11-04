@@ -11,7 +11,7 @@ import { screenSinkWants } from '@discordy/core/domain/sinkWants';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { usePrefsStore, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
