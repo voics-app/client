@@ -1,5 +1,5 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
-import type { ApiPort, CreateChannelBody, MessageQuery } from '@renderer/application/ports/api';
+import type { ApiPort, CreateChannelBody, MessageQuery } from '@discordy/core/application/ports/api';
 import type {
   ApplicationCommand,
   ApplicationSummary,

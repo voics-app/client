@@ -1,4 +1,4 @@
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { getRuntime } from '../../app/runtime';
 import { Composer } from '../chat/Composer';
 import { MessageList } from '../chat/MessageList';

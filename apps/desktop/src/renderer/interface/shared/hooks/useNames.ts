@@ -1,4 +1,4 @@
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { User } from '@discordy/core/contracts/rest';
 
 export function displayName(user: Pick<User, 'username' | 'global_name'>, nick?: string | null): string {

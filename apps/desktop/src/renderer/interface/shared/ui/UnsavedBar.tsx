@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useUnsavedStore } from '@renderer/application/stores/unsavedStore';
+import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Button } from './Button';
 

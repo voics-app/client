@@ -3,7 +3,7 @@ import { GatewayOp, type WatchTogetherPayload } from '@discordy/core/contracts/g
 import { WatchTogetherService, type PlayerPort, type UserPlayerAction } from '@renderer/application/watch/watchTogetherService';
 import { ElementPlayer, type MediaElementLike } from '@renderer/application/watch/elementPlayer';
 import { validateWatchUrl } from '@renderer/application/watch/watchUrl';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 
 class FakePlayer implements PlayerPort {
   position = 0;

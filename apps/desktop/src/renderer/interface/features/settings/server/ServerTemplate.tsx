@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { templateShareLink, templateSummary, usageLabel } from '@renderer/domain/templateModel';
+import { templateShareLink, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
 import { attempt, copyText } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';

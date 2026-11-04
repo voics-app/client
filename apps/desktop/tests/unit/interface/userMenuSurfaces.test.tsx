@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
 import type { GuildMember, Role, VoiceState } from '@discordy/core/contracts/rest';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { VoiceOccupant } from '@renderer/interface/features/channels/ChannelSidebar';
 import { UserMenuTarget } from '@renderer/interface/features/members/UserContextMenu';
 

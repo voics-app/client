@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTrustedDomainStore } from '@renderer/application/stores/composerStores';
+import { useTrustedDomainStore } from '@discordy/core/application/stores/composerStores';
 import { MarkdownView } from '@renderer/interface/features/chat/MarkdownView';
 
 const open = vi.fn();

@@ -1,8 +1,8 @@
 import { At } from '@phosphor-icons/react';
 import { useMemo } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMentionInboxStore } from '@renderer/application/stores/mentionInboxStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { entriesByGuild } from '@discordy/core/domain/mentionInbox';
 import { jumpToMessage } from '../../app/actions';
 import { Button } from '../../shared/ui/Button';

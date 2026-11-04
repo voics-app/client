@@ -1,5 +1,5 @@
 import { CaretDown } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { useGuildMenuEntries } from './GuildMenu';
 

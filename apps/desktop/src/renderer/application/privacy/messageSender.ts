@@ -1,16 +1,16 @@
 import { compareSnowflakes } from '@discordy/core/domain/snowflake';
 /** Routes outgoing messages by effective delivery mode (P11) and owns the per-chat / account mode switches. */
 import { ApiErrorCode, MessageFlag, type Channel, type CreateMessageBody, type DeliveryMode } from '@discordy/core/contracts/rest';
-import type { ApiPort } from '../ports/api';
-import { useGuildStore } from '../stores/guildStore';
-import { useMessageStore, type ChatMessage } from '../stores/messageStore';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
-import { useMentionInboxStore } from '../stores/mentionInboxStore';
-import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
+import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
-import { useUploadStore } from '../stores/uploadStore';
-import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
+import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
+import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@discordy/core/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
 import type { P2PService } from './p2pService';

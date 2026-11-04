@@ -1,7 +1,7 @@
 import { LockKey, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '@renderer/application/stores/searchStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '@discordy/core/application/stores/searchStore';
 import { parseQuery, splitHighlight, withoutFilter, FILTER_KEYS } from '@discordy/core/domain/messageSearch';
 import type { Message } from '@discordy/core/contracts/rest';
 import { jumpToMessage, rerunSearch, submitSearch } from '../../app/searchActions';

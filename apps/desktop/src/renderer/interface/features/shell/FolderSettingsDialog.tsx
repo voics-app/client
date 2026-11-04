@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { FOLDER_COLORS, MAX_FOLDER_NAME, patchFolder } from '@discordy/core/domain/railLayout';
 import { saveRail } from '../../app/actions';
 import { Button } from '../../shared/ui/Button';

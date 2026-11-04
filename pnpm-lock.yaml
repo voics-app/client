@@ -196,6 +196,10 @@ importers:
         version: 3.4.1(@emnapi/runtime@1.11.2)(@types/node@24.10.1)(node-addon-api@7.1.1)
 
   packages/core:
+    dependencies:
+      zustand:
+        specifier: 5.0.8
+        version: 5.0.8(@types/react@19.3.0)(react@19.3.0)
     devDependencies:
       '@eslint/js':
         specifier: 9.39.1

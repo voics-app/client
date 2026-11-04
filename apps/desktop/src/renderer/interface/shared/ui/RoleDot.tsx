@@ -1,4 +1,4 @@
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { roleColorStyle } from '@discordy/core/domain/appearance';
 
 /** Role colour of a name per the Accessibility setting: `tint` styles the name, `dot` draws a dot before it. */

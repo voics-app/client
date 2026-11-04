@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { BAN_HISTORY_OPTIONS } from '@discordy/core/domain/userMenuModel';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

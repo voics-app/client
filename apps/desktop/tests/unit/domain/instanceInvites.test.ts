@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BRAND } from '@shared/brand';
-import { instanceInviteCodes } from '@renderer/domain/inviteLinks';
+import { instanceInviteCodes } from '@discordy/core/domain/inviteLinks';
 
 describe('instanceInviteCodes', () => {
   it('finds invite links on the brand landing host', () => {

@@ -1,7 +1,7 @@
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { EMOJI_CATEGORIES, SKIN_TONES, applySkinTone, supportsSkinTone, usableEmojiGroups } from '@discordy/core/domain/emojiModel';
 import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { Permission } from '@discordy/core/contracts/permissions';

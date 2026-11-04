@@ -1,5 +1,5 @@
 /** Browser wiring for the audio pipeline (kept apart so unit tests never import the worklet bundle). */
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import rnnoiseModuleUrl from '../../workers/rnnoiseProcessor?worker&url';
 import { MicPipeline } from './micPipeline';
 import { RemoteAudioMixer } from './remoteAudioMixer';

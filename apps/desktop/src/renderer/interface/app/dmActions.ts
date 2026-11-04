@@ -1,6 +1,6 @@
-import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { attempt } from './actions';
 import { pinnedDmIds, setDmPinned } from './pinActions';
 import { getRuntime } from './runtime';

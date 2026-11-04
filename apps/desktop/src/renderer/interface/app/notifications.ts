@@ -1,10 +1,10 @@
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@discordy/core/domain/notificationPolicy';
 import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@discordy/core/domain/notificationSettings';
 import { summarizeActivity } from '@discordy/core/domain/unread';

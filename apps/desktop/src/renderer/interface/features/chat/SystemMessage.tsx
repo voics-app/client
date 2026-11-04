@@ -1,9 +1,9 @@
 import { ChatTeardropText, DotsThree, EnvelopeSimple, HandWaving, Hash, Image as ImageIcon, PencilSimple, Phone, PhoneX, PushPin, SignIn, SignOut, Smiley, Trash, Warning } from '@phosphor-icons/react';
 import { useState, type FocusEvent, type ReactNode } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { parseApiEmoji, quickApiForm, quickReactions } from '@discordy/core/domain/quickReactions';

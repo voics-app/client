@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { muteScope, setLevel, setToggles } from '@renderer/application/notificationActions';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { useMentionInboxStore } from '@renderer/application/stores/mentionInboxStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { effectiveLevelDeep, emptySettings, isChannelMutedDeep, activeOverrides, withMute } from '@discordy/core/domain/notificationSettings';
 import { addInboxEntry, inboxEntryOf, type InboxEntry } from '@discordy/core/domain/mentionInbox';
 import type { GuildNotificationSettings } from '@discordy/core/contracts/rest';

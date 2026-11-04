@@ -7,7 +7,7 @@
  */
 import type { MicPort } from '@renderer/application/voice/ports';
 import { MicGate, levelFromRms, rmsOf } from '@renderer/application/voice/gateLogic';
-import type { PrefsData } from '@renderer/application/stores/prefsStore';
+import type { PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { Listeners } from '../net/emitter';
 
 export interface MicPipelineDeps {

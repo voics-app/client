@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { CaretRight, GameController, GraduationCap, Heart, PaintBrush, Plus, UsersThree } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { parseTemplateCode, previewTemplate, templateSummary, usageLabel } from '@renderer/domain/templateModel';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { parseTemplateCode, previewTemplate, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
 import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../app/actions';
 import { openGuild } from '../../app/navigation';

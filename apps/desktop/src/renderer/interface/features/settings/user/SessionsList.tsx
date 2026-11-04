@@ -1,8 +1,8 @@
 import { DeviceMobile, Laptop, SignOut } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { orderSessions, sessionDetail, sessionTitle } from '@renderer/domain/authSessions';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { orderSessions, sessionDetail, sessionTitle } from '@discordy/core/domain/authSessions';
 import type { AuthSession } from '@discordy/core/contracts/rest';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
