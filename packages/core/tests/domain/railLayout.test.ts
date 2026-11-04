@@ -6,6 +6,12 @@ const folder = (id: number, ...ids: string[]): GuildFolder => ({ id, name: null,
 const ids = (rail: GuildFolder[]) => rail.map((e) => (e.id === null ? e.guild_ids[0] : `[${e.guild_ids.join('')}]`));
 
 describe('railLayout', () => {
+  it('puts servers without a saved place in a stable order, oldest first', () => {
+    const expected = ['9', '10', '200'];
+    expect(flatten(railFromPositions([], ['200', '9', '10']))).toEqual(expected);
+    expect(flatten(railFromPositions([], ['10', '200', '9']))).toEqual(expected);
+  });
+
   const base = railFromPositions(['a', 'b', 'c', 'd'], ['a', 'b', 'c', 'd']);
 
   it('builds from legacy positions and appends unknown servers', () => {
