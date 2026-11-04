@@ -7,6 +7,8 @@ import {
   embedMediaSrc,
   embedPlayback,
   gridLayout,
+  gridTiles,
+  swipeDirection,
   isBareMediaEmbed,
   isPlayerIframeUrl,
   isSpoiler,
@@ -90,6 +92,30 @@ describe('gridLayout', () => {
   it('clamps out-of-range counts', () => {
     expect(gridLayout(0).cells).toHaveLength(1);
     expect(gridLayout(25).cells).toHaveLength(10);
+  });
+});
+
+describe('gridTiles', () => {
+  it('shows every image up to four', () => {
+    expect(gridTiles(1)).toEqual({ shown: 1, hidden: 0 });
+    expect(gridTiles(4)).toEqual({ shown: 4, hidden: 0 });
+  });
+
+  it('collapses the rest into a +N count on the fourth tile', () => {
+    expect(gridTiles(5)).toEqual({ shown: 4, hidden: 1 });
+    expect(gridTiles(10)).toEqual({ shown: 4, hidden: 6 });
+  });
+});
+
+describe('swipeDirection', () => {
+  it('moves to the next image on a swipe left and back on a swipe right', () => {
+    expect(swipeDirection(-80, 5)).toBe(1);
+    expect(swipeDirection(80, -5)).toBe(-1);
+  });
+
+  it('ignores short or mostly vertical movements', () => {
+    expect(swipeDirection(-20, 0)).toBe(0);
+    expect(swipeDirection(-80, 120)).toBe(0);
   });
 });
 

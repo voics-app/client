@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Messages with more than four images show a compact grid of four with a "+N" on the last tile, and swiping left or right in the image viewer turns to the next or previous image.
 - Internal: fixed a flaky P2P attachments test; it stopped waiting for the link after a fixed number of ticks while the files were still being encrypted. No change in behaviour.
 - Moderation: Duplicate role (role list context menu and role settings), Settings, Overview, Safety has Only administrators can prune members, Members has Prune members (pick 1 to 30 days, see how many would be removed, then confirm), and Mod View opens from a ban or an audit log entry to show a user who is no longer in the server with their ban reason and moderation history. Needs api#112 (prune) and the api#101 changes.
 - Group DMs can have up to 25 members (was 10); the new-group dialog follows. Needs the api change that raises the cap (api#100); an api configured with a lower `GROUP_DM_MAX_PARTICIPANTS` will refuse the extra members with an error.
