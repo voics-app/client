@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { timestampOf } from '@discordy/core/domain/snowflake';
 import { getRuntime } from '../../app/runtime';
