@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Group DMs can have up to 25 members (was 10); the new-group dialog follows. Needs the api change that raises the cap (api#100); an api configured with a lower `GROUP_DM_MAX_PARTICIPANTS` will refuse the extra members with an error.
 - Internal: the domain and application layers no longer touch `window`, `document` or `localStorage`; persistence goes through a storage port, a first step towards sharing the core with the mobile app. No change in behaviour.
 - Internal: the product identity the domain rules read (name, deep-link scheme, hosts) is now an installed `BrandConfig` (`@discordy/core/domain/brandConfig`) instead of an import of the desktop brand module, so the six brand-aware rules (sessions, channel links, delivery modes, invites, link trust, templates) moved into `@discordy/core`. No change in behaviour.
 - Internal: the domain rules and protocol contracts moved into the new `packages/core` workspace package (`@discordy/core`), which the desktop imports; the mobile app will share it.
