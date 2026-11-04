@@ -1,24 +1,8 @@
 /** Device-local composer state: per-channel drafts, trusted link domains and slowmode send times. */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
 import type { ChatMessage } from './messageStore';
-
-function storage(): Storage {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
-  } catch {
-    /* fall through to memory */
-  }
-  const mem = new Map<string, string>();
-  return {
-    getItem: (k) => mem.get(k) ?? null,
-    setItem: (k, v) => void mem.set(k, v),
-    removeItem: (k) => void mem.delete(k),
-    clear: () => mem.clear(),
-    key: () => null,
-    length: 0,
-  } as Storage;
-}
 
 export interface Draft {
   text: string;
@@ -60,7 +44,7 @@ export const useDraftStore = create<DraftState>()(
           return { drafts: rest };
         }),
     }),
-    { name: 'discordy.drafts.v1', storage: createJSONStorage(storage) },
+    { name: 'discordy.drafts.v1', storage: persistedStorage() },
   ),
 );
 
@@ -75,7 +59,7 @@ export const useTrustedDomainStore = create<TrustedDomainState>()(
       domains: [],
       trust: (domain) => set((s) => (s.domains.includes(domain) ? s : { domains: [...s.domains, domain].slice(-200) })),
     }),
-    { name: 'discordy.trusted-domains.v1', storage: createJSONStorage(storage) },
+    { name: 'discordy.trusted-domains.v1', storage: persistedStorage() },
   ),
 );
 
@@ -86,7 +70,7 @@ interface ReplyPingState {
 }
 
 export const useReplyPingStore = create<ReplyPingState>()(
-  persist((set) => ({ ping: true, setPing: (ping) => set({ ping }) }), { name: 'discordy.reply-ping.v1', storage: createJSONStorage(storage) }),
+  persist((set) => ({ ping: true, setPing: (ping) => set({ ping }) }), { name: 'discordy.reply-ping.v1', storage: persistedStorage() }),
 );
 
 export interface SlowmodeState {

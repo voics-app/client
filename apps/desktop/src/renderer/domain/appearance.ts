@@ -14,8 +14,16 @@ export function stepZoom(zoom: number, action: ZoomAction): number {
   return clampZoom(zoom + (action === 'in' ? ZOOM_STEP : -ZOOM_STEP));
 }
 
+/** The parts of a keyboard event the zoom shortcuts read (structurally a DOM KeyboardEvent). */
+export interface ZoomKeyEvent {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+}
+
 /** Ctrl +, Ctrl =, Ctrl -, Ctrl 0 (also on the numpad). */
-export function zoomActionOf(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>): ZoomAction | null {
+export function zoomActionOf(e: ZoomKeyEvent): ZoomAction | null {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return null;
   if (e.key === '+' || e.key === '=') return 'in';
   if (e.key === '-' || e.key === '_') return 'out';

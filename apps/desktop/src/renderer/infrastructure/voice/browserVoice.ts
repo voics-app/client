@@ -1,6 +1,6 @@
 /** Browser composition of the voice stack and Watch Together (used by the app composition root). */
 import type { GatewayPort } from '@renderer/application/ports/gateway';
-import { createStreamSampler } from '@renderer/application/voice/blackFrame';
+import { createStreamSampler } from './streamSampler';
 import { cameraCaptureConstraints } from '@renderer/domain/videoPresets';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';

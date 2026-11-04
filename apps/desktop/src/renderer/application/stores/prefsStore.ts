@@ -1,6 +1,7 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
 import type { SoundId } from '@renderer/domain/sounds';
 import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
 import type { VideoPresetId } from '@renderer/domain/videoPresets';
@@ -173,27 +174,6 @@ export const DEFAULT_PREFS: PrefsData = {
   mediaMuted: false,
 };
 
-function memoryStorage() {
-  const memory = new Map<string, string>();
-  return {
-    getItem: (k: string) => memory.get(k) ?? null,
-    setItem: (k: string, v: string) => void memory.set(k, v),
-    removeItem: (k: string) => void memory.delete(k),
-  };
-}
-
-/** localStorage can be absent or throw (private windows, blocked storage); fall back to memory. */
-function browserStorage() {
-  try {
-    const probe = '__discordy_probe__';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    return memoryStorage();
-  }
-}
-
 export const usePrefsStore = create<PrefsState>()(
   persist(
     (set) => ({
@@ -208,7 +188,7 @@ export const usePrefsStore = create<PrefsState>()(
     {
       name: 'discordy.prefs.v1',
       merge: (persisted, current) => ({ ...current, ...(persisted as Partial<PrefsState>), keybinds: mergeKeybinds((persisted as Partial<PrefsState> | undefined)?.keybinds) }),
-      storage: createJSONStorage(() => (typeof window === 'undefined' ? memoryStorage() : browserStorage())),
+      storage: persistedStorage(),
     },
   ),
 );
