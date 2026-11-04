@@ -1,6 +1,6 @@
 import { Plus, X } from '@phosphor-icons/react';
 import { useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { assignableRoles, rankOf, toggleRoleId } from '@discordy/core/domain/memberModeration';
 import { addableRoles, removableRoleIds, roleColorCss } from '@discordy/core/domain/userMenuModel';

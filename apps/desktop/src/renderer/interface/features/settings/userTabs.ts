@@ -1,4 +1,4 @@
-import type { UserSettingsTab } from '@renderer/application/stores/uiStore';
+import type { UserSettingsTab } from '@discordy/core/application/stores/uiStore';
 
 export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
   { id: 'account', label: 'My account', group: 'User settings' },

@@ -1,5 +1,5 @@
 /** Pure microphone gating logic: VAD with hysteresis, push-to-talk release delay, and the combined gate. */
-import type { InputMode } from '@renderer/application/stores/prefsStore';
+import type { InputMode } from '@discordy/core/application/stores/prefsStore';
 
 /** Maps linear RMS (0..1) to a 0..1 meter on a -60..0 dBFS scale. */
 export function levelFromRms(rms: number): number {

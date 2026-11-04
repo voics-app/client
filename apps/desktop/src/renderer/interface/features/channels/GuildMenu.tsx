@@ -1,9 +1,9 @@
 import { BellRinging, BellSlash, CaretDoubleUp, Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType } from '@discordy/core/contracts/rest';

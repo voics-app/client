@@ -2,11 +2,11 @@ import { CaretDown, CaretRight, Crown, MagnifyingGlass, SpeakerHigh } from '@pho
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore } from '@renderer/application/stores/peopleStores';
-import { useMemberGroupStore } from '@renderer/application/stores/memberGroupStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
+import { useMemberGroupStore } from '@discordy/core/application/stores/memberGroupStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { assetCandidates } from '@discordy/core/domain/assets';
 import { flattenSections, roleIconOf, voiceChannelOf, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@discordy/core/domain/memberList';
 import { buildMemberSections } from '@discordy/core/domain/memberModeration';

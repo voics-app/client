@@ -2,11 +2,11 @@ import { ChannelNotificationDialog, GuildNotificationDialog } from '../notificat
 import { MentionsInbox } from '../notifications/MentionsInbox';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dmCandidates } from '@renderer/application/dmCandidates';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
-import { inviteWebUrl, parseInviteCode } from '@renderer/domain/inviteLinks';
+import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
+import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
 import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
@@ -35,7 +35,7 @@ import { GroupDmDialog } from '../home/GroupDmDialog';
 import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText, type StatusEmoji } from './customStatus';
 import { BRAND } from '@shared/brand';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@discordy/core/domain/shortcutCatalog';
 
 function useClose() {

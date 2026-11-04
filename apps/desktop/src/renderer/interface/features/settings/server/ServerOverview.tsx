@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
 import { AFK_TIMEOUTS, NOTIFICATION_LEVELS, SystemFlag, draftFromGuild, flagEnabled, overviewPatch, withFlag, type OverviewDraft } from '@discordy/core/domain/guildOverview';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { attempt } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';
 import { getRuntime } from '../../../app/runtime';

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createMemoryStorage, deviceStorage, installDeviceStorage } from '@renderer/application/ports/deviceStorage';
+import { createMemoryStorage, deviceStorage, installDeviceStorage } from '@discordy/core/application/ports/deviceStorage';
 import { privacyDebug } from '@renderer/application/privacy/debugLog';
 import { vi } from 'vitest';
 

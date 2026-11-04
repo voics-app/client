@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
-import { useTypingStore, typingUsers, useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useTypingStore, typingUsers, useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 
 const msg = (id: string, extra: Partial<ChatMessage> = {}): ChatMessage => ({
   id,

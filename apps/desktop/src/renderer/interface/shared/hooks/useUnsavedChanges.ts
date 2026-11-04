@@ -1,5 +1,5 @@
 import { useEffect, useId } from 'react';
-import { useUnsavedStore } from '@renderer/application/stores/unsavedStore';
+import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 
 /** Registers a page's dirty state so settings cannot be closed over unsaved edits. Clears itself on unmount. */
 export function useUnsavedChanges(dirty: boolean, id?: string): void {

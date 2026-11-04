@@ -1,5 +1,5 @@
 /** Mute and notification-level commands against the synced settings (optimistic, rolled back on failure). */
-import type { ApiPort } from './ports/api';
+import type { ApiPort } from '@discordy/core/application/ports/api';
 import { saveGuildNotificationSettings } from './notificationSync';
 import {
   muteConfigFor,

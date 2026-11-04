@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { PRUNE_DAY_CHOICES, pruneSummary } from '@discordy/core/domain/moderationTools';
 import { attempt, errorMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

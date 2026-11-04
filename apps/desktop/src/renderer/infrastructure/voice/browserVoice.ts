@@ -1,5 +1,5 @@
 /** Browser composition of the voice stack and Watch Together (used by the app composition root). */
-import type { GatewayPort } from '@renderer/application/ports/gateway';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { createStreamSampler } from './streamSampler';
 import { cameraCaptureConstraints } from '@discordy/core/domain/videoPresets';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';

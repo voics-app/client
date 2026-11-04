@@ -1,3 +1,4 @@
+import { MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { BRAND } from '../src/brand';
@@ -8,6 +9,7 @@ export default function SignIn() {
     <View style={styles.container}>
       <Text style={styles.title}>{BRAND.displayName}</Text>
       <Text style={styles.hint}>Sign in arrives with the text MVP.</Text>
+      <Text style={styles.hint}>{MODE_COPY.standard.description}</Text>
       <Link href="/servers" style={styles.link}>
         Continue to the app skeleton
       </Link>

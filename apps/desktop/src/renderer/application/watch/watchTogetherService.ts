@@ -5,8 +5,8 @@
  */
 import { GatewayOp, type WatchTogetherAction, type WatchTogetherPayload } from '@discordy/core/contracts/gateway';
 import { estimateServerOffset, needsResync, playbackPosition, type PlaybackAnchor } from '@discordy/core/domain/watchTogether';
-import type { GatewayPort } from '@renderer/application/ports/gateway';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { localReference, validateWatchUrl, type WatchSource } from './watchUrl';
 
 export type UserPlayerAction = { action: 'play' | 'pause' | 'seek'; positionMs: number };

@@ -5,7 +5,7 @@ import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { EphemeralService } from '@renderer/application/privacy/ephemeralService';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { b64ToUtf8, utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useTransferStore } from '@renderer/application/stores/transferStore';
 import { privateRefOf } from '@discordy/core/domain/privateAttachment';
 import { BOB, FakeGateway, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores } from './fakes';

@@ -1,3 +1,4 @@
+import './infrastructure/brand/installBrand';
 import './infrastructure/storage/installBrowserStorage';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
@@ -9,7 +10,7 @@ import './interface/shared/theme/app.css';
 import './interface/shared/theme/access.css';
 import { App } from './interface/app/App';
 import { Gallery } from './interface/features/gallery/Gallery';
-import { usePrefsStore } from './application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');

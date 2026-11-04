@@ -1,8 +1,8 @@
 import { Copy, Plus, Trash } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useReducer, useState } from 'react';
-import { useInteractionStore } from '@renderer/application/stores/interactionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import {
   APPLICATION_DESCRIPTION_MAX,
   APPLICATION_NAME_MAX,

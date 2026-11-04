@@ -1,7 +1,7 @@
 import { X } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { gentle } from '../../shared/ui/motion';
 import { IconButton } from '../../shared/ui/IconButton';
 import { MemberList } from '../members/MemberList';

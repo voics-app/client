@@ -1,9 +1,9 @@
 import { At, Bell, BellSlash, ChatsCircle, Gear, Hash, Megaphone, Phone, PushPin, Television, UserCircle, UserPlus, Users, VideoCamera } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { useCallStore } from '@renderer/application/stores/callStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useCallStore } from '@discordy/core/application/stores/callStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { hasParticipants } from '@discordy/core/domain/calls';
 import { canEditTopic, headerButtons, normalizeTopic, TOPIC_MAX_LENGTH } from '@discordy/core/domain/chatHeader';

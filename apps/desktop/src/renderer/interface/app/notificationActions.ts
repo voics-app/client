@@ -1,6 +1,6 @@
 /** UI-facing wrappers over the synced notification commands: real API, error toasts. */
 import * as commands from '@renderer/application/notificationActions';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { NotificationLevel } from '@discordy/core/contracts/rest';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';

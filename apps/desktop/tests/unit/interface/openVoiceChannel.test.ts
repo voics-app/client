@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { openVoiceChannel, registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
 

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerIncoming } from '@renderer/application/dispatchRouter';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMentionInboxStore } from '@renderer/application/stores/mentionInboxStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 const me = { id: '1', username: 'me', global_name: 'Me', avatar: null };
 const friend = { id: '2', username: 'friend', global_name: 'Friend', avatar: null };

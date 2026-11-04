@@ -1,5 +1,5 @@
 import { LockKey, SpeakerHigh, Users } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { joinVoiceChannel } from '../../app/voiceActions';

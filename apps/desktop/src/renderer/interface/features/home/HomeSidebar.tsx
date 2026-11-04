@@ -1,12 +1,12 @@
 import { Plus, UsersThree, LockKey, Plugs, PushPin } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
-import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { buildDmMenu, visibleDms } from '@discordy/core/domain/dmModel';
 import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@renderer/application/stores/peopleStores';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
 import { isUnread } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';

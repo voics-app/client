@@ -2,12 +2,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
-import { DEFAULT_PREFS, usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUploadStore } from '@renderer/application/stores/uploadStore';
+import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 
 const editMessage = vi.fn(async () => ({}));

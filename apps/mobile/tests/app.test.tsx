@@ -1,4 +1,5 @@
 import { renderRouter, screen } from 'expo-router/testing-library';
+import { MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { BRAND } from '../src/brand';
 
 describe('app shell', () => {
@@ -6,6 +7,12 @@ describe('app shell', () => {
     await renderRouter('./app', { initialUrl: '/' });
     expect(await screen.findByText(BRAND.displayName)).toBeTruthy();
     expect(screen.getByText('Sign in arrives with the text MVP.')).toBeTruthy();
+  });
+
+  it('renders copy from @discordy/core with the installed brand', async () => {
+    await renderRouter('./app', { initialUrl: '/' });
+    expect(await screen.findByText(MODE_COPY.standard.description)).toBeTruthy();
+    expect(MODE_COPY.standard.description).toContain(BRAND.displayName);
   });
 
   it('shows the four tabs skeleton', async () => {

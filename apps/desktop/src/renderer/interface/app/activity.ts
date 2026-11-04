@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { bridge } from './bridge';
 import { currentActivity } from './notifications';
 
