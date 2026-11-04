@@ -40,7 +40,7 @@ describe('resolveConnection', () => {
 });
 
 describe('resolveUpdateFeed', () => {
-  it('defaults to the Discordy update host', () => {
+  it('defaults to the update host', () => {
     expect(resolveUpdateFeed({})).toBe(DEFAULT_UPDATE_FEED_URL);
     expect(DEFAULT_UPDATE_FEED_URL).toBe('https://discordy-updates.voics.nl');
   });
@@ -52,24 +52,24 @@ describe('resolveUpdateFeed', () => {
 
 describe('routeFromDeepLink', () => {
   it('maps invites and channels', () => {
-    expect(routeFromDeepLink('discordy://invite/AbC123')).toBe('/invite/AbC123');
-    expect(routeFromDeepLink('discordy://channels/1/2')).toBe('/channels/1/2');
-    expect(routeFromDeepLink('discordy://channels/@me/9')).toBe('/channels/@me/9');
-    expect(routeFromDeepLink('discordy://channels/1/2/3')).toBe('/channels/1/2/3');
-    expect(routeFromDeepLink('discordy://channels/1/2/x')).toBeNull();
+    expect(routeFromDeepLink('voics://invite/AbC123')).toBe('/invite/AbC123');
+    expect(routeFromDeepLink('voics://channels/1/2')).toBe('/channels/1/2');
+    expect(routeFromDeepLink('voics://channels/@me/9')).toBe('/channels/@me/9');
+    expect(routeFromDeepLink('voics://channels/1/2/3')).toBe('/channels/1/2/3');
+    expect(routeFromDeepLink('voics://channels/1/2/x')).toBeNull();
   });
 
   it('maps template links', () => {
-    expect(routeFromDeepLink('discordy://template/AbC123xyz')).toBe('/template/AbC123xyz');
-    expect(routeFromDeepLink('discordy://template/builtin-gaming')).toBe('/template/builtin-gaming');
-    expect(routeFromDeepLink('discordy://template/<script>')).toBeNull();
-    expect(routeFromDeepLink('discordy://template/a/b')).toBeNull();
+    expect(routeFromDeepLink('voics://template/AbC123xyz')).toBe('/template/AbC123xyz');
+    expect(routeFromDeepLink('voics://template/builtin-gaming')).toBe('/template/builtin-gaming');
+    expect(routeFromDeepLink('voics://template/<script>')).toBeNull();
+    expect(routeFromDeepLink('voics://template/a/b')).toBeNull();
   });
 
   it('ignores unknown or malicious links', () => {
     expect(routeFromDeepLink('https://evil.test')).toBeNull();
-    expect(routeFromDeepLink('discordy://settings/../../x')).toBeNull();
-    expect(routeFromDeepLink('discordy://invite/<script>')).toBeNull();
+    expect(routeFromDeepLink('voics://settings/../../x')).toBeNull();
+    expect(routeFromDeepLink('voics://invite/<script>')).toBeNull();
   });
 });
 

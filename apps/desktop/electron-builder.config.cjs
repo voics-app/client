@@ -13,7 +13,7 @@ module.exports = {
   npmRebuild: false,
   protocols: [{ name: brand.displayName, schemes: [brand.protocolScheme] }],
   publish: { provider: 'generic', url: brand.updateFeedHost },
-  win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'build/icon.ico', signAndEditExecutable: false },
+  win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'build/icon.ico' },
   nsis: {
     oneClick: false,
     perMachine: false,

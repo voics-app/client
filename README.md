@@ -1,6 +1,6 @@
-# Discordy client
+# Voics client
 
-Electron + React desktop client for Discordy: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
+Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
 ## Layout
 
@@ -57,7 +57,7 @@ pnpm dist:mac       # dmg (run on macOS)
 pnpm dist:linux     # AppImage and deb (run on Linux)
 ```
 
-Installers are unsigned. Auto-update uses the generic provider at `UPDATE_FEED_URL`.
+Installers are unsigned, but electron-builder still writes the icon and version info into the .exe (it downloads winCodeSign, whose archive contains symlinks, so on Windows run the build as administrator or with Developer Mode on). Auto-update uses the generic provider at `UPDATE_FEED_URL`.
 
 ## How to rename the app
 

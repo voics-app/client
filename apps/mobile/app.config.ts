@@ -1,11 +1,10 @@
 import type { ExpoConfig } from 'expo/config';
 import brand from '../desktop/brand.json';
 
-// Name, URL scheme and bundle id come from brand.json, like desktop. The bundle id is the
-// placeholder `appId` until the owner decides the real one (docs#10).
+// Name, URL scheme and bundle id come from brand.json, like desktop.
 const config: ExpoConfig = {
   name: brand.displayName,
-  slug: 'discordy',
+  slug: 'voics',
   scheme: brand.protocolScheme,
   version: '0.0.1',
   orientation: 'portrait',
