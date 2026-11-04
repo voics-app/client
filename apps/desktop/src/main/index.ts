@@ -17,10 +17,17 @@ import { AttentionPresenter } from './attention/presenter';
 import { createElectronAttentionPort } from './attention/electronAdapter';
 import { createTrayController } from './trayController';
 import { Updater, createElectronUpdaterPort } from './updater';
+import { legacyUserDataDir, migrateLegacyUserData } from './userDataMigration';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
 
-if (process.env.DISCORDY_USER_DATA_DIR) app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
+if (process.env.DISCORDY_USER_DATA_DIR) {
+  app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
+} else {
+  // Before anything reads userData: the rebrand moved the folder (the old name is a constant there).
+  const userData = app.getPath('userData');
+  migrateLegacyUserData(legacyUserDataDir(userData), userData);
+}
 
 const env = process.env as Record<string, string | undefined>;
 
