@@ -16,7 +16,7 @@ import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { spoilersOpen } from '@discordy/core/domain/chatDisplay';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
-import { hostOf, isTrustedLink } from '@renderer/domain/linkTrust';
+import { hostOf, isTrustedLink } from '@discordy/core/domain/linkTrust';
 import { formatTimestamp, isValidUnix, relativeTickMs, timestampTooltip } from '@discordy/core/domain/timestamp';
 import type { HighlightNode } from '@discordy/core/domain/highlightHtml';
 import { Button } from '../../shared/ui/Button';

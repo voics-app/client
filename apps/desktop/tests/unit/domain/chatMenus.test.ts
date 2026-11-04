@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasActivity, isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@discordy/core/domain/channelActivity';
-import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
+import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@discordy/core/domain/channelMenuModel';
 import { idsOf, tidy, item, sep } from '@discordy/core/domain/menuModel';
 import { buildMessageMenu, buildToolbar, type MessageMenuContext } from '@discordy/core/domain/messageMenuModel';
 import { emptySettings, isChannelMutedDeep, MUTE_DURATIONS, withMute } from '@discordy/core/domain/notificationSettings';

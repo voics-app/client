@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePrefsStore, type AccentId, type ThemeId } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { DELIVERY_MODES, MODE_COPY } from '@renderer/domain/deliveryMode';
+import { DELIVERY_MODES, MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { SOUND_OPTIONS } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { RINGTONE_OPTIONS, type RingtoneId } from '@discordy/core/domain/ringtones';

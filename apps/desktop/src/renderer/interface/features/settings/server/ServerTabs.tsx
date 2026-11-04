@@ -1,7 +1,7 @@
 import { Trash, Upload } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { inviteWebUrl } from '@renderer/domain/inviteLinks';
+import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
 import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, filterBans, filterMembers, isTimedOut, type MemberFilter, type MemberSort } from '@discordy/core/domain/moderationTools';
 import { timestampOf } from '@discordy/core/domain/snowflake';
 import { useGuildStore } from '@renderer/application/stores/guildStore';

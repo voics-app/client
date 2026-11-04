@@ -1,7 +1,7 @@
-import { BRAND } from '@shared/brand';
+import { TEST_BRAND } from '../support/brandFixture';
 import { describe, expect, it } from 'vitest';
-import { orderSessions, regionName, sessionDetail, sessionTitle } from '@renderer/domain/authSessions';
-import type { AuthSession } from '@discordy/core/contracts/rest';
+import { orderSessions, regionName, sessionDetail, sessionTitle } from '../../src/domain/authSessions';
+import type { AuthSession } from '../../src/contracts/rest';
 
 const NOW = Date.parse('2026-11-04T12:00:00Z');
 
@@ -34,7 +34,7 @@ describe('auth sessions model', () => {
   });
 
   it('titles a session by client and OS, dropping an unknown OS', () => {
-    expect(sessionTitle(session({}))).toBe(`${BRAND.displayName} on Windows`);
+    expect(sessionTitle(session({}))).toBe(`${TEST_BRAND.displayName} on Windows`);
     expect(sessionTitle(session({ client: 'Firefox', os: 'Unknown' }))).toBe('Firefox');
   });
 

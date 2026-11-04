@@ -6,7 +6,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
-import { inviteWebUrl, parseInviteCode } from '@renderer/domain/inviteLinks';
+import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
 import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';

@@ -1,7 +1,9 @@
-import { BRAND } from '@shared/brand';
+import { brand } from './brandConfig';
 
 /** Hosts that never need the "you are leaving" confirmation. */
-const BUILT_IN_TRUSTED = [new URL(BRAND.landingUrl).hostname, BRAND.baseDomain];
+function builtInTrusted(): string[] {
+  return [new URL(brand().landingUrl).hostname, brand().baseDomain];
+}
 
 export function hostOf(url: string): string | null {
   try {
@@ -22,5 +24,5 @@ function matches(host: string, trusted: string): boolean {
 export function isTrustedLink(url: string, extraTrusted: readonly string[] = []): boolean {
   const host = hostOf(url);
   if (!host) return false;
-  return [...BUILT_IN_TRUSTED, ...extraTrusted].some((t) => t && matches(host, t));
+  return [...builtInTrusted(), ...extraTrusted].some((t) => t && matches(host, t));
 }

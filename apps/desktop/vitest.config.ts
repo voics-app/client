@@ -14,6 +14,7 @@ export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.tsx'],
     environment: 'node',
+    setupFiles: ['tests/support/installBrand.ts'],
     coverage: { reporter: ['text', 'lcov'] },
     ...(ci && { maxWorkers: 2, testTimeout: 30_000, hookTimeout: 30_000 }),
   },

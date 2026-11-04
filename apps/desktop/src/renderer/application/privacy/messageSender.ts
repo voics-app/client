@@ -10,7 +10,7 @@ import { useNotificationSettingsStore } from '../stores/notificationSettingsStor
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
 import { useUploadStore } from '../stores/uploadStore';
-import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
+import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@discordy/core/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
 import type { P2PService } from './p2pService';

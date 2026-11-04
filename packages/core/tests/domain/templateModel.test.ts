@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BRAND } from '../../../src/shared/brand';
-import type { GuildTemplate, TemplateChannel } from '@discordy/core/contracts/rest';
-import { isBuiltinTemplate, parseTemplateCode, previewTemplate, templateShareLink, templateSummary, usageLabel } from '../../../src/renderer/domain/templateModel';
+import { TEST_BRAND } from '../support/brandFixture';
+import type { GuildTemplate, TemplateChannel } from '../../src/contracts/rest';
+import { isBuiltinTemplate, parseTemplateCode, previewTemplate, templateShareLink, templateSummary, usageLabel } from '../../src/domain/templateModel';
 
 const channel = (id: number, type: number, name: string, parent: number | null, position = 0): TemplateChannel => ({
   id,
@@ -63,7 +63,7 @@ describe('parseTemplateCode', () => {
 
 describe('template links', () => {
   it('shares through the brand scheme', () => {
-    expect(templateShareLink('abc')).toBe(`${BRAND.protocolScheme}://template/abc`);
+    expect(templateShareLink('abc')).toBe(`${TEST_BRAND.protocolScheme}://template/abc`);
     expect(parseTemplateCode(templateShareLink('abc-12'))).toBe('abc-12');
   });
 

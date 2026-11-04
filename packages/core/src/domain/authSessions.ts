@@ -1,6 +1,6 @@
-import type { AuthSession } from '@discordy/core/contracts/rest';
-import { BRAND } from '@shared/brand';
-import { relativeTime } from '@discordy/core/domain/timestamp';
+import type { AuthSession } from '../contracts/rest';
+import { brand } from './brandConfig';
+import { relativeTime } from './timestamp';
 
 /** The current session first, then the most recently used. */
 export function orderSessions(sessions: readonly AuthSession[]): AuthSession[] {
@@ -14,7 +14,7 @@ export function orderSessions(sessions: readonly AuthSession[]): AuthSession[] {
 const DESKTOP_APP = 'Desktop app';
 
 function clientName(client: string): string {
-  return client === DESKTOP_APP ? BRAND.displayName : client;
+  return client === DESKTOP_APP ? brand().displayName : client;
 }
 
 /** "Firefox on Windows"; just the client when the OS is unknown. */

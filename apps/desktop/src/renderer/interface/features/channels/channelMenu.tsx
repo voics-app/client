@@ -3,7 +3,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import type { Dialog, SettingsTarget } from '@renderer/application/stores/uiStore';
-import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
+import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@discordy/core/domain/channelMenuModel';
 import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { isPinFull, MAX_PINNED_PER_GUILD } from '@discordy/core/domain/pins';

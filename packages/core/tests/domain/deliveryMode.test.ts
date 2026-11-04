@@ -5,7 +5,7 @@ import {
   validateModeForChannel,
   validateModeForDevice,
   availableModes,
-} from '@renderer/domain/deliveryMode';
+} from '../../src/domain/deliveryMode';
 
 describe('validateModeForDevice', () => {
   it('never blocks standard mode', () => {

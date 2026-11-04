@@ -1,3 +1,4 @@
+import './infrastructure/brand/installBrand';
 import './infrastructure/storage/installBrowserStorage';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';

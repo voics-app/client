@@ -1,7 +1,7 @@
-import { BRAND } from '@shared/brand';
-import type { Channel } from '@discordy/core/contracts/rest';
-import { item, sep, tidy, type MenuModel } from '@discordy/core/domain/menuModel';
-import { MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
+import { brand } from './brandConfig';
+import type { Channel } from '../contracts/rest';
+import { item, sep, tidy, type MenuModel } from './menuModel';
+import { MUTE_DURATIONS } from './notificationSettings';
 
 export interface ChannelMenuContext {
   /** False for DM channels: no invite, link, duplicate or management entries. */
@@ -66,7 +66,7 @@ export function buildCategoryMenu(ctx: CategoryMenuContext): MenuModel[] {
 }
 
 export function channelLink(guildId: string | null | undefined, channelId: string, messageId?: string): string {
-  return `${BRAND.protocolScheme}://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
+  return `${brand().protocolScheme}://channels/${guildId ?? '@me'}/${channelId}${messageId ? `/${messageId}` : ''}`;
 }
 
 /** Body for "Duplicate channel": same type, topic, slowmode, overwrites and parent under a new name. */

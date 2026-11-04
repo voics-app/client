@@ -1,5 +1,5 @@
-import { BRAND } from '@shared/brand';
-import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
+import { brand } from './brandConfig';
+import { ChannelType, type GuildTemplate } from '../contracts/rest';
 
 /** Server templates: link parsing and the preview a template link opens. */
 
@@ -22,7 +22,7 @@ export function parseTemplateCode(input: string): string | null {
 
 /** The link a manager shares; it opens the app on the template preview. */
 export function templateShareLink(code: string): string {
-  return `${BRAND.protocolScheme}://template/${encodeURIComponent(code)}`;
+  return `${brand().protocolScheme}://template/${encodeURIComponent(code)}`;
 }
 
 export interface PreviewChannel {

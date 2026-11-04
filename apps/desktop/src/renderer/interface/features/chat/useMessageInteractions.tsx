@@ -4,7 +4,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { channelLink } from '@renderer/domain/channelMenuModel';
+import { channelLink } from '@discordy/core/domain/channelMenuModel';
 import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { buildMessageMenu, buildToolbar, type MessageTarget } from '@discordy/core/domain/messageMenuModel';
 import { parseApiEmoji, quickReactions, type QuickEmoji } from '@discordy/core/domain/quickReactions';
