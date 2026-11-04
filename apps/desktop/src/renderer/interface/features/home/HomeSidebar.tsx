@@ -1,5 +1,5 @@
-import { Plus, UsersThree, LockKey, Plugs, PushPin } from '@phosphor-icons/react';
-import { useMemo, useRef } from 'react';
+import { Plus, UsersThree, LockKey, Plugs, PushPin, ListChecks } from '@phosphor-icons/react';
+import { useMemo, useRef, useState } from 'react';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { buildDmMenu, visibleDms } from '@discordy/core/domain/dmModel';
@@ -8,16 +8,18 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
+import { bulkLeaveConfirmation, pruneSelection, selectableGroupIds, toggleSelected } from '@discordy/core/domain/groupDmSelection';
 import { isUnread } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { isPinFull, MAX_PINNED_DMS, orderPinnedFirst } from '@discordy/core/domain/pins';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';
-import { closeDm, leaveGroupDm } from '../../app/dmActions';
+import { closeDm, leaveGroupDm, leaveGroupDms } from '../../app/dmActions';
 import { setDmPinned } from '../../app/pinActions';
 import { openChannel } from '../../app/navigation';
 import { displayName } from '../../shared/hooks/useNames';
 import { StatusLine } from '../members/StatusLine';
+import { Button } from '../../shared/ui/Button';
 import { Avatar } from '../../shared/ui/Avatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
@@ -25,8 +27,11 @@ import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
 
+/** Selection mode of the DM list: ticking is only offered for group DMs, 1:1 rows are shown dimmed and inert. */
+interface Selection { selected: boolean; onToggle: () => void }
+
 /** One DM row with its context menu: mark as read, profile, group settings, mute, close, leave. */
-function DmRow({ channel: c, name, unread, mentions, active, status, activities, pinned, pinFull }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[]; pinned: boolean; pinFull: boolean }) {
+function DmRow({ channel: c, name, unread, mentions, active, status, activities, pinned, pinFull, selection }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[]; pinned: boolean; pinFull: boolean; selection?: Selection }) {
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
   const muted = useNotificationSettingsStore((s) => isChannelMuted(s.byScope[DM_SCOPE], c.id, Date.now()));
@@ -47,14 +52,36 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
         return openDialog({ kind: 'confirm', title: `Leave ${name}?`, body: 'You will stop receiving messages from this group.', confirmLabel: 'Leave group', danger: true, onConfirm: () => leaveGroupDm(c.id) });
     }
   });
+  const copy = (
+    <>
+      {peer ? <Avatar id={peer.id} name={name} avatar={peer.avatar} size={34} status={status} /> : <Avatar id={c.id} name={name} avatar={c.icon ?? null} size={34} kind="channel-icons" />}
+      <span className="dm-copy">
+        <span className="dm-name">{name}</span>
+        <StatusLine className="dm-status" activities={activities} max={60} />
+      </span>
+    </>
+  );
+  if (selection) {
+    return (
+      <li>
+        {group ? (
+          <label className={`dm-row is-selecting${selection.selected ? ' is-selected' : ''}`}>
+            <span className="checkbox">
+              <input type="checkbox" checked={selection.selected} onChange={selection.onToggle} aria-label={`Select ${name}`} />
+              <span className="checkbox-box" aria-hidden="true" />
+            </span>
+            {copy}
+          </label>
+        ) : (
+          <div className="dm-row is-selecting is-inert" aria-disabled="true" title="Only group DMs can be left in bulk">{copy}</div>
+        )}
+      </li>
+    );
+  }
   return (
     <li onContextMenu={menu.openAt}>
       <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
-        {peer ? <Avatar id={peer.id} name={name} avatar={peer.avatar} size={34} status={status} /> : <Avatar id={c.id} name={name} avatar={c.icon ?? null} size={34} kind="channel-icons" />}
-        <span className="dm-copy">
-          <span className="dm-name">{name}</span>
-          <StatusLine className="dm-status" activities={activities} max={60} />
-        </span>
+        {copy}
         {pinned && <PushPin size={13} weight="fill" className="dm-pin" aria-label="Pinned" />}
         {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
         {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
@@ -80,6 +107,16 @@ export function HomeSidebar() {
     const { pinned, rest } = orderPinnedFirst(visibleDms(channels, closed), pinIds);
     return [...pinned, ...rest];
   }, [channels, closed, pinIds]);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const selectable = useMemo(() => selectableGroupIds(dms), [dms]);
+  const ticked = useMemo(() => pruneSelection(selected, selectable), [selected, selectable]);
+  const stopSelecting = () => { setSelecting(false); setSelected([]); };
+  const confirmLeave = () => {
+    const names: Record<string, string> = {};
+    for (const c of dms) names[c.id] = c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || 'Unknown';
+    openDialog({ kind: 'confirm', ...bulkLeaveConfirmation(ticked.length), danger: true, onConfirm: async () => { await leaveGroupDms(ticked, names); stopSelecting(); } });
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   useRovingFocus(scrollRef, { selector: '.nav-row, .dm-row' });
   const friendsActive = view.kind === 'home' && !view.channelId;
@@ -95,7 +132,10 @@ export function HomeSidebar() {
         </button>
         <header className="category-head is-static">
           <span>Direct messages</span>
-          <IconButton label="New message" size="sm" onClick={() => openDialog({ kind: 'newDm' })}><Plus size={14} /></IconButton>
+          <span className="category-actions">
+            {selectable.length > 0 && <IconButton label={selecting ? 'Cancel selection' : 'Select group DMs'} size="sm" onClick={selecting ? stopSelecting : () => setSelecting(true)}><ListChecks size={14} weight={selecting ? 'fill' : 'regular'} /></IconButton>}
+            <IconButton label="New message" size="sm" onClick={() => openDialog({ kind: 'newDm' })}><Plus size={14} /></IconButton>
+          </span>
         </header>
         <ul className="dm-list">
           {dms.map((c) => {
@@ -105,11 +145,17 @@ export function HomeSidebar() {
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
             const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
-            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
+            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} selection={selecting ? { selected: ticked.includes(c.id), onToggle: () => setSelected(toggleSelected(ticked, c.id)) } : undefined} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>
       </div>
+      {selecting && (
+        <div className="dm-select-bar">
+          <Button variant="ghost" size="sm" onClick={stopSelecting}>Cancel</Button>
+          <Button variant="danger" size="sm" disabled={ticked.length === 0} onClick={confirmLeave}>{ticked.length === 0 ? 'Leave' : `Leave ${ticked.length}`}</Button>
+        </div>
+      )}
     </aside>
   );
 }
