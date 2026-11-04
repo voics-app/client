@@ -4,12 +4,17 @@ import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pre
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { User } from '@discordy/core/contracts/rest';
+import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { groupMessages } from '@discordy/core/domain/messageGrouping';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
-import { channelAccess, messageActions } from './messageAccess';
+import { dmTitle } from '../dms/dmModel';
+import { ProfileSheet } from '../profile/ProfileSheet';
+import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useMessageService } from './useMessageService';
 import { theme } from '../theme';
 
@@ -19,11 +24,13 @@ const PRIVATE_HISTORY_NOTICE = 'Messages in this channel stay on devices, so the
 const NO_SEND_NOTICE = 'You do not have permission to send messages in this channel.';
 const NO_HISTORY_NOTICE = 'You do not have permission to read the history of this channel.';
 
-export function ChannelScreen({ guildId, channelId }: { guildId: string; channelId: string }) {
+/** A server text channel, or a direct or group conversation when there is no `guildId`. */
+export function ChannelScreen({ guildId, channelId }: { guildId?: string; channelId: string }) {
   const service = useMessageService();
-  const guild = useGuildStore((s) => s.guilds[guildId]);
+  const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
-  const members = useGuildStore((s) => s.members[guildId]);
+  const members = useGuildStore((s) => (guildId ? s.members[guildId] : undefined));
+  const relationships = useRelationshipStore((s) => s.byUser);
   const userId = useSessionStore((s) => s.user?.id);
   const timeline = useMessageStore((s) => s.timelines[channelId]);
 
@@ -31,8 +38,15 @@ export function ChannelScreen({ guildId, channelId }: { guildId: string; channel
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
 
-  const access = useMemo(() => (guild && channel && userId ? channelAccess({ guild, channel, members, userId }) : null), [guild, channel, members, userId]);
+  const access = useMemo(() => {
+    if (!channel || !userId) return null;
+    if (!guildId) return channel.guild_id ? null : dmAccess(channel);
+    return guild ? channelAccess({ guild, channel, members, userId }) : null;
+  }, [guildId, guild, channel, members, userId]);
+  const peer = !guildId && channel && headerButtons(channel).profile ? channel.recipients![0]! : null;
+  const title = !channel ? '' : guildId ? `#${channel.name}` : dmTitle(channel, relationships);
   const readable = access !== null && access.standard && access.canReadHistory;
   const loaded = timeline?.loaded ?? false;
 
@@ -90,7 +104,18 @@ export function ChannelScreen({ guildId, channelId }: { guildId: string; channel
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-      <Stack.Screen options={{ title: channel ? `#${channel.name}` : '' }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerRight: peer
+            ? () => (
+                <Pressable accessibilityRole="button" accessibilityLabel="View profile" onPress={() => setProfileUser(peer)}>
+                  <Text style={styles.headerAction}>Profile</Text>
+                </Pressable>
+              )
+            : () => null,
+        }}
+      />
       {error && (
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss error" onPress={() => setError(null)} style={styles.error}>
           <Text style={styles.errorText}>{error}</Text>
@@ -128,6 +153,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId: string; channel
               replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
               onLongPress={setSelected}
               onToggleReaction={toggleReaction}
+              onPressAuthor={setProfileUser}
               onRetry={(m) => channel && void service.retry(channel, m.id)}
               onDiscard={(m) => service.discard(channelId, m.id)}
             />
@@ -135,6 +161,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId: string; channel
         />
       )}
       <Composer mode={mode} blockedReason={blockedReason} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+      <ProfileSheet user={profileUser} onClose={() => setProfileUser(null)} />
       <MessageActionSheet
         actions={actions}
         onClose={close}
@@ -164,6 +191,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notice: { color: theme.muted, textAlign: 'center', padding: 32 },
+  headerAction: { color: theme.accent, fontSize: 16, fontWeight: '600' },
   retry: { color: theme.accent, fontSize: 16, fontWeight: '600' },
   error: { backgroundColor: theme.danger, paddingHorizontal: 14, paddingVertical: 8 },
   errorText: { color: '#ffffff', fontSize: 13 },
