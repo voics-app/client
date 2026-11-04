@@ -13,7 +13,7 @@ import { usePrefsStore, type PrefsData } from '@discordy/core/application/stores
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import type { MicPort, MixerPort, ScreenTrackOptions, VoiceSessionPort } from './ports';
 import { ScreenShare, type ScreenShareDeps, type ScreenShareHost, type StartScreenShare, type ScreenShareOutcome } from './screenShare';

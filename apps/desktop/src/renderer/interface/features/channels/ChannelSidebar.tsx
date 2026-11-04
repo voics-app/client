@@ -4,7 +4,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore, usersInChannel } from '@discordy/core/application/stores/voiceStore';
 import { isUnread } from '@discordy/core/domain/unread';
 import { orderPinnedFirst, pinnedChannelsOf } from '@discordy/core/domain/pins';
 import { LOOSE, layoutOf, resolveDrop, type ChannelDrag, type ChannelDropZone } from '@discordy/core/domain/channelOrder';

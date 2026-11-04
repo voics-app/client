@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDispatchRouter } from '@renderer/application/dispatchRouter';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
 import type { CallEvent } from '@discordy/core/contracts/gateway';
 import type { VoiceState } from '@discordy/core/contracts/rest';

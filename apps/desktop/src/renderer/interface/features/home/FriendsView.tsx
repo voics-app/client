@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';

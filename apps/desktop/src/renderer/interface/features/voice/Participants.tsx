@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { STREAM_VIEWER_REPORTING } from '@discordy/core/domain/stageLayout';
-import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore, usersInChannel, type RemoteStream } from '@discordy/core/application/stores/voiceStore';
 import type { VoiceState } from '@discordy/core/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { usePanZoom } from '../../shared/hooks/usePanZoom';

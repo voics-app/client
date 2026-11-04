@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { muteScope, setLevel, setToggles } from '@discordy/core/application/notificationActions';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { createDispatchRouter } from '@renderer/application/dispatchRouter';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';

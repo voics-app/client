@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDispatchRouter } from '@renderer/application/dispatchRouter';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import { InteractionService } from '@discordy/core/application/interactionService';
 import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';

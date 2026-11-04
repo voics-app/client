@@ -4,7 +4,7 @@ import { useCallStore } from '@discordy/core/application/stores/callStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { hasParticipants } from '@discordy/core/domain/calls';
 import { canEditTopic, headerButtons, normalizeTopic, TOPIC_MAX_LENGTH } from '@discordy/core/domain/chatHeader';
 import { channelOverride, isChannelMuted, MUTE_DURATIONS, NOTIFICATION_LEVELS, scopeKey } from '@discordy/core/domain/notificationSettings';

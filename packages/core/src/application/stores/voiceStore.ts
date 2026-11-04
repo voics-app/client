@@ -4,12 +4,20 @@ import type { VoiceState } from '@discordy/core/contracts/rest';
 import { appendRtt } from '@discordy/core/domain/voicePanel';
 import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 
+/**
+ * What the platform hands over as a live media stream. The core never inspects it: each app maps it to its
+ * own type by augmenting `PlatformMedia` (the desktop sets `stream: MediaStream`); until then it is opaque.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PlatformMedia {}
+export type MediaHandle = PlatformMedia extends { stream: infer S } ? S : object;
+
 export type CallStatus = 'idle' | 'requesting' | 'connecting' | 'connected' | 'reconnecting' | 'failed';
 
 export interface RemoteStream {
   userId: string;
   kind: 'camera' | 'screen';
-  stream: MediaStream;
+  stream: MediaHandle;
 }
 
 export interface CallQuality {
@@ -42,8 +50,8 @@ export interface VoiceStoreState {
   streamPreset: VideoPresetId;
   speaking: Record<string, number>;
   remoteStreams: RemoteStream[];
-  localCamera: MediaStream | null;
-  localScreen: MediaStream | null;
+  localCamera: MediaHandle | null;
+  localScreen: MediaHandle | null;
   userVolumes: Record<string, number>;
   focusedStream: string | null;
   pipStream: string | null;

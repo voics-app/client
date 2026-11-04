@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
 import { useMemberGroupStore } from '@discordy/core/application/stores/memberGroupStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { assetCandidates } from '@discordy/core/domain/assets';
 import { flattenSections, roleIconOf, voiceChannelOf, searchMembers, VIRTUALISE_ABOVE, type MemberRow as Row } from '@discordy/core/domain/memberList';

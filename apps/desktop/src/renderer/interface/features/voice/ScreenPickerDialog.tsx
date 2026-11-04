@@ -1,7 +1,7 @@
 import { AppWindow, Desktop, ShieldWarning, SpeakerHigh, Television } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { VIDEO_PRESETS, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import type { CaptureSource } from '@shared/ipc';
 import { bridge } from '../../app/bridge';

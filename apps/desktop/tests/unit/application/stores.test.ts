@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
-import { useVoiceStore, usersInChannel } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore, usersInChannel } from '@discordy/core/application/stores/voiceStore';
 import { useTypingStore, typingUsers, useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 

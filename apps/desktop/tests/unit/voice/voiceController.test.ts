@@ -6,7 +6,7 @@ import type { SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/a
 import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 
 class FakeSession implements VoiceSessionPort {

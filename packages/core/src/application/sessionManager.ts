@@ -1,6 +1,6 @@
 /** Auth lifecycle: boot from the OS-keychain vault, login/register, device registration, logout. */
 import type { AuthResponse } from '@discordy/core/contracts/rest';
-import type { StoredSession } from '@shared/ipc';
+import type { StoredSession } from './ports/sessionVault';
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
@@ -8,7 +8,7 @@ import { useNotificationSettingsStore, useUserNotesStore } from '@discordy/core/
 import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
-import { BRAND } from '@shared/brand';
+import { brand } from '@discordy/core/domain/brandConfig';
 
 export interface SessionVault {
   load(): Promise<StoredSession | null>;
@@ -108,7 +108,7 @@ export class SessionManager {
     if (identity) {
       try {
         const device = await rt.api.registerDevice({
-          name: this.deps.deviceName ?? `${BRAND.displayName} desktop`,
+          name: this.deps.deviceName ?? `${brand().displayName} desktop`,
           identity_key_b64: identity.identityKeyB64,
         });
         deviceId = device.device_id;
