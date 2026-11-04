@@ -1,12 +1,12 @@
 /** One-time carry-over of local data from the old "Discordy" userData folder into the current one. */
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /** Folder name of the pre-rename install; a sibling of the current userData folder on every platform. */
 export const LEGACY_USER_DATA_DIR_NAME = 'Discordy';
 
-/** Present while a copy runs; a leftover marker means the last attempt did not finish and is retried. */
-const PENDING_MARKER = '.migration-pending';
+/** The copy lands here and only moves into place once it is complete, so a failed attempt leaves no user data behind. */
+const STAGING_DIR = '.migration-staging';
 
 /**
  * Exactly what the app persists, nothing else (no Chromium caches):
@@ -37,21 +37,30 @@ function hasUserData(dir: string): boolean {
 
 /** Never mutates `oldDir`. Failures are logged by error code only (no tokens or keys) and never thrown. */
 export function migrateLegacyUserData(oldDir: string, newDir: string, log: MigrationLog = console): MigrationResult {
-  const marker = join(newDir, PENDING_MARKER);
+  const staging = join(newDir, STAGING_DIR);
   try {
     if (!existsSync(oldDir)) return 'skipped';
-    if (!existsSync(marker) && hasUserData(newDir)) return 'skipped';
+    if (hasUserData(newDir)) return 'skipped';
     const present = MIGRATED_ENTRIES.filter((entry) => existsSync(join(oldDir, entry)));
     if (present.length === 0) return 'skipped';
 
-    mkdirSync(newDir, { recursive: true });
-    writeFileSync(marker, '');
+    rmSync(staging, { recursive: true, force: true });
+    mkdirSync(staging, { recursive: true });
     for (const entry of present) {
-      cpSync(join(oldDir, entry), join(newDir, entry), { recursive: true, force: true });
+      cpSync(join(oldDir, entry), join(staging, entry), { recursive: true });
     }
-    rmSync(marker, { force: true });
+    for (const entry of present) {
+      rmSync(join(newDir, entry), { recursive: true, force: true });
+      renameSync(join(staging, entry), join(newDir, entry));
+    }
+    rmSync(staging, { recursive: true, force: true });
     return 'migrated';
   } catch (error) {
+    try {
+      rmSync(staging, { recursive: true, force: true });
+    } catch {
+      // The next attempt clears it first.
+    }
     const code = (error as NodeJS.ErrnoException).code ?? 'unknown';
     log.warn(`Could not carry over data from the old install (${code}); it will be retried on the next start.`);
     return 'failed';

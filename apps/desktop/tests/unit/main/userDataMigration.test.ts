@@ -64,7 +64,7 @@ describe('migrateLegacyUserData', () => {
     expect(readFileSync(join(newDir, 'Local Storage', 'leveldb', '000003.log'), 'utf8')).toBe('ls');
     expect(existsSync(join(newDir, 'Cache'))).toBe(false);
     expect(existsSync(join(newDir, 'GPUCache'))).toBe(false);
-    expect(existsSync(join(newDir, '.migration-pending'))).toBe(false);
+    expect(existsSync(join(newDir, '.migration-staging'))).toBe(false);
     expect(readdirSync(oldDir).sort()).toEqual(['Cache', 'GPUCache', 'Local State', 'Local Storage', 'crypto', 'main-settings.json', 'session.bin']);
     expect(readFileSync(join(oldDir, 'session.bin'), 'utf8')).toBe('vault');
   });
@@ -98,13 +98,28 @@ describe('migrateLegacyUserData', () => {
     const message = String(log.warn.mock.calls[0]?.[0]);
     expect(message).toContain('ENOSPC');
     expect(message).not.toContain('key-bytes');
-    expect(existsSync(join(newDir, '.migration-pending'))).toBe(true);
+    expect(existsSync(join(newDir, '.migration-staging'))).toBe(false);
     expect(existsSync(join(newDir, 'session.bin'))).toBe(false);
+    expect(existsSync(join(newDir, 'Local State'))).toBe(false);
 
     cp.mockImplementation(realCp);
     expect(migrateLegacyUserData(oldDir, newDir, log)).toBe('migrated');
     expect(readFileSync(join(newDir, 'session.bin'), 'utf8')).toBe('vault');
     expect(readFileSync(join(newDir, 'crypto', 'u1.key'), 'utf8')).toBe('key-bytes');
-    expect(existsSync(join(newDir, '.migration-pending'))).toBe(false);
+    expect(existsSync(join(newDir, '.migration-staging'))).toBe(false);
+  });
+
+  it('never overwrites data created after a failed attempt', () => {
+    seedOld();
+    cp.mockImplementationOnce(() => {
+      throw Object.assign(new Error('busy'), { code: 'EBUSY' });
+    });
+    expect(migrateLegacyUserData(oldDir, newDir, log)).toBe('failed');
+    cp.mockImplementation(realCp);
+    mkdirSync(join(newDir, 'crypto'), { recursive: true });
+    writeFileSync(join(newDir, 'crypto', 'u1.key'), 'newer-key');
+
+    expect(migrateLegacyUserData(oldDir, newDir, log)).toBe('skipped');
+    expect(readFileSync(join(newDir, 'crypto', 'u1.key'), 'utf8')).toBe('newer-key');
   });
 });
