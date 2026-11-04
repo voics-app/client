@@ -20,6 +20,7 @@ import { dmTitle } from '../dms/dmModel';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useKeyboardVisible } from './useKeyboardVisible';
+import { useAppActive } from './useAppActive';
 import { useMessageService } from './useMessageService';
 import { theme } from '../theme';
 
@@ -83,9 +84,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     const ids = timeline?.ids ?? [];
     return ids.findLast((id) => !timeline?.byId[id]?.localState) ?? null;
   }, [timeline]);
+  const appActive = useAppActive();
   useEffect(() => {
-    if (readable && loaded && latestId) service.markRead(channelId, latestId);
-  }, [service, channelId, readable, loaded, latestId]);
+    if (appActive && readable && loaded && latestId) service.markRead(channelId, latestId);
+  }, [appActive, service, channelId, readable, loaded, latestId]);
 
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
 
