@@ -127,6 +127,7 @@ export interface ApiPort {
   createRole(guildId: string, body: Partial<Role>): Promise<Role>;
   updateRole(guildId: string, roleId: string, patch: Partial<Role>): Promise<Role>;
   deleteRole(guildId: string, roleId: string): Promise<void>;
+  duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
   updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
@@ -136,7 +137,12 @@ export interface ApiPort {
   bans(guildId: string): Promise<Ban[]>;
   ban(guildId: string, userId: string, reason?: string, options?: { delete_message_seconds?: number }): Promise<void>;
   unban(guildId: string, userId: string): Promise<void>;
-  auditLog(guildId: string, query?: { limit?: number; before?: string; user_id?: string; action_type?: number }): Promise<AuditLog>;
+  /** The ban of one user; 404 when they are not banned. */
+  getBan(guildId: string, userId: string): Promise<Ban>;
+  /** Dry run: how many members a prune would remove. */
+  pruneCount(guildId: string, days: number): Promise<{ pruned: number }>;
+  prune(guildId: string, days: number): Promise<{ pruned: number }>;
+  auditLog(guildId: string, query?: { limit?: number; before?: string; user_id?: string; action_type?: number; target_id?: string }): Promise<AuditLog>;
   bulkDeleteMessages(channelId: string, messageIds: string[]): Promise<void>;
   emojis(guildId: string): Promise<Emoji[]>;
   createEmoji(guildId: string, body: { name: string; image: string }): Promise<Emoji>;

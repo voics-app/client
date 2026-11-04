@@ -1,4 +1,4 @@
-import { DotsSixVertical, Lock, Plus, ShieldStar, Trash, Warning } from '@phosphor-icons/react';
+import { Copy, DotsSixVertical, Lock, Plus, ShieldStar, Trash, Warning } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
@@ -16,7 +16,7 @@ import { getRuntime } from '../../../app/runtime';
 import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Switch } from '../../../shared/ui/Form';
-import { Menu } from '../../../shared/ui/Menu';
+import { Menu, type MenuEntry } from '../../../shared/ui/Menu';
 
 const toHex = (n: number) => (n ? `#${n.toString(16).padStart(6, '0')}` : '#99aab5');
 const fromHex = (hex: string) => parseInt(hex.slice(1), 16);
@@ -102,6 +102,7 @@ export function RolesEditor({ guildId }: { guildId: string }) {
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const openDialog = useUiStore((s) => s.openDialog);
   const [swatchMenu, setSwatchMenu] = useState<{ x: number; y: number } | null>(null);
+  const [roleMenu, setRoleMenu] = useState<{ x: number; y: number; role: Role } | null>(null);
   const counts = useMemo(() => memberCounts(Object.values(members ?? {}), guildId), [members, guildId]);
 
   useEffect(() => setDraft(selected ?? null), [selected]);
@@ -123,6 +124,18 @@ export function RolesEditor({ guildId }: { guildId: string }) {
       setTab('display');
     }
   };
+  const duplicate = async (role: Role) => {
+    const copy = await attempt(() => getRuntime().api.duplicateRole(guildId, role.id), 'Could not duplicate role');
+    if (!copy) return;
+    const fresh = await attempt(() => getRuntime().api.roles(guildId), 'Could not refresh roles');
+    for (const r of fresh ?? [copy]) useGuildStore.getState().upsertRole(guildId, r);
+    setSelectedId(copy.id);
+    setTab('display');
+  };
+  const roleMenuEntries = (role: Role): MenuEntry[] => [
+    { kind: 'item', label: 'Duplicate role', icon: <Copy size={16} />, disabled: !canManage || role.managed || !canManageRole(role, guildId, actorRank, isOwner), onSelect: () => void duplicate(role) },
+    { kind: 'item', label: 'Edit role', onSelect: () => { setSelectedId(role.id); setTab('display'); } },
+  ];
   const save = async () => {
     setSaving(true);
     const updated = await attempt(() => getRuntime().api.updateRole(guildId, draft.id, { name: draft.name, color: draft.color, hoist: draft.hoist, mentionable: draft.mentionable, permissions: draft.permissions, unicode_emoji: draft.unicode_emoji ?? null }), 'Could not save role');
@@ -178,6 +191,7 @@ export function RolesEditor({ guildId }: { guildId: string }) {
                   onDragStart={(e) => { if (!movable) return; e.dataTransfer.effectAllowed = 'move'; setDragId(r.id); }}
                   onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverIndex(i); } }}
                   onDragEnd={() => { setDragId(null); setOverIndex(null); }}
+                  onContextMenu={(e) => { e.preventDefault(); setRoleMenu({ x: e.clientX, y: e.clientY, role: r }); }}
                   onDrop={(e) => { e.preventDefault(); void drop(i); }}
                 >
                   <button type="button" className={`role-item${r.id === selected.id ? ' is-active' : ''}`} onClick={() => setSelectedId(r.id)}>
@@ -227,6 +241,7 @@ export function RolesEditor({ guildId }: { guildId: string }) {
                 <div className="perm-row"><div><p className="setting-title">Display separately</p><p className="setting-desc">Show members with this role as their own group in the member list.</p></div><Switch label="Display separately" disabled={!editable} checked={draft.hoist} onChange={(v) => setDraft({ ...draft, hoist: v })} /></div>
                 <div className="perm-row"><div><p className="setting-title">Allow anyone to mention this role</p></div><Switch label="Mentionable" disabled={!editable} checked={draft.mentionable} onChange={(v) => setDraft({ ...draft, mentionable: v })} /></div>
               </div>
+              {editable && !draft.managed && <Button icon={<Copy size={15} />} onClick={() => void duplicate(draft)}>Duplicate role</Button>}
               {editable && !draft.managed && <Button variant="danger" icon={<Trash size={15} />} onClick={remove}>Delete role</Button>}
             </div>
           )}
@@ -246,6 +261,7 @@ export function RolesEditor({ guildId }: { guildId: string }) {
           {activeTab === 'members' && !isEveryone && <RoleMembers guildId={guildId} roleId={draft.id} canEdit={editable && !draft.managed} />}
         </div>
       </div>
+      <Menu open={roleMenu !== null} x={roleMenu?.x ?? 0} y={roleMenu?.y ?? 0} onClose={() => setRoleMenu(null)} entries={roleMenu ? roleMenuEntries(roleMenu.role) : []} minWidth={180} />
       <UnsavedBar dirty={dirty && editable} saving={saving} onReset={() => setDraft(selected)} onSave={() => void save()} />
     </div>
   );

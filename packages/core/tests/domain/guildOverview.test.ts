@@ -12,6 +12,14 @@ describe('guild overview draft', () => {
     expect(withFlag(5, SystemFlag.SUPPRESS_JOIN_NOTIFICATIONS, true)).toBe(4);
   });
 
+  it('sends prune_admin_only only when the toggle changed', () => {
+    expect(draftFromGuild(guild).pruneAdminOnly).toBe(false);
+    expect(overviewPatch(guild, { ...draftFromGuild(guild), pruneAdminOnly: true })).toEqual({ prune_admin_only: true });
+    const restricted = { ...guild, prune_admin_only: true };
+    expect(draftFromGuild(restricted).pruneAdminOnly).toBe(true);
+    expect(overviewPatch(restricted, draftFromGuild(restricted))).toEqual({});
+  });
+
   it('sends nothing when the draft equals the guild', () => {
     expect(overviewPatch(guild, draftFromGuild(guild))).toEqual({});
   });

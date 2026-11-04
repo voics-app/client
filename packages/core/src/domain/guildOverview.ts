@@ -33,6 +33,7 @@ export interface OverviewDraft {
   afkChannelId: string;
   afkTimeout: number;
   notifications: number;
+  pruneAdminOnly: boolean;
   icon: string | null | undefined;
   banner: string | null | undefined;
   splash: string | null | undefined;
@@ -48,6 +49,7 @@ export function draftFromGuild(guild: Guild): OverviewDraft {
     afkChannelId: guild.afk_channel_id ?? '',
     afkTimeout: guild.afk_timeout ?? DEFAULT_AFK_TIMEOUT,
     notifications: guild.default_message_notifications ?? 0,
+    pruneAdminOnly: guild.prune_admin_only ?? false,
     icon: undefined,
     banner: undefined,
     splash: undefined,
@@ -75,6 +77,7 @@ export function overviewPatch(guild: Guild, draft: OverviewDraft): Partial<Guild
   if (draft.afkChannelId !== saved.afkChannelId) patch.afk_channel_id = draft.afkChannelId || null;
   if (draft.afkTimeout !== saved.afkTimeout) patch.afk_timeout = draft.afkTimeout;
   if (draft.notifications !== saved.notifications) patch.default_message_notifications = draft.notifications;
+  if (draft.pruneAdminOnly !== saved.pruneAdminOnly) patch.prune_admin_only = draft.pruneAdminOnly;
   if (draft.icon !== undefined) patch.icon = draft.icon;
   if (draft.banner !== undefined) patch.banner = draft.banner;
   if (draft.splash !== undefined) patch.splash = draft.splash;
