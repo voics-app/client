@@ -13,6 +13,7 @@ import { theme } from '../src/theme';
 export const unstable_settings = { anchor: 'index' };
 
 const chat = { animation: 'slide_from_right', gestureEnabled: true } as const;
+const pushed = { animation: 'slide_from_right' } as const;
 
 export default function RootLayout() {
   const status = useSessionStore((s) => s.status);
@@ -42,6 +43,14 @@ export default function RootLayout() {
             <Stack.Screen name="servers/[guildId]/index" options={{ headerShown: false }} />
             <Stack.Screen name="dms/[channelId]" options={chat} />
             <Stack.Screen name="servers/[guildId]/[channelId]" options={chat} />
+            <Stack.Screen name="servers/[guildId]/members" options={{ title: 'Members', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/index" options={{ title: 'Server settings', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/overview" options={{ title: 'Overview', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/roles/index" options={{ title: 'Roles', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/roles/[roleId]" options={{ title: 'Role', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/members" options={{ title: 'Members', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/invites" options={{ title: 'Invites', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/channels" options={{ title: 'Channels', ...pushed }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications', animation: 'slide_from_right' }} />
             <Stack.Screen name="you" options={{ title: 'You', animation: 'slide_from_right' }} />
           </Stack.Protected>
