@@ -23,6 +23,8 @@ export interface RuntimeConfig {
 }
 
 export interface MobileRuntime {
+  /** The API origin; invite links are built from it. */
+  apiUrl: string;
   http: HttpClient;
   api: DiscordyApi;
   gateway: GatewayClient;
@@ -92,5 +94,5 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     identity: async () => null,
   });
 
-  return { http, api, gateway, session: manager };
+  return { apiUrl: config.apiUrl, http, api, gateway, session: manager };
 }

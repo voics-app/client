@@ -14,6 +14,7 @@ import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { dmTitle } from '../dms/dmModel';
+import { MembersButton } from '../members/MembersButton';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useKeyboardVisible } from './useKeyboardVisible';
@@ -119,7 +120,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
                   <Text style={styles.headerAction}>Profile</Text>
                 </Pressable>
               )
-            : () => null,
+            : guildId
+              ? () => <MembersButton guildId={guildId} />
+              : () => null,
         }}
       />
       {error && (
@@ -169,7 +172,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
         <Composer mode={mode} blockedReason={blockedReason} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
       </View>
-      <ProfileSheet user={profileUser} onClose={() => setProfileUser(null)} />
+      <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
       <MessageActionSheet
         actions={actions}
         onClose={close}

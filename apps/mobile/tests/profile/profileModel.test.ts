@@ -13,7 +13,17 @@ describe('profileView', () => {
 
   it('falls back to the username and leaves out what is unknown', () => {
     const view = profileView({ ...user, global_name: null, bio: undefined }, undefined);
-    expect(view).toEqual({ name: 'pat', username: 'pat', bio: '', friendsSince: null });
+    expect(view).toEqual({ name: 'pat', username: 'pat', bio: '', friendsSince: null, roles: [], memberSince: null });
+  });
+
+  it('lists the roles held in the server and when the person joined, highest role first', () => {
+    const role = (id: string, name: string, position: number) => ({ id, name, color: 0, hoist: false, position, permissions: '0', managed: false, mentionable: false });
+    const view = profileView(user, undefined, undefined, {
+      roles: [role('r1', 'Mods', 2), role('r2', 'Regulars', 1), role('r3', 'Other', 9)],
+      member: { user, roles: ['r2', 'r1'], joined_at: '2024-05-06T10:00:00Z', deaf: false, mute: false },
+    });
+    expect(view.roles).toEqual(['Mods', 'Regulars']);
+    expect(view.memberSince?.getUTCFullYear()).toBe(2024);
   });
 
   it('prefers the freshly fetched About me', () => {

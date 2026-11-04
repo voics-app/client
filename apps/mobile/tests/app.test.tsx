@@ -98,7 +98,7 @@ describe('app shell', () => {
     await fireEvent.press(screen.getByLabelText('Home Base'));
     expect(await screen.findByText('general')).toBeTruthy();
     expect(screen.getByText('CAT')).toBeTruthy();
-    expect(screen.queryByText('lobby')).toBeNull();
+    expect(screen.getByText('lobby')).toBeTruthy();
     expect(selected('Home Base')).toBe(true);
     expect(selected('Direct messages')).toBe(false);
     expect(screen.getAllByTestId('rail-pill')).toHaveLength(1);

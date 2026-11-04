@@ -6,6 +6,7 @@ import { useMessageStore } from '@discordy/core/application/stores/messageStore'
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, type GuildFull, type Message } from '@discordy/core/contracts/rest';
+import { EPHEMERAL_MESSAGE } from '../../src/servers/channelScreenKind';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 
 const mockApi = {
@@ -196,9 +197,9 @@ describe('channel screen', () => {
     expect(screen.queryByLabelText('Message')).toBeNull();
   });
 
-  it('explains that private channels are not available yet', async () => {
+  it('explains in plain words that ephemeral channels are not available yet', async () => {
     await open(BASIC, { delivery_mode: 'ephemeral' });
-    expect(await screen.findByText('This channel uses private delivery, which the mobile app does not support yet.')).toBeTruthy();
+    expect(await screen.findByText(EPHEMERAL_MESSAGE)).toBeTruthy();
     expect(mockApi.messages).not.toHaveBeenCalled();
   });
 
