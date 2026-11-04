@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
 import type { Channel, User } from '@discordy/core/contracts/rest';
 import type { CryptoBridge, LocalMessageRecord } from '@shared/ipc';
-import type { ApiPort } from '@renderer/application/ports/api';
-import type { GatewayPort } from '@renderer/application/ports/gateway';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import type { DataChannelLike, PeerConnectionLike } from '@renderer/application/privacy/p2pService';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 
 export const SELF = { userId: '1', deviceId: '10', identityKeyB64: 'key-self' };

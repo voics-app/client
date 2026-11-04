@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useMessageStore, type ChatMessage } from '@renderer/application/stores/messageStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { useReadNavStore } from '@renderer/application/stores/readNavStore';
+import { useMessageStore, type ChatMessage } from '../../src/application/stores/messageStore';
+import { useReadStateStore } from '../../src/application/stores/peopleStores';
+import { useReadNavStore } from '../../src/application/stores/readNavStore';
 
 const msg = (id: string): ChatMessage => ({
   id,

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deviceMenuEntries, NoiseSuppressionButton } from '../../../src/renderer/interface/features/voice/DeviceMenus';
 import { Menu } from '../../../src/renderer/interface/shared/ui/Menu';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 afterEach(cleanup);
 

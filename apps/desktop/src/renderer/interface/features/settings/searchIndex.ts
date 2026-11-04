@@ -3,7 +3,7 @@
  * row's title: `SettingRow` stamps `data-row` with `rowSlug(title)`, so search can scroll to it.
  * A new setting registers itself by adding one line here, next to its tab's other rows.
  */
-import type { UserSettingsTab } from '@renderer/application/stores/uiStore';
+import type { UserSettingsTab } from '@discordy/core/application/stores/uiStore';
 import { rowSlug } from '@discordy/core/domain/rowSlug';
 import { USER_TABS } from './userTabs';
 

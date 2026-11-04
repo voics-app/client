@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
+import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { Lightbox } from '@renderer/interface/features/chat/Lightbox';
 
 const video = { kind: 'video' as const, src: 'https://cdn.test/clip.mp4', original: 'https://cdn.test/clip.mp4', filename: 'clip.mp4' };

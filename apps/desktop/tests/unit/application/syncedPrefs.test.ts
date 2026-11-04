@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { PrefsSync } from '@renderer/application/syncedPrefs';
 import { fromServer, toServerPatch, SYNCED_KEYS } from '@renderer/application/syncedPrefsMap';
-import { DEFAULT_PREFS, usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 const memory = () => {
   const m = new Map<string, string>();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ACTION_CATALOG, conflictsFor, infoFor, isDefault, resetKeybind, setKeybindGlobal, setKeybindKeys, DEFAULT_KEYBINDS } from '@discordy/core/domain/keybinds';
 import { FIXED_SHORTCUTS } from '@discordy/core/domain/shortcutCatalog';
 import { describeEvent } from '../../../app/shortcuts';

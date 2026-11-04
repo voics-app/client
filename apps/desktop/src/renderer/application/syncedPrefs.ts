@@ -8,8 +8,8 @@
  */
 import type { UserSettings } from '@discordy/core/contracts/rest';
 import { SYNCED_KEYS, fromServer, sameValue, serverIsDefault, syncedSlice, toServerPatch, type SyncedKey } from './syncedPrefsMap';
-import { deviceStorage, type KeyValueStorage } from './ports/deviceStorage';
-import { DEFAULT_PREFS, usePrefsStore, type PrefsData } from './stores/prefsStore';
+import { deviceStorage, type KeyValueStorage } from '@discordy/core/application/ports/deviceStorage';
+import { DEFAULT_PREFS, usePrefsStore, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 
 export interface PrefsSyncDeps {
   updateSettings(patch: Partial<UserSettings>): Promise<unknown>;

@@ -1,4 +1,4 @@
-import { deviceStorage } from '../ports/deviceStorage';
+import { deviceStorage } from '@discordy/core/application/ports/deviceStorage';
 
 /**
  * Opt-in diagnostics for the private delivery modes: the device-storage key `discordy.debug.privacy` set to `'1'` (localStorage on desktop)

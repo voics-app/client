@@ -1,4 +1,4 @@
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { BRAND } from '@shared/brand';
 import { getRuntime } from '../../app/runtime';
 

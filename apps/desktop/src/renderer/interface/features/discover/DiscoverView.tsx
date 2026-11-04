@@ -1,7 +1,7 @@
 import { Compass, MagnifyingGlass, UsersThree } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';

@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { infoFor, type KeybindAction } from '@discordy/core/domain/keybinds';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { isUnread } from '@discordy/core/domain/unread';
 import { pickUnreadChannel } from '@discordy/core/domain/unreadNav';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { contextMenuPoint, isContextMenuKey, wrapIndex } from '@discordy/core/domain/rovingFocus';
 import { fixedShortcutAction, type FixedShortcutAction } from '@discordy/core/domain/shortcutCatalog';
 import { isTextChannel, isVoiceChannel, openChannel, openGuild } from './navigation';

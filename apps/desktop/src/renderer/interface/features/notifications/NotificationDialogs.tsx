@@ -1,6 +1,6 @@
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import {
   activeOverrides,
   channelOverride,

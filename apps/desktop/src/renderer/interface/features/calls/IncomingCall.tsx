@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useCallStore } from '@renderer/application/stores/callStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useCallStore } from '@discordy/core/application/stores/callStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { usersInChannel, useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { VoiceSounds } from '@renderer/application/voice/voiceSounds';

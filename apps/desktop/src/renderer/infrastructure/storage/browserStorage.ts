@@ -1,4 +1,4 @@
-import { createMemoryStorage, type KeyValueStorage } from '@renderer/application/ports/deviceStorage';
+import { createMemoryStorage, type KeyValueStorage } from '@discordy/core/application/ports/deviceStorage';
 
 const PROBE = '__discordy_probe__';
 

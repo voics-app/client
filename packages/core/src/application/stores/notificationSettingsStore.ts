@@ -5,9 +5,9 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
-import type { GuildNotificationSettings } from '@discordy/core/contracts/rest';
-import { scopeKey } from '@discordy/core/domain/notificationSettings';
+import { persistedStorage } from '../ports/deviceStorage';
+import type { GuildNotificationSettings } from '../../contracts/rest';
+import { scopeKey } from '../../domain/notificationSettings';
 
 const storage = persistedStorage();
 

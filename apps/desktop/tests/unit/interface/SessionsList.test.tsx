@@ -3,7 +3,7 @@ import { BRAND } from '@shared/brand';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { AuthSession } from '@discordy/core/contracts/rest';
 
 const base: AuthSession = {

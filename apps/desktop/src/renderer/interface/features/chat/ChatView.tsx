@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { typingUsers, useTypingStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { typingUsers, useTypingStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { typingLine } from '@discordy/core/domain/composerFormat';

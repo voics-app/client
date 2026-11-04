@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { emptyHistory, pushView } from '@discordy/core/domain/navHistory';
-import { fixedShortcutAction } from '@discordy/core/domain/shortcutCatalog';
+import { useUiStore } from '../../src/application/stores/uiStore';
+import { emptyHistory, pushView } from '../../src/domain/navHistory';
+import { fixedShortcutAction } from '../../src/domain/shortcutCatalog';
 
 const home = { kind: 'home', channelId: null } as const;
 const ch = (id: string) => ({ kind: 'guild', guildId: 'g', channelId: id }) as const;

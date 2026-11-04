@@ -1,8 +1,8 @@
 /** Mentions inbox entries gathered from live messages and loaded history; kept on this device. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
-import { addInboxEntries, addInboxEntry, type InboxEntry } from '@discordy/core/domain/mentionInbox';
+import { persistedStorage } from '../ports/deviceStorage';
+import { addInboxEntries, addInboxEntry, type InboxEntry } from '../../domain/mentionInbox';
 
 export interface MentionInboxState {
   entries: InboxEntry[];

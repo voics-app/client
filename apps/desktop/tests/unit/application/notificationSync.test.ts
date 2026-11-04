@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { saveGuildNotificationSettings, saveUserNote } from '@renderer/application/notificationSync';
-import { useNotificationSettingsStore, useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useNotificationSettingsStore, useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { emptySettings, withMute } from '@discordy/core/domain/notificationSettings';
 import type { GuildNotificationSettings } from '@discordy/core/contracts/rest';
 

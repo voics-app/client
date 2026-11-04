@@ -5,10 +5,10 @@ vi.mock('@renderer/infrastructure/audio/sfx', () => ({ soundEffects: { play } })
 vi.mock('@renderer/interface/app/bridge', () => ({ bridge: { app: { notify, flashFrame } } }));
 
 import { notifyIncoming } from '@renderer/interface/app/notifications';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 const me = { id: '1', username: 'me', global_name: null, avatar: null };
 const friend = { id: '2', username: 'friend', global_name: null, avatar: null };

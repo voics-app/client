@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useInteractionStore } from '@renderer/application/stores/interactionStore';
+import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 import { ComponentType, type MessageComponent } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

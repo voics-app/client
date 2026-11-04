@@ -1,7 +1,7 @@
 /** Writes of the synced notification settings and notes: optimistic, rolled back when the API refuses. */
 import type { GuildNotificationSettings, GuildNotificationSettingsPatch } from '@discordy/core/contracts/rest';
-import type { ApiPort } from './ports/api';
-import { useNotificationSettingsStore, useUserNotesStore } from './stores/notificationSettingsStore';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { useNotificationSettingsStore, useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { emptySettings, scopeKey } from '@discordy/core/domain/notificationSettings';
 
 type Api = Pick<ApiPort, 'updateGuildNotificationSettings' | 'putUserNote'>;

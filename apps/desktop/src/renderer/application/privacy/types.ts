@@ -2,7 +2,7 @@
 import type { Channel, DeliveryMode, User } from '@discordy/core/contracts/rest';
 import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '@discordy/core/domain/privateAttachment';
 import { snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
-import type { ChatMessage } from '../stores/messageStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 export interface SelfIdentity {
   userId: string;

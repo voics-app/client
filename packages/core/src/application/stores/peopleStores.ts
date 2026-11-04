@@ -1,7 +1,7 @@
 /** Presence, typing, relationships and read states. */
 import { create } from 'zustand';
-import type { Activity, PresenceStatus, Relationship } from '@discordy/core/contracts/rest';
-import { maxSnowflake } from '@discordy/core/domain/snowflake';
+import type { Activity, PresenceStatus, Relationship } from '../../contracts/rest';
+import { maxSnowflake } from '../../domain/snowflake';
 
 export const TYPING_TTL_MS = 10_000;
 
