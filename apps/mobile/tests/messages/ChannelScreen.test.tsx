@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import * as Clipboard from 'expo-clipboard';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
@@ -18,6 +19,7 @@ const mockApi = {
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
 };
+jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(async () => true) }));
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn() }, api: mockApi }) }));
 
@@ -142,11 +144,29 @@ describe('channel screen', () => {
     expect(screen.getByText('Edit')).toBeTruthy();
     expect(screen.getByText('Delete')).toBeTruthy();
     expect(screen.getByText('Reply')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Cancel'));
+    await fireEvent.press(screen.getByLabelText('Close Message actions', { includeHiddenElements: true }));
+    await waitFor(() => expect(screen.queryByText('Edit')).toBeNull());
     await fireEvent(screen.getByText('message 2'), 'longPress');
     expect(screen.queryByText('Edit')).toBeNull();
     expect(screen.queryByText('Delete')).toBeNull();
     expect(screen.getByText('Reply')).toBeTruthy();
+  });
+
+  it('copies the text of a message with the system clipboard', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Copy Text'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('message 2');
+    await waitFor(() => expect(screen.queryByText('Copy Text')).toBeNull());
+  });
+
+  it('opens a view with selectable text for Select Text', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Select Text'));
+    const selectable = await screen.findByLabelText('Select text');
+    expect(selectable).toBeTruthy();
+    expect(screen.getAllByText('message 2').some((node) => node.props.selectable === true)).toBe(true);
   });
 
   it('offers delete on other messages to moderators', async () => {

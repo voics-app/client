@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import type { User } from '@discordy/core/contracts/rest';
+import { BottomSheet } from '../sheets/BottomSheet';
+import { useLastValue } from '../sheets/useLastValue';
 import { getRuntime } from '../runtime';
 import { theme } from '../theme';
 import { Avatar } from './Avatar';
 import { profileView } from './profileModel';
 
 /** Bottom sheet with one person's profile: avatar, names, About me and, for friends, since when. */
-export function ProfileSheet({ user, onClose }: { user: User | null; onClose(): void }) {
+export function ProfileSheet({ user: shown, onClose }: { user: User | null; onClose(): void }) {
+  const user = useLastValue(shown);
   const relationship = useRelationshipStore((s) => (user ? s.byUser[user.id] : undefined));
   const [fetched, setFetched] = useState<{ id: string; bio: string } | null>(null);
 
@@ -27,8 +30,7 @@ export function ProfileSheet({ user, onClose }: { user: User | null; onClose(): 
 
   const view = user ? profileView(user, relationship, fetched?.id === user.id ? fetched.bio : undefined) : null;
   return (
-    <Modal visible={user !== null} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close profile" />
+    <BottomSheet visible={shown !== null} onClose={onClose} label="profile">
       {user && view && (
         <View style={styles.sheet}>
           <Avatar user={user} size={72} />
@@ -51,13 +53,12 @@ export function ProfileSheet({ user, onClose }: { user: User | null; onClose(): 
           </Pressable>
         </View>
       )}
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#00000088' },
-  sheet: { backgroundColor: theme.surface, padding: 20, paddingBottom: 32 },
+  sheet: { paddingHorizontal: 20, paddingBottom: 12 },
   name: { color: theme.text, fontSize: 22, fontWeight: '700', marginTop: 12 },
   username: { color: theme.muted, marginTop: 2 },
   label: { color: theme.muted, fontSize: 12, fontWeight: '700', marginTop: 16, textTransform: 'uppercase' },

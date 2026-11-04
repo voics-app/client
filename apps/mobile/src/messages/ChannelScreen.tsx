@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,6 +17,7 @@ import { composerPlaceholder } from './composerPlaceholder';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
@@ -45,6 +47,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
+  const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -196,7 +199,16 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           if (selected) confirmDelete(selected);
           close();
         }}
+        onCopyText={() => {
+          if (selected) void Clipboard.setStringAsync(selected.content).catch(fail);
+          close();
+        }}
+        onSelectText={() => {
+          setSelecting(selected);
+          close();
+        }}
       />
+      <SelectTextSheet message={selecting} onClose={() => setSelecting(null)} />
     </KeyboardAvoidingView>
   );
 }
