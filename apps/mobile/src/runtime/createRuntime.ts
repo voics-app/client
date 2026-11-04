@@ -13,7 +13,7 @@ import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 export interface RuntimeConfig {
   apiUrl: string;
   gatewayUrl: string;
-  /** Shown in the device list and sent to the gateway, e.g. `Discordy iOS`. */
+  /** Shown in the device list and sent to the gateway, e.g. `Voics iOS`. */
   deviceName: string;
   platform: string;
   version: string;

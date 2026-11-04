@@ -9,8 +9,8 @@
 #                                           release merge, which already published it: client#194)
 #   workflow_dispatch                    -> same as a push of the selected branch (use main)
 #
-# Output: GitHub Release assets, and in the discordy-updates bucket Discordy-Setup-X.Y.Z.exe(.blockmap),
-# latest.yml and the stable Discordy-Setup-latest.exe (5-minute cache). electron-updater in installed
+# Output: GitHub Release assets, and in the discordy-updates bucket Voics-Setup-X.Y.Z.exe(.blockmap),
+# latest.yml and the stable Voics-Setup-latest.exe (5-minute cache). electron-updater in installed
 # clients reads latest.yml, so publishing it is what rolls the update out.
 # develop never publishes: Windows minutes cost 2x and a beta channel is not needed yet.
 name: release
@@ -96,7 +96,7 @@ jobs:
           mkdir -p out
           cp apps/desktop/release/*.exe apps/desktop/release/*.exe.blockmap apps/desktop/release/latest.yml out/
           ls -la out
-          test -f "out/Discordy-Setup-${VERSION}.exe" || { echo "::error::installer name does not match version ${VERSION}"; exit 1; }
+          test -f "out/Voics-Setup-${VERSION}.exe" || { echo "::error::installer name does not match version ${VERSION}"; exit 1; }
           grep -q "^version: ${VERSION}$" out/latest.yml || { echo "::error::latest.yml does not carry ${VERSION}"; exit 1; }
       - uses: actions/upload-artifact@v4
         if: steps.ver.outputs.skip != 'true'
@@ -113,7 +113,7 @@ jobs:
           set -euo pipefail
           tag="v${VERSION}"
           # Releases for main merges are tagged here (tags pushed with GITHUB_TOKEN do not re-trigger workflows).
-          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Discordy ${VERSION}" --notes "See CHANGELOG.md."
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Voics ${VERSION}" --notes "See CHANGELOG.md."
           gh release upload "$tag" out/* --clobber
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -128,4 +128,4 @@ jobs:
       artifact: installer-windows
       bucket: discordy-updates
       short-cache: latest.yml
-      copies: Discordy-Setup-${{ needs.windows.outputs.version }}.exe:Discordy-Setup-latest.exe
+      copies: Voics-Setup-${{ needs.windows.outputs.version }}.exe:Voics-Setup-latest.exe

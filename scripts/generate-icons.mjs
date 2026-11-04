@@ -27,28 +27,38 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
+// V geometry in unit coordinates; website/src/assets/logo.svg uses the same numbers on a 512 grid.
+const V = { left: [0.28, 0.29], right: [0.72, 0.29], tip: [0.5, 0.72], halfWidth: 0.085 };
+
+function segmentDistance(px, py, [ax, ay], [bx, by]) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / (abx * abx + aby * aby)));
+  return Math.hypot(px - (ax + t * abx), py - (ay + t * aby));
+}
+
 function png(size) {
   const raw = Buffer.alloc((size * 4 + 1) * size);
   const r = size * 0.22;
   for (let y = 0; y < size; y += 1) {
     raw[y * (size * 4 + 1)] = 0;
     for (let x = 0; x < size; x += 1) {
-      // Rounded square with an indigo-to-violet diagonal gradient and a soft inner ring.
+      // Rounded square with an indigo-to-violet diagonal gradient.
       const dx = Math.max(Math.abs(x - size / 2) - (size / 2 - r), 0);
       const dy = Math.max(Math.abs(y - size / 2) - (size / 2 - r), 0);
       const dist = Math.hypot(dx, dy);
       const inside = dist <= r ? Math.min(1, r - dist) : 0;
       const t = (x + y) / (2 * size);
-      const cx = x - size / 2;
-      const cy = y - size / 2;
-      const ring = Math.abs(Math.hypot(cx, cy) - size * 0.24) < size * 0.05 ? 1 : 0;
-      const dot = Math.hypot(cx, cy) < size * 0.1 ? 1 : 0;
-      const light = ring || dot ? 1 : 0;
+      // Bold "V": two round-capped strokes meeting at the bottom point, antialiased by distance.
+      const px = (x + 0.5) / size;
+      const py = (y + 0.5) / size;
+      const d = Math.min(segmentDistance(px, py, V.left, V.tip), segmentDistance(px, py, V.right, V.tip));
+      const coverage = Math.max(0, Math.min(1, 0.5 - (d - V.halfWidth) * size));
       const base = [96 + 80 * t, 84 + 20 * t, 232 - 40 * t];
       const o = y * (size * 4 + 1) + 1 + x * 4;
-      raw[o] = light ? 250 : base[0];
-      raw[o + 1] = light ? 250 : base[1];
-      raw[o + 2] = light ? 255 : base[2];
+      raw[o] = base[0] + (250 - base[0]) * coverage;
+      raw[o + 1] = base[1] + (250 - base[1]) * coverage;
+      raw[o + 2] = base[2] + (255 - base[2]) * coverage;
       raw[o + 3] = Math.round(255 * inside);
     }
   }

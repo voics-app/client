@@ -49,7 +49,7 @@ function setup(initial: StoredSession | null = null) {
   const runtime = createRuntime({
     apiUrl: 'https://api.test',
     gatewayUrl: 'wss://gw.test',
-    deviceName: 'Discordy iOS',
+    deviceName: 'Voics iOS',
     platform: 'ios',
     version: '1.2.3',
     vault,

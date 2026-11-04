@@ -36,4 +36,4 @@ jobs:
     uses: discordy-voics/.github/.github/workflows/docker.yml@main
     with:
       image-name: client
-      description: Discordy client web build (renderer bundle and component gallery, served by nginx)
+      description: Voics client web build (renderer bundle and component gallery, served by nginx)

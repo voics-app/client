@@ -19,7 +19,7 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 ARG VERSION=0.1.0
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="discordy-client" \
-      org.opencontainers.image.description="Discordy client web build (renderer bundle and component gallery)" \
+      org.opencontainers.image.description="Voics client web build (renderer bundle and component gallery)" \
       org.opencontainers.image.source="https://github.com/discordy-voics/client" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \

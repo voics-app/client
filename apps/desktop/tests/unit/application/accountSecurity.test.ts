@@ -34,7 +34,7 @@ describe('account security rules', () => {
   });
 
   it('formats the download with every code on its own line', () => {
-    const file = backupCodesFile(['aaaaa-bbbbb', 'ccccc-ddddd'], 'ada', 'Discordy');
+    const file = backupCodesFile(['aaaaa-bbbbb', 'ccccc-ddddd'], 'ada', 'Voics');
     expect(file.split('\n')).toEqual(expect.arrayContaining(['aaaaa-bbbbb', 'ccccc-ddddd']));
     expect(file).toContain('ada');
   });
