@@ -8,7 +8,7 @@ import { usePrefsStore, DEFAULT_PREFS } from '@renderer/application/stores/prefs
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import type { ChatMessage } from '@renderer/application/stores/messageStore';
-import { ALL_PERMISSIONS, Permission } from '@shared/contracts/permissions';
+import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 import { selectionWithin, targetFromElement } from '@renderer/interface/features/chat/contextTarget';

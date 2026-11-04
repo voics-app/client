@@ -5,7 +5,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { ALL_PERMISSIONS, Permission } from '@shared/contracts/permissions';
+import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 
 const updateMember = vi.fn(async (_g: string, u: string, patch: { channel_id: string | null }) => ({ user: { id: u }, roles: [], ...patch }));

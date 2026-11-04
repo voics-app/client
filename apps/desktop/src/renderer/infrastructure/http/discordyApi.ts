@@ -38,8 +38,8 @@ import type {
   UserNote,
   UserSettings,
   VoiceRegion,
-} from '@shared/contracts/rest';
-import { toQuery, type SearchParams } from '@renderer/domain/messageSearch';
+} from '@discordy/core/contracts/rest';
+import { toQuery, type SearchParams } from '@discordy/core/domain/messageSearch';
 import type { HttpClient, RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;

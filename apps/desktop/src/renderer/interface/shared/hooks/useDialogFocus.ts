@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { trapTarget } from '@renderer/domain/rovingFocus';
+import { trapTarget } from '@discordy/core/domain/rovingFocus';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import type { User } from '@shared/contracts/rest';
+import type { User } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';

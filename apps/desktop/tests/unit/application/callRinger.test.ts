@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CallRinger, type RingerSettings } from '@renderer/application/calls/callRinger';
-import type { DmCall } from '@renderer/domain/calls';
+import type { DmCall } from '@discordy/core/domain/calls';
 
 const incoming: DmCall = { channelId: '900', region: 'nl-home', ringing: ['2'], voiceStates: [{ user_id: '1', channel_id: '900' } as never] };
 

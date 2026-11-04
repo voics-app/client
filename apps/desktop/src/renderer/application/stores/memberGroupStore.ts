@@ -1,6 +1,7 @@
 /** Which member list groups the user collapsed, per guild. Persisted to localStorage. */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
 
 interface MemberGroupState {
   collapsed: Record<string, string[]>;
@@ -18,6 +19,6 @@ export const useMemberGroupStore = create<MemberGroupState>()(
           return { collapsed: { ...s.collapsed, [guildId]: next } };
         }),
     }),
-    { name: 'discordy.memberGroups', storage: createJSONStorage(() => localStorage) },
+    { name: 'discordy.memberGroups', storage: persistedStorage() },
   ),
 );

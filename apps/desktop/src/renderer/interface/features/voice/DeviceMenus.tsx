@@ -2,7 +2,7 @@ import { CaretUp, Waveform } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { activeChoiceId, deviceChoices, keysFor, percent, type DeviceChoice } from '@renderer/domain/voicePanel';
+import { activeChoiceId, deviceChoices, keysFor, percent, type DeviceChoice } from '@discordy/core/domain/voicePanel';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Slider } from '../../shared/ui/Form';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';

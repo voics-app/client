@@ -1,5 +1,5 @@
-import type { Activity } from '@shared/contracts/rest';
-import { statusLine } from '@renderer/domain/memberList';
+import type { Activity } from '@discordy/core/contracts/rest';
+import { statusLine } from '@discordy/core/domain/memberList';
 import { useConnectionStore } from '../../app/connectionStore';
 
 /** Emoji plus text of a custom status (or the current activity), truncated by CSS with the full text in a tooltip. */

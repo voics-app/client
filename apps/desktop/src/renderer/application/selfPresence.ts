@@ -1,5 +1,5 @@
 /** Self presence state shared by the status picker, custom status and the idle monitor. */
-import { selfPresencePayload, type ManualStatus, type SelfPresencePayload } from '@renderer/domain/selfPresence';
+import { selfPresencePayload, type ManualStatus, type SelfPresencePayload } from '@discordy/core/domain/selfPresence';
 import { useSessionStore } from './stores/sessionStore';
 
 let autoIdle = false;

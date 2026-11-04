@@ -12,8 +12,8 @@ import {
   NOTIFICATION_LEVELS,
   scopeKey,
   serverDefaultLevel,
-} from '@renderer/domain/notificationSettings';
-import type { NotificationLevel } from '@shared/contracts/rest';
+} from '@discordy/core/domain/notificationSettings';
+import type { NotificationLevel } from '@discordy/core/contracts/rest';
 import { muteChannel, muteGuild, setChannelLevel, setGuildLevel, setGuildToggles } from '../../app/notificationActions';
 import { Button } from '../../shared/ui/Button';
 import { Field, Segmented, Select, SettingRow, Switch } from '../../shared/ui/Form';

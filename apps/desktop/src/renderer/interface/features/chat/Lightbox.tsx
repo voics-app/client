@@ -2,7 +2,7 @@ import { ArrowSquareOut, CaretLeft, CaretRight, Copy, DownloadSimple, Minus, Plu
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLightboxStore } from '@renderer/application/stores/lightboxStore';
-import { clampPan, clampZoom, displayFilename, MIN_ZOOM } from '@renderer/domain/media';
+import { clampPan, clampZoom, displayFilename, MIN_ZOOM } from '@discordy/core/domain/media';
 import { copyImage, saveImage } from '../../app/messageActions';
 import { IconButton } from '../../shared/ui/IconButton';
 import { MediaPlayer } from './MediaPlayer';

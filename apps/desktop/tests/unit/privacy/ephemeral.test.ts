@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GatewayOp, type E2EEEnvelope } from '@shared/contracts/gateway';
+import { GatewayOp, type E2EEEnvelope } from '@discordy/core/contracts/gateway';
 import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { EphemeralService } from '@renderer/application/privacy/ephemeralService';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';

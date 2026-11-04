@@ -1,8 +1,8 @@
 /** Voice states for every guild/DM plus the local call connection. */
 import { create } from 'zustand';
-import type { VoiceState } from '@shared/contracts/rest';
-import { appendRtt } from '@renderer/domain/voicePanel';
-import type { VideoPresetId } from '@renderer/domain/videoPresets';
+import type { VoiceState } from '@discordy/core/contracts/rest';
+import { appendRtt } from '@discordy/core/domain/voicePanel';
+import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 
 export type CallStatus = 'idle' | 'requesting' | 'connecting' | 'connected' | 'reconnecting' | 'failed';
 

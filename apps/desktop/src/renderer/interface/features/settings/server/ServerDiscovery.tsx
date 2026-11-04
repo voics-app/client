@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { blockerMessage, categoryLabel, memberCountLabel, parseTags } from '@renderer/domain/discoveryModel';
+import { blockerMessage, categoryLabel, memberCountLabel, parseTags } from '@discordy/core/domain/discoveryModel';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';

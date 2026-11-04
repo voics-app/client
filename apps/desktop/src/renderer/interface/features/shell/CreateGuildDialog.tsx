@@ -5,7 +5,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { parseTemplateCode, previewTemplate, templateSummary, usageLabel } from '@renderer/domain/templateModel';
-import { ChannelType, type GuildTemplate } from '@shared/contracts/rest';
+import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../app/actions';
 import { openGuild } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';

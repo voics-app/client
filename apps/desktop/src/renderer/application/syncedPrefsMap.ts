@@ -4,8 +4,8 @@
  * video devices, volumes, voice processing, push-to-talk, keybinds, the desktop notification
  * toggle, taskbar flash, collapsed categories, call stage layouts and media player volume.
  */
-import { RINGTONE_OPTIONS } from '@renderer/domain/ringtones';
-import type { UserPreferences, UserSettings } from '@shared/contracts/rest';
+import { RINGTONE_OPTIONS } from '@discordy/core/domain/ringtones';
+import type { UserPreferences, UserSettings } from '@discordy/core/contracts/rest';
 import { DEFAULT_PREFS, type PrefsData } from './stores/prefsStore';
 
 type Mapping =

@@ -1,7 +1,8 @@
 /** DMs the user closed on this device (api has no per-user hidden flag yet). Persisted to localStorage. */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ClosedDms } from '@renderer/domain/dmModel';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
+import type { ClosedDms } from '@discordy/core/domain/dmModel';
 
 interface ClosedDmState {
   closed: ClosedDms;
@@ -20,6 +21,6 @@ export const useClosedDmStore = create<ClosedDmState>()(
           return { closed: rest };
         }),
     }),
-    { name: 'discordy.closedDms', storage: createJSONStorage(() => localStorage) },
+    { name: 'discordy.closedDms', storage: persistedStorage() },
   ),
 );

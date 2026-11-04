@@ -1,25 +1,25 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { SoundId } from '@renderer/domain/sounds';
-import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@renderer/domain/ringtones';
-import type { VideoPresetId } from '@renderer/domain/videoPresets';
-import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '@renderer/domain/stageLayout';
-import type { RoleColorMode } from '@renderer/domain/appearance';
-import { recordReaction, type QuickEmoji } from '@renderer/domain/quickReactions';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
+import type { SoundId } from '@discordy/core/domain/sounds';
+import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@discordy/core/domain/ringtones';
+import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
+import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '@discordy/core/domain/stageLayout';
+import type { RoleColorMode } from '@discordy/core/domain/appearance';
+import type { SpoilerDisplay, ThemeId } from '@discordy/core/domain/prefsTypes';
+import { recordReaction, type QuickEmoji } from '@discordy/core/domain/quickReactions';
 
-export type ThemeId = 'dark' | 'oled' | 'light';
+export type { ThemeId, SpoilerDisplay };
 export type AccentId = 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
 export type Density = 'cozy' | 'compact';
 export type InputMode = 'vad' | 'ptt';
 /** Device-local notification level for a channel or category until server-side settings exist (api#28). */
 export type NotifyLevel = 'all' | 'mentions' | 'none';
 
-import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@renderer/domain/keybinds';
+import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@discordy/core/domain/keybinds';
 export type { Keybind };
 
-/** When spoiler text is revealed without a click (Settings, Chat). */
-export type SpoilerDisplay = 'click' | 'moderated' | 'always';
 
 export interface PrefsState {
   theme: ThemeId;
@@ -173,27 +173,6 @@ export const DEFAULT_PREFS: PrefsData = {
   mediaMuted: false,
 };
 
-function memoryStorage() {
-  const memory = new Map<string, string>();
-  return {
-    getItem: (k: string) => memory.get(k) ?? null,
-    setItem: (k: string, v: string) => void memory.set(k, v),
-    removeItem: (k: string) => void memory.delete(k),
-  };
-}
-
-/** localStorage can be absent or throw (private windows, blocked storage); fall back to memory. */
-function browserStorage() {
-  try {
-    const probe = '__discordy_probe__';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    return memoryStorage();
-  }
-}
-
 export const usePrefsStore = create<PrefsState>()(
   persist(
     (set) => ({
@@ -208,7 +187,7 @@ export const usePrefsStore = create<PrefsState>()(
     {
       name: 'discordy.prefs.v1',
       merge: (persisted, current) => ({ ...current, ...(persisted as Partial<PrefsState>), keybinds: mergeKeybinds((persisted as Partial<PrefsState> | undefined)?.keybinds) }),
-      storage: createJSONStorage(() => (typeof window === 'undefined' ? memoryStorage() : browserStorage())),
+      storage: persistedStorage(),
     },
   ),
 );

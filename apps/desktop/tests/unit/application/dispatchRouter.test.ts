@@ -5,7 +5,7 @@ import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from '@renderer/application/stores/peopleStores';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import type { GuildFull, Message } from '@shared/contracts';
+import type { GuildFull, Message } from '@discordy/core/contracts';
 
 const me = { id: '1', username: 'me', global_name: 'Me', avatar: null };
 const friend = { id: '2', username: 'friend', global_name: 'Friend', avatar: null };

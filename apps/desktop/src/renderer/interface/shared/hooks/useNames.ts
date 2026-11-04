@@ -1,5 +1,5 @@
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import type { User } from '@shared/contracts/rest';
+import type { User } from '@discordy/core/contracts/rest';
 
 export function displayName(user: Pick<User, 'username' | 'global_name'>, nick?: string | null): string {
   // Gateway events can carry partial users ({ id } only), so never return undefined.

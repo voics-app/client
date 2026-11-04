@@ -4,9 +4,9 @@ import { usePresenceStore, useRelationshipStore } from '@renderer/application/st
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@renderer/domain/friendsModel';
+import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
-import { RelationshipType, type Relationship } from '@shared/contracts/rest';
+import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
 import { attempt, errorMessage } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';

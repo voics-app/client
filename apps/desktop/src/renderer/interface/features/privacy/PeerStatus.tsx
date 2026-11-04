@@ -2,7 +2,7 @@ import { Fingerprint, Plugs, ShieldWarning } from '@phosphor-icons/react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import type { Channel, DeliveryMode } from '@shared/contracts/rest';
+import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
 import { Spinner } from '../../shared/ui/Spinner';
 
 /** Honest per-mode connection state shown above the composer. Renders nothing for healthy standard chats. */

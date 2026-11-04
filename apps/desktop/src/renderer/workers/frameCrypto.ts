@@ -3,7 +3,7 @@
  * Per-sender keys are derived (HKDF-SHA256) from a base key that the main
  * thread builds out of an MLS exporter secret, one base key per epoch.
  */
-import { buildIv, packFrame, unencryptedPrefixLength, unpackFrame } from '@renderer/domain/frameFormat';
+import { buildIv, packFrame, unencryptedPrefixLength, unpackFrame } from '@discordy/core/domain/frameFormat';
 
 export const KEY_INFO_PREFIX = 'discordy-frame-key-v1';
 const TAG_BITS = 128;

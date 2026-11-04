@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { WAVE_EMOJI, type DmIntro as DmIntroModel } from '@renderer/domain/dmIntro';
-import type { Channel } from '@shared/contracts/rest';
+import { WAVE_EMOJI, type DmIntro as DmIntroModel } from '@discordy/core/domain/dmIntro';
+import type { Channel } from '@discordy/core/contracts/rest';
 import { reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Avatar } from '../../shared/ui/Avatar';

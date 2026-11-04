@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { clampZoom, effectiveReduceMotion, effectiveTheme, parseSilentPrefix, parseTtsCommand, roleColorStyle, stepZoom, zoomActionOf } from '@renderer/domain/appearance';
-import { looksAnimated } from '@renderer/domain/stillFrame';
+import { clampZoom, effectiveReduceMotion, effectiveTheme, parseSilentPrefix, parseTtsCommand, roleColorStyle, stepZoom, zoomActionOf } from '@discordy/core/domain/appearance';
+import { looksAnimated } from '@discordy/core/domain/stillFrame';
 import { speak } from '@renderer/infrastructure/tts';
 
 describe('zoom', () => {

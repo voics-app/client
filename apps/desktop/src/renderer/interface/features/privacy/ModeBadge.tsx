@@ -1,5 +1,5 @@
 import { Globe, LockKey, Plugs } from '@phosphor-icons/react';
-import type { DeliveryMode } from '@shared/contracts/rest';
+import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { MODE_COPY } from '@renderer/domain/deliveryMode';
 import { Tooltip } from '../../shared/ui/Tooltip';
 

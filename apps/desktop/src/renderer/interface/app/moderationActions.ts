@@ -2,7 +2,7 @@
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { bulkDeletePlan, purgeableMessageIds } from '@renderer/domain/moderationTools';
+import { bulkDeletePlan, purgeableMessageIds } from '@discordy/core/domain/moderationTools';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';
 

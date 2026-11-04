@@ -1,5 +1,5 @@
 /** Thin command facade over the voice engine so UI never imports engine classes directly. */
-import type { VideoPresetId } from '@renderer/domain/videoPresets';
+import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { reportError } from './actions';

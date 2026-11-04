@@ -3,7 +3,7 @@ import { InteractionService } from '@renderer/application/interactionService';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useInteractionStore } from '@renderer/application/stores/interactionStore';
 import type { ApiPort } from '@renderer/application/ports/api';
-import type { Channel } from '@shared/contracts/rest';
+import type { Channel } from '@discordy/core/contracts/rest';
 
 const channel = { id: '200', type: 0, guild_id: '100', name: 'general', delivery_mode: 'standard', last_message_id: null } as Channel;
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@renderer/infrastructure/http/httpClient';
-import { GatewayOp } from '@shared/contracts/gateway';
-import type { Channel, Message } from '@shared/contracts/rest';
+import { GatewayOp } from '@discordy/core/contracts/gateway';
+import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { MessageSender } from '@renderer/application/privacy/messageSender';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';

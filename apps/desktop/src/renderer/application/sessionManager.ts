@@ -1,5 +1,5 @@
 /** Auth lifecycle: boot from the OS-keychain vault, login/register, device registration, logout. */
-import type { AuthResponse } from '@shared/contracts/rest';
+import type { AuthResponse } from '@discordy/core/contracts/rest';
 import type { StoredSession } from '@shared/ipc';
 import type { ApiPort } from './ports/api';
 import { useGuildStore } from './stores/guildStore';

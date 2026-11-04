@@ -6,9 +6,9 @@ import { useReadStateStore } from '@renderer/application/stores/peopleStores';
 import { useMentionInboxStore } from '@renderer/application/stores/mentionInboxStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { effectiveLevelDeep, emptySettings, isChannelMutedDeep, activeOverrides, withMute } from '@renderer/domain/notificationSettings';
-import { addInboxEntry, inboxEntryOf, type InboxEntry } from '@renderer/domain/mentionInbox';
-import type { GuildNotificationSettings } from '@shared/contracts/rest';
+import { effectiveLevelDeep, emptySettings, isChannelMutedDeep, activeOverrides, withMute } from '@discordy/core/domain/notificationSettings';
+import { addInboxEntry, inboxEntryOf, type InboxEntry } from '@discordy/core/domain/mentionInbox';
+import type { GuildNotificationSettings } from '@discordy/core/contracts/rest';
 
 function api() {
   return {

@@ -1,8 +1,8 @@
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
-import { becameFriends } from '@renderer/domain/dmIntro';
-import { inboxEntryOf } from '@renderer/domain/mentionInbox';
-import { isMentioned } from '@renderer/domain/notificationPolicy';
-import { isChannelMutedDeep, scopeKey } from '@renderer/domain/notificationSettings';
+import { becameFriends } from '@discordy/core/domain/dmIntro';
+import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
+import { isMentioned } from '@discordy/core/domain/notificationPolicy';
+import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
 import type {
   Channel,
   Emoji,
@@ -18,9 +18,9 @@ import type {
   User,
   UserSettings,
   VoiceState,
-} from '@shared/contracts/rest';
-import { RelationshipType } from '@shared/contracts/rest';
-import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUpdate } from '@shared/contracts/gateway';
+} from '@discordy/core/contracts/rest';
+import { RelationshipType } from '@discordy/core/contracts/rest';
+import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import { useCallStore } from './stores/callStore';
 import { useGuildStore } from './stores/guildStore';
 import { useInteractionStore } from './stores/interactionStore';

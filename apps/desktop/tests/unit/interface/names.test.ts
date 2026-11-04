@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { initialsOf } from '@renderer/interface/shared/ui/Avatar';
 import { displayName } from '@renderer/interface/shared/hooks/useNames';
-import type { User } from '@shared/contracts';
+import type { User } from '@discordy/core/contracts';
 
 describe('names for partial users', () => {
   // Gateway VOICE_STATE_UPDATE and PRESENCE_UPDATE carry partial users ({ id } only).

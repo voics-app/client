@@ -1,5 +1,5 @@
 /** Cached lookup of user devices and their identity keys, plus channel participant resolution. */
-import type { Device } from '@shared/contracts/rest';
+import type { Device } from '@discordy/core/contracts/rest';
 import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 

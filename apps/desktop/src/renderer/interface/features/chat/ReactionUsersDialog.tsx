@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { reactionKey, useMessageStore } from '@renderer/application/stores/messageStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { Permission } from '@shared/contracts/permissions';
+import { Permission } from '@discordy/core/contracts/permissions';
 import { attempt } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';

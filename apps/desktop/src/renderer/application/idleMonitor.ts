@@ -1,5 +1,5 @@
 /** Polls OS input idle time and lock state and reports when the automatic Idle flag flips. */
-import { nextAutoIdle, type ManualStatus } from '@renderer/domain/selfPresence';
+import { nextAutoIdle, type ManualStatus } from '@discordy/core/domain/selfPresence';
 
 export interface IdleDeps {
   idleSeconds(): Promise<number>;

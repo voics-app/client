@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Group DMs can have up to 25 members (was 10); the new-group dialog follows. Needs the api change that raises the cap (api#100); an api configured with a lower `GROUP_DM_MAX_PARTICIPANTS` will refuse the extra members with an error.
+- Internal: the domain and application layers no longer touch `window`, `document` or `localStorage`; persistence goes through a storage port, a first step towards sharing the core with the mobile app. No change in behaviour.
+- Internal: the domain rules and protocol contracts moved into the new `packages/core` workspace package (`@discordy/core`), which the desktop imports; the mobile app will share it.
 - The composer has a timestamp picker: type @time or press the clock button, choose a date, time and format (short or long time, short or long date, date and time, relative), and it inserts a timestamp that every reader sees in their own time zone, with the full date on hover.
 - Settings, Voice and Video has Confirm before calling (on by default, this device only): starting a voice or video call that nobody is in yet asks "Start a voice call with X?" before it rings.
 - Messages render GitHub-style pipe tables: a header row, per-column alignment (`:--`, `:-:`, `--:`) and horizontal scrolling when wide; limited to 12 columns and 50 rows.

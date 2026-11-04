@@ -21,10 +21,10 @@ import {
   type VoiceHello,
   type VoiceIdentify,
   type VoiceReady,
-} from '@shared/contracts/voice';
-import { reconnectDelay } from '@renderer/domain/backoff';
-import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '@renderer/domain/sdp';
-import { presetConstraints, type CaptureConstraints } from '@renderer/domain/videoPresets';
+} from '@discordy/core/contracts/voice';
+import { reconnectDelay } from '@discordy/core/domain/backoff';
+import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '@discordy/core/domain/sdp';
+import { presetConstraints, type CaptureConstraints } from '@discordy/core/domain/videoPresets';
 import type { ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
 import { useVoiceStore, type CallQuality } from '@renderer/application/stores/voiceStore';
 import { Listeners } from '../net/emitter';

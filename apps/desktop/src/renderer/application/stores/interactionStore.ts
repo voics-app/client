@@ -1,8 +1,8 @@
 /** Slash command catalogue, in-flight interactions ("is thinking…") and the open modal. */
 import { create } from 'zustand';
-import type { MessageComponent } from '@shared/contracts/rest';
-import type { ContextCommand } from '@renderer/domain/contextCommands';
-import type { SlashEntry } from '@renderer/domain/slashCommand';
+import type { MessageComponent } from '@discordy/core/contracts/rest';
+import type { ContextCommand } from '@discordy/core/domain/contextCommands';
+import type { SlashEntry } from '@discordy/core/domain/slashCommand';
 
 /** Deferred responses may take up to fifteen minutes; after that the placeholder is dropped. */
 export const PENDING_TTL_MS = 15 * 60_000;

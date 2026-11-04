@@ -4,7 +4,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSearchStore } from '@renderer/application/stores/searchStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType } from '@shared/contracts/rest';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { displayName } from '../shared/hooks/useNames';
 import { getRuntime } from './runtime';
 

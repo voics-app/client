@@ -7,7 +7,7 @@ import { useRelationshipStore } from '@renderer/application/stores/peopleStores'
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@renderer/domain/inviteLinks';
-import { ChannelType, type Invite } from '@shared/contracts/rest';
+import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -16,7 +16,7 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Smiley } from '@phosphor-icons/react';
-import { CUSTOM_STATUS_MAX, EXPIRY_CHOICES, expiryFor, statusCharsLeft, type ExpiryChoice } from '@renderer/domain/selfPresence';
+import { CUSTOM_STATUS_MAX, EXPIRY_CHOICES, expiryFor, statusCharsLeft, type ExpiryChoice } from '@discordy/core/domain/selfPresence';
 import { useEmojiPopover } from '../chat/EmojiPopover';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
@@ -34,7 +34,7 @@ import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText, type StatusEmoji } from './customStatus';
 import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { ACTION_LABELS, FIXED_SHORTCUTS } from '@renderer/domain/shortcutCatalog';
+import { ACTION_LABELS, FIXED_SHORTCUTS } from '@discordy/core/domain/shortcutCatalog';
 
 function useClose() {
   return () => useUiStore.getState().openDialog(null);

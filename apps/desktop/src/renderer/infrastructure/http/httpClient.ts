@@ -1,5 +1,5 @@
 /** REST transport for `/api/v1`: bearer auth, single-flight refresh, 429 backoff, error envelope. */
-import type { ApiErrorBody } from '@shared/contracts/rest';
+import type { ApiErrorBody } from '@discordy/core/contracts/rest';
 
 export class ApiError extends Error {
   constructor(

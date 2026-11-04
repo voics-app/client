@@ -9,8 +9,8 @@ import {
   groupSecret,
   looksLikeSecondFactor,
   newPasswordProblem,
-} from '@renderer/domain/accountSecurity';
-import type { BackupCode, TotpEnrollment, User } from '@shared/contracts/rest';
+} from '@discordy/core/domain/accountSecurity';
+import type { BackupCode, TotpEnrollment, User } from '@discordy/core/contracts/rest';
 import { BRAND } from '@shared/brand';
 import { copyText, errorMessage, reportError } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';

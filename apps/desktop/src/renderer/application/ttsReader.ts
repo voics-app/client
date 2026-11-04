@@ -1,4 +1,4 @@
-import type { Message } from '@shared/contracts/rest';
+import type { Message } from '@discordy/core/contracts/rest';
 import { speak } from '@renderer/infrastructure/tts';
 import { usePrefsStore } from './stores/prefsStore';
 import { useUiStore } from './stores/uiStore';

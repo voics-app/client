@@ -2,7 +2,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { ChatView } from '../chat/ChatView';
 import { isVoiceChannel } from '../../app/navigation';
 import { ForumView } from '../chat/ForumView';
-import { ChannelType } from '@shared/contracts/rest';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { VoiceChannelView } from './VoiceChannelView';
 
 /** Chooses what fills the main stage for a channel: chat, voice room or forum. */
