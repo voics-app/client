@@ -123,6 +123,7 @@
 .user-panel-name { font-weight: 620; font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-panel-sub { font-size: var(--fs-caption); color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-panel-actions { display: flex; flex: none; }
+.voice-dock.glass { background: var(--bg-2); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .voice-dock { flex: none; margin: 0 8px 8px; padding: 10px 10px 8px; border-radius: 14px; display: flex; flex-direction: column; gap: 4px; }
 .voice-dock-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .voice-dock-id { text-align: left; min-width: 0; display: flex; flex-direction: column; }
@@ -256,6 +257,10 @@ button.mode-badge:active { transform: scale(0.96); }
 .markdown .md-heading { margin: 8px 0 2px; font-weight: 700; line-height: 1.25; white-space: normal; } .markdown h1.md-heading { font-size: 1.6em; } .markdown h2.md-heading { font-size: 1.3em; } .markdown h3.md-heading { font-size: 1.12em; }
 .markdown .md-subtext { display: block; font-size: var(--fs-meta); color: var(--fg-subtle); line-height: 1.4; }
 .markdown .md-list { margin: 2px 0; padding-left: 1.6em; white-space: normal; } .markdown .md-list ul, .markdown .md-list ol { margin: 0; } .markdown ul.md-list { list-style: disc; } .markdown ol.md-list { list-style: decimal; } .markdown ul.md-list ul.md-list { list-style: circle; }
+.markdown .md-table-scroll { max-width: 100%; margin: 4px 0; overflow-x: auto; white-space: normal; }
+.markdown .md-table { border-collapse: collapse; font-size: var(--fs-meta); }
+.markdown .md-table th, .markdown .md-table td { padding: 4px 10px; border: 1px solid var(--hairline-strong); vertical-align: top; }
+.markdown .md-table th { background: var(--bg-3); font-weight: 700; }
 .markdown .md-timestamp { padding: 0 4px; border-radius: 5px; background: var(--bg-3); cursor: default; }
 .markdown .md-masked-link { color: var(--accent-text); }
 .link-confirm-url { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--bg-3); font-family: var(--font-mono); font-size: var(--fs-small); overflow-wrap: anywhere; }

@@ -46,6 +46,10 @@ a:hover { text-decoration: underline; }
   box-shadow: inset 0 0 0 1px var(--glass-edge), var(--shadow-float);
 }
 
+/* While the window is being resized (useWindowResizing) blur and transitions are suspended so nothing lags behind the frame. */
+[data-resizing] .glass { backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-resizing] *, [data-resizing] *::before, [data-resizing] *::after { transition: none !important; }
+
 [data-reduce-motion='true'] *, [data-reduce-motion='true'] *::before, [data-reduce-motion='true'] *::after {
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;

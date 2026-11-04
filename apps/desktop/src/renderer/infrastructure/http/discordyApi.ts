@@ -15,6 +15,7 @@ import type {
   CreateInteractionBody,
   CreateMessageBody,
   DeliveryMode,
+  AuthSession,
   Device,
   Emoji,
   Guild,
@@ -119,6 +120,16 @@ export class DiscordyApi implements ApiPort {
   }
   claimKeyPackage(userId: string, deviceId: string) {
     return this.post<{ package_b64: string }>(`/users/${userId}/devices/${deviceId}/key-packages/claim`);
+  }
+
+  listSessions() {
+    return this.get<AuthSession[]>('/users/@me/sessions');
+  }
+  revokeSession(sessionId: string) {
+    return this.del<void>(`/users/@me/sessions/${sessionId}`);
+  }
+  logoutOtherSessions() {
+    return this.post<void>('/users/@me/sessions/logout-all');
   }
 
   me() {

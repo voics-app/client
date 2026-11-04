@@ -387,3 +387,38 @@ describe('Composer: send key preference, @here and format toolbar', () => {
     expect(screen.queryByRole('menuitem', { name: /poll/i })).toBeNull();
   });
 });
+
+describe('Composer: timestamp picker', () => {
+  const unixOf = (d: Date) => Math.floor(d.getTime() / 1000);
+
+  function pick(date: string, time: string, format?: string) {
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: date } });
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: time } });
+    if (format) fireEvent.change(screen.getByLabelText('Format'), { target: { value: format } });
+    fireEvent.click(screen.getByRole('button', { name: 'Insert' }));
+  }
+
+  it('opens from @time, removes the trigger and inserts the chosen timestamp', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    type('see you @time');
+    expect(screen.getByRole('option', { name: /time/ })).toBeTruthy();
+    fireEvent.keyDown(input(), { key: 'Tab' });
+    expect(input().value).toBe('see you ');
+    pick('2026-11-04', '18:30', 'R');
+    expect(input().value).toBe(`see you <t:${unixOf(new Date(2026, 10, 4, 18, 30))}:R> `);
+  });
+
+  it('opens from the composer button and defaults to the short date and time format', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Insert timestamp' }));
+    pick('2026-11-04', '09:05');
+    expect(input().value).toBe(`<t:${unixOf(new Date(2026, 10, 4, 9, 5))}:f> `);
+  });
+
+  it('cannot insert while the date is incomplete', () => {
+    render(<Composer channel={dmChannel()} mode="standard" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Insert timestamp' }));
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '' } });
+    expect((screen.getByRole('button', { name: 'Insert' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
