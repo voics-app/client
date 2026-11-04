@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { ApiError, HttpClient } from '../../src/infrastructure/http/httpClient';
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });

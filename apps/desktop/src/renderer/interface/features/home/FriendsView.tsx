@@ -5,7 +5,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
 import { attempt, errorMessage } from '../../app/actions';
 import { callUser } from '../../app/callActions';

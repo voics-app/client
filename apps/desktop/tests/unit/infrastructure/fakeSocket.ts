@@ -1,4 +1,4 @@
-import type { SocketLike } from '@renderer/infrastructure/net/socket';
+import type { SocketLike } from '@discordy/core/infrastructure/net/socket';
 
 export class FakeSocket implements SocketLike {
   static instances: FakeSocket[] = [];

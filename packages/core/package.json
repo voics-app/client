@@ -9,7 +9,8 @@
     "./domain/*": "./src/domain/*.ts",
     "./contracts": "./src/contracts/index.ts",
     "./contracts/*": "./src/contracts/*.ts",
-    "./application/*": "./src/application/*.ts"
+    "./application/*": "./src/application/*.ts",
+    "./infrastructure/*": "./src/infrastructure/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

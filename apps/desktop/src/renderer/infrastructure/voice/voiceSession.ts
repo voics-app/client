@@ -27,8 +27,8 @@ import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '@disc
 import { presetConstraints, type CaptureConstraints } from '@discordy/core/domain/videoPresets';
 import type { ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
 import { useVoiceStore, type CallQuality } from '@discordy/core/application/stores/voiceStore';
-import { Listeners } from '../net/emitter';
-import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '../net/socket';
+import { Listeners } from '@discordy/core/infrastructure/net/emitter';
+import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '@discordy/core/infrastructure/net/socket';
 import type { DaveSession } from './daveSession';
 import type { FrameCryptorPort } from './frameCryptor';
 import { extendAnswer, type RemoteSource, type SectionPlan, type SourceKind } from './remoteSections';

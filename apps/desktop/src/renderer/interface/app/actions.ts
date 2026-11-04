@@ -9,7 +9,7 @@ import { forwardBody } from '@discordy/core/domain/forward';
 import { idBefore } from '@discordy/core/domain/unread';
 import { flatten } from '@discordy/core/domain/railLayout';
 import { ChannelType, type GuildFolder, type Message } from '@discordy/core/contracts/rest';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 

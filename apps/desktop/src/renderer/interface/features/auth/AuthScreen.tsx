@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useState, type FormEvent } from 'react';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { authErrorDisplay } from '@discordy/core/domain/authErrors';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { errorMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';

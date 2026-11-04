@@ -8,8 +8,8 @@ import {
 } from '@discordy/core/domain/accountSecurity';
 import { SessionManager, type SessionRuntime, type SessionVault } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
-import { ApiError, HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
+import { ApiError, HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 
 describe('account security rules', () => {
   it('rejects short, long and mismatched new passwords', () => {
