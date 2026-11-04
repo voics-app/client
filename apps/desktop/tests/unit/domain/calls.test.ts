@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { callRingPayload, callerOf, dmCallOf, ringableRecipients, hasParticipants, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
+import { callConfirmation, callTargetName, needsCallConfirmation, callRingPayload, callerOf, dmCallOf, ringableRecipients, hasParticipants, isRingingFor, isRingingOut, type DmCall } from '@renderer/domain/calls';
 import type { CallEvent } from '@shared/contracts/gateway';
 import type { VoiceState } from '@shared/contracts/rest';
 
@@ -54,5 +54,29 @@ describe('ringing more people into a call', () => {
     expect(callRingPayload('900', [])).toBeNull();
     const many = Array.from({ length: 14 }, (_, i) => String(i));
     expect(callRingPayload('900', many)?.user_ids).toHaveLength(10);
+  });
+});
+
+describe('call confirmation', () => {
+  const idle = undefined;
+  const running: DmCall = { channelId: 'c1', region: 'r', ringing: [], voiceStates: [{ user_id: 'u2', channel_id: 'c1' } as VoiceState] };
+
+  it('asks only when the setting is on and the call would start ringing', () => {
+    expect(needsCallConfirmation(true, idle)).toBe(true);
+    expect(needsCallConfirmation(false, idle)).toBe(false);
+    expect(needsCallConfirmation(true, running)).toBe(false);
+  });
+
+  it('words the prompt for voice and video calls', () => {
+    expect(callConfirmation('Ada', false)).toEqual({ title: 'Start a voice call?', body: 'Start a voice call with Ada? They will be rung.', confirmLabel: 'Start call' });
+    expect(callConfirmation('Ada', true)).toMatchObject({ title: 'Start a video call?', body: 'Start a video call with Ada? They will be rung.' });
+  });
+
+  it('names the other people of a DM or the group', () => {
+    const user = (id: string, username: string, global_name: string | null = null) => ({ id, username, global_name }) as never;
+    expect(callTargetName({ name: null, recipients: [user('1', 'ada', 'Ada')] })).toBe('Ada');
+    expect(callTargetName({ name: null, recipients: [user('1', 'ada'), user('2', 'bob')] })).toBe('ada, bob');
+    expect(callTargetName({ name: 'Team', recipients: [user('1', 'ada')] })).toBe('Team');
+    expect(callTargetName({ name: null, recipients: [] })).toBe('this conversation');
   });
 });

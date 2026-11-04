@@ -1,6 +1,6 @@
 /** DM call ringing: pure helpers over the call object that the gateway sends (CALL_CREATE / CALL_UPDATE). */
 import type { CallEvent, CallRingPayload } from '@shared/contracts/gateway';
-import type { Snowflake, VoiceState } from '@shared/contracts/rest';
+import type { Channel, Snowflake, VoiceState } from '@shared/contracts/rest';
 
 export interface DmCall {
   channelId: Snowflake;
@@ -52,4 +52,21 @@ export function ringableRecipients<T extends { id: Snowflake }>(recipients: read
 export function callRingPayload(channelId: Snowflake, userIds: readonly Snowflake[]): CallRingPayload | null {
   const unique = [...new Set(userIds)].slice(0, MAX_RING_TARGETS);
   return unique.length === 0 ? null : { channel_id: channelId, user_ids: unique };
+}
+
+/** Starting a call that nobody is in yet rings the others, so the optional prompt only guards that case. */
+export function needsCallConfirmation(enabled: boolean, call: DmCall | undefined): boolean {
+  return enabled && !hasParticipants(call);
+}
+
+export function callConfirmation(target: string, video: boolean): { title: string; body: string; confirmLabel: string } {
+  const kind = video ? 'video' : 'voice';
+  return { title: `Start a ${kind} call?`, body: `Start a ${kind} call with ${target}? They will be rung.`, confirmLabel: 'Start call' };
+}
+
+/** Who the call rings: the group name, or the other people of the conversation. */
+export function callTargetName(channel: Pick<Channel, 'name' | 'recipients'>): string {
+  if (channel.name) return channel.name;
+  const names = (channel.recipients ?? []).map((u) => u.global_name || u.username || 'Unknown user');
+  return names.length > 0 ? names.join(', ') : 'this conversation';
 }
