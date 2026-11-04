@@ -2,7 +2,7 @@ import { Play, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { canSuppressEmbeds, embedMediaSrc, embedPlayback, isBareMediaEmbed, isLinkPreview } from '@discordy/core/domain/media';
 import { Permission } from '@discordy/core/contracts/permissions';

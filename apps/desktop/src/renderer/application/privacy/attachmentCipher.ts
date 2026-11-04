@@ -1,17 +1,6 @@
 /** Per-file AES-256-GCM with a random key and nonce; the plaintext SHA-256 is verified after decryption. */
+import type { AttachmentFailure } from '@discordy/core/domain/attachmentFailure';
 import { FILE_HASH_BYTES, FILE_KEY_BYTES, FILE_NONCE_BYTES, GCM_TAG_BYTES } from '@discordy/core/domain/privateAttachment';
-
-export type AttachmentFailure =
-  | 'too_large'
-  | 'too_many'
-  | 'empty'
-  | 'integrity'
-  | 'size_mismatch'
-  | 'upload_failed'
-  | 'download_failed'
-  | 'transfer_failed'
-  | 'unavailable'
-  | 'peer_offline';
 
 export class AttachmentError extends Error {
   constructor(

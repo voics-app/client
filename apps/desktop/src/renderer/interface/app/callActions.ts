@@ -1,11 +1,11 @@
 /** Accept and decline for a DM call that is ringing for the user. */
 import { GatewayOp } from '@discordy/core/contracts/gateway';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
 import { callConfirmation, callRingPayload, callTargetName, needsCallConfirmation, ringingCallFor } from '@discordy/core/domain/calls';
 import { getRuntime } from './runtime';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { attempt } from './actions';

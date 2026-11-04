@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDispatchRouter } from '@renderer/application/dispatchRouter';
-import { PrefsSync } from '@renderer/application/syncedPrefs';
-import { fromServer, toServerPatch, SYNCED_KEYS } from '@renderer/application/syncedPrefsMap';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
+import { PrefsSync } from '@discordy/core/application/syncedPrefs';
+import { fromServer, toServerPatch, SYNCED_KEYS } from '@discordy/core/application/syncedPrefsMap';
 import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 const memory = () => {

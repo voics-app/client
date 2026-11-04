@@ -1,5 +1,5 @@
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { VideoTile } from './Participants';
 import { useTiles } from './VoiceStage';
 

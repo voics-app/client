@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { VideoTile, type Participant } from '@renderer/interface/features/voice/Participants';
 
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: {}, gateway: { send: vi.fn() } }) }));

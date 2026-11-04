@@ -1,13 +1,13 @@
 import { Gear, Headphones, SpeakerSlash, Microphone, MicrophoneSlash } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { PresenceStatus } from '@discordy/core/contracts/rest';
 import { menuTopAbove } from '@discordy/core/domain/menuPlacement';
 import { activeCustomStatus } from '@discordy/core/domain/selfPresence';
-import { setAutoIdle } from '@renderer/application/selfPresence';
+import { setAutoIdle } from '@discordy/core/application/selfPresence';
 import { publishPresence } from '../../app/presenceActions';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

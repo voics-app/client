@@ -4,9 +4,9 @@ import { SpeakingFlag } from '@discordy/core/contracts/voice';
 import { VoiceController, type VoiceControllerDeps } from '@renderer/application/voice/voiceController';
 import type { SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
 import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 
 class FakeSession implements VoiceSessionPort {

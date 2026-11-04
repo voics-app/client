@@ -189,9 +189,9 @@ describe('channel menu', () => {
     expect(idsOf(m)).toContain('unmute');
     expect(idsOf(m)).not.toContain('mute');
   });
-  it('copy link uses the discordy scheme', () => {
-    expect(channelLink('g', 'c')).toBe('discordy://channels/g/c');
-    expect(channelLink(null, 'c', 'm')).toBe('discordy://channels/@me/c/m');
+  it('copy link uses the voics scheme', () => {
+    expect(channelLink('g', 'c')).toBe('voics://channels/g/c');
+    expect(channelLink(null, 'c', 'm')).toBe('voics://channels/@me/c/m');
   });
   it('duplicate copies type, topic, slowmode, overwrites and parent', () => {
     const ch = { id: '1', type: 0, guild_id: 'g', name: 'general', topic: 't', parent_id: 'p', rate_limit_per_user: 5, nsfw: true, delivery_mode: 'standard', permission_overwrites: [{ id: 'g', type: 0, allow: '0', deny: '1024' }] } as unknown as Channel;

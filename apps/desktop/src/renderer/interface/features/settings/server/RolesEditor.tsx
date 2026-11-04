@@ -6,7 +6,7 @@ import { permissionsByGroup } from '@discordy/core/domain/permissionCatalog';
 import { hasPermission, parsePermissions, togglePermission } from '@discordy/core/domain/permissions';
 import { applyPositions, canManageRole, CLEARED_PERMISSIONS, grantableBits, hierarchyList, isAdministrator, memberCounts, reorderPositions } from '@discordy/core/domain/roleManagement';
 import { rankOf } from '@discordy/core/domain/memberModeration';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { useGuildPermissions } from '../../../shared/hooks/usePermissions';
 import { setMemberRole } from '../../members/RolePills';

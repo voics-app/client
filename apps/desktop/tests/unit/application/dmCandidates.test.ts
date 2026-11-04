@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dmCandidates } from '@renderer/application/dmCandidates';
+import { dmCandidates } from '@discordy/core/application/dmCandidates';
 import { displayName } from '@renderer/interface/shared/hooks/useNames';
 import { RelationshipType, type Channel, type GuildMember, type Relationship, type User } from '@discordy/core/contracts/rest';
 

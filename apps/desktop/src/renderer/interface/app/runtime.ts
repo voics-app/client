@@ -2,25 +2,26 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import type { AppInfo } from '@shared/ipc';
-import { PrefsSync } from '@renderer/application/syncedPrefs';
-import { createDispatchRouter } from '@renderer/application/dispatchRouter';
-import { InteractionService } from '@renderer/application/interactionService';
-import { SessionManager, type SessionRuntime, type TokenPair } from '@renderer/application/sessionManager';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { PrefsSync } from '@discordy/core/application/syncedPrefs';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
+import { InteractionService } from '@discordy/core/application/interactionService';
+import { SessionManager, type SessionRuntime, type TokenPair } from '@discordy/core/application/sessionManager';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
 import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
 import type { IceServer } from '@discordy/core/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';
-import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
-import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
-import { HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
+import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
+import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
+import { uploadWithProgress } from '@renderer/infrastructure/http/browserUpload';
 import type { AuthResponse, ReadyPayload, VoiceState } from '@discordy/core/contracts/rest';
-import { currentPresence } from '@renderer/application/selfPresence';
+import { currentPresence } from '@discordy/core/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
-import { registerIncoming } from '@renderer/application/dispatchRouter';
+import { registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { ensureDm } from './dmActions';
 import { notifyIncoming, playFriendRequestSound } from './notifications';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -68,6 +69,7 @@ export function createRuntime(info: AppInfo): Runtime {
 
   const http: HttpClient = new HttpClient({
     baseUrl: connection.apiUrl,
+    progressUpload: uploadWithProgress,
     tokens: {
       access: () => tokens.access,
       refresh: async () => {

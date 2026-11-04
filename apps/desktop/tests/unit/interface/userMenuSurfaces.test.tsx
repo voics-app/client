@@ -2,8 +2,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
 import type { GuildMember, Role, VoiceState } from '@discordy/core/contracts/rest';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';

@@ -3,7 +3,7 @@ import { isMentioned, isSilent } from '@discordy/core/domain/notificationPolicy'
 import { memo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { replyPreviewText } from '@discordy/core/domain/chatDisplay';

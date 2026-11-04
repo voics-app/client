@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
@@ -19,7 +19,7 @@ import { FriendsSince } from './FriendsSince';
 import { ProfileAvatar } from './ProfileAvatar';
 import { RolePills } from './RolePills';
 import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { saveUserNote } from '@renderer/application/notificationSync';
+import { saveUserNote } from '@discordy/core/application/notificationSync';
 import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
 

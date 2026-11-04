@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
@@ -8,7 +8,7 @@ import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging
 import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { FakeGateway, FakePeerConnection, SELF, asApi, bobUser, dm, fakeApi, fakeCrypto, resetStores, selfUser } from './fakes';
 
 const serverMessage = (over: Partial<Message> = {}): Message => ({

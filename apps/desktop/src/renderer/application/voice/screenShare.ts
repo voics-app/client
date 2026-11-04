@@ -6,7 +6,7 @@
  */
 import type { CaptureSelection, CaptureSource } from '@shared/ipc';
 import { presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { detectProtectedContent, type FrameSampler } from './blackFrame';
 import type { ScreenTrackOptions } from './ports';
 

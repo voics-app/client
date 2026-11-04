@@ -2,7 +2,7 @@ import { Check, DeviceMobile, Laptop, SignOut, Upload } from '@phosphor-icons/re
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePrefsStore, type AccentId, type ThemeId } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { DELIVERY_MODES, MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { SOUND_OPTIONS } from '@discordy/core/domain/sounds';
@@ -13,7 +13,7 @@ import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { keyLabel, uiohookKeycode } from '@discordy/core/domain/uiohookKeys';
 import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
-import { useUpdateStore } from '@renderer/application/stores/updateStore';
+import { useUpdateStore } from '@discordy/core/application/stores/updateStore';
 import { speak } from '@renderer/infrastructure/tts';
 import { BIO_MAX_LENGTH } from '@discordy/core/domain/profile';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom } from '@discordy/core/domain/appearance';

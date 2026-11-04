@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { ConnectionProfile, ConnectionProfileId } from '@shared/ipc';
 import { bridge } from '../../app/bridge';
 import { errorMessage } from '../../app/actions';

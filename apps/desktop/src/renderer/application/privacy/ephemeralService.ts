@@ -13,7 +13,7 @@ import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
-import { useSessionStore } from '../stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { DeviceDirectory} from './deviceDirectory';
 import { participantsOf } from './deviceDirectory';
 import { removeStaleDevices, type Membership } from './groupRemoval';

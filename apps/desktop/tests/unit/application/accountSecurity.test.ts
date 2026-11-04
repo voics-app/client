@@ -6,10 +6,10 @@ import {
   looksLikeSecondFactor,
   newPasswordProblem,
 } from '@discordy/core/domain/accountSecurity';
-import { SessionManager, type SessionRuntime, type SessionVault } from '@renderer/application/sessionManager';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
-import { ApiError, HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { SessionManager, type SessionRuntime, type SessionVault } from '@discordy/core/application/sessionManager';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
+import { ApiError, HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 
 describe('account security rules', () => {
   it('rejects short, long and mismatched new passwords', () => {
@@ -34,7 +34,7 @@ describe('account security rules', () => {
   });
 
   it('formats the download with every code on its own line', () => {
-    const file = backupCodesFile(['aaaaa-bbbbb', 'ccccc-ddddd'], 'ada', 'Discordy');
+    const file = backupCodesFile(['aaaaa-bbbbb', 'ccccc-ddddd'], 'ada', 'Voics');
     expect(file.split('\n')).toEqual(expect.arrayContaining(['aaaaa-bbbbb', 'ccccc-ddddd']));
     expect(file).toContain('ada');
   });

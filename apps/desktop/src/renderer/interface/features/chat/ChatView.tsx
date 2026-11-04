@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { typingUsers, useTypingStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { typingLine } from '@discordy/core/domain/composerFormat';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';

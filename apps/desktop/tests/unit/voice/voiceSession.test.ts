@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VoiceOp, type SessionDescription } from '@discordy/core/contracts/voice';
 import { VoiceSession, type VoiceSessionOptions } from '@renderer/infrastructure/voice/voiceSession';
 import { voiceUrl } from '@renderer/infrastructure/voice/voiceUrl';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { FakeSocket } from '../infrastructure/fakeSocket';
 import { FakePeerConnection } from './fakes';
 

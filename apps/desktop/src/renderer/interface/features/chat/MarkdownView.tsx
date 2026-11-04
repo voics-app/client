@@ -2,7 +2,7 @@ import { Check, Copy } from '@phosphor-icons/react';
 import { UserMenuTarget } from '../members/UserContextMenu';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { isEmojiOnly } from '@discordy/core/domain/emojiOnly';
 import { roleColorCss } from '@discordy/core/domain/userMenuModel';
 import { parseMarkdown, type MarkdownNode } from '@discordy/core/domain/markdown';

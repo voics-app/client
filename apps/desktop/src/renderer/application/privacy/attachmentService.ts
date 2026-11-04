@@ -15,8 +15,9 @@ import {
   type PrivateMode,
 } from '@discordy/core/domain/privateAttachment';
 import type { ApiPort } from '@discordy/core/application/ports/api';
-import { useTransferStore } from '../stores/transferStore';
-import { AttachmentError, decryptFile, encryptFile, type AttachmentFailure, type EncryptedFile } from './attachmentCipher';
+import { useTransferStore } from '@discordy/core/application/stores/transferStore';
+import type { AttachmentFailure } from '@discordy/core/domain/attachmentFailure';
+import { AttachmentError, decryptFile, encryptFile, type EncryptedFile } from './attachmentCipher';
 
 export interface AttachmentDeps {
   api: Pick<ApiPort, 'createAttachmentSlots' | 'refreshAttachmentUrls' | 'upload'>;

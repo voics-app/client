@@ -3,20 +3,17 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { forwardBody } from '@discordy/core/domain/forward';
 import { idBefore } from '@discordy/core/domain/unread';
 import { flatten } from '@discordy/core/domain/railLayout';
 import { ChannelType, type GuildFolder, type Message } from '@discordy/core/contracts/rest';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { errorMessage } from '@discordy/core/application/errorMessage';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.status === 0 ? 'You appear to be offline.' : error.message;
-  return error instanceof Error ? error.message : 'Something went wrong.';
-}
+export { errorMessage };
 
 export function reportError(error: unknown, title = 'Something went wrong'): void {
   useUiStore.getState().toast({ tone: 'danger', title, body: errorMessage(error) });

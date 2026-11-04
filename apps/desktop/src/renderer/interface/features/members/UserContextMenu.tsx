@@ -4,13 +4,13 @@ import { createPortal } from 'react-dom';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
 import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { saveUserNote } from '@renderer/application/notificationSync';
+import { saveUserNote } from '@discordy/core/application/notificationSync';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import {
   assignableRoles,
   memberCapabilities,

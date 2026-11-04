@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerIncoming } from '@renderer/application/dispatchRouter';
+import { registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
-import { useSessionStore } from '@renderer/application/stores/sessionStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 const me = { id: '1', username: 'me', global_name: 'Me', avatar: null };

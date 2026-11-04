@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { isUnread } from '@discordy/core/domain/unread';
 import { applyDrop, folderLabel, moveGuildToIndex, ungroup, type DragItem, type DropZone } from '@discordy/core/domain/railLayout';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';

@@ -1,4 +1,4 @@
-; Custom NSIS pieces for the Discordy installer (electron-builder nsis.include).
+; Custom NSIS pieces for the Voics installer (electron-builder nsis.include).
 ; Brand-agnostic: every folder name below comes from electron-builder's defines, which come from
 ; brand.json (productName) and package.json (name), never from literals in this file.
 ;
