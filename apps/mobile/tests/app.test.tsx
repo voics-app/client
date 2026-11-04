@@ -9,6 +9,11 @@ import { BRAND } from '../src/brand';
 
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 const mockGateway = { state: 'idle', resumeNow: jest.fn() };
+// The icon font is native; a stand-in renders the glyph name so the test can tell the tabs apart.
+jest.mock('@expo/vector-icons', () => {
+  const { Text } = jest.requireActual('react-native');
+  return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
+});
 jest.mock('../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: mockGateway }) }));
 
 const ME = { id: 'u1', username: 'me', global_name: 'Me Myself', discriminator: '0', avatar: null };
@@ -59,6 +64,24 @@ describe('app shell', () => {
     for (const title of ['Servers', 'DMs', 'Notifications', 'You']) {
       expect((await screen.findAllByText(title)).length).toBeGreaterThan(0);
     }
+  });
+
+  it('hides the tab header on Servers and DMs, whose nested stack draws its own', async () => {
+    signIn();
+    await renderRouter('./app', { initialUrl: '/' });
+    await screen.findAllByText('Servers');
+    // Under Jest the native stack header is not rendered, so only a leftover tab header could add a second 'Servers' or 'DMs'.
+    expect(screen.getAllByText('Servers')).toHaveLength(1);
+    expect(screen.getAllByText('DMs')).toHaveLength(1);
+  });
+
+  it('gives every tab its own icon', async () => {
+    signIn();
+    await renderRouter('./app', { initialUrl: '/' });
+    await screen.findAllByText('Servers');
+    // Each tab renders its outline and filled glyph; strip the suffix to count distinct icons.
+    const shapes = screen.getAllByText(/^icon:/).map((n) => (n.props.children as string).replace(/-outline$/, ''));
+    expect([...new Set(shapes)].sort()).toEqual(['icon:chatbubbles', 'icon:mail', 'icon:notifications', 'icon:person']);
   });
 
   it('lists the servers from the store and opens a server channel list', async () => {
