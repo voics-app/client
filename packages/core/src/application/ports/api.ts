@@ -1,5 +1,5 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
-import type { SearchParams } from '@discordy/core/domain/messageSearch';
+import type { SearchParams } from '../../domain/messageSearch';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -37,7 +37,7 @@ import type {
   UserProfile,
   UserSettings,
   VoiceRegion,
-} from '@discordy/core/contracts/rest';
+} from '../../contracts/rest';
 
 export interface MessageQuery {
   before?: string;

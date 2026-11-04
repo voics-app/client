@@ -7,7 +7,7 @@ import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { P2PService } from '@renderer/application/privacy/p2pService';
 import { fingerprintSigningPayload } from '@discordy/core/domain/p2pIdentity';
 import { utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useTransferStore } from '@renderer/application/stores/transferStore';
 import { BOB, FakeGateway, FakePeerConnection, SDP, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores, tick } from './fakes';
 

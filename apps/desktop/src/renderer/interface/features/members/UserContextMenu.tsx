@@ -1,15 +1,15 @@
 import { callUser } from '../../app/callActions';
 import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useLocalPeopleStore } from '@renderer/application/stores/localPeopleStore';
-import { useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
+import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { saveUserNote } from '@renderer/application/notificationSync';
-import { useRelationshipStore } from '@renderer/application/stores/peopleStores';
-import { useMentionStore } from '@renderer/application/stores/mentionStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import {
   assignableRoles,

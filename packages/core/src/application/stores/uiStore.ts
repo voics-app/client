@@ -1,6 +1,6 @@
 /** Navigation and transient UI state. */
 import { create } from 'zustand';
-import { canGo, emptyHistory, pushView, stepHistory, type NavHistory } from '@discordy/core/domain/navHistory';
+import { canGo, emptyHistory, pushView, stepHistory, type NavHistory } from '../../domain/navHistory';
 import type { ChatMessage } from './messageStore';
 
 export type View =

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { InteractionService } from '@renderer/application/interactionService';
-import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useMessageStore } from '@renderer/application/stores/messageStore';
+import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { flattenCommands } from '@discordy/core/domain/slashCommand';
-import type { ApiPort } from '@renderer/application/ports/api';
+import type { ApiPort } from '@discordy/core/application/ports/api';
 import type { ApplicationCommand, Channel, Message, User } from '@discordy/core/contracts/rest';
 
 const me: User = { id: '1', username: 'me', global_name: 'Me', avatar: null };

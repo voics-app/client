@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useReadStateStore } from '@renderer/application/stores/peopleStores';
-import { usePrefsStore, DEFAULT_PREFS } from '@renderer/application/stores/prefsStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { usePrefsStore, DEFAULT_PREFS } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';

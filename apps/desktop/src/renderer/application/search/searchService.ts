@@ -2,8 +2,8 @@
 import type { Channel, DeliveryMode, Message } from '@discordy/core/contracts/rest';
 import { highlightTerms, matchesLocal, parseQuery, toSearchParams, type SearchParams, type SuggestionContext } from '@discordy/core/domain/messageSearch';
 import { compareSnowflakes } from '@discordy/core/domain/snowflake';
-import type { ApiPort } from '../ports/api';
-import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '../stores/searchStore';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '@discordy/core/application/stores/searchStore';
 
 export interface SearchTarget {
   channel: Channel;

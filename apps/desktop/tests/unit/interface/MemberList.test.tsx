@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { usePresenceStore } from '@renderer/application/stores/peopleStores';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
-import { useMemberGroupStore } from '@renderer/application/stores/memberGroupStore';
+import { useMemberGroupStore } from '@discordy/core/application/stores/memberGroupStore';
 import type { User } from '@discordy/core/contracts/rest';
 
 const send = vi.fn();

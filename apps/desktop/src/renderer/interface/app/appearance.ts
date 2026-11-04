@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { effectiveReduceMotion, effectiveTheme, zoomActionOf, stepZoom } from '@discordy/core/domain/appearance';
 import { bridge } from './bridge';
 

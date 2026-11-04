@@ -1,14 +1,14 @@
 /** Device-local preferences (appearance, voice, keybinds, notifications), persisted to localStorage. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
-import type { SoundId } from '@discordy/core/domain/sounds';
-import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '@discordy/core/domain/ringtones';
-import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
-import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '@discordy/core/domain/stageLayout';
-import type { RoleColorMode } from '@discordy/core/domain/appearance';
-import type { SpoilerDisplay, ThemeId } from '@discordy/core/domain/prefsTypes';
-import { recordReaction, type QuickEmoji } from '@discordy/core/domain/quickReactions';
+import { persistedStorage } from '../ports/deviceStorage';
+import type { SoundId } from '../../domain/sounds';
+import { DEFAULT_RINGTONE, DEFAULT_RINGTONE_VOLUME, type RingtoneId } from '../../domain/ringtones';
+import type { VideoPresetId } from '../../domain/videoPresets';
+import { DEFAULT_STAGE_LAYOUT, normalizeLayout, type StageLayoutPrefs } from '../../domain/stageLayout';
+import type { RoleColorMode } from '../../domain/appearance';
+import type { SpoilerDisplay, ThemeId } from '../../domain/prefsTypes';
+import { recordReaction, type QuickEmoji } from '../../domain/quickReactions';
 
 export type { ThemeId, SpoilerDisplay };
 export type AccentId = 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
@@ -17,7 +17,7 @@ export type InputMode = 'vad' | 'ptt';
 /** Device-local notification level for a channel or category until server-side settings exist (api#28). */
 export type NotifyLevel = 'all' | 'mentions' | 'none';
 
-import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '@discordy/core/domain/keybinds';
+import { DEFAULT_KEYBINDS, mergeKeybinds, type Keybind } from '../../domain/keybinds';
 export type { Keybind };
 
 

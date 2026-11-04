@@ -6,7 +6,7 @@
  */
 import { RINGTONE_OPTIONS } from '@discordy/core/domain/ringtones';
 import type { UserPreferences, UserSettings } from '@discordy/core/contracts/rest';
-import { DEFAULT_PREFS, type PrefsData } from './stores/prefsStore';
+import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 
 type Mapping =
   | { where: 'theme' }

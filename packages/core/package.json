@@ -8,7 +8,8 @@
   "exports": {
     "./domain/*": "./src/domain/*.ts",
     "./contracts": "./src/contracts/index.ts",
-    "./contracts/*": "./src/contracts/*.ts"
+    "./contracts/*": "./src/contracts/*.ts",
+    "./application/*": "./src/application/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,5 +24,8 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.46.3",
     "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "zustand": "5.0.8"
   }
 }

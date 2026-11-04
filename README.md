@@ -8,7 +8,7 @@ Electron + React desktop client for Discordy: servers, channels, threads, DMs, v
 |---|---|
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
-| `packages/core` | `@discordy/core`, shared by desktop and (next) mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format) and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
+| `packages/core` | `@discordy/core`, shared by desktop and (next) mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format) and `src/application` (ports and platform-free zustand stores) and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
 | `apps/desktop/src/shared` | IPC contract and the brand |
 | `apps/desktop/src/renderer/domain` | The few domain modules that still read the brand (`BRAND`); they move once the brand is injected |
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |

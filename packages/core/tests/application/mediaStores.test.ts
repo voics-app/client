@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useLightboxStore, type LightboxItem } from '@renderer/application/stores/lightboxStore';
-import { uploadFraction, useUploadStore } from '@renderer/application/stores/uploadStore';
+import { useLightboxStore, type LightboxItem } from '../../src/application/stores/lightboxStore';
+import { uploadFraction, useUploadStore } from '../../src/application/stores/uploadStore';
 
 const item = (name: string): LightboxItem => ({ kind: 'image', src: `http://cdn/${name}`, original: `http://cdn/${name}`, filename: name });
 

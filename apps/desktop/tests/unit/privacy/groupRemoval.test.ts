@@ -5,7 +5,7 @@ import { EphemeralService } from '@renderer/application/privacy/ephemeralService
 import { mayCommit } from '@renderer/application/privacy/groupRemoval';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
-import { usePrivacyStore } from '@renderer/application/stores/privacyStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { BOB, FakeGateway, asApi, dm, fakeApi, fakeCrypto, resetStores } from './fakes';
 
 const CAROL = { userId: '3', deviceId: '30', identityKeyB64: 'key-carol' };

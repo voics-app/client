@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 

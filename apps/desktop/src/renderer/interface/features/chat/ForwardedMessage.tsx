@@ -1,6 +1,6 @@
 import { ArrowBendUpRight } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import type { ChatMessage } from '@renderer/application/stores/messageStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { forwardSnapshot } from '@discordy/core/domain/forward';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { jumpToMessage } from '../../app/actions';

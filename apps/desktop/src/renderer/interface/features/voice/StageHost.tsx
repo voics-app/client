@@ -1,4 +1,4 @@
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { ChatView } from '../chat/ChatView';
 import { isVoiceChannel } from '../../app/navigation';
 import { ForumView } from '../chat/ForumView';

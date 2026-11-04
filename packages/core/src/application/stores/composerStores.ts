@@ -1,7 +1,7 @@
 /** Device-local composer state: per-channel drafts, trusted link domains and slowmode send times. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
+import { persistedStorage } from '../ports/deviceStorage';
 import type { ChatMessage } from './messageStore';
 
 export interface Draft {

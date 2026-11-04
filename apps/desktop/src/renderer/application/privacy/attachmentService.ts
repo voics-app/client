@@ -14,7 +14,7 @@ import {
   type PrivateFileRef,
   type PrivateMode,
 } from '@discordy/core/domain/privateAttachment';
-import type { ApiPort } from '../ports/api';
+import type { ApiPort } from '@discordy/core/application/ports/api';
 import { useTransferStore } from '../stores/transferStore';
 import { AttachmentError, decryptFile, encryptFile, type AttachmentFailure, type EncryptedFile } from './attachmentCipher';
 

@@ -1,6 +1,6 @@
 import { Gear, Plus } from '@phosphor-icons/react';
 import { useState } from 'react';
-import { usePrefsStore, type AccentId, type ThemeId } from '@renderer/application/stores/prefsStore';
+import { usePrefsStore, type AccentId, type ThemeId } from '@discordy/core/application/stores/prefsStore';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Field, Input, Segmented, Select, Slider, Switch } from '../../shared/ui/Form';

@@ -1,7 +1,7 @@
 import { DotsSixVertical, Lock, Plus, ShieldStar, Trash, Warning } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { permissionsByGroup } from '@discordy/core/domain/permissionCatalog';
 import { hasPermission, parsePermissions, togglePermission } from '@discordy/core/domain/permissions';
 import { applyPositions, canManageRole, CLEARED_PERMISSIONS, grantableBits, hierarchyList, isAdministrator, memberCounts, reorderPositions } from '@discordy/core/domain/roleManagement';

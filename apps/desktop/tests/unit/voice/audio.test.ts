@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PREFS, type PrefsData } from '@renderer/application/stores/prefsStore';
+import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { MicPipeline } from '@renderer/infrastructure/audio/micPipeline';
 import { RemoteAudioMixer } from '@renderer/infrastructure/audio/remoteAudioMixer';
 

@@ -1,13 +1,13 @@
 import { ArrowClockwise, File as FileIcon, FilePdf, LockSimple, Play, WarningCircle, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { spoilersOpen } from '@discordy/core/domain/chatDisplay';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
-import { useLightboxStore, type LightboxItem } from '@renderer/application/stores/lightboxStore';
+import { useLightboxStore, type LightboxItem } from '@discordy/core/application/stores/lightboxStore';
 import { fractionOf, useTransferStore, type TransferState } from '@renderer/application/stores/transferStore';
-import { uploadFraction, useUploadStore } from '@renderer/application/stores/uploadStore';
+import { uploadFraction, useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { displayFilename, formatBytes, gridLayout, isSpoiler, previewKind, previewLines, splitAttachments } from '@discordy/core/domain/media';
 import { privateRefOf } from '@discordy/core/domain/privateAttachment';
 import { isExpiring, signedUrlExpiryMs } from '@discordy/core/domain/signedUrl';

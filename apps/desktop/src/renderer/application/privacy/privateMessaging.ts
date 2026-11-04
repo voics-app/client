@@ -1,11 +1,11 @@
-import type { ChatMessage } from '../stores/messageStore';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 /** Facade over the private delivery modes; the composition root wires one instance per signed-in session. */
 import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '@discordy/core/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
-import type { ApiPort } from '../ports/api';
-import type { GatewayPort } from '../ports/gateway';
-import { useGuildStore } from '../stores/guildStore';
-import { usePrivacyStore } from '../stores/privacyStore';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import type { GatewayPort } from '@discordy/core/application/ports/gateway';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
 import { AttachmentService } from './attachmentService';
 import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';

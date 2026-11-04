@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { closeSettings, useUnsavedStore } from '@renderer/application/stores/unsavedStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { closeSettings, useUnsavedStore } from '../../src/application/stores/unsavedStore';
+import { useUiStore } from '../../src/application/stores/uiStore';
 
 const store = () => useUnsavedStore.getState();
 

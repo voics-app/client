@@ -1,7 +1,7 @@
 import { MagnifyingGlass, X } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useSearchStore } from '@renderer/application/stores/searchStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
+import { useSearchStore } from '@discordy/core/application/stores/searchStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { applySuggestion, suggest } from '@discordy/core/domain/messageSearch';
 import { scopeKeyOf, searchTarget, submitSearch } from '../../app/searchActions';
 

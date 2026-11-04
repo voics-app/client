@@ -1,6 +1,6 @@
 import { PushPin } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { canUnpin } from '@discordy/core/domain/chatHeader';
 import { attempt, jumpToMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';

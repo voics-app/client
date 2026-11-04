@@ -1,6 +1,6 @@
 /** The image/video viewer: the items of one message (or embed) and which one is open. */
 import { create } from 'zustand';
-import { stepIndex } from '@discordy/core/domain/media';
+import { stepIndex } from '../../domain/media';
 
 export interface LightboxItem {
   kind: 'image' | 'video';

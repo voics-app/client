@@ -1,7 +1,7 @@
 /** Device-local per-user data: local voice mute (previous volume is kept to restore). Notes are synced (notificationSettingsStore). */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
+import { persistedStorage } from '../ports/deviceStorage';
 
 export interface LocalPeopleState {
   /** userId -> volume before the local mute. */

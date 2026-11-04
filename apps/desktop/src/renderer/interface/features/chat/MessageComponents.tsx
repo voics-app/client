@@ -1,6 +1,6 @@
 import { ArrowSquareOut } from '@phosphor-icons/react';
 import { useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { ComponentType, CommandOptionType, type Message, type MessageComponent } from '@discordy/core/contracts/rest';
 import { reportError } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';

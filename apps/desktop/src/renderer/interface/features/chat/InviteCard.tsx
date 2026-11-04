@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { Invite } from '@discordy/core/contracts/rest';
 import { instanceInviteCodes } from '@discordy/core/domain/inviteLinks';
 import { attempt } from '../../app/actions';

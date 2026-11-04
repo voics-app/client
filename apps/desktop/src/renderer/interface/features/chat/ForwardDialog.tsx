@@ -1,9 +1,9 @@
 import { Hash, UsersThree } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
-import { useClosedDmStore } from '@renderer/application/stores/closedDmStore';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
+import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { useUiStore, type Dialog } from '@renderer/application/stores/uiStore';
+import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { forwardSnapshot, forwardTargets, type ForwardTarget } from '@discordy/core/domain/forward';
 import { computeChannelPermissions } from '@discordy/core/domain/permissions';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';

@@ -1,7 +1,7 @@
 /** Which member list groups the user collapsed, per guild. Persisted to localStorage. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { persistedStorage } from '@renderer/application/ports/deviceStorage';
+import { persistedStorage } from '../ports/deviceStorage';
 
 interface MemberGroupState {
   collapsed: Record<string, string[]>;

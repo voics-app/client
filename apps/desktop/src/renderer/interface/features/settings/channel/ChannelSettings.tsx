@@ -1,9 +1,9 @@
 import { SettingsCloseButton } from '../SettingsCloseButton';
 import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useUiStore } from '@renderer/application/stores/uiStore';
-import { closeSettings, useUnsavedStore } from '@renderer/application/stores/unsavedStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { closeSettings, useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { permissionsByGroup } from '@discordy/core/domain/permissionCatalog';
 import { overwriteStateOf, withOverwriteState, type OverwriteState } from '@discordy/core/domain/permissions';
 import { ChannelType, type PermissionOverwrite } from '@discordy/core/contracts/rest';

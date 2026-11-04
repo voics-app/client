@@ -1,8 +1,8 @@
 /** DM calls keyed by channel id, from the gateway's CALL_CREATE / CALL_UPDATE / CALL_DELETE. */
 import { create } from 'zustand';
-import type { CallEvent } from '@discordy/core/contracts/gateway';
-import type { Snowflake } from '@discordy/core/contracts/rest';
-import { dmCallOf, type DmCall } from '@discordy/core/domain/calls';
+import type { CallEvent } from '../../contracts/gateway';
+import type { Snowflake } from '../../contracts/rest';
+import { dmCallOf, type DmCall } from '../../domain/calls';
 
 export interface CallStoreState {
   calls: Record<Snowflake, DmCall>;

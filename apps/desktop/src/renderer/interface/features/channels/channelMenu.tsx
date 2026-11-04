@@ -1,8 +1,8 @@
 import { BellRinging, BellSlash, CaretDoubleUp, CaretDown, Check, Copy, CopySimple, Gear, Hash, Link, PushPin, Trash, UserPlus } from '@phosphor-icons/react';
-import { useGuildStore } from '@renderer/application/stores/guildStore';
-import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
-import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import type { Dialog, SettingsTarget } from '@renderer/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import type { Dialog, SettingsTarget } from '@discordy/core/application/stores/uiStore';
 import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@discordy/core/domain/channelMenuModel';
 import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
