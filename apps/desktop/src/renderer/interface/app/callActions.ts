@@ -2,10 +2,12 @@
 import { GatewayOp } from '@shared/contracts/gateway';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useCallStore } from '@renderer/application/stores/callStore';
-import { callRingPayload, ringingCallFor } from '@renderer/domain/calls';
+import { callConfirmation, callRingPayload, callTargetName, needsCallConfirmation, ringingCallFor } from '@renderer/domain/calls';
 import { getRuntime } from './runtime';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { usePrefsStore } from '@renderer/application/stores/prefsStore';
+import { useUiStore } from '@renderer/application/stores/uiStore';
 import { attempt } from './actions';
 import { openChannel } from './navigation';
 import { joinVoiceChannel, toggleCamera } from './voiceActions';
@@ -34,8 +36,7 @@ export async function callUser(userId: string, video = false): Promise<void> {
   if (!channel) return;
   useGuildStore.getState().upsertChannel(channel);
   openChannel(channel.id);
-  await attempt(() => joinVoiceChannel(null, channel.id), 'Could not start call');
-  if (video && !useVoiceStore.getState().selfVideo) await toggleCamera();
+  await startDmCall(channel.id, video);
 }
 
 function ringingChannel(): string | null {
@@ -54,8 +55,20 @@ export function declineRingingCall(): void {
   if (id) declineCall(id);
 }
 
-/** Starts or joins the call of an open DM; with `video` the camera goes on once connected. */
+/**
+ * Starts or joins the call of an open DM; with `video` the camera goes on once connected.
+ * Starting a call nobody is in yet asks first when "Confirm before calling" is on.
+ */
 export async function startDmCall(channelId: string, video = false): Promise<void> {
+  const channel = useGuildStore.getState().channels[channelId];
+  if (channel && needsCallConfirmation(usePrefsStore.getState().confirmCalls, useCallStore.getState().calls[channelId])) {
+    useUiStore.getState().openDialog({ kind: 'confirm', ...callConfirmation(callTargetName(channel), video), onConfirm: () => beginDmCall(channelId, video) });
+    return;
+  }
+  await beginDmCall(channelId, video);
+}
+
+async function beginDmCall(channelId: string, video: boolean): Promise<void> {
   const joined = await attempt(async () => {
     await joinVoiceChannel(null, channelId);
     return true;

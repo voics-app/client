@@ -309,6 +309,7 @@ export function VoiceTab() {
       <SettingRow title="Noise suppression" description="RNNoise removes steady background noise on your device."><Switch label="Noise suppression" checked={prefs.noiseSuppression} onChange={(v) => prefs.set('noiseSuppression', v)} /></SettingRow>
       <SettingRow title="Echo cancellation"><Switch label="Echo cancellation" checked={prefs.echoCancellation} onChange={(v) => prefs.set('echoCancellation', v)} /></SettingRow>
       <SettingRow title="Automatic gain control"><Switch label="Automatic gain control" checked={prefs.autoGain} onChange={(v) => prefs.set('autoGain', v)} /></SettingRow>
+      <SettingRow title="Confirm before calling" description="Asks before a voice or video call starts ringing someone, to prevent accidental calls."><Switch label="Confirm before calling" checked={prefs.confirmCalls} onChange={(v) => prefs.set('confirmCalls', v)} /></SettingRow>
       <h3>Camera</h3>
       <Field label="Camera">{(id) => <Select id={id} value={prefs.cameraDeviceId ?? ''} onChange={(e) => prefs.set('cameraDeviceId', e.target.value || null)}><option value="">System default</option>{options('videoinput')}</Select>}</Field>
       <Field label="Camera quality">{(id) => <Select id={id} value={prefs.cameraPreset} onChange={(e) => prefs.set('cameraPreset', e.target.value as VideoPresetId)}>{VIDEO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select>}</Field>
