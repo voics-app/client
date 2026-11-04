@@ -1,5 +1,5 @@
 import { convertEmoticons } from '@renderer/domain/emoticons';
-import { ArrowBendUpLeft, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@renderer/application/stores/interactionStore';
@@ -9,6 +9,7 @@ import { usePrefsStore, selectSendWithCtrlEnter } from '@renderer/application/st
 import { acceptFiles, charsRemaining, formatCountdown, lastOwnEditable, MAX_MESSAGE_LENGTH, shouldPasteAsFile, showCounter, slowmodeRemaining } from '@renderer/domain/composerLimits';
 import { applyFormat, enterAction, plusMenuEntries, type FormatKind } from '@renderer/domain/composerFormat';
 import { searchShortcodes } from '@renderer/domain/emojiShortcodes';
+import { timeTriggerMatches } from '@renderer/domain/timestampPicker';
 import { useDraftStore, useReplyPingStore, useSlowmodeStore } from '@renderer/application/stores/composerStores';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
@@ -29,6 +30,7 @@ import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
+import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -37,7 +39,7 @@ const COMMAND_REFRESH_MS = 60_000;
 const commandLoads = new Map<string, number>();
 
 interface Suggestion {
-  kind: 'user' | 'channel' | 'role' | 'emoji' | 'command';
+  kind: 'user' | 'channel' | 'role' | 'emoji' | 'command' | 'timestamp';
   key: string;
   label: string;
   detail?: string;
@@ -160,6 +162,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     void interactions.loadDirectCommands(bots).catch(() => commandLoads.delete(scope));
   }, [commandSearch === null, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [pickingTime, setPickingTime] = useState(false);
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '), channel.id);
 
   // Mentions chosen from a member context menu are inserted into the open composer of that channel.
@@ -225,7 +228,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         .map<Suggestion>((r) => ({ kind: 'role', key: r.id, label: r.name, detail: 'Role', insert: `@${r.name}`, mention: { token: `@${r.name}`, wire: `<@&${r.id}>` } }));
       const everyone = can(perms, Permission.MENTION_EVERYONE) && 'everyone'.startsWith(token.query) ? [{ kind: 'role', key: 'everyone', label: 'everyone', detail: 'Notify everyone', insert: '@everyone' } satisfies Suggestion] : [];
       const here = can(perms, Permission.MENTION_EVERYONE) && 'here'.startsWith(token.query) ? [{ kind: 'role', key: 'here', label: 'here', detail: 'Notify everyone', insert: '@here' } satisfies Suggestion] : [];
-      return [...users, ...roles, ...everyone, ...here].slice(0, 8);
+      const time = timeTriggerMatches(token.query) ? [{ kind: 'timestamp', key: 'time', label: 'time', detail: 'Insert a timestamp', insert: '' } satisfies Suggestion] : [];
+      return [...users, ...roles, ...everyone, ...here, ...time].slice(0, 8);
     }
     if (token.trigger === '#') {
       return Object.values(channels)
@@ -252,6 +256,14 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       return;
     }
     if (!token) return;
+    if (s.kind === 'timestamp') {
+      const next = text.slice(0, token.start) + text.slice(caret);
+      setText(next);
+      setCaret(token.start);
+      ref.current?.setSelectionRange(token.start, token.start);
+      setPickingTime(true);
+      return;
+    }
     const next = `${text.slice(0, token.start)}${s.insert} ${text.slice(caret)}`;
     if (s.mention) mentionMap.current.set(s.mention.token, s.mention.wire);
     setText(next);
@@ -516,6 +528,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           )}
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
+          <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
@@ -527,6 +540,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {dragging && <div className="drop-overlay">Drop files to attach</div>}
       </div>
       {emoji.node}
+      <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />
     </div>
   );
 }
