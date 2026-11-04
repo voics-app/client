@@ -1,5 +1,6 @@
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { MessageService, PAGE_SIZE } from '../../src/messages/messageService';
@@ -8,11 +9,28 @@ const ME = { id: 'me', username: 'me', global_name: 'Me', discriminator: '0', av
 const channel = { id: 'c1', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard' } as Channel;
 const snow = (n: number) => String(1000000 + n);
 const msg = (n: number, extra: Partial<Message> = {}) =>
-  ({ id: snow(n), channel_id: 'c1', guild_id: 'g1', author: ME, content: `m${n}`, timestamp: '2026-01-01T00:00:00Z', edited_timestamp: null, mention_everyone: false, mentions: [], mention_roles: [], attachments: [], embeds: [], pinned: false, type: 0, ...extra }) as Message;
+  ({
+    id: snow(n),
+    channel_id: 'c1',
+    guild_id: 'g1',
+    author: ME,
+    content: `m${n}`,
+    timestamp: '2026-01-01T00:00:00Z',
+    edited_timestamp: null,
+    mention_everyone: false,
+    mentions: [],
+    mention_roles: [],
+    attachments: [],
+    embeds: [],
+    pinned: false,
+    type: 0,
+    ...extra,
+  }) as Message;
 
 function makeApi() {
   return {
     messages: jest.fn(async (_c: string, _q?: object): Promise<Message[]> => []),
+    ack: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
     sendMessage: jest.fn(async (_c: string, body: { content: string; nonce: string }): Promise<Message> => msg(900, { content: body.content, nonce: body.nonce })),
     editMessage: jest.fn(async (_c: string, id: string, patch: { content?: string }): Promise<Message> => msg(1, { id, ...patch, edited_timestamp: 'now' })),
     deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
@@ -25,8 +43,30 @@ const timeline = () => useMessageStore.getState().timelines['c1']!;
 describe('MessageService', () => {
   beforeEach(() => {
     useMessageStore.getState().reset();
+    useReadStateStore.getState().reset();
     useSessionStore.getState().reset();
     useSessionStore.setState({ user: ME as never });
+  });
+
+  it('acks a channel as read once, moving the read marker and clearing mentions', () => {
+    const api = makeApi();
+    useReadStateStore.getState().hydrate([{ id: 'c1', last_message_id: snow(1), mention_count: 2 }]);
+    const service = new MessageService(api);
+    service.markRead('c1', snow(5));
+    service.markRead('c1', snow(5));
+    expect(api.ack).toHaveBeenCalledTimes(1);
+    expect(api.ack).toHaveBeenCalledWith('c1', snow(5));
+    expect(useReadStateStore.getState().byChannel['c1']).toEqual({ lastReadId: snow(5), mentionCount: 0 });
+  });
+
+  it('does not ack older than what is already read, and ignores an ack failure', async () => {
+    const api = makeApi();
+    useReadStateStore.getState().hydrate([{ id: 'c1', last_message_id: snow(9), mention_count: 0 }]);
+    const service = new MessageService(api);
+    service.markRead('c1', snow(5));
+    expect(api.ack).not.toHaveBeenCalled();
+    api.ack.mockRejectedValueOnce(new Error('offline'));
+    expect(() => service.markRead('c1', snow(12))).not.toThrow();
   });
 
   it('loads the latest page and notes when older history is exhausted', async () => {
@@ -98,7 +138,10 @@ describe('MessageService', () => {
     expect(timeline().ids).toEqual([snow(900)]);
     api.sendMessage.mockRejectedValueOnce(new ApiError(500, 0, 'boom'));
     await service.send(channel, { content: 'x' });
-    service.discard('c1', timeline().ids.find((id) => timeline().byId[id]?.localState === 'failed')!);
+    service.discard(
+      'c1',
+      timeline().ids.find((id) => timeline().byId[id]?.localState === 'failed')!,
+    );
     expect(timeline().ids).toEqual([snow(900)]);
   });
 

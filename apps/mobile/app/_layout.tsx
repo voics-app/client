@@ -6,6 +6,7 @@ import { ActivityIndicator, AppState, View } from 'react-native';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
+import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
@@ -32,17 +33,7 @@ export default function RootLayout() {
           <ActivityIndicator color={theme.muted} />
         </View>
       ) : (
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: theme.surface },
-            headerTintColor: theme.text,
-            headerShadowVisible: false,
-            // Back shows the chevron only, never the previous screen's name.
-            headerBackButtonDisplayMode: 'minimal',
-            headerBackTitle: '',
-            contentStyle: { backgroundColor: theme.background },
-          }}
-        >
+        <Stack screenOptions={stackScreenOptions}>
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           </Stack.Protected>

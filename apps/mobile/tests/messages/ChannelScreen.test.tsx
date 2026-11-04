@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, type GuildFull, type Message } from '@discordy/core/contracts/rest';
@@ -11,6 +12,7 @@ import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 
 const mockApi = {
   messages: jest.fn(async (_c: string, _q?: { before?: string }): Promise<Message[]> => []),
+  ack: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
   sendMessage: jest.fn(async (_c: string, body: { content: string; nonce: string }): Promise<Message> => message(900, { content: body.content, nonce: body.nonce })),
   editMessage: jest.fn(async (_c: string, id: string, patch: { content?: string }): Promise<Message> => message(1, { id, ...patch })),
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
@@ -26,12 +28,33 @@ const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.RE
 
 const snow = (n: number) => String(1000000 + n);
 function message(n: number, extra: Partial<Message> = {}): Message {
-  return { id: snow(n), channel_id: 'general', guild_id: 'g1', author: ME, content: `message ${n}`, timestamp: new Date().toISOString(), edited_timestamp: null, mention_everyone: false, mentions: [], mention_roles: [], attachments: [], embeds: [], pinned: false, type: 0, ...extra } as Message;
+  return {
+    id: snow(n),
+    channel_id: 'general',
+    guild_id: 'g1',
+    author: ME,
+    content: `message ${n}`,
+    timestamp: new Date().toISOString(),
+    edited_timestamp: null,
+    mention_everyone: false,
+    mentions: [],
+    mention_roles: [],
+    attachments: [],
+    embeds: [],
+    pinned: false,
+    type: 0,
+    ...extra,
+  } as Message;
 }
 function guild(permissions: bigint, channelExtra: object = {}): GuildFull {
   const everyone = { id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(permissions), managed: false, mentionable: false };
   return {
-    id: 'g1', name: 'Home Base', icon: null, owner_id: 'owner', roles: [everyone], emojis: [],
+    id: 'g1',
+    name: 'Home Base',
+    icon: null,
+    owner_id: 'owner',
+    roles: [everyone],
+    emojis: [],
     members: [{ user: ME, roles: [] }],
     channels: [{ id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', position: 0, delivery_mode: 'standard', ...channelExtra }],
   } as unknown as GuildFull;
@@ -52,6 +75,7 @@ describe('channel screen', () => {
     useSessionStore.getState().reset();
     useGuildStore.getState().reset();
     useMessageStore.getState().reset();
+    useReadStateStore.getState().reset();
     mockApi.messages.mockResolvedValue([message(2, { author: OTHER }), message(1)]);
   });
 
@@ -165,9 +189,7 @@ describe('channel screen', () => {
     expect(screen.getByText('Replying to Pat')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Message'), 'answer');
     await fireEvent.press(screen.getByLabelText('Send'));
-    await waitFor(() =>
-      expect(mockApi.sendMessage).toHaveBeenCalledWith('general', expect.objectContaining({ message_reference: expect.objectContaining({ message_id: snow(2) }) })),
-    );
+    await waitFor(() => expect(mockApi.sendMessage).toHaveBeenCalledWith('general', expect.objectContaining({ message_reference: expect.objectContaining({ message_id: snow(2) }) })));
     expect(screen.queryByText('Replying to Pat')).toBeNull();
   });
 
@@ -209,5 +231,45 @@ describe('channel screen', () => {
     expect(await screen.findByText('Server exploded')).toBeTruthy();
     await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('message 1')).toBeTruthy();
+  });
+
+  it('acks the latest message when the channel opens, clearing its unread state', async () => {
+    useReadStateStore.getState().hydrate([{ id: 'general', last_message_id: snow(0), mention_count: 1 }]);
+    await open();
+    await screen.findByText('message 2');
+    await waitFor(() => expect(mockApi.ack).toHaveBeenCalledWith('general', snow(2)));
+    expect(useReadStateStore.getState().byChannel['general']).toEqual({ lastReadId: snow(2), mentionCount: 0 });
+    await act(async () => useMessageStore.getState().receive(message(3, { author: OTHER })));
+    await waitFor(() => expect(mockApi.ack).toHaveBeenLastCalledWith('general', snow(3)));
+  });
+
+  it('shows the channel name in the header with no profile or call buttons', async () => {
+    await open();
+    await screen.findByText('message 1');
+    expect(screen.getByText('#general')).toBeTruthy();
+    expect(screen.queryByLabelText('View profile')).toBeNull();
+    expect(screen.queryByLabelText('Voice call')).toBeNull();
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('hints with the channel name, shows Send only when there is text, and says attachments are not built', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await open();
+    await screen.findByText('message 1');
+    expect(screen.getByLabelText('Message').props.placeholder).toBe('Message #general');
+    expect(screen.queryByLabelText('Send')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
+    expect(screen.getByLabelText('Send')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Add attachment'));
+    expect(alert).toHaveBeenCalledWith('Attachments', expect.stringContaining('aren'));
+    alert.mockRestore();
+  });
+
+  it('leaves room between the newest message and the composer', async () => {
+    await open();
+    await screen.findByText('message 1');
+    const style = screen.getByTestId('message-list').props.contentContainerStyle;
+    expect(style.paddingTop).toBeGreaterThanOrEqual(12);
+    expect(style.paddingBottom).toBeGreaterThanOrEqual(12);
   });
 });
