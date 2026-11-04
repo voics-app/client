@@ -2,7 +2,7 @@
   "name": "discordy-client",
   "version": "0.2.0",
   "private": true,
-  "description": "Discordy desktop client (Electron + React)",
+  "description": "Voics desktop client (Electron + React)",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.18.0",
   "engines": {

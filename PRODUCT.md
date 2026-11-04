@@ -14,7 +14,7 @@ web
 People who already live in Discord-style communities: friends' servers, gaming groups, small teams. They keep the app open all day beside other work, glance at unread state, drop into voice, and share screens. *(inferred)* A meaningful subset cares about privacy and wants some chats to never touch a server in plaintext.
 
 ## Product Purpose
-Discordy is a Discord-equivalent chat, voice, video and screen-share platform without payments. Success: a Discord user switches and finds every habit intact (servers, channels, threads, DMs, voice) while the app feels calmer and more beautiful than Discord.
+Voics is a Discord-equivalent chat, voice, video and screen-share platform without payments. Success: a Discord user switches and finds every habit intact (servers, channels, threads, DMs, voice) while the app feels calmer and more beautiful than Discord.
 
 ## Positioning
 Three delivery modes per chat: **Standard** (server-stored), **Ephemeral E2EE** (MLS, relay-only, deleted on ACK) and **P2P** (WebRTC DataChannel, zero server persistence). The active mode is always visible in the composer.
@@ -30,7 +30,7 @@ Three delivery modes per chat: **Standard** (server-stored), **Ephemeral E2EE** 
 - Unsigned installers initially.
 
 ## Brand Commitments
-- Product name **Discordy**. Typefaces pinned by the owner: **Inter** and **JetBrains Mono**. Dark, OLED and light themes with an accent picker. Refined glass surfaces. 8px rhythm. Spring motion honouring reduced-motion.
+- Product name **Voics**. Typefaces pinned by the owner: **Inter** and **JetBrains Mono**. Dark, OLED and light themes with an accent picker. Refined glass surfaces. 8px rhythm. Spring motion honouring reduced-motion.
 
 ## Evidence on Hand
 No logos, screenshots, testimonials or user data exist yet. Do not fabricate them.

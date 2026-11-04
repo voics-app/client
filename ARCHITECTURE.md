@@ -4,7 +4,7 @@ Clean Architecture inside the renderer: `domain` (now `packages/core/src/domain`
 
 ```mermaid
 C4Component
-  title Discordy client, component view
+  title Voics client, component view
   Container_Boundary(main, "Main process") {
     Component(shell, "Window and policies", "Electron", "CSP, navigation guards, tray, single instance, deep links")
     Component(ipc, "IPC handlers", "Electron", "Typed channels; session vault, capture, hotkeys, updater")

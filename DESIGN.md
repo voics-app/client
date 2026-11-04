@@ -1,6 +1,6 @@
 # Design — "Nightglass"
 
-Discordy's visual world. Operate mode: the interface serves long-lived chat and voice sessions, so the brand lives in precise details (light, depth, motion), not decoration. Tokens live in `apps/desktop/src/renderer/interface/shared/theme/tokens.css`; every value below is a token there.
+Voics's visual world. Operate mode: the interface serves long-lived chat and voice sessions, so the brand lives in precise details (light, depth, motion), not decoration. Tokens live in `apps/desktop/src/renderer/interface/shared/theme/tokens.css`; every value below is a token there.
 
 ## Principles
 1. **Ink, not black.** Dark surfaces are blue-violet tinted graphite (OKLCH hue 275), stepped in four elevations. OLED drops to true black for the backdrop and near-black panels. Light is a cool paper white, never stark.
