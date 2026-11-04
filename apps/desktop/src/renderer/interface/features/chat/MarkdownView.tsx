@@ -214,6 +214,29 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
               </Tag>
             );
           }
+          case 'table':
+            return (
+              <div key={i} className="md-table-scroll" tabIndex={0}>
+                <table className="md-table">
+                  <thead>
+                    <tr>
+                      {node.header.map((cell, c) => (
+                        <th key={c} style={{ textAlign: node.align[c] ?? undefined }}><Nodes nodes={cell} guildId={guildId} big={false} /></th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {node.rows.map((row, r) => (
+                      <tr key={r}>
+                        {row.map((cell, c) => (
+                          <td key={c} style={{ textAlign: node.align[c] ?? undefined }}><Nodes nodes={cell} guildId={guildId} big={false} /></td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
           case 'timestamp':
             return <Timestamp key={i} unix={node.unix} style={node.style} />;
           case 'code':

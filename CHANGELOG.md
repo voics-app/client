@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Messages render GitHub-style pipe tables: a header row, per-column alignment (`:--`, `:-:`, `--:`) and horizontal scrolling when wide; limited to 12 columns and 50 rows.
 - Settings, Devices now lists where you are logged in (client, OS, approximate location, last active) with a Log out per device and Log out all known devices; revoked devices are signed out right away. Needs the api and gateway session revocation.
 - Fixed components at the bottom of the window lagging and leaving a trail while resizing on Windows: the voice dock is opaque, and blur and transitions are suspended during a resize.
 
