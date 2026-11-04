@@ -8,6 +8,8 @@ export interface LightboxItem {
   src: string;
   /** Opens the original in the browser; the displayed source when there is no better one. */
   original: string;
+  /** Other URLs of the same image, tried in order when `src` fails to load. */
+  fallbacks?: string[];
   filename: string;
   description?: string;
   width?: number | null;

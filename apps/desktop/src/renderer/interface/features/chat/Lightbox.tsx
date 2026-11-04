@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { clampPan, clampZoom, displayFilename, MIN_ZOOM } from '@discordy/core/domain/media';
 import { copyImage, saveImage } from '../../app/messageActions';
+import { AssetImage } from '../../shared/ui/AssetImage';
 import { IconButton } from '../../shared/ui/IconButton';
 import { MediaPlayer } from './MediaPlayer';
 
@@ -105,7 +106,7 @@ export function Lightbox() {
       )}
       <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={(e) => e.target === e.currentTarget && close()} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>
         {item.kind === 'image' ? (
-          <img key={item.src} className={`lightbox-media${view.zoom > MIN_ZOOM ? ' is-zoomed' : ''}`} src={item.src} alt={item.description ?? name} draggable={false} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }} />
+          <AssetImage key={item.src} className={`lightbox-media${view.zoom > MIN_ZOOM ? ' is-zoomed' : ''}`} candidates={[item.src, ...(item.fallbacks ?? [])]} alt={item.description ?? name} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }} />
         ) : (
           <div key={item.src} className="lightbox-media lightbox-video"><MediaPlayer kind="video" src={item.src} label={name} autoPlay fullscreen={false} /></div>
         )}

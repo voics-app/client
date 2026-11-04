@@ -503,6 +503,8 @@ export interface Relationship {
   type: RelationshipType;
   user: User;
   nickname?: string | null;
+  /** When the relationship last changed (ISO 8601); for a friend, when you became friends. */
+  since?: string;
 }
 
 /** GET /users/{id}/profile: the user plus servers and friends shared with the caller. */
