@@ -4,7 +4,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { parseApiEmoji, quickApiForm, quickReactions } from '@discordy/core/domain/quickReactions';
 import { buildSystemMenu, buildSystemToolbar, systemSpec, type SystemIcon, type SystemLinkAction, type SystemPart } from '@discordy/core/domain/systemMessage';

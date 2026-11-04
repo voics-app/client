@@ -1,5 +1,6 @@
 import './infrastructure/brand/installBrand';
 import './infrastructure/storage/installBrowserStorage';
+import './infrastructure/installSpeech';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import { StrictMode, useSyncExternalStore } from 'react';

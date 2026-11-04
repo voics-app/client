@@ -4,16 +4,12 @@
  */
 
 import type { AppInfo, ConnectionProfile, ConnectionProfileId } from '@discordy/core/domain/appInfo';
+import type { StoredSession } from '@discordy/core/application/ports/sessionVault';
 import type { UpdateStatus } from '@discordy/core/domain/updateStatus';
 
 export type { AppInfo, ConnectionProfile, ConnectionProfileId, UpdateStatus };
 
-export interface StoredSession {
-  accessToken: string;
-  refreshToken: string;
-  userId: string;
-  deviceId: string | null;
-}
+export type { StoredSession };
 
 export interface CaptureSource {
   id: string;

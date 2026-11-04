@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScreenShare, type ScreenShareDeps } from '@renderer/application/voice/screenShare';
 import { detectProtectedContent, isBlackFrame, type FrameSampler } from '@renderer/application/voice/blackFrame';
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 
 class FakeTrack {
   listeners: Record<string, () => void> = {};

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SessionManager, type SessionVault, type SessionRuntime } from '@renderer/application/sessionManager';
+import { SessionManager, type SessionVault, type SessionRuntime } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import type { StoredSession } from '@shared/ipc';
+import type { StoredSession } from '@discordy/core/application/ports/sessionVault';
 
 const user = { id: '1', username: 'ada', global_name: null, avatar: null };
 

@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { useVoiceStore } from '@renderer/application/stores/voiceStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageMode } from '@discordy/core/domain/stageLayout';
 import { ringIntoCall } from '../../app/callActions';
