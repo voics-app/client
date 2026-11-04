@@ -6,7 +6,7 @@ import { MUTE_DURATIONS } from './notificationSettings';
 /** channelId -> last_message_id at the moment the DM was closed (empty string when it had none). */
 export type ClosedDms = Record<string, string>;
 
-export const MAX_GROUP_DM_MEMBERS = 10;
+export const MAX_GROUP_DM_MEMBERS = 25;
 
 export function isPrivateConversation(c: Channel): boolean {
   return !c.guild_id && (c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM);
