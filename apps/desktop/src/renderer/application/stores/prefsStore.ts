@@ -63,6 +63,8 @@ export interface PrefsState {
   noiseSuppression: boolean;
   echoCancellation: boolean;
   autoGain: boolean;
+  /** Ask "Start a voice call with X?" before a DM call starts ringing (device-local, default on). */
+  confirmCalls: boolean;
   notifyDesktop: boolean;
   notifyOnlyMentions: boolean;
   notifySounds: boolean;
@@ -145,6 +147,7 @@ export const DEFAULT_PREFS: PrefsData = {
   noiseSuppression: true,
   echoCancellation: true,
   autoGain: true,
+  confirmCalls: true,
   notifyDesktop: true,
   notifyOnlyMentions: false,
   notifySounds: true,
