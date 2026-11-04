@@ -1,6 +1,6 @@
 # Architecture
 
-Clean Architecture inside the renderer: `domain` has no framework or IO imports (enforced by eslint), `application` holds stores, use cases and ports, `infrastructure` implements ports (HTTP, gateway, WebRTC, audio), `interface` is React. `interface/app/runtime.ts` is the composition root.
+Clean Architecture inside the renderer: `domain` has no framework or IO imports (enforced by eslint), `application` holds stores, use cases and ports, `infrastructure` implements ports (HTTP, gateway, WebRTC, audio), `interface` is React. `interface/app/runtime.ts` is the composition root. `domain` and `application` use no browser globals (`window`, `document`, `localStorage`; enforced by eslint) so they can move to the shared `packages/core` for the mobile app: device-local persistence goes through the `KeyValueStorage` port (`application/ports/deviceStorage.ts`), installed by `infrastructure/storage/installBrowserStorage.ts`, which the renderer entry imports first.
 
 ```mermaid
 C4Component

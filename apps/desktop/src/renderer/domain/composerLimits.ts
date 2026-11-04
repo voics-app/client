@@ -24,14 +24,19 @@ export function formatCountdown(seconds: number): string {
   return `${seconds}s`;
 }
 
-export interface FileLimitResult {
-  accepted: File[];
+/** Anything with a byte size: a DOM File, or a picked file on another platform. */
+export interface SizedFile {
+  size: number;
+}
+
+export interface FileLimitResult<F extends SizedFile = SizedFile> {
+  accepted: F[];
   /** Human readable reasons, empty when everything fit. */
   problems: string[];
 }
 
 /** Applies the per-message file count and per-file size limits to dropped or pasted files. */
-export function acceptFiles(existing: readonly File[], incoming: readonly File[], maxBytes: number, allowEmpty: boolean, maxFiles = MAX_FILES): FileLimitResult {
+export function acceptFiles<F extends SizedFile>(existing: readonly F[], incoming: readonly F[], maxBytes: number, allowEmpty: boolean, maxFiles = MAX_FILES): FileLimitResult<F> {
   const problems: string[] = [];
   const sized = incoming.filter((f) => f.size <= maxBytes && (allowEmpty || f.size > 0));
   const rejected = incoming.length - sized.length;

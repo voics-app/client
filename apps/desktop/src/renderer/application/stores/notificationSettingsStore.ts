@@ -4,31 +4,12 @@
  * persisted copy is a cache so the last known state is available before READY arrives.
  */
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { persistedStorage } from '@renderer/application/ports/deviceStorage';
 import type { GuildNotificationSettings } from '@shared/contracts/rest';
 import { scopeKey } from '@renderer/domain/notificationSettings';
 
-function memoryStorage() {
-  const memory = new Map<string, string>();
-  return {
-    getItem: (k: string) => memory.get(k) ?? null,
-    setItem: (k: string, v: string) => void memory.set(k, v),
-    removeItem: (k: string) => void memory.delete(k),
-  };
-}
-
-function browserStorage() {
-  try {
-    const probe = '__discordy_probe__';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    return memoryStorage();
-  }
-}
-
-const storage = createJSONStorage(() => (typeof window === 'undefined' ? memoryStorage() : browserStorage()));
+const storage = persistedStorage();
 
 export interface NotificationSettingsState {
   /** Keyed by guild id, or '@me' for DMs. */
