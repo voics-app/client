@@ -10,14 +10,14 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   icon: '../desktop/build/icon.png',
   userInterfaceStyle: 'dark',
-  backgroundColor: '#111214',
+  backgroundColor: '#0c0d12',
   ios: {
     bundleIdentifier: brand.appId,
     supportsTablet: false,
   },
   android: {
     package: brand.appId,
-    adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#111214' },
+    adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#0c0d12' },
   },
   plugins: ['expo-router', 'expo-secure-store', 'expo-sqlite'],
   experiments: { typedRoutes: true },

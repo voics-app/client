@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from './theme';
+import { theme } from '../src/theme';
 
-export function Placeholder({ title, hint }: { title: string; hint: string }) {
+export default function NotificationsScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.hint}>{hint}</Text>
+      <Text style={styles.title}>Notifications</Text>
+      <Text style={styles.hint}>Mentions and replies will appear here.</Text>
     </View>
   );
 }

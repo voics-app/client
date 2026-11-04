@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -15,9 +16,12 @@ import { MessageRow, nameOf } from './MessageRow';
 import { dmTitle } from '../dms/dmModel';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
+import { useKeyboardVisible } from './useKeyboardVisible';
 import { useMessageService } from './useMessageService';
 import { theme } from '../theme';
 
+/** The native stack header's height below the status bar; the keyboard offset is this plus the top inset. */
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const COMPOSE: ComposerMode = { kind: 'compose' };
 const PRIVATE_NOTICE = 'This channel uses private delivery, which the mobile app does not support yet.';
 const PRIVATE_HISTORY_NOTICE = 'Messages in this channel stay on devices, so there is no server history to show.';
@@ -27,6 +31,8 @@ const NO_HISTORY_NOTICE = 'You do not have permission to read the history of thi
 /** A server text channel, or a direct or group conversation when there is no `guildId`. */
 export function ChannelScreen({ guildId, channelId }: { guildId?: string; channelId: string }) {
   const service = useMessageService();
+  const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
   const members = useGuildStore((s) => (guildId ? s.members[guildId] : undefined));
@@ -103,7 +109,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const close = () => setSelected(null);
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={insets.top + HEADER_HEIGHT}>
       <Stack.Screen
         options={{
           title,
@@ -160,7 +166,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           )}
         />
       )}
-      <Composer mode={mode} blockedReason={blockedReason} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+      <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
+        <Composer mode={mode} blockedReason={blockedReason} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+      </View>
       <ProfileSheet user={profileUser} onClose={() => setProfileUser(null)} />
       <MessageActionSheet
         actions={actions}
@@ -189,6 +197,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.background },
   list: { flex: 1 },
+  dock: { backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notice: { color: theme.muted, textAlign: 'center', padding: 32 },
   headerAction: { color: theme.accent, fontSize: 16, fontWeight: '600' },

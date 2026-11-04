@@ -8,6 +8,11 @@ import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
 import { theme } from '../src/theme';
 
+/** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
+export const unstable_settings = { anchor: 'index' };
+
+const chat = { animation: 'slide_from_right', gestureEnabled: true } as const;
+
 export default function RootLayout() {
   const status = useSessionStore((s) => s.status);
 
@@ -26,12 +31,25 @@ export default function RootLayout() {
           <ActivityIndicator color={theme.muted} />
         </View>
       ) : (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.surface },
+            headerTintColor: theme.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: theme.background },
+          }}
+        >
           <Stack.Protected guard={!signedIn}>
-            <Stack.Screen name="sign-in" />
+            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           </Stack.Protected>
           <Stack.Protected guard={signedIn}>
-            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="dms/index" options={{ headerShown: false }} />
+            <Stack.Screen name="servers/[guildId]/index" options={{ headerShown: false }} />
+            <Stack.Screen name="dms/[channelId]" options={chat} />
+            <Stack.Screen name="servers/[guildId]/[channelId]" options={chat} />
+            <Stack.Screen name="notifications" options={{ title: 'Notifications', animation: 'slide_from_right' }} />
+            <Stack.Screen name="you" options={{ title: 'You', animation: 'slide_from_right' }} />
           </Stack.Protected>
         </Stack>
       )}
