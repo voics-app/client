@@ -20,9 +20,11 @@ function fakeRuntime(name: string) {
 }
 
 describe('registerEngines', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     created.length = 0;
     vi.resetModules();
+    // resetModules also drops the brand the setup file installed, so install it on the fresh module graph.
+    await import('../../support/installBrand');
   });
 
   it('rebinds to the runtime that actually boots (React StrictMode creates two in dev)', async () => {
