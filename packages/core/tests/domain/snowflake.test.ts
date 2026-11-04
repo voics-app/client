@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DISCORDY_EPOCH_MS, bucketOf, compareSnowflakes, snowflakeFromTimestamp, timestampOf } from '@discordy/core/domain/snowflake';
 
 describe('snowflake', () => {
-  it('uses the Discordy epoch 2026-01-01T00:00:00Z', () => {
+  it('uses the Voics epoch 2026-01-01T00:00:00Z', () => {
     expect(DISCORDY_EPOCH_MS).toBe(1767225600000);
   });
 

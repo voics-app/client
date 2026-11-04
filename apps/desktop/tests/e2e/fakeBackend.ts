@@ -1,4 +1,4 @@
-/** Minimal in-process Discordy backend (REST + gateway) for Playwright end-to-end runs. Protocol shapes follow P7/P9. */
+/** Minimal in-process Voics backend (REST + gateway) for Playwright end-to-end runs. Protocol shapes follow P7/P9. */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type WebSocket } from 'ws';
