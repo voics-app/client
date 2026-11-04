@@ -1,4 +1,4 @@
-import { BellRinging, BellSlash, CaretDoubleUp, CaretDown, Check, Copy, CopySimple, Gear, Hash, Link, Trash, UserPlus } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, CaretDoubleUp, CaretDown, Check, Copy, CopySimple, Gear, Hash, Link, PushPin, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@renderer/application/stores/notificationSettingsStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
@@ -6,11 +6,13 @@ import type { Dialog, SettingsTarget } from '@renderer/application/stores/uiStor
 import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
 import type { MenuItemModel } from '@renderer/domain/menuModel';
 import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@renderer/domain/notificationSettings';
+import { isPinFull, MAX_PINNED_PER_GUILD } from '@renderer/domain/pins';
 import { Permission } from '@shared/contracts/permissions';
 import type { Channel } from '@shared/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
 import { canStep, moveCategoryStep, moveChannelStep } from '../../app/channelOrderActions';
 import { muteChannel } from '../../app/notificationActions';
+import { pinnedIdsIn, setChannelPinned } from '../../app/pinActions';
 import { getRuntime } from '../../app/runtime';
 import { can } from '../../shared/hooks/usePermissions';
 import type { MenuEntry } from '../../shared/ui/Menu';
@@ -35,6 +37,8 @@ const ICONS = {
   create: <Hash size={16} />,
   delete: <Trash size={16} />,
   copyId: <Copy size={16} />,
+  pin: <PushPin size={16} />,
+  unpin: <PushPin size={16} weight="fill" />,
   toggleCollapse: <CaretDown size={16} />,
   collapseAll: <CaretDoubleUp size={16} />,
 };
@@ -52,7 +56,10 @@ function applyMuteChoice(channel: Channel, it: MenuItemModel): void {
 
 /** Context menu for a channel row. Not a hook: reads store state at open time. */
 export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Handlers): MenuEntry[] {
+  const pins = channel.guild_id ? pinnedIdsIn(channel.guild_id) : [];
   const model = buildChannelMenu({
+    pinned: pins.includes(channel.id),
+    pinFull: isPinFull(pins, channel.id, MAX_PINNED_PER_GUILD),
     inGuild: Boolean(channel.guild_id),
     canInvite: can(perms, Permission.CREATE_INSTANT_INVITE),
     canManage: can(perms, Permission.MANAGE_CHANNELS),
@@ -67,6 +74,8 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
     (it) => {
       switch (it.id) {
         case 'markRead': return h.markRead();
+        case 'pin': return void setChannelPinned(channel.guild_id!, channel.id, true);
+        case 'unpin': return void setChannelPinned(channel.guild_id!, channel.id, false);
         case 'invite': return h.openDialog({ kind: 'invite', guildId: channel.guild_id!, channelId: channel.id });
         case 'copyLink': return void copyText(channelLink(channel.guild_id, channel.id), 'Channel link copied');
         case 'mute':

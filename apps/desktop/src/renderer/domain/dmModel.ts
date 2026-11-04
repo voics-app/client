@@ -34,6 +34,9 @@ export interface DmMenuContext {
   muted: boolean;
   /** The other person of a 1:1 DM, for the Profile entry. */
   hasPeer: boolean;
+  pinned?: boolean;
+  /** Five DMs are already pinned: Pin is shown disabled. */
+  pinFull?: boolean;
 }
 
 export function buildDmMenu(ctx: DmMenuContext): MenuModel[] {
@@ -42,6 +45,7 @@ export function buildDmMenu(ctx: DmMenuContext): MenuModel[] {
     : { kind: 'submenu', id: 'mute', label: 'Mute Conversation', items: MUTE_DURATIONS.map((d) => item('muteFor', d.label, { arg: d.id })) };
   return tidy([
     item('markRead', 'Mark As Read', { disabled: !ctx.hasUnread }),
+    ctx.pinned ? item('unpin', 'Unpin Conversation') : item('pin', 'Pin Conversation', { disabled: ctx.pinFull === true }),
     ...(ctx.hasPeer ? [item('profile', 'Profile')] : []),
     ...(ctx.group ? [item('settings', 'Group Settings')] : []),
     mute,

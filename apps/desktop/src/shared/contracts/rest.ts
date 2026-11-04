@@ -92,6 +92,10 @@ export interface UserSettings {
   friend_source_flags?: { all?: boolean; mutual_friends?: boolean; mutual_guilds?: boolean };
   guild_positions?: Snowflake[];
   guild_folders?: GuildFolder[];
+  /** DMs and group DMs pinned to the top of the DM list, oldest pin first (max 5). */
+  pinned_dm_channel_ids?: Snowflake[];
+  /** Personal pinned channels per server, oldest pin first (max 10 per server). */
+  pinned_channel_ids?: Record<Snowflake, Snowflake[]>;
   delivery_overrides?: Record<Snowflake, DeliveryMode>;
 }
 

@@ -15,6 +15,9 @@ export interface ChannelMenuContext {
   canMoveDown?: boolean;
   /** Developer mode (Settings, Advanced): shows the Copy ID entry. */
   developerMode?: boolean;
+  pinned?: boolean;
+  /** Ten channels of this server are already pinned: Pin is shown disabled. */
+  pinFull?: boolean;
 }
 
 export interface CategoryMenuContext {
@@ -38,6 +41,7 @@ export function buildChannelMenu(ctx: ChannelMenuContext): MenuModel[] {
   const manage = ctx.inGuild && ctx.canManage;
   return tidy([
     item('markRead', 'Mark As Read', { disabled: !ctx.hasUnread }),
+    ...(ctx.inGuild ? [ctx.pinned ? item('unpin', 'Unpin Channel') : item('pin', 'Pin Channel', { disabled: ctx.pinFull === true })] : []),
     sep(),
     ...(ctx.inGuild && ctx.canInvite ? [item('invite', 'Invite People')] : []),
     ...(ctx.inGuild ? [item('copyLink', 'Copy Link')] : []),
