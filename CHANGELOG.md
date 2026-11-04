@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Profiles: click an avatar to see it full size (the image viewer, with zoom), a friend's profile shows Friends since, and About me can be up to 300 characters (was 190; the api limit follows in a separate change).
 - Screen shares zoom and pan: scroll or pinch to zoom toward the pointer (up to 8x), drag to pan, double-click or the zoom badge to reset.
 - Messages with more than four images show a compact grid of four with a "+N" on the last tile, and swiping left or right in the image viewer turns to the next or previous image.
 - Internal: fixed a flaky P2P attachments test; it stopped waiting for the link after a fixed number of ticks while the files were still being encrypted. No change in behaviour.

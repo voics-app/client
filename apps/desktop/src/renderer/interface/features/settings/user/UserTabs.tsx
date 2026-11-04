@@ -15,6 +15,7 @@ import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
 import { useUpdateStore } from '@renderer/application/stores/updateStore';
 import { speak } from '@renderer/infrastructure/tts';
+import { BIO_MAX_LENGTH } from '@discordy/core/domain/profile';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom } from '@discordy/core/domain/appearance';
 import { attempt } from '../../../app/actions';
 import { bridge } from '../../../app/bridge';
@@ -124,7 +125,7 @@ export function ProfileTab() {
         {avatarError && <p className="field-error" role="alert">{avatarError}</p>}
         <div className="stack grow">
           <Field label="Display name">{(id) => <Input id={id} value={globalName} maxLength={32} placeholder={user.username} onChange={(e) => setGlobalName(e.target.value)} />}</Field>
-          <Field label="About me">{(id) => <TextArea id={id} value={bio} maxLength={190} onChange={(e) => setBio(e.target.value)} />}</Field>
+          <Field label="About me">{(id) => <TextArea id={id} value={bio} maxLength={BIO_MAX_LENGTH} onChange={(e) => setBio(e.target.value)} />}</Field>
           <Field label="Profile colour">{(id) => <input id={id} type="color" className="color-input" value={accent} onChange={(e) => setAccent(e.target.value)} />}</Field>
         </div>
       </div>
