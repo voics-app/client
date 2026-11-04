@@ -1,5 +1,5 @@
 /** REST transport for `/api/v1`: bearer auth, single-flight refresh, 429 backoff, error envelope. */
-import type { ApiErrorBody } from '@discordy/core/contracts/rest';
+import type { ApiErrorBody } from '../../contracts/rest';
 
 export class ApiError extends Error {
   constructor(
@@ -22,9 +22,14 @@ export interface TokenSource {
   expired(): void;
 }
 
+/** Uploads with progress reporting; the platform adapter supplies it (XMLHttpRequest on desktop). */
+export type ProgressUpload = (url: string, file: Blob, onProgress: (loaded: number, total: number) => void, signal?: AbortSignal) => Promise<void>;
+
 export interface HttpClientOptions {
   baseUrl: string;
   fetch?: typeof fetch;
+  /** Used for uploads that report progress; without it they fall back to a plain fetch PUT. */
+  progressUpload?: ProgressUpload;
   tokens: TokenSource;
 }
 
@@ -121,39 +126,11 @@ export class HttpClient {
   /** Uploads bytes to a presigned URL (attachments). */
   async upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void> {
     onProgress?.(0, file.size);
-    if (onProgress && typeof XMLHttpRequest !== 'undefined') return uploadWithProgress(url, file, onProgress, signal);
+    if (onProgress && this.options.progressUpload) return this.options.progressUpload(url, file, onProgress, signal);
     const response = await this.fetchFn(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' }, signal });
     if (!response.ok) throw new ApiError(response.status, response.status, `Upload failed (${response.status})`);
     onProgress?.(file.size, file.size);
   }
-}
-
-/** PUT through XMLHttpRequest, the only browser API that reports upload progress. Aborting rejects with an AbortError. */
-function uploadWithProgress(url: string, file: Blob, onProgress: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    const abort = () => request.abort();
-    request.open('PUT', url);
-    request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-    request.upload.onprogress = (event) => onProgress(event.loaded, event.lengthComputable ? event.total : file.size);
-    request.onload = () => {
-      signal?.removeEventListener('abort', abort);
-      if (request.status >= 200 && request.status < 300) {
-        onProgress(file.size, file.size);
-        resolve();
-      } else {
-        reject(new ApiError(request.status, request.status, `Upload failed (${request.status})`));
-      }
-    };
-    request.onerror = () => {
-      signal?.removeEventListener('abort', abort);
-      reject(new Error('Upload failed: the connection was lost.'));
-    };
-    request.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
-    if (signal?.aborted) return reject(new DOMException('Upload cancelled', 'AbortError'));
-    signal?.addEventListener('abort', abort, { once: true });
-    request.send(file);
-  });
 }
 
 /** Builds the error for a failed response; proxies and gateways send HTML or empty bodies. */

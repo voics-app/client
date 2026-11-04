@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
-import type { HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { DiscordyApi } from '../../src/infrastructure/http/discordyApi';
+import type { HttpClient } from '../../src/infrastructure/http/httpClient';
 
 function fakeHttp() {
   const request = vi.fn(async () => undefined);

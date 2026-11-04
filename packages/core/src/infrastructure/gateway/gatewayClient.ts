@@ -12,9 +12,9 @@ import {
   type HelloPayload,
   type IdentifyPayload,
   type PresenceUpdatePayload,
-} from '@discordy/core/contracts/gateway';
-import { reconnectDelay } from '@discordy/core/domain/backoff';
-import type { GatewayPort, GatewayState } from '@discordy/core/application/ports/gateway';
+} from '../../contracts/gateway';
+import { reconnectDelay } from '../../domain/backoff';
+import type { GatewayPort, GatewayState } from '../../application/ports/gateway';
 import { Listeners } from '../net/emitter';
 import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '../net/socket';
 
