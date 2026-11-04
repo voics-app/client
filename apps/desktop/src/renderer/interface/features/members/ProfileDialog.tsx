@@ -6,7 +6,7 @@ import { usePresenceStore, useRelationshipStore } from '@renderer/application/st
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { RelationshipType, type User } from '@shared/contracts/rest';
+import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';

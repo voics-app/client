@@ -2,10 +2,10 @@ import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import { EMOJI_CATEGORIES, SKIN_TONES, applySkinTone, supportsSkinTone, usableEmojiGroups } from '@renderer/domain/emojiModel';
-import { quickApiForm } from '@renderer/domain/quickReactions';
-import { Permission } from '@shared/contracts/permissions';
-import type { Emoji } from '@shared/contracts/rest';
+import { EMOJI_CATEGORIES, SKIN_TONES, applySkinTone, supportsSkinTone, usableEmojiGroups } from '@discordy/core/domain/emojiModel';
+import { quickApiForm } from '@discordy/core/domain/quickReactions';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { Emoji } from '@discordy/core/contracts/rest';
 import { useConnectionStore } from '../../app/connectionStore';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 

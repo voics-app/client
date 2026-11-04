@@ -1,5 +1,5 @@
 import type { HLJSApi } from 'highlight.js';
-import { parseHighlightHtml, type HighlightNode } from '@renderer/domain/highlightHtml';
+import { parseHighlightHtml, type HighlightNode } from '@discordy/core/domain/highlightHtml';
 
 /** Language name (as typed after the fence) -> loader. Each language is its own chunk, fetched on first use. */
 const LOADERS: Record<string, () => Promise<{ default: Parameters<HLJSApi['registerLanguage']>[1] }>> = {

@@ -1,6 +1,6 @@
-import type { AuthSession } from '@shared/contracts/rest';
+import type { AuthSession } from '@discordy/core/contracts/rest';
 import { BRAND } from '@shared/brand';
-import { relativeTime } from './timestamp';
+import { relativeTime } from '@discordy/core/domain/timestamp';
 
 /** The current session first, then the most recently used. */
 export function orderSessions(sessions: readonly AuthSession[]): AuthSession[] {

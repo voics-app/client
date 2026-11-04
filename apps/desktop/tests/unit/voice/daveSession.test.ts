@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { VoiceOp } from '@shared/contracts/voice';
+import { VoiceOp } from '@discordy/core/contracts/voice';
 import { DaveSession, FRAME_KEY_LABEL } from '@renderer/infrastructure/voice/daveSession';
 
 const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));

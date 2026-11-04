@@ -1,6 +1,6 @@
 /** Holds the gateway-issued TURN credentials and asks for new ones before they expire. */
-import type { TurnCredentials as TurnPayload } from '@shared/contracts/rest';
-import { iceServersFromTurn, refreshDelayMs, type IceServer } from '@renderer/domain/turn';
+import type { TurnCredentials as TurnPayload } from '@discordy/core/contracts/rest';
+import { iceServersFromTurn, refreshDelayMs, type IceServer } from '@discordy/core/domain/turn';
 
 export class TurnCredentials {
   private current: TurnPayload | null = null;

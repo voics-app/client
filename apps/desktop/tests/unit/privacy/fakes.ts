@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Channel, User } from '@shared/contracts/rest';
+import type { Channel, User } from '@discordy/core/contracts/rest';
 import type { CryptoBridge, LocalMessageRecord } from '@shared/ipc';
 import type { ApiPort } from '@renderer/application/ports/api';
 import type { GatewayPort } from '@renderer/application/ports/gateway';

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { saveGuildNotificationSettings, saveUserNote } from '@renderer/application/notificationSync';
 import { useNotificationSettingsStore, useUserNotesStore } from '@renderer/application/stores/notificationSettingsStore';
-import { emptySettings, withMute } from '@renderer/domain/notificationSettings';
-import type { GuildNotificationSettings } from '@shared/contracts/rest';
+import { emptySettings, withMute } from '@discordy/core/domain/notificationSettings';
+import type { GuildNotificationSettings } from '@discordy/core/contracts/rest';
 
 const me = { id: '1', username: 'me', global_name: 'Me', avatar: null };
 const guildSettings: GuildNotificationSettings = { ...emptySettings('g'), message_notifications: 1, suppress_roles: true };

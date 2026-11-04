@@ -1,7 +1,7 @@
 /** Per-channel message timelines with optimistic sends resolved by nonce. */
 import { create } from 'zustand';
-import type { DeliveryMode, Emoji, Message } from '@shared/contracts/rest';
-import { compareSnowflakes } from '@renderer/domain/snowflake';
+import type { DeliveryMode, Emoji, Message } from '@discordy/core/contracts/rest';
+import { compareSnowflakes } from '@discordy/core/domain/snowflake';
 
 export type LocalState = 'sending' | 'failed';
 

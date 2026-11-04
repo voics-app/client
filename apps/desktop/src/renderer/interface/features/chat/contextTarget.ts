@@ -1,4 +1,4 @@
-import type { MessageTarget } from '@renderer/domain/messageMenuModel';
+import type { MessageTarget } from '@discordy/core/domain/messageMenuModel';
 
 /**
  * Finds what was right-clicked inside a message. Renderers mark their elements with

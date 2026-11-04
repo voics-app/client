@@ -1,7 +1,7 @@
 import { Eye, EyeSlash, File as FileIcon, TextAa, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
-import { ALT_TEXT_MAX, displayFilename, isSpoilerName, withoutSpoilerPrefix, withSpoilerPrefix } from '@renderer/domain/media';
-import { formatBytes } from '@renderer/domain/media';
+import { ALT_TEXT_MAX, displayFilename, isSpoilerName, withoutSpoilerPrefix, withSpoilerPrefix } from '@discordy/core/domain/media';
+import { formatBytes } from '@discordy/core/domain/media';
 
 /** Alt text of the attached files, by file object. */
 export type Descriptions = ReadonlyMap<File, string>;

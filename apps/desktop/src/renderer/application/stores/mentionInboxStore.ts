@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { persistedStorage } from '@renderer/application/ports/deviceStorage';
-import { addInboxEntries, addInboxEntry, type InboxEntry } from '@renderer/domain/mentionInbox';
+import { addInboxEntries, addInboxEntry, type InboxEntry } from '@discordy/core/domain/mentionInbox';
 
 export interface MentionInboxState {
   entries: InboxEntry[];

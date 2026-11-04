@@ -8,7 +8,7 @@ import { Tooltip } from '../../shared/ui/Tooltip';
 import { Spinner } from '../../shared/ui/Spinner';
 
 import { useState } from 'react';
-import { connectionRows, qualityTone } from '@renderer/domain/voicePanel';
+import { connectionRows, qualityTone } from '@discordy/core/domain/voicePanel';
 import { Menu } from '../../shared/ui/Menu';
 import { DeviceArrow, NoiseSuppressionButton, useKeyHint } from './DeviceMenus';
 

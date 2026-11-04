@@ -1,6 +1,6 @@
 import { useEffect, useState, type ImgHTMLAttributes } from 'react';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
-import type { AnimationKind } from '@renderer/domain/stillFrame';
+import type { AnimationKind } from '@discordy/core/domain/stillFrame';
 
 const stills = new Map<string, string | null>();
 

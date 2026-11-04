@@ -2,7 +2,7 @@
  * Call tones synthesised with Web Audio (no audio asset): a pattern of notes, repeated every cycle
  * until stopped. Plays on the selected output device when the browser supports it.
  */
-import type { RingtoneId } from '@renderer/domain/ringtones';
+import type { RingtoneId } from '@discordy/core/domain/ringtones';
 import { sharedAudioContext, wakeContext } from './sharedContext';
 
 export interface ToneNote {

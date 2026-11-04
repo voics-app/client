@@ -1,5 +1,5 @@
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { clampStatusText } from '@renderer/domain/selfPresence';
+import { clampStatusText } from '@discordy/core/domain/selfPresence';
 import { attempt } from '../../app/actions';
 import { publishPresence } from '../../app/presenceActions';
 import { getRuntime } from '../../app/runtime';

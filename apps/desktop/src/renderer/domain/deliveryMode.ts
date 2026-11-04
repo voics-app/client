@@ -1,5 +1,5 @@
 /** Delivery-mode rules (P11), mirrored client-side for the composer badge and settings UI. */
-import type { DeliveryMode } from '@shared/contracts/rest';
+import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { BRAND } from '@shared/brand';
 
 const STRICTNESS: Record<DeliveryMode, number> = { standard: 0, ephemeral: 1, p2p: 2 };

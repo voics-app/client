@@ -14,8 +14,8 @@ import {
   validateCommandForm,
   visibleToken,
   type CommandFormType,
-} from '@renderer/domain/developerPortal';
-import { CommandType, type ApplicationCommand, type ApplicationSummary } from '@shared/contracts/rest';
+} from '@discordy/core/domain/developerPortal';
+import { CommandType, type ApplicationCommand, type ApplicationSummary } from '@discordy/core/contracts/rest';
 import { attempt, copyText } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';

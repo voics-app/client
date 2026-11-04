@@ -1,14 +1,14 @@
 import { ArrowSquareIn, ArrowSquareOut, ArrowsIn, Camera, Eye, EyeSlash, Layout, UserPlus, LockKey, Microphone, MicrophoneSlash, Monitor, PhoneDisconnect, Rectangle, SquaresFour, Television, VideoCamera, VideoCameraSlash } from '@phosphor-icons/react';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useMemo } from 'react';
-import { ringableRecipients } from '@renderer/domain/calls';
+import { ringableRecipients } from '@discordy/core/domain/calls';
 import { createPortal } from 'react-dom';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageMode } from '@renderer/domain/stageLayout';
+import { DEFAULT_STAGE_LAYOUT, arrangeStage, gridColumns, normalizeLayout, withoutSelfPreview, type StageMode } from '@discordy/core/domain/stageLayout';
 import { ringIntoCall } from '../../app/callActions';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { displayName } from '../../shared/hooks/useNames';

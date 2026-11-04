@@ -1,5 +1,5 @@
 import { BRAND } from '@shared/brand';
-import { ChannelType, type GuildTemplate } from '@shared/contracts/rest';
+import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
 
 /** Server templates: link parsing and the preview a template link opens. */
 

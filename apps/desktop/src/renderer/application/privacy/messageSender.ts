@@ -1,14 +1,14 @@
-import { compareSnowflakes } from '@renderer/domain/snowflake';
+import { compareSnowflakes } from '@discordy/core/domain/snowflake';
 /** Routes outgoing messages by effective delivery mode (P11) and owns the per-chat / account mode switches. */
-import { ApiErrorCode, MessageFlag, type Channel, type CreateMessageBody, type DeliveryMode } from '@shared/contracts/rest';
+import { ApiErrorCode, MessageFlag, type Channel, type CreateMessageBody, type DeliveryMode } from '@discordy/core/contracts/rest';
 import type { ApiPort } from '../ports/api';
 import { useGuildStore } from '../stores/guildStore';
 import { useMessageStore, type ChatMessage } from '../stores/messageStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useMentionInboxStore } from '../stores/mentionInboxStore';
 import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
-import { inboxEntryOf } from '@renderer/domain/mentionInbox';
-import { scopeKey } from '@renderer/domain/notificationSettings';
+import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
+import { scopeKey } from '@discordy/core/domain/notificationSettings';
 import { useUploadStore } from '../stores/uploadStore';
 import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } from '@renderer/domain/deliveryMode';
 import type { EphemeralService } from './ephemeralService';

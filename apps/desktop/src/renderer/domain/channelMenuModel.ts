@@ -1,7 +1,7 @@
 import { BRAND } from '@shared/brand';
-import type { Channel } from '@shared/contracts/rest';
-import { item, sep, tidy, type MenuModel } from './menuModel';
-import { MUTE_DURATIONS } from './notificationSettings';
+import type { Channel } from '@discordy/core/contracts/rest';
+import { item, sep, tidy, type MenuModel } from '@discordy/core/domain/menuModel';
+import { MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
 
 export interface ChannelMenuContext {
   /** False for DM channels: no invite, link, duplicate or management entries. */

@@ -3,7 +3,7 @@ import { useSessionStore } from '@renderer/application/stores/sessionStore';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useReadNavStore } from '@renderer/application/stores/readNavStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 
 export const isVoiceChannel = (c: Pick<Channel, 'type'>): boolean => c.type === ChannelType.GUILD_VOICE || c.type === ChannelType.GUILD_STAGE_VOICE;
 export const isTextChannel = (c: Pick<Channel, 'type'>): boolean =>

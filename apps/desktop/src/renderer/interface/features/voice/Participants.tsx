@@ -2,9 +2,9 @@ import { ArrowsOut, Users, CornersIn, CornersOut, Eye, EyeSlash, MicrophoneSlash
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useSessionStore } from '@renderer/application/stores/sessionStore';
-import { STREAM_VIEWER_REPORTING } from '@renderer/domain/stageLayout';
+import { STREAM_VIEWER_REPORTING } from '@discordy/core/domain/stageLayout';
 import { useVoiceStore, usersInChannel, type RemoteStream } from '@renderer/application/stores/voiceStore';
-import type { VoiceState } from '@shared/contracts/rest';
+import type { VoiceState } from '@discordy/core/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';

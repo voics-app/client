@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { useUiStore } from '@renderer/application/stores/uiStore';
-import { layoutOf, moveChannel } from '@renderer/domain/channelOrder';
+import { layoutOf, moveChannel } from '@discordy/core/domain/channelOrder';
 import { applyChannelLayout, guildChannels, moveChannelStep } from '@renderer/interface/app/channelOrderActions';
-import { ChannelType, type Channel } from '@shared/contracts/rest';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 
 const reorderChannels = vi.fn();
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { reorderChannels } }) }));

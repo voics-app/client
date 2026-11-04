@@ -5,8 +5,8 @@
  * native crypto module is unavailable every send fails loudly.
  */
 import { privacyDebug } from './debugLog';
-import type { Channel, User } from '@shared/contracts/rest';
-import { GatewayOp, type E2EEContentType, type E2EEEnvelope, type E2EERecipient } from '@shared/contracts/gateway';
+import type { Channel, User } from '@discordy/core/contracts/rest';
+import { GatewayOp, type E2EEContentType, type E2EEEnvelope, type E2EERecipient } from '@discordy/core/contracts/gateway';
 import type { CryptoBridge } from '@shared/ipc';
 import type { ApiPort } from '../ports/api';
 import type { GatewayPort } from '../ports/gateway';

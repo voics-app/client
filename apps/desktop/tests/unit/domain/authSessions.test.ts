@@ -1,7 +1,7 @@
 import { BRAND } from '@shared/brand';
 import { describe, expect, it } from 'vitest';
 import { orderSessions, regionName, sessionDetail, sessionTitle } from '@renderer/domain/authSessions';
-import type { AuthSession } from '@shared/contracts/rest';
+import type { AuthSession } from '@discordy/core/contracts/rest';
 
 const NOW = Date.parse('2026-11-04T12:00:00Z');
 

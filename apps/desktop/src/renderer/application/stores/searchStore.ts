@@ -1,6 +1,6 @@
 /** State of the message search box and its results panel. */
 import { create } from 'zustand';
-import type { Message } from '@shared/contracts/rest';
+import type { Message } from '@discordy/core/contracts/rest';
 
 export type SearchStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type SearchSort = 'newest' | 'oldest' | 'relevant';

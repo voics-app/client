@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { P2PSignal } from '@shared/contracts/gateway';
+import type { P2PSignal } from '@discordy/core/contracts/gateway';
 import { AttachmentService } from '@renderer/application/privacy/attachmentService';
 import { encryptFile } from '@renderer/application/privacy/attachmentCipher';
 import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';
 import { P2PService } from '@renderer/application/privacy/p2pService';
-import { fingerprintSigningPayload } from '@renderer/domain/p2pIdentity';
+import { fingerprintSigningPayload } from '@discordy/core/domain/p2pIdentity';
 import { utf8ToB64 } from '@renderer/application/privacy/types';
 import { useMessageStore } from '@renderer/application/stores/messageStore';
 import { useTransferStore } from '@renderer/application/stores/transferStore';

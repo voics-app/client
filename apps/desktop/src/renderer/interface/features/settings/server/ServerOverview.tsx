@@ -1,9 +1,9 @@
 import { Upload } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChannelType } from '@shared/contracts/rest';
-import { assetCandidates, type AssetKind } from '@renderer/domain/assets';
-import { AFK_TIMEOUTS, NOTIFICATION_LEVELS, SystemFlag, draftFromGuild, flagEnabled, overviewPatch, withFlag, type OverviewDraft } from '@renderer/domain/guildOverview';
+import { ChannelType } from '@discordy/core/contracts/rest';
+import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
+import { AFK_TIMEOUTS, NOTIFICATION_LEVELS, SystemFlag, draftFromGuild, flagEnabled, overviewPatch, withFlag, type OverviewDraft } from '@discordy/core/domain/guildOverview';
 import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { attempt } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';

@@ -19,13 +19,13 @@ import {
   timeoutUntil,
   TIMEOUT_PRESETS,
   type MemberCapabilities,
-} from '@renderer/domain/memberModeration';
+} from '@discordy/core/domain/memberModeration';
 import {
   friendAction,
   userMenuGroups,
   type UserMenuItemId,
-} from '@renderer/domain/userMenuModel';
-import { RelationshipType, type GuildMember, type User } from '@shared/contracts/rest';
+} from '@discordy/core/domain/userMenuModel';
+import { RelationshipType, type GuildMember, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
 import { confirmPurgeRecentMessages } from '../../app/moderationActions';
 import { openChannel } from '../../app/navigation';
@@ -35,8 +35,8 @@ import { useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Checkbox, Slider } from '../../shared/ui/Form';
 import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
-import { appsSubmenu } from '@renderer/domain/contextCommands';
-import type { MenuItemModel } from '@renderer/domain/menuModel';
+import { appsSubmenu } from '@discordy/core/domain/contextCommands';
+import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { RolePills, setMemberRole } from './RolePills';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';

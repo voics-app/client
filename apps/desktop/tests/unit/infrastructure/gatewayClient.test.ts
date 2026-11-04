@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GatewayClient } from '@renderer/infrastructure/gateway/gatewayClient';
-import { GatewayOp } from '@shared/contracts';
+import { GatewayOp } from '@discordy/core/contracts';
 import { FakeSocket } from './fakeSocket';
 
 function makeClient(overrides: Partial<ConstructorParameters<typeof GatewayClient>[0]> = {}) {

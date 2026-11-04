@@ -4,11 +4,11 @@ import { useNotificationSettingsStore } from '@renderer/application/stores/notif
 import { usePrefsStore } from '@renderer/application/stores/prefsStore';
 import type { Dialog, SettingsTarget } from '@renderer/application/stores/uiStore';
 import { buildCategoryMenu, buildChannelMenu, channelLink, duplicateChannelBody } from '@renderer/domain/channelMenuModel';
-import type { MenuItemModel } from '@renderer/domain/menuModel';
-import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@renderer/domain/notificationSettings';
-import { isPinFull, MAX_PINNED_PER_GUILD } from '@renderer/domain/pins';
-import { Permission } from '@shared/contracts/permissions';
-import type { Channel } from '@shared/contracts/rest';
+import type { MenuItemModel } from '@discordy/core/domain/menuModel';
+import { isChannelMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { isPinFull, MAX_PINNED_PER_GUILD } from '@discordy/core/domain/pins';
+import { Permission } from '@discordy/core/contracts/permissions';
+import type { Channel } from '@discordy/core/contracts/rest';
 import { attempt, copyText } from '../../app/actions';
 import { canStep, moveCategoryStep, moveChannelStep } from '../../app/channelOrderActions';
 import { muteChannel } from '../../app/notificationActions';

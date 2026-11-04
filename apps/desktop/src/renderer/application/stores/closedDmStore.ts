@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { persistedStorage } from '@renderer/application/ports/deviceStorage';
-import type { ClosedDms } from '@renderer/domain/dmModel';
+import type { ClosedDms } from '@discordy/core/domain/dmModel';
 
 interface ClosedDmState {
   closed: ClosedDms;

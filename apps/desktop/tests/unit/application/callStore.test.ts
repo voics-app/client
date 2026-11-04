@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDispatchRouter } from '@renderer/application/dispatchRouter';
 import { useCallStore } from '@renderer/application/stores/callStore';
-import type { CallEvent } from '@shared/contracts/gateway';
-import type { VoiceState } from '@shared/contracts/rest';
+import type { CallEvent } from '@discordy/core/contracts/gateway';
+import type { VoiceState } from '@discordy/core/contracts/rest';
 
 const voice = (userId: string): VoiceState =>
   ({ channel_id: '900', guild_id: null, user_id: userId, session_id: `s${userId}`, self_mute: false, self_deaf: false }) as unknown as VoiceState;

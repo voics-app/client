@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { formatTimestamp } from '@renderer/domain/timestamp';
-import type { TimestampStyle } from '@renderer/domain/markdown';
-import { TIMESTAMP_STYLES, localInputValues, parseLocalDateTime, timestampMarkup } from '@renderer/domain/timestampPicker';
+import { formatTimestamp } from '@discordy/core/domain/timestamp';
+import type { TimestampStyle } from '@discordy/core/domain/markdown';
+import { TIMESTAMP_STYLES, localInputValues, parseLocalDateTime, timestampMarkup } from '@discordy/core/domain/timestampPicker';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';

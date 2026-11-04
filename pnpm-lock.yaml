@@ -30,6 +30,9 @@ importers:
         specifier: 6.6.2
         version: 6.6.2
     devDependencies:
+      '@discordy/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@eslint/js':
         specifier: 9.39.1
         version: 9.39.1
@@ -191,6 +194,30 @@ importers:
       '@napi-rs/cli':
         specifier: 3.4.1
         version: 3.4.1(@emnapi/runtime@1.11.2)(@types/node@24.10.1)(node-addon-api@7.1.1)
+
+  packages/core:
+    devDependencies:
+      '@eslint/js':
+        specifier: 9.39.1
+        version: 9.39.1
+      '@types/node':
+        specifier: 24.10.1
+        version: 24.10.1
+      eslint:
+        specifier: 9.39.1
+        version: 9.39.1
+      globals:
+        specifier: 16.5.0
+        version: 16.5.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: 8.46.3
+        version: 8.46.3(eslint@9.39.1)(typescript@5.9.3)
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.10.1)(jsdom@27.1.0)(lightningcss@1.33.0)(terser@5.51.2)
 
 packages:
 

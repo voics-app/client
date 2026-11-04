@@ -5,7 +5,7 @@ import { useGuildStore } from '@renderer/application/stores/guildStore';
 import { usePresenceStore } from '@renderer/application/stores/peopleStores';
 import { useVoiceStore } from '@renderer/application/stores/voiceStore';
 import { useMemberGroupStore } from '@renderer/application/stores/memberGroupStore';
-import type { User } from '@shared/contracts/rest';
+import type { User } from '@discordy/core/contracts/rest';
 
 const send = vi.fn();
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ gateway: { send }, api: {} }) }));

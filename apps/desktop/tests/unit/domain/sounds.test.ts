@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { shouldPlaySound, voiceTransitionSounds, type VoiceSoundSnapshot } from '@renderer/domain/sounds';
+import { shouldPlaySound, voiceTransitionSounds, type VoiceSoundSnapshot } from '@discordy/core/domain/sounds';
 import { IDLE_SNAPSHOT, VoiceSounds } from '@renderer/application/voice/voiceSounds';
 import { SoundEffects } from '@renderer/infrastructure/audio/sfx';
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
