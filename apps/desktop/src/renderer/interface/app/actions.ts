@@ -9,14 +9,11 @@ import { forwardBody } from '@discordy/core/domain/forward';
 import { idBefore } from '@discordy/core/domain/unread';
 import { flatten } from '@discordy/core/domain/railLayout';
 import { ChannelType, type GuildFolder, type Message } from '@discordy/core/contracts/rest';
-import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
+import { errorMessage } from '@discordy/core/application/errorMessage';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.status === 0 ? 'You appear to be offline.' : error.message;
-  return error instanceof Error ? error.message : 'Something went wrong.';
-}
+export { errorMessage };
 
 export function reportError(error: unknown, title = 'Something went wrong'): void {
   useUiStore.getState().toast({ tone: 'danger', title, body: errorMessage(error) });

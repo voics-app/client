@@ -76,6 +76,35 @@ describe('GatewayClient', () => {
     expect(second.sent.some((f) => f.op === GatewayOp.RESUME)).toBe(false);
   });
 
+  it('resumeNow replaces the socket immediately and resumes with the last sequence', async () => {
+    const client = makeClient();
+    client.connect();
+    const first = FakeSocket.latest();
+    hello(first);
+    await Promise.resolve();
+    ready(first, 7);
+    client.resumeNow();
+    const second = FakeSocket.latest();
+    expect(second).not.toBe(first);
+    expect(first.closedWith).not.toBeNull();
+    expect(client.state).toBe('resuming');
+    expect(second.url).toBe('wss://resume.test/gateway?v=1&encoding=json');
+    hello(second);
+    await Promise.resolve();
+    expect(second.sent.find((f) => f.op === GatewayOp.RESUME)?.d).toMatchObject({ session_id: 'sess', seq: 7 });
+  });
+
+  it('resumeNow does nothing before connecting or after a manual disconnect', () => {
+    const client = makeClient();
+    client.resumeNow();
+    expect(FakeSocket.instances).toHaveLength(0);
+    client.connect();
+    client.disconnect();
+    const count = FakeSocket.instances.length;
+    client.resumeNow();
+    expect(FakeSocket.instances).toHaveLength(count);
+  });
+
   it('heartbeats with the last sequence and detects zombie connections', async () => {
     const client = makeClient();
     client.connect();

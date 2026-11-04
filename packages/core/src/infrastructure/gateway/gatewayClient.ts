@@ -104,6 +104,16 @@ export class GatewayClient implements GatewayPort {
     this.reconnect(false);
   }
 
+  /** Replaces the current socket at once and resumes the session (a fresh IDENTIFY when there is none). For a client coming back from the background, where its socket may have died silently. */
+  resumeNow(): void {
+    if (this.manualClose || this.state === 'idle' || this.state === 'closed') return;
+    this.clearTimers();
+    this.socket?.close(ZOMBIE_CLOSE, 'resuming');
+    this.detach();
+    this.attempts = 0;
+    this.open(this.sessionId !== null);
+  }
+
   send(op: number, d: unknown): void {
     const frame = JSON.stringify({ op, d });
     if (op === GatewayOp.HEARTBEAT) {

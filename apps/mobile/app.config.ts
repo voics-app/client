@@ -20,7 +20,7 @@ const config: ExpoConfig = {
     package: brand.appId,
     adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#111214' },
   },
-  plugins: ['expo-router'],
+  plugins: ['expo-router', 'expo-secure-store', 'expo-sqlite'],
   experiments: { typedRoutes: true },
   extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl },
 };
