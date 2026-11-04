@@ -1,5 +1,5 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
-import type { ApiPort, CreateChannelBody, MessageQuery } from '@discordy/core/application/ports/api';
+import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -38,8 +38,8 @@ import type {
   UserNote,
   UserSettings,
   VoiceRegion,
-} from '@discordy/core/contracts/rest';
-import { toQuery, type SearchParams } from '@discordy/core/domain/messageSearch';
+} from '../../contracts/rest';
+import { toQuery, type SearchParams } from '../../domain/messageSearch';
 import type { HttpClient, RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;

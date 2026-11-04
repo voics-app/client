@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '@renderer/infrastructure/http/httpClient';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { LocalHistory } from '@renderer/application/privacy/localHistory';

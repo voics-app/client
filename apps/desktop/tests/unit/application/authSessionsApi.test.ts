@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DiscordyApi } from '@renderer/infrastructure/http/discordyApi';
-import type { HttpClient } from '@renderer/infrastructure/http/httpClient';
+import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
+import type { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 
 describe('login session endpoints', () => {
   const fake = () => {
