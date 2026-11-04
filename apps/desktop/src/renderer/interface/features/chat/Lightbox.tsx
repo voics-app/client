@@ -2,7 +2,7 @@ import { ArrowSquareOut, CaretLeft, CaretRight, Copy, DownloadSimple, Minus, Plu
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
-import { clampPan, clampZoom, displayFilename, MIN_ZOOM } from '@discordy/core/domain/media';
+import { clampPan, clampZoom, displayFilename, MIN_ZOOM, swipeDirection } from '@discordy/core/domain/media';
 import { copyImage, saveImage } from '../../app/messageActions';
 import { AssetImage } from '../../shared/ui/AssetImage';
 import { IconButton } from '../../shared/ui/IconButton';
@@ -64,18 +64,24 @@ export function Lightbox() {
     zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15);
   };
   const onPointerDown = (e: ReactPointerEvent) => {
-    if (view.zoom === MIN_ZOOM || item.kind !== 'image') return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (item.kind !== 'image') return;
+    if (view.zoom > MIN_ZOOM) e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { x: e.clientX, y: e.clientY, ox: view.x, oy: view.y };
   };
   const onPointerMove = (e: ReactPointerEvent) => {
     const d = drag.current;
     const box = stage.current?.getBoundingClientRect();
-    if (!d || !box) return;
+    if (!d || !box || view.zoom === MIN_ZOOM) return;
     setView((v) => ({ ...v, x: clampPan(d.ox + e.clientX - d.x, box.width, v.zoom), y: clampPan(d.oy + e.clientY - d.y, box.height, v.zoom) }));
   };
   const endDrag = () => {
     drag.current = null;
+  };
+  /** Zoomed out, a horizontal swipe turns to the next or previous image. */
+  const onPointerUp = (e: ReactPointerEvent) => {
+    const d = drag.current;
+    endDrag();
+    if (d && view.zoom === MIN_ZOOM) step(swipeDirection(e.clientX - d.x, e.clientY - d.y));
   };
   const name = displayFilename(item.filename);
 
@@ -104,7 +110,7 @@ export function Lightbox() {
           <button type="button" className="lightbox-nav is-next" aria-label="Next" onClick={() => step(1)}><CaretRight size={28} /></button>
         </>
       )}
-      <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={(e) => e.target === e.currentTarget && close()} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>
+      <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={endDrag} onClick={(e) => e.target === e.currentTarget && close()} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>
         {item.kind === 'image' ? (
           <AssetImage key={item.src} className={`lightbox-media${view.zoom > MIN_ZOOM ? ' is-zoomed' : ''}`} candidates={[item.src, ...(item.fallbacks ?? [])]} alt={item.description ?? name} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }} />
         ) : (

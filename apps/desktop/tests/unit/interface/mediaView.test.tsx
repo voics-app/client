@@ -96,6 +96,22 @@ describe('attachments', () => {
     expect(index).toBe(1);
   });
 
+  it('shows at most four tiles with a +N on the last and opens the carousel from there', () => {
+    renderMessage(message({ attachments: ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => image(id)) as never }));
+    expect(document.querySelector('.media-grid')?.getAttribute('data-count')).toBe('4');
+    expect(document.querySelectorAll('.media-tile')).toHaveLength(4);
+    expect(document.querySelector('.media-more')?.textContent).toBe('+2');
+    fireEvent.click(screen.getByRole('button', { name: 'Open d.png' }));
+    const { items, index } = useLightboxStore.getState();
+    expect(items).toHaveLength(6);
+    expect(index).toBe(3);
+  });
+
+  it('shows no +N when everything fits', () => {
+    renderMessage(message({ attachments: ['a', 'b', 'c', 'd'].map((id) => image(id)) as never }));
+    expect(document.querySelector('.media-more')).toBeNull();
+  });
+
   it('keeps files out of the grid and shows a PDF card', () => {
     renderMessage(message({ attachments: [image('a'), { id: 'p', filename: 'doc.pdf', content_type: 'application/pdf', size: 2048, url: 'http://cdn/doc.pdf' }] as never }));
     expect(document.querySelectorAll('.media-tile')).toHaveLength(1);
