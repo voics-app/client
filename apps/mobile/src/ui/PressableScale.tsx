@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import { Pressable } from 'react-native';
+import type { PressableStateCallbackType } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useReduceMotion } from '../sheets/useReduceMotion';
 
@@ -35,7 +36,7 @@ export function PressableScale({ style, scale = true, onPressIn, onPressOut, ...
         factor.value = withTiming(1, { duration: FAST_MS });
         onPressOut?.(e);
       }}
-      style={[typeof style === 'function' ? style({ pressed, hovered: false }) : style, animated]}
+      style={[typeof style === 'function' ? style({ pressed, hovered: false } as PressableStateCallbackType) : style, animated]}
     />
   );
 }
