@@ -1,6 +1,13 @@
 /** REST transport for `/api/v1`: bearer auth, single-flight refresh, 429 backoff, error envelope. */
 import type { ApiErrorBody } from '../../contracts/rest';
 
+/** What a token refresh came to: new tokens, a refusal (the session is gone), or no answer (offline, server down). */
+export type SessionRenewal = 'renewed' | 'expired' | 'unavailable';
+
+function refusedByServer(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -45,7 +52,7 @@ export interface RequestOptions {
 const MAX_RATE_LIMIT_RETRIES = 3;
 
 export class HttpClient {
-  private refreshing: Promise<string | null> | null = null;
+  private refreshing: Promise<SessionRenewal> | null = null;
   private readonly fetchFn: typeof fetch;
 
   constructor(private readonly options: HttpClientOptions) {
@@ -91,8 +98,9 @@ export class HttpClient {
     }
 
     if (response.status === 401 && auth && !retriedAuth) {
-      const fresh = await this.refreshOnce();
-      if (fresh) return this.execute<T>(method, path, options, attempt, true);
+      const renewal = await this.renewSession();
+      if (renewal === 'renewed') return this.execute<T>(method, path, options, attempt, true);
+      if (renewal === 'unavailable') throw new ApiError(0, 0, 'Could not reach the server');
       this.options.tokens.expired();
     }
 
@@ -111,11 +119,13 @@ export class HttpClient {
     return parsed as T;
   }
 
-  private refreshOnce(): Promise<string | null> {
+  /** Rotates the tokens once, however many callers ask. Only a refusal from the server counts as expired, never a network failure. */
+  renewSession(): Promise<SessionRenewal> {
     if (!this.refreshing) {
       this.refreshing = this.options.tokens
         .refresh()
-        .catch(() => null)
+        .then((access): SessionRenewal => (access ? 'renewed' : 'expired'))
+        .catch((error: unknown): SessionRenewal => (refusedByServer(error) ? 'expired' : 'unavailable'))
         .finally(() => {
           this.refreshing = null;
         });
