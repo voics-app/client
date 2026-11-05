@@ -24,4 +24,8 @@ Pod::Spec.new do |s|
     'DEFINES_MODULE' => 'YES',
     'SWIFT_INCLUDE_PATHS' => '$(inherited) "${PODS_TARGET_SRCROOT}/Generated"',
   }
+  # The app target imports this pod's Swift module, which needs the C module too.
+  s.user_target_xcconfig = {
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) "${PODS_ROOT}/../../modules/voics-crypto/ios/Generated"',
+  }
 end
