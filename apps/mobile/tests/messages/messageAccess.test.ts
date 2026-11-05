@@ -58,7 +58,12 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false });
+  });
+
+  it('offers Copy Text only on messages that have text', () => {
+    expect(messageActions(msg('me'), mine, 'me').copyText).toBe(true);
+    expect(messageActions(msg('me', { content: '  ' }), mine, 'me').copyText).toBe(false);
   });
 });
 

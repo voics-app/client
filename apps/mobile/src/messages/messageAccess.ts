@@ -47,13 +47,16 @@ export interface MessageActions {
   edit: boolean;
   delete: boolean;
   react: boolean;
+  /** Copy Text and Select Text: only for messages that have text. */
+  copyText: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false };
+const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
 export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string): MessageActions {
   if (message.localState) return NONE;
+  const hasText = (message.content ?? '').trim() !== '';
   const ids = new Set(
     idsOf(
       buildMessageMenu(
@@ -65,7 +68,7 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
           canCreateThread: false,
           forwardSupported: false,
           canSpeak: false,
-          hasText: false,
+          hasText,
           pinned: message.pinned,
           selection: '',
           canAddEmoji: false,
@@ -75,5 +78,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText') };
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BottomSheet } from '../sheets/BottomSheet';
 import { theme } from '../theme';
 
 export interface SheetProps {
@@ -11,22 +12,19 @@ export interface SheetProps {
   children: ReactNode;
 }
 
-/** A bottom sheet over a dimmed backdrop; tapping the backdrop or the Android back button closes it. */
+/** The app's bottom sheet (fading backdrop, sliding sheet, drag handle) with an optional title and a scrolling body. */
 export function Sheet({ visible, title, closeLabel, onClose, children }: SheetProps) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={closeLabel} />
-      <View style={styles.sheet}>
-        {title && (
-          <Text accessibilityRole="header" style={styles.title}>
-            {title}
-          </Text>
-        )}
-        <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
-          {children}
-        </ScrollView>
-      </View>
-    </Modal>
+    <BottomSheet visible={visible} onClose={onClose} label={title ?? closeLabel} closeLabel={closeLabel}>
+      {title && (
+        <Text accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
+      )}
+      <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+        {children}
+      </ScrollView>
+    </BottomSheet>
   );
 }
 
@@ -59,8 +57,6 @@ export function SheetConfirm({ body, confirmLabel, onConfirm, onCancel }: { body
 
 const styles = StyleSheet.create({
   body: { color: theme.muted, fontSize: 15, paddingHorizontal: 20, paddingBottom: 8 },
-  backdrop: { flex: 1, backgroundColor: '#00000088' },
-  sheet: { maxHeight: '80%', backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 8, paddingBottom: 28 },
   title: { color: theme.text, fontSize: 17, fontWeight: '700', paddingHorizontal: 20, paddingVertical: 10 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14 },
   pressed: { backgroundColor: theme.hover },
