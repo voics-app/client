@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { expoSecureBackend } from '../adapters/expoSecureBackend';
 import { createSecureSessionVault } from '../adapters/secureSessionVault';
 import { nativeSocketFactory } from '../adapters/socket';
+import { uploadWithProgress } from '../adapters/xhrUpload';
 import { BRAND } from '../brand';
 import { createRuntime, type MobileRuntime } from './createRuntime';
 
@@ -24,6 +25,7 @@ export function getRuntime(): MobileRuntime {
     version: Constants.expoConfig?.version ?? '0.0.0',
     vault: createSecureSessionVault(expoSecureBackend),
     socketFactory: nativeSocketFactory,
+    progressUpload: uploadWithProgress,
   });
   return current;
 }

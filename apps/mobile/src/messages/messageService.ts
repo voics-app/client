@@ -1,29 +1,43 @@
 /** Message use cases for the mobile channel screen: history paging, sending with retry, edit, delete and reactions. */
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { errorMessage } from '@discordy/core/application/errorMessage';
+import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
+import { UploadCancelled, type OutgoingFile } from './outgoingFile';
 
 export const PAGE_SIZE = 50;
 
-export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction'>;
+export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction' | 'createAttachmentSlots' | 'upload'>;
 
 export interface SendInput {
   content: string;
   replyTo?: string;
+  files?: OutgoingFile[];
 }
+
+/** Reads a picked file into a Blob; React Native's fetch serves file URIs. */
+export type ReadBlob = (file: OutgoingFile) => Promise<Blob>;
+
+const readFromDevice: ReadBlob = async (file) => {
+  const blob = await (await fetch(file.uri)).blob();
+  return blob.type ? blob : blob.slice(0, blob.size, file.mimeType);
+};
 
 export class MessageService {
   private readonly paging = new Set<string>();
   private sequence = 0;
+  /** What each unsent or failed message was meant to carry, so Retry sends the same files again. */
+  private readonly unsent = new Map<string, SendInput>();
 
   constructor(
     private readonly api: MessageApi,
     private readonly now: () => number = Date.now,
+    private readonly readBlob: ReadBlob = readFromDevice,
   ) {}
 
   async loadLatest(channelId: string): Promise<void> {
@@ -72,7 +86,7 @@ export class MessageService {
       mention_everyone: false,
       mentions: [],
       mention_roles: [],
-      attachments: [],
+      attachments: (input.files ?? []).map((f, i) => ({ id: `local-${i}`, filename: f.name, content_type: f.mimeType, size: f.size, url: f.uri })),
       embeds: [],
       pinned: false,
       type: reference ? 19 : 0,
@@ -80,11 +94,18 @@ export class MessageService {
       message_reference: reference,
       deliveryMode: 'standard',
     });
+    this.unsent.set(nonce, input);
     try {
-      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}) };
+      const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
+      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
+      this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });
     } catch (error) {
+      if (error instanceof UploadCancelled) {
+        this.discard(channel.id, nonce);
+        return;
+      }
       useMessageStore.getState().failOptimistic(channel.id, nonce, errorMessage(error));
     }
   }
@@ -92,12 +113,46 @@ export class MessageService {
   async retry(channel: Channel, nonce: string): Promise<void> {
     const failed = useMessageStore.getState().timelines[channel.id]?.byId[nonce];
     if (failed?.localState !== 'failed') return;
+    const input = this.unsent.get(nonce);
     this.discard(channel.id, nonce);
-    await this.send(channel, { content: failed.content, ...(failed.message_reference?.message_id ? { replyTo: failed.message_reference.message_id } : {}) });
+    await this.send(channel, input ?? { content: failed.content, ...(failed.message_reference?.message_id ? { replyTo: failed.message_reference.message_id } : {}) });
   }
 
   discard(channelId: string, nonce: string): void {
+    this.unsent.delete(nonce);
     useMessageStore.getState().remove(channelId, nonce);
+  }
+
+  /** Uploads the files through the presigned-upload flow, reporting progress in the upload store so the message can show a bar and a Cancel. */
+  private async uploadFiles(channelId: string, nonce: string, files: OutgoingFile[]): Promise<CreateMessageBody['attachments']> {
+    if (files.length === 0) return undefined;
+    const controller = new AbortController();
+    useUploadStore.getState().begin(nonce, files.reduce((sum, f) => sum + f.size, 0), () => controller.abort());
+    try {
+      const { attachments: slots } = await this.api.createAttachmentSlots(channelId, files.map((f) => ({ filename: f.name, file_size: f.size })));
+      if (slots.length !== files.length) throw new Error('The server returned the wrong number of upload slots.');
+      const loaded = files.map(() => 0);
+      await Promise.all(
+        slots.map(async (slot, i) => {
+          const blob = await this.readBlob(files[i]!);
+          await this.api.upload(
+            slot.upload_url,
+            blob,
+            (done) => {
+              loaded[i] = done;
+              useUploadStore.getState().progress(nonce, loaded.reduce((sum, n) => sum + n, 0));
+            },
+            controller.signal,
+          );
+        }),
+      );
+      return slots.map((slot, i) => ({ id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename }));
+    } catch (error) {
+      if (controller.signal.aborted) throw new UploadCancelled();
+      throw error;
+    } finally {
+      useUploadStore.getState().end(nonce);
+    }
   }
 
   async edit(channelId: string, messageId: string, content: string): Promise<void> {

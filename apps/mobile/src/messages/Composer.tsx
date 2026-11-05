@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import { theme } from '../theme';
+import { AttachMenu } from './AttachMenu';
+import { addFiles } from './attachmentPicker';
+import type { OutgoingFile } from './outgoingFile';
+import { PendingFiles } from './PendingFiles';
 
 export type ComposerMode = { kind: 'compose' } | { kind: 'reply'; messageId: string; authorName: string } | { kind: 'edit'; messageId: string; content: string };
-
-export const ATTACHMENTS_NOTICE = "Attachments aren't in this test version yet.";
 
 export interface ComposerProps {
   mode: ComposerMode;
@@ -14,15 +16,20 @@ export interface ComposerProps {
   blockedReason: string | null;
   /** Hint inside the empty input, e.g. `Message #general`. */
   placeholder: string;
-  onSubmit(text: string, mode: ComposerMode): void;
+  /** Whether the + button offers photos, the camera and files (ATTACH_FILES, standard delivery). */
+  canAttach: boolean;
+  onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
+  const [files, setFiles] = useState<OutgoingFile[]>([]);
+  const [attachOpen, setAttachOpen] = useState(false);
   useEffect(() => {
     setText(mode.kind === 'edit' ? mode.content : '');
+    if (mode.kind === 'edit') setFiles([]);
   }, [mode]);
 
   if (blockedReason) {
@@ -34,11 +41,17 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
   }
 
   const remaining = charsRemaining(text);
-  const canSubmit = text.trim() !== '' && remaining >= 0;
+  const canSubmit = (text.trim() !== '' || files.length > 0) && remaining >= 0;
+  const pick = (picked: OutgoingFile[]) => {
+    const { files: next, problems } = addFiles(files, picked);
+    setFiles(next);
+    if (problems.length > 0) Alert.alert('Some files were not added', problems.join(' '));
+  };
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(text.trim(), mode);
+    onSubmit(text.trim(), mode, files);
     setText('');
+    setFiles([]);
   };
 
   return (
@@ -51,9 +64,10 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
           </Pressable>
         </View>
       )}
+      {files.length > 0 && <PendingFiles files={files} onRemove={(i) => setFiles((current) => current.filter((_, at) => at !== i))} />}
       <View style={[styles.field, multiline ? styles.fieldGrown : styles.fieldSingle]}>
-        {mode.kind === 'compose' && (
-          <Pressable accessibilityRole="button" accessibilityLabel="Add attachment" hitSlop={6} onPress={() => Alert.alert('Attachments', ATTACHMENTS_NOTICE)} style={styles.plus}>
+        {mode.kind === 'compose' && canAttach && (
+          <Pressable accessibilityRole="button" accessibilityLabel="Add attachment" hitSlop={6} onPress={() => setAttachOpen(true)} style={styles.plus}>
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
@@ -64,6 +78,7 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
           </Pressable>
         )}
       </View>
+      <AttachMenu visible={attachOpen} onClose={() => setAttachOpen(false)} onPicked={pick} />
       {showCounter(remaining) && <Text style={[styles.counter, remaining < 0 && styles.over]}>{remaining}</Text>}
     </View>
   );

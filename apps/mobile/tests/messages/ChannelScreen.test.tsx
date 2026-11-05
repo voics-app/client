@@ -26,7 +26,7 @@ jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSessio
 
 const ME = { id: 'u1', username: 'me', global_name: 'Me Myself', discriminator: '0', avatar: null };
 const OTHER = { id: 'u2', username: 'pat', global_name: 'Pat', discriminator: '0', avatar: null };
-const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS;
+const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS | Permission.ATTACH_FILES;
 
 const snow = (n: number) => String(1000000 + n);
 function message(n: number, extra: Partial<Message> = {}): Message {
@@ -302,8 +302,7 @@ describe('channel screen', () => {
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
-  it('hints with the channel name, shows Send only when there is text, and says attachments are not built', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  it('hints with the channel name, shows Send only when there is text, and offers attachments through the plus button', async () => {
     await open();
     await screen.findByText('message 1');
     expect(screen.getByLabelText('Message').props.placeholder).toBe('Message #general');
@@ -311,8 +310,15 @@ describe('channel screen', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
     expect(screen.getByLabelText('Send')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Add attachment'));
-    expect(alert).toHaveBeenCalledWith('Attachments', expect.stringContaining('aren'));
-    alert.mockRestore();
+    expect(await screen.findByText('Photo library')).toBeTruthy();
+    expect(screen.getByText('Take photo or video')).toBeTruthy();
+    expect(screen.getByText('Files')).toBeTruthy();
+  });
+
+  it('hides the plus button without ATTACH_FILES', async () => {
+    await open(BASIC & ~Permission.ATTACH_FILES);
+    await screen.findByText('message 1');
+    expect(screen.queryByLabelText('Add attachment')).toBeNull();
   });
 
   it('leaves room between the newest message and the composer', async () => {

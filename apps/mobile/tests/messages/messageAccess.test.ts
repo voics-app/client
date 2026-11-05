@@ -13,7 +13,7 @@ const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: strin
 
 describe('channelAccess', () => {
   it('allows sending, reacting and reading for a regular member', () => {
-    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: true });
+    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canManageMessages: false, standard: true });
   });
 
   it('blocks sending when SEND_MESSAGES is missing', () => {
@@ -69,7 +69,7 @@ describe('messageActions', () => {
 
 describe('dmAccess', () => {
   it('lets participants send, react and read, but never moderate', () => {
-    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: true });
+    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, standard: true });
   });
 
   it('marks private delivery as not standard', () => {

@@ -9,6 +9,7 @@ import { formatMessageTime } from '@discordy/core/domain/messageTime';
 import { isSystemType } from '@discordy/core/domain/systemMessage';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
+import { AttachmentList } from './attachments/AttachmentList';
 import { useChatContext } from './chatContext';
 import { MarkdownText } from './markdown/MarkdownText';
 import { SystemRow } from './SystemRow';
@@ -77,7 +78,7 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
           </View>
         )}
         <MarkdownText source={message.content} trailing={message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null} />
-        {message.attachments.length > 0 && <Text style={styles.edited}>{message.attachments.length} attachment(s), shown in a later release</Text>}
+        {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
           <View style={styles.reactions}>
             {message.reactions.map((r) => {

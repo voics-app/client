@@ -10,3 +10,23 @@ jest.mock('expo-sqlite/kv-store', () => {
     },
   };
 });
+
+// Native media modules do not exist under Jest; light stand-ins render the same tree shape.
+jest.mock('expo-image', () => {
+  const { View } = jest.requireActual('react-native');
+  return { Image: View };
+});
+jest.mock('expo-video', () => {
+  const { View } = jest.requireActual('react-native');
+  return { VideoView: View, useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn() }) };
+});
+jest.mock('expo-audio', () => ({
+  useAudioPlayer: () => ({ play: jest.fn(), pause: jest.fn() }),
+  useAudioPlayerStatus: () => ({ isLoaded: true, playing: false }),
+}));
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+  launchCameraAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}));
+jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn(async () => ({ canceled: true, assets: null })) }));

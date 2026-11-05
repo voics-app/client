@@ -8,7 +8,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
-import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
+import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
 
 export interface RuntimeConfig {
   apiUrl: string;
@@ -20,6 +20,8 @@ export interface RuntimeConfig {
   vault: SessionVault;
   socketFactory: SocketFactory;
   fetch?: typeof fetch;
+  /** Uploads attachments with progress; without it they use a plain PUT and report no progress. */
+  progressUpload?: ProgressUpload;
 }
 
 export interface MobileRuntime {
@@ -38,6 +40,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   const http: HttpClient = new HttpClient({
     baseUrl: config.apiUrl,
     ...(config.fetch ? { fetch: config.fetch } : {}),
+    ...(config.progressUpload ? { progressUpload: config.progressUpload } : {}),
     tokens: {
       access: () => tokens.access,
       refresh: async () => {

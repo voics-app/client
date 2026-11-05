@@ -18,6 +18,7 @@ import { JumpToLatest, NewDivider, UnreadBar } from './UnreadMarkers';
 import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
+import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
@@ -146,12 +147,12 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
 
   const submit = useCallback(
-    (text: string, current: ComposerMode) => {
+    (text: string, current: ComposerMode, files: OutgoingFile[]) => {
       if (!channel) return;
       setMode(COMPOSE);
       setError(null);
       if (current.kind === 'edit') service.edit(channelId, current.messageId, text).catch(fail);
-      else void service.send(channel, { content: text, ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) });
+      else void service.send(channel, { content: text, ...(files.length > 0 ? { files } : {}), ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) });
     },
     [service, channel, channelId, fail],
   );
@@ -260,7 +261,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-          <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
