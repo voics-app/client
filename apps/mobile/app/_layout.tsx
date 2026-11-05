@@ -43,6 +43,8 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="dms/index" options={{ headerShown: false }} />
             <Stack.Screen name="servers/[guildId]/index" options={{ headerShown: false }} />
+            <Stack.Screen name="dms/new" options={{ title: 'New message', ...pushed }} />
+            <Stack.Screen name="friends" options={{ title: 'Friends', ...pushed }} />
             <Stack.Screen name="dms/[channelId]" options={chat} />
             <Stack.Screen name="servers/[guildId]/[channelId]" options={chat} />
             <Stack.Screen name="servers/[guildId]/members" options={{ title: 'Members', ...pushed }} />

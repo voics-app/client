@@ -47,3 +47,19 @@ export function dmRows({ channels, closed, relationships }: DmRowsInput): DmRow[
     };
   });
 }
+
+export type DmListItem = { kind: 'header'; title: string } | { kind: 'dm'; row: DmRow; pinned: boolean };
+
+/** The DM column's items: pinned conversations first, in pin order under a Pinned heading, then the rest under Direct messages. Pins of closed or absent conversations are ignored. */
+export function dmListItems(rows: readonly DmRow[], pins: readonly string[]): DmListItem[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const pinned = pins.flatMap((id) => byId.get(id) ?? []);
+  const pinnedIds = new Set(pinned.map((row) => row.id));
+  const rest = rows.filter((row) => !pinnedIds.has(row.id));
+  return [
+    ...(pinned.length > 0 ? [{ kind: 'header', title: 'Pinned' } as const] : []),
+    ...pinned.map((row) => ({ kind: 'dm', row, pinned: true }) as const),
+    ...(pinned.length > 0 && rest.length > 0 ? [{ kind: 'header', title: 'Direct messages' } as const] : []),
+    ...rest.map((row) => ({ kind: 'dm', row, pinned: false }) as const),
+  ];
+}
