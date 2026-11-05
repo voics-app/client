@@ -8,6 +8,7 @@
 import type { Channel, User } from '../../contracts/rest';
 import { GatewayOp, type P2PSignal, type P2PSignalFailed, type P2PSignalKind } from '../../contracts/gateway';
 import type { CryptoBridge } from '../ports/crypto';
+import { sha256Hex } from '../../domain/sha256';
 import { extractDtlsFingerprint, fingerprintSigningPayload, safetyNumberGroups } from '../../domain/p2pIdentity';
 import type { GatewayPort } from '../ports/gateway';
 import { useGuildStore } from '../stores/guildStore';
@@ -217,9 +218,7 @@ export class P2PService {
     const peerKey = await this.deps.devices.identityKey(peerUserId, peerDeviceId);
     if (!peerKey) throw new PrivateDeliveryError('unverified_peer', 'The peer has no published identity key.');
     const keys = [this.deps.getSelf().identityKeyB64, peerKey].sort();
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(keys.join('|')));
-    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    return safetyNumberGroups(hex);
+    return safetyNumberGroups(await sha256Hex(keys.join('|')));
   }
 
   closeChannel(channelId: string): void {

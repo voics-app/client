@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { getRuntime } from '../../../src/runtime';
 import { ForumScreen } from '../../../src/forum/ForumScreen';
 import { ChannelScreen } from '../../../src/messages/ChannelScreen';
 import { channelScreenKind } from '../../../src/servers/channelScreenKind';
@@ -11,7 +12,7 @@ export default function ChannelRoute() {
   const { guildId, channelId, chat } = useLocalSearchParams<{ guildId: string; channelId: string; chat?: string }>();
   const channel = useGuildStore((s) => s.channels[channelId]);
   useSelectView({ kind: 'guild', guildId, channelId });
-  const kind = channelScreenKind(channel);
+  const kind = channelScreenKind(channel, Boolean(getRuntime().privacy));
   // A voice channel's own text chat opens through the voice screen's Open text chat button.
   if (kind.screen === 'voice' && chat !== '1') return <VoiceChannelScreen channelId={channelId} />;
   if (kind.screen === 'forum') return <ForumScreen guildId={guildId} channelId={channelId} />;

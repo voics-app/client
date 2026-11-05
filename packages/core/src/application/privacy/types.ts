@@ -1,6 +1,7 @@
 /** Shared types and wire helpers for the private delivery modes (Ephemeral E2EE and P2P). */
 import type { Channel, DeliveryMode, User } from '../../contracts/rest';
 import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '../../domain/privateAttachment';
+import { decodeUtf8, encodeUtf8 } from '../../domain/utf8';
 import { snowflakeFromTimestamp } from '../../domain/snowflake';
 import type { ChatMessage } from '../stores/messageStore';
 
@@ -54,16 +55,14 @@ export class PrivateDeliveryError extends Error {
 }
 
 export function utf8ToB64(text: string): string {
-  const bytes = new TextEncoder().encode(text);
   let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
+  for (const b of encodeUtf8(text)) binary += String.fromCharCode(b);
   return btoa(binary);
 }
 
 export function b64ToUtf8(b64: string): string {
   const binary = atob(b64);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  return decodeUtf8(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
 }
 
 export function encodePayload(payload: PrivatePayload): string {

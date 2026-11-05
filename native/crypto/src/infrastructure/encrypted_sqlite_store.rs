@@ -1,7 +1,7 @@
 //! SQLite-backed `SecureStore`. Every stored payload is sealed with ChaCha20-Poly1305
 //! (see `payload_cipher`); index columns hold only opaque ids and timestamps. The key is
-//! supplied by the Electron main process, which keeps it wrapped by the OS keychain
-//! (safeStorage: DPAPI on Windows).
+//! supplied by the host, which keeps it wrapped by the OS keychain (Electron safeStorage on desktop,
+//! the iOS Keychain on mobile).
 
 use std::collections::HashMap;
 use std::path::Path;
