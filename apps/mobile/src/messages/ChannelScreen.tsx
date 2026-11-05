@@ -26,6 +26,7 @@ import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
+import { ChannelMenu } from './ChannelMenu';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
@@ -60,6 +61,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [reactors, setReactors] = useState<ReactionTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -217,7 +219,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         <Stack.Screen
           options={{
             headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
-            headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} />,
+            headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} onMenu={() => setMenuOpen(true)} />,
           }}
         />
         {bar && <UnreadBar count={bar.count} more={bar.more} onMarkRead={() => useReadNavStore.getState().dismissBar(channelId)} />}
@@ -328,6 +330,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             close();
           }}
         />
+        <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onClose={() => setMenuOpen(false)} onMarkRead={() => {
+            useReadNavStore.getState().dismissBar(channelId);
+            if (latestId) service.markRead(channelId, latestId);
+          }} />
         <EmojiPicker
           visible={reactingTo !== null}
           guildId={guildId}

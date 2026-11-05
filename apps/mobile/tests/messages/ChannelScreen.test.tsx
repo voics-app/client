@@ -19,6 +19,7 @@ const mockApi = {
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+  updateGuildNotificationSettings: jest.fn(async (_g: string | null, patch: object) => ({ guild_id: 'g1', message_notifications: null, suppress_everyone: false, suppress_roles: false, muted: false, mute_config: null, hide_muted_channels: false, channel_overrides: [], ...patch })),
   pin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   unpin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   reactionUsers: jest.fn(async (_c: string, _id: string, _e: string): Promise<{ id: string; username: string }[]> => []),
@@ -183,6 +184,51 @@ describe('channel screen', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'hello');
     await fireEvent.press(screen.getByLabelText('Send'));
     await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledWith('success'));
+  });
+
+  it('mutes the channel for an hour from the header menu', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await fireEvent.press(await screen.findByLabelText('Mute channel'));
+    await fireEvent.press(await screen.findByLabelText('For 1 hour'));
+    await waitFor(() => expect(mockApi.updateGuildNotificationSettings).toHaveBeenCalledWith('g1', { channel_overrides: [expect.objectContaining({ channel_id: 'general', muted: true })] }));
+  });
+
+  it('sets the notification level of the channel from the header menu', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await fireEvent.press(await screen.findByLabelText('Notification settings'));
+    await fireEvent.press(await screen.findByLabelText('Only @mentions'));
+    await waitFor(() => expect(mockApi.updateGuildNotificationSettings).toHaveBeenCalledWith('g1', { channel_overrides: [{ channel_id: 'general', message_notifications: 1 }] }));
+  });
+
+  it('marks the channel as read from the header menu, dismissing the unread bar', async () => {
+    useReadStateStore.getState().setPosition('general', snow(0));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.getByText('1 new message')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await waitFor(() => expect(screen.getAllByLabelText('Mark as read', { includeHiddenElements: true })).toHaveLength(2));
+    // The menu entry comes after the bar's own button, which has the same label.
+    await fireEvent.press(screen.getAllByLabelText('Mark as read', { includeHiddenElements: true })[1]!);
+    await waitFor(() => expect(screen.queryByText('1 new message')).toBeNull());
+  });
+
+  it('offers Invite people in the header menu only with Create Invite', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await screen.findByLabelText('Mark as read', { includeHiddenElements: true });
+    expect(screen.queryByLabelText('Invite people')).toBeNull();
+  });
+
+  it('shows Invite people in the header menu with Create Invite', async () => {
+    await open(BASIC | Permission.CREATE_INSTANT_INVITE);
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    expect(await screen.findByLabelText('Invite people', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('copies a link to the message', async () => {
