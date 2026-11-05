@@ -31,9 +31,9 @@ export function getRuntime(): MobileRuntime {
     progressUpload: uploadWithProgress,
     cdnUrl: BRAND.cdnUrl,
     createPrivacy: loadNativePrivacy,
-    createVoice: ({ gateway, iceServers }) => {
+    createVoice: ({ gateway, iceServers, crypto, identityKeysOf }) => {
       const native = loadNativeVoice();
-      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers }) : null;
+      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers, crypto, identityKeysOf }) : null;
     },
   });
   return current;

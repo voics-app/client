@@ -9,7 +9,7 @@ import { WatchTogetherService } from '@renderer/application/watch/watchTogetherS
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { createBrowserMicPipeline, createBrowserMixer } from '../audio/browserAudio';
 import { browserSocketFactory } from '../net/socket';
-import { DaveSession } from './daveSession';
+import { DaveSession } from '@discordy/core/application/voice/daveSession';
 import { FrameCryptor } from './frameCryptor';
 
 export interface BrowserVoiceOptions {

@@ -52,19 +52,32 @@ export interface MixerPort {
   dispose(): void;
 }
 
-/** Protects media frames end to end (DAVE). A platform without a transform API reports `supported: false`. */
+/** Key material of one sender at one key index (see `frameKeyLabel`): 32 bytes from the MLS exporter of the epoch
+ * that was just installed. Only valid while that epoch is the latest one. */
+export type KeyMaterialSource = (userId: string, keyIndex: number) => Promise<Uint8Array>;
+
+/** Protects media frames end to end (DAVE, frame format of domain/frameFormat). A platform without a transform API reports `supported: false`.
+ * Frames that are not valid protected frames are dropped, never forwarded. */
 export interface FrameCryptorPort {
   /** False when neither transform API exists; callers must then refuse E2EE rather than send clear media. */
   readonly supported: boolean;
-  attachSender(sender: RtpSenderLike, kind: MediaKind, codec: string, userId: string): void;
-  attachReceiver(receiver: RtpReceiverLike, kind: MediaKind, codec: string, userId: string): void;
+  /** True when the cryptor passes frames in clear until it is created and enabled, and can only be created on a
+   * sender that already holds a track (react-native-webrtc). The session then never lets a track reach a sender, or
+   * a remote track play, before the cryptor is attached and confirmed. */
+  readonly gated: boolean;
+  /** Resolves only when the sender is protected: frames can no longer leave it in clear. Rejects otherwise. */
+  attachSender(sender: RtpSenderLike, kind: MediaKind, codec: string, userId: string): Promise<void>;
+  /** Resolves only when the receiver drops every frame that is not authentic. Rejects otherwise. */
+  attachReceiver(receiver: RtpReceiverLike, kind: MediaKind, codec: string, userId: string): Promise<void>;
   /** Pipes clear media straight through on a sender or receiver of a call that is not E2EE. Only the
    * encoded-streams fallback needs it: with `encodedInsertableStreams` set, Chromium sends and plays
    * nothing until every endpoint's streams are consumed. A no-op with RTCRtpScriptTransform. */
   bypass(endpoint: RtpSenderLike | RtpReceiverLike): void;
-  setEpoch(generation: number, secret: Uint8Array): Promise<void>;
-  activate(generation: number): void;
-  setPassthrough(value: boolean): void;
+  /** Installs the keys of an epoch (for every known sender) without sending with them. */
+  setEpoch(generation: number, material: KeyMaterialSource): Promise<void>;
+  /** Starts sending with the keys of this epoch. */
+  activate(generation: number): Promise<void>;
+  /** Stops sending and forgets keys. */
   clear(): void;
   dispose(): void;
 }

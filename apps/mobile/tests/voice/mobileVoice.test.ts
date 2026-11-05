@@ -3,6 +3,8 @@ import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import type { MediaStreamLike, MediaTrackLike } from '@discordy/core/application/ports/media';
 import type { SessionStatus } from '@discordy/core/application/ports/voice';
+import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
+import { DaveSession } from '@discordy/core/application/voice/daveSession';
 import { createMobileVoice } from '../../src/voice/mobileVoice';
 import type { NativeAudioStream, NativeAudioTrack, NativeVoice } from '../../src/voice/nativeVoice';
 
@@ -16,7 +18,19 @@ class MockSession {
   private level: ((l: number) => void)[] = [];
   private audio: ((userId: string, stream: MediaStreamLike | null) => void)[] = [];
   readonly region = 'eu';
-  constructor(readonly options: { endpoint: string; serverId: string; userId: string; sessionId: string; token: string; createPeerConnection(): unknown }) {
+  constructor(
+    readonly options: {
+      endpoint: string;
+      serverId: string;
+      userId: string;
+      sessionId: string;
+      token: string;
+      createPeerConnection(): unknown;
+      cryptor?: unknown;
+      createDave?: (send: () => void, hooks: object) => unknown;
+      preferredVideoCodec?: string;
+    },
+  ) {
     mockSessions.push(this);
   }
   connect() {}
@@ -76,10 +90,14 @@ function audioTrack(): NativeAudioTrack & { volume: number | null } {
   return t;
 }
 
-function setup() {
+const fakeCrypto = {} as CryptoBridge;
+const identityKeysOf = async () => ['key'];
+
+function setup(withCrypto = true) {
   const local = audioTrack();
   const route = { start: jest.fn(), stop: jest.fn(), setSpeaker: jest.fn() };
   const peers: unknown[] = [];
+  const cryptor = { dispose: jest.fn() };
   const native: NativeVoice = {
     createPeerConnection: (iceServers) => {
       const pc = { iceServers };
@@ -88,11 +106,19 @@ function setup() {
     },
     createStream: (track) => ({ getTracks: () => [track], getVideoTracks: () => [] }),
     openMicrophone: async () => local,
+    createCryptor: () => cryptor as never,
     route,
   };
   const gateway = { send: jest.fn() };
-  const voice = createMobileVoice({ gateway, native, socketFactory: jest.fn(), iceServers: () => [{ urls: 'stun:s.test:3478' }] });
-  return { voice, gateway, local, route, peers };
+  const voice = createMobileVoice({
+    gateway,
+    native,
+    socketFactory: jest.fn(),
+    iceServers: () => [{ urls: 'stun:s.test:3478' }],
+    crypto: withCrypto ? fakeCrypto : null,
+    identityKeysOf,
+  });
+  return { voice, gateway, local, route, peers, cryptor };
 }
 
 const serverUpdate = { token: 'tok', guild_id: 'g1', channel_id: 'v1', endpoint: 'rtc.test', region: 'eu' };
@@ -188,6 +214,37 @@ describe('mobile voice', () => {
     voice.dispose();
   });
 
+  it('gives every session a frame cryptor and a DAVE session on the MLS engine, so encrypted calls work', async () => {
+    const { voice, cryptor } = setup();
+    await voice.controller.join({ guildId: 'g1', channelId: 'v1' });
+    voice.controller.onVoiceServerUpdate(serverUpdate);
+    const session = mockSessions[0]!;
+    expect(session.options.cryptor).toBe(cryptor);
+    expect(session.options.preferredVideoCodec).toBe('VP8');
+    expect(session.options.createDave?.(jest.fn(), { onActive: jest.fn(), onError: jest.fn(), hasPeers: () => false })).toBeInstanceOf(DaveSession);
+    voice.dispose();
+  });
+
+  it('releases the cryptor when the session closes', async () => {
+    const { voice, cryptor } = setup();
+    await voice.controller.join({ guildId: 'g1', channelId: 'v1' });
+    voice.controller.onVoiceServerUpdate(serverUpdate);
+    mockSessions[0]!.emitStatus('connected');
+    expect(cryptor.dispose).not.toHaveBeenCalled();
+    mockSessions[0]!.emitStatus('closed');
+    expect(cryptor.dispose).toHaveBeenCalledTimes(1);
+    voice.dispose();
+  });
+
+  it('has no cryptor and no DAVE session without the crypto engine, so an encrypted call is refused rather than sent in clear', async () => {
+    const { voice } = setup(false);
+    await voice.controller.join({ guildId: 'g1', channelId: 'v1' });
+    voice.controller.onVoiceServerUpdate(serverUpdate);
+    expect(mockSessions[0]!.options.cryptor).toBeUndefined();
+    expect(mockSessions[0]!.options.createDave).toBeUndefined();
+    voice.dispose();
+  });
+
   it('fails with the reason and closes the audio session when the microphone is refused', async () => {
     const { voice, route } = setup();
     // A second stack whose microphone is refused.
@@ -200,10 +257,13 @@ describe('mobile voice', () => {
         openMicrophone: async () => {
           throw new Error('Microphone access is off.');
         },
+        createCryptor: () => null,
         route,
       },
       socketFactory: jest.fn(),
       iceServers: () => [],
+      crypto: null,
+      identityKeysOf,
     });
     await refused.controller.join({ guildId: 'g1', channelId: 'v1' });
     expect(useVoiceStore.getState().call).toMatchObject({ status: 'failed', error: 'Microphone access is off.' });

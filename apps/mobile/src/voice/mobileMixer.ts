@@ -3,7 +3,7 @@ import type { MixerPort } from '@discordy/core/application/ports/voice';
 import type { NativeAudioStream } from './nativeVoice';
 
 /**
- * Remote voices. react-native-webrtc plays a received audio track on its own, so the mixer only shapes it:
+ * Remote voices. @livekit/react-native-webrtc plays a received audio track on its own, so the mixer only shapes it:
  * deafening switches every remote track off, and a person's volume is the gain of their track.
  */
 export class MobileMixer implements MixerPort {

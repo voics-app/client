@@ -203,7 +203,14 @@ describe('settings', () => {
       expect((await screen.findByLabelText('Ephemeral E2EE')).props.accessibilityState.disabled).toBe(true);
       expect(screen.getByLabelText('Standard').props.accessibilityState.selected).toBe(true);
       expect(screen.getByText(/Encrypted modes are not available in the mobile app yet/)).toBeTruthy();
-      expect(screen.getByLabelText('Encrypt all my calls end-to-end').props.disabled).toBe(true);
+    });
+
+    it('turns on end-to-end encryption for all my calls and saves it to the account', async () => {
+      await open('/settings/privacy');
+      const toggle = await screen.findByLabelText('Encrypt all my calls end-to-end');
+      expect(toggle.props.disabled).toBe(false);
+      await fireEvent(toggle, 'valueChange', true);
+      await waitFor(() => expect(mockApi.updateSettings).toHaveBeenCalledWith({ e2ee_calls_default: true }));
     });
 
     it('lists blocked people and unblocks after a question', async () => {

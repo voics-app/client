@@ -1,10 +1,11 @@
 /**
  * Main-thread side of media E2EE. Owns the frame crypto worker, attaches it to
  * RTP senders/receivers (RTCRtpScriptTransform, or Chromium encoded streams as
- * a fallback) and feeds it epoch keys.
+ * a fallback) and feeds it the per-sender keys of each epoch.
  */
-import type { FrameCryptorPort } from '@discordy/core/application/ports/voice';
-import { importEpochBase, type MediaKind } from '@renderer/workers/frameCrypto';
+import type { FrameCryptorPort, KeyMaterialSource } from '@discordy/core/application/ports/voice';
+import { EpochKeyBook } from '@discordy/core/application/voice/epochKeyBook';
+import { importFrameKey, type MediaKind } from '@renderer/workers/frameCrypto';
 import type { TransformOptions, WorkerMessage } from '@renderer/workers/frameCryptoWorker';
 
 export interface WorkerLike {
@@ -27,6 +28,13 @@ export const defaultWorkerFactory = (): WorkerLike =>
 export class FrameCryptor implements FrameCryptorPort {
   private worker: WorkerLike | null = null;
   private readonly scriptTransform: ScriptTransformCtor | undefined;
+  private readonly keys = new EpochKeyBook(async (userId, keyIndex, material) => {
+    const key = await importFrameKey(material);
+    this.ensureWorker().postMessage({ type: 'key', userId, keyIndex, key });
+  });
+
+  /** The worker drops frames itself, so a script transform or encoded stream is protected from its first frame. */
+  readonly gated = false;
 
   constructor(
     private readonly workerFactory: () => WorkerLike = defaultWorkerFactory,
@@ -57,12 +65,14 @@ export class FrameCryptor implements FrameCryptorPort {
     worker.postMessage({ type: 'streams', options, readable, writable }, [readable, writable]);
   }
 
-  attachSender(sender: RTCRtpSender, kind: MediaKind, codec: string, userId: string): void {
+  async attachSender(sender: RTCRtpSender, kind: MediaKind, codec: string, userId: string): Promise<void> {
     this.attach(sender, { operation: 'encrypt', kind, codec, userId });
+    await this.keys.addUser(userId);
   }
 
-  attachReceiver(receiver: RTCRtpReceiver, kind: MediaKind, codec: string, userId: string): void {
+  async attachReceiver(receiver: RTCRtpReceiver, kind: MediaKind, codec: string, userId: string): Promise<void> {
     this.attach(receiver, { operation: 'decrypt', kind, codec, userId });
+    await this.keys.addUser(userId);
   }
 
   bypass(endpoint: RTCRtpSender | RTCRtpReceiver): void {
@@ -73,20 +83,16 @@ export class FrameCryptor implements FrameCryptorPort {
     void readable.pipeTo(writable).catch(() => undefined);
   }
 
-  async setEpoch(generation: number, secret: Uint8Array): Promise<void> {
-    const base = await importEpochBase(secret);
-    this.ensureWorker().postMessage({ type: 'epoch', generation, base });
+  setEpoch(generation: number, material: KeyMaterialSource): Promise<void> {
+    return this.keys.setEpoch(generation, material);
   }
 
-  activate(generation: number): void {
+  async activate(generation: number): Promise<void> {
     this.ensureWorker().postMessage({ type: 'activate', generation });
   }
 
-  setPassthrough(value: boolean): void {
-    this.ensureWorker().postMessage({ type: 'passthrough', value });
-  }
-
   clear(): void {
+    this.keys.clear();
     this.worker?.postMessage({ type: 'clear' });
   }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VoiceOp } from '@discordy/core/contracts/voice';
-import { DaveSession, FRAME_KEY_LABEL } from '@renderer/infrastructure/voice/daveSession';
+import { DaveSession } from '@discordy/core/application/voice/daveSession';
+import type { KeyMaterialSource } from '@discordy/core/application/ports/voice';
+import { frameKeyLabel } from '@discordy/core/domain/frameFormat';
 
 const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
@@ -20,11 +22,11 @@ function setup(supported = true, hasPeers = true) {
   };
   const cryptor = {
     supported,
-    attachSender: vi.fn(),
-    attachReceiver: vi.fn(),
-    setEpoch: vi.fn(async (_generation: number, _secret: Uint8Array) => undefined),
-    activate: vi.fn(),
-    setPassthrough: vi.fn(),
+    gated: false,
+    attachSender: vi.fn(async () => undefined),
+    attachReceiver: vi.fn(async () => undefined),
+    setEpoch: vi.fn(async (_generation: number, _material: KeyMaterialSource) => undefined),
+    activate: vi.fn(async () => undefined),
     bypass: vi.fn(),
     clear: vi.fn(),
     dispose: vi.fn(),
@@ -64,9 +66,10 @@ describe('DaveSession', () => {
     const { dave, crypto, cryptor, active } = setup();
     await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
     expect(crypto.createGroup).toHaveBeenCalledWith('voice:g');
-    expect(crypto.exportSecret).toHaveBeenCalledWith('voice:g', FRAME_KEY_LABEL, 32);
-    expect(Array.from(cryptor.setEpoch.mock.calls[0]![1] as Uint8Array)).toEqual([1, 2, 3, 4]);
     expect(cryptor.setEpoch.mock.calls[0]![0]).toBe(1);
+    const material = await cryptor.setEpoch.mock.calls[0]![1]('42', 1);
+    expect(crypto.exportSecret).toHaveBeenCalledWith('voice:g', frameKeyLabel('42', 1), 32);
+    expect(Array.from(material)).toEqual([1, 2, 3, 4]);
     expect(cryptor.activate).toHaveBeenCalledWith(1);
     expect(active).toEqual([true]);
   });
@@ -94,7 +97,7 @@ describe('DaveSession', () => {
     const { dave, cryptor, sent, active, crypto } = setup();
     await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 9, welcome: 'w' });
     expect(crypto.joinFromWelcome).toHaveBeenCalledWith('w');
-    expect(cryptor.setEpoch).toHaveBeenCalledWith(5, expect.any(Uint8Array));
+    expect(cryptor.setEpoch).toHaveBeenCalledWith(5, expect.any(Function));
     expect(cryptor.activate).toHaveBeenCalledWith(5);
     expect(sent).toEqual([]);
     expect(active).toEqual([true]);

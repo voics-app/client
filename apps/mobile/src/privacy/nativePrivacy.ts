@@ -1,6 +1,6 @@
 /**
  * The one place that loads the native pieces of Ephemeral and P2P: the VoicsCrypto Expo module and
- * react-native-webrtc. Both are required lazily and only in a native build: Expo Go has neither, and
+ * @livekit/react-native-webrtc. Both are required lazily and only in a native build: Expo Go has neither, and
  * importing them there would crash the app at startup. In Expo Go this returns null and the app keeps
  * showing that these modes are not in the test version.
  */
@@ -31,7 +31,7 @@ export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPee
 function loadWebRtc(): WebRtcPeerModule | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('react-native-webrtc') as WebRtcPeerModule;
+    return require('@livekit/react-native-webrtc') as WebRtcPeerModule;
   } catch {
     return null;
   }
