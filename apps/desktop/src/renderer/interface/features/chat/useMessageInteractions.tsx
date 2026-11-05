@@ -1,4 +1,5 @@
 import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
+import { threadNameFor } from '@discordy/core/domain/threads';
 import { useCallback, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -156,7 +157,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
         return void attempt(() => (id === 'unpin' ? getRuntime().api.unpin(message.channel_id, message.id) : getRuntime().api.pin(message.channel_id, message.id)), 'Could not update pin');
       case 'thread':
         return void attempt(async () => {
-          const t = await getRuntime().api.createThread(message.channel_id, { name: message.content.slice(0, 40) || 'Thread', message_id: message.id });
+          const t = await getRuntime().api.createThread(message.channel_id, { name: threadNameFor(message.content), message_id: message.id });
           useGuildStore.getState().upsertChannel(t);
           setSidePanel({ kind: 'thread', threadId: t.id });
         }, 'Could not create thread');

@@ -37,7 +37,7 @@ export interface MessageRowProps {
 
 function MessageRowView({ message, replied, showHeader, highlighted, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
-  const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted, canReply, onReplyTo } = useChatContext();
+  const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted, canReply, onReplyTo, onOpenThread } = useChatContext();
   const roleColor = useRoleColor(guildId, message.author.id);
   if (isSystemType(message.type)) {
     const target = message.mentions?.[0];
@@ -109,6 +109,13 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
             )}
           </View>
         )}
+        {message.thread && (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Open thread ${message.thread.name ?? 'thread'}`} onPress={() => onOpenThread(message.thread!.id)} style={styles.thread}>
+            <Ionicons name="chatbubbles-outline" size={16} color={theme.accent} />
+            <Text numberOfLines={1} style={styles.threadName}>{message.thread.name ?? 'Thread'}</Text>
+            <Text style={styles.threadCount}>{`${message.thread.message_count ?? 0} messages`}</Text>
+          </Pressable>
+        )}
         {message.localState === 'failed' && (
           <View style={styles.failed}>
             <Text style={styles.failedText}>Not sent: {message.error ?? 'Something went wrong.'}</Text>
@@ -134,6 +141,9 @@ const styles = StyleSheet.create({
   gutter: { width: AVATAR_SIZE, paddingTop: 2 },
   body: { flex: 1 },
   pending: { opacity: 0.6 },
+  thread: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44, maxWidth: '100%' },
+  threadName: { color: theme.accent, fontSize: 14, fontWeight: '600', flexShrink: 1 },
+  threadCount: { color: theme.subtle, fontSize: 12 },
   highlight: { backgroundColor: theme.accentSoft },
   replyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24, marginBottom: 2 },
   replyName: { color: theme.muted, fontSize: 13, fontWeight: '600', maxWidth: '40%' },

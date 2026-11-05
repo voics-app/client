@@ -27,6 +27,8 @@ import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
 import { ChannelDetails } from './ChannelDetails';
+import { NewThreadSheet } from '../threads/NewThreadSheet';
+import { isThread, threadBlockedReason } from '@discordy/core/domain/threads';
 import { ChannelMenu } from './ChannelMenu';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
@@ -55,6 +57,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const keyboardVisible = useKeyboardVisible();
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
+  const parent = useGuildStore((s) => (channel?.parent_id ? s.channels[channel.parent_id] : undefined));
   const members = useGuildStore((s) => (guildId ? s.members[guildId] : undefined));
   const relationships = useRelationshipStore((s) => s.byUser);
   const userId = useSessionStore((s) => s.user?.id);
@@ -65,6 +68,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [threadFrom, setThreadFrom] = useState<ChatMessage | null>(null);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [reactors, setReactors] = useState<ReactionTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,10 +78,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const access = useMemo(() => {
     if (!channel || !userId) return null;
     if (!guildId) return channel.guild_id ? null : dmAccess(channel);
-    return guild ? channelAccess({ guild, channel, members, userId }) : null;
-  }, [guildId, guild, channel, members, userId]);
+    return guild ? channelAccess({ guild, channel, members, userId, parent }) : null;
+  }, [guildId, guild, channel, members, userId, parent]);
+  const thread = isThread(channel);
   const peer = !guildId && channel && headerButtons(channel).profile ? channel.recipients![0]! : null;
-  const title = !channel ? '' : guildId ? `#${channel.name}` : dmTitle(channel, relationships);
+  const title = !channel ? '' : guildId ? (thread ? (channel.name ?? 'Thread') : `#${channel.name}`) : dmTitle(channel, relationships);
   const readable = access !== null && access.standard && access.canReadHistory;
   const loaded = timeline?.loaded ?? false;
   const detached = timeline?.hasMoreAfter ?? false;
@@ -207,7 +212,13 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       },
       onJumpToMessage: jumpTo,
       onOpenPins: () => router.push(`/pins/${channelId}`),
-      onOpenThread: () => undefined,
+      onOpenThread: (id) => {
+        if (!guildId) return;
+        // A thread known only from the message that carries it joins the channel list so its chat can open.
+        const known = Object.values(timeline?.byId ?? {}).find((m) => m.thread?.id === id)?.thread;
+        if (known && !useGuildStore.getState().channels[id]) useGuildStore.getState().upsertChannel({ ...known, guild_id: known.guild_id ?? guildId });
+        router.push(`/servers/${guildId}/${id}`);
+      },
       canReact: access?.canReact ?? false,
       canReply: access?.canSend ?? false,
       onReplyTo: (m) => {
@@ -220,10 +231,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         if (channel) void service.send(channel, { content: '\u{1F44B}', replyTo: id });
       },
     }),
-    [guildId, channelId, access, findUser, jumpTo, channel, service],
+    [guildId, channelId, access, findUser, jumpTo, channel, service, timeline],
   );
 
-  const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : !access.canSend ? NO_SEND_NOTICE : null;
+  const lockedReason = channel && thread ? threadBlockedReason(channel, access?.canManageThreads ?? false) : null;
+  const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : lockedReason ?? (!access.canSend ? NO_SEND_NOTICE : null);
   const actions = selected && access && userId ? messageActions(selected, access, userId) : null;
   const close = () => setSelected(null);
 
@@ -309,6 +321,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
+        <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
           actions={actions}
@@ -319,6 +332,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onReply={() => {
             if (selected) setMode({ kind: 'reply', messageId: selected.id, authorName: nameOf(selected.author) });
+            close();
+          }}
+          onCreateThread={() => {
+            setThreadFrom(selected);
             close();
           }}
           onEdit={() => {
@@ -362,6 +379,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           onClose={() => setDetailsOpen(false)}
           onOpenPins={() => router.push(`/pins/${channelId}`)}
           onOpenMembers={() => guildId && router.push(`/servers/${guildId}/members`)}
+          onOpenThreads={guildId && !thread ? () => router.push(`/threads/${channelId}`) : undefined}
           onOpenProfile={setProfileUser}
         />
         <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onClose={() => setMenuOpen(false)} onMarkRead={() => {

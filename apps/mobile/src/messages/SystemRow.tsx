@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { formatMessageTime } from '@discordy/core/domain/messageTime';
+import { threadIdOf } from '@discordy/core/domain/threads';
 import { systemSpec, type SystemIcon, type SystemPart, type SystemTone } from '@discordy/core/domain/systemMessage';
 import { theme } from '../theme';
 import { useChatContext } from './chatContext';
@@ -22,7 +23,8 @@ const TONES: Record<SystemTone, string> = { positive: theme.success, negative: t
 
 /** A server-generated message (join, pin, call, group changes) as one line with its icon, from `domain/systemMessage`. */
 export function SystemRow({ message, authorName, targetName }: { message: ChatMessage; authorName: string; targetName: string | null }) {
-  const { onJumpToMessage, onWave, onOpenPins } = useChatContext();
+  const { onJumpToMessage, onWave, onOpenPins, onOpenThread } = useChatContext();
+  const threadId = threadIdOf(message);
   const spec = systemSpec({
     type: message.type,
     messageId: message.id,
@@ -53,6 +55,13 @@ export function SystemRow({ message, authorName, targetName }: { message: ChatMe
     if (p.t === 'link' && p.action === 'pins') {
       return (
         <Text key={i} accessibilityRole="link" style={styles.link} onPress={onOpenPins}>
+          {p.text}
+        </Text>
+      );
+    }
+    if (p.t === 'link' && p.action === 'thread' && threadId) {
+      return (
+        <Text key={i} accessibilityRole="link" style={styles.link} onPress={() => onOpenThread(threadId)}>
           {p.text}
         </Text>
       );
