@@ -15,7 +15,7 @@ export function Sidebar({ fixedColumn = false, bottomInset = 0 }: { fixedColumn?
   return (
     <>
       <ServerRail />
-      <View style={[styles.column, fixedColumn && { flex: 0, width: WIDE_COLUMN_WIDTH }, { paddingBottom: bottomInset }]}>
+      <View style={[styles.column, fixedColumn && { flexGrow: 0, flexShrink: 0, flexBasis: WIDE_COLUMN_WIDTH, width: WIDE_COLUMN_WIDTH }, { paddingBottom: bottomInset }]}>
         {view.kind === 'guild' ? <ChannelColumn guildId={view.guildId} /> : <DmColumn />}
         <VoiceBar />
         <UserPanel />
