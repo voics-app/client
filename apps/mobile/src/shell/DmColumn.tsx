@@ -18,6 +18,8 @@ import { dmListItems, dmRows, type DmRow } from '../dms/dmModel';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
+import { EmptyState } from '../ui/EmptyState';
+import { RowSkeletons } from '../ui/Skeleton';
 import { Badge } from './Badge';
 import { ColumnHeader } from './ColumnHeader';
 
@@ -96,7 +98,7 @@ export function DmColumn() {
             <ActionRow icon="create-outline" label="New message" onPress={() => router.push('/dms/new')} />
           </View>
         }
-        ListEmptyComponent={<Text style={styles.empty}>{status === 'ready' ? 'No conversations yet.' : 'Loading your conversations...'}</Text>}
+        ListEmptyComponent={status === 'ready' ? <EmptyState icon="chatbubble-ellipses-outline" title="No conversations yet" body="Start one with a friend or a group." /> : <RowSkeletons />}
         renderItem={({ item }) =>
           item.kind === 'header' ? (
             <Text accessibilityRole="header" style={styles.heading}>

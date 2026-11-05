@@ -7,6 +7,8 @@ export const BACKDROP_OPACITY = 0.45;
 const DISMISS_DISTANCE = 90;
 const DISMISS_VELOCITY = 0.8;
 
+/** Runs on the UI thread inside the sheet's pan gesture, hence the directive. */
 export function shouldDismiss(dy: number, vy: number): boolean {
+  'worklet';
   return dy > DISMISS_DISTANCE || vy > DISMISS_VELOCITY;
 }

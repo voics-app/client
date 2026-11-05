@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../theme';
+import { StyleSheet, View } from 'react-native';
+import { HIT, space, theme } from '../theme';
+import { PressableScale } from './PressableScale';
+import { Txt } from './Txt';
 
 export interface ListRowProps {
   title: string;
@@ -14,19 +16,19 @@ export interface ListRowProps {
   accessibilityLabel?: string;
 }
 
-/** A settings-style row: optional leading element, title and subtitle, optional trailing element, chevron when it opens something. */
+/** A settings-style row, at least 52 pt tall: optional leading element, title and subtitle, optional trailing element, chevron when it opens something. Pressing tints it. */
 export function ListRow({ title, subtitle, left, right, onPress, danger, accessibilityLabel }: ListRowProps) {
   const body = (
     <>
       {left}
       <View style={styles.copy}>
-        <Text numberOfLines={1} style={[styles.title, danger && styles.danger]}>
+        <Txt numberOfLines={1} variant="body" tone={danger ? 'danger' : 'text'}>
           {title}
-        </Text>
+        </Txt>
         {subtitle ? (
-          <Text numberOfLines={2} style={styles.subtitle}>
+          <Txt numberOfLines={2} variant="small" tone="subtle" style={styles.subtitle}>
             {subtitle}
-          </Text>
+          </Txt>
         ) : null}
       </View>
       {right}
@@ -34,19 +36,17 @@ export function ListRow({ title, subtitle, left, right, onPress, danger, accessi
     </>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+    <PressableScale scale={false} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       {body}
-    </Pressable>
+    </PressableScale>
   ) : (
     <View style={styles.row}>{body}</View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 16, paddingVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: HIT + 8, paddingHorizontal: space[4], paddingVertical: space[2] },
   pressed: { backgroundColor: theme.hover },
   copy: { flex: 1 },
-  title: { color: theme.text, fontSize: 16 },
-  danger: { color: theme.danger },
-  subtitle: { color: theme.subtle, fontSize: 13, marginTop: 2 },
+  subtitle: { marginTop: 2 },
 });
