@@ -11,6 +11,7 @@ import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
 import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
+import { offerBanner } from '../notifications/bannerStore';
 import type { MobileVoice } from '../voice/mobileVoice';
 
 export interface RuntimeConfig {
@@ -78,11 +79,11 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
 
   const turn = new TurnCredentials(() => gateway.renewSession());
   const voice = config.createVoice?.({ gateway, iceServers: () => turn.iceServers() }) ?? null;
-  // Push notifications and message UI arrive in later milestones; their hooks stay no-ops until then.
+  // Push notifications arrive with the native build; until then new messages raise the in-app banner.
   const dispatch = createDispatchRouter({
     onVoiceServerUpdate: (update) => voice?.controller.onVoiceServerUpdate(update),
     onVoiceState: (state) => voice?.controller.onVoiceState(state),
-    onIncomingMessage: () => undefined,
+    onIncomingMessage: offerBanner,
     invalidate: () => undefined,
   });
   gateway.onDispatch((event, data) => {

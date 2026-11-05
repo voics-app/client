@@ -8,6 +8,7 @@ import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
 import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
+import { InAppBanner } from '../src/notifications/InAppBanner';
 import { IncomingCall } from '../src/voice/IncomingCall';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
@@ -59,6 +60,7 @@ export default function RootLayout() {
         </Stack>
       )}
       {signedIn && <IncomingCall />}
+      {signedIn && <InAppBanner />}
     </>
   );
 }

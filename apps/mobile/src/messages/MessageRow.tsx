@@ -26,6 +26,8 @@ export interface MessageRowProps {
   /** The message this one replies to, when it is in the timeline. */
   replied: ChatMessage | undefined;
   showHeader: boolean;
+  /** Briefly marked after a jump to this message. */
+  highlighted?: boolean;
   onLongPress(message: ChatMessage): void;
   onToggleReaction(message: ChatMessage, emoji: string): void;
   onPressAuthor(user: User): void;
@@ -33,7 +35,7 @@ export interface MessageRowProps {
   onDiscard(message: ChatMessage): void;
 }
 
-function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
+function MessageRowView({ message, replied, showHeader, highlighted, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
   const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted, canReply, onReplyTo } = useChatContext();
   const roleColor = useRoleColor(guildId, message.author.id);
@@ -44,7 +46,7 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
   const preview = replied ?? message.referenced_message ?? undefined;
   const referenceId = message.message_reference?.message_id;
   const row = (
-    <Pressable onLongPress={() => onLongPress(message)} delayLongPress={300} style={[styles.row, showHeader && styles.groupStart, message.localState && styles.pending]}>
+    <Pressable onLongPress={() => onLongPress(message)} delayLongPress={300} style={[styles.row, showHeader && styles.groupStart, message.localState && styles.pending, highlighted && styles.highlight]}>
       <View style={styles.gutter}>
         {showHeader && (
           <Pressable accessibilityRole="button" accessibilityLabel={`View profile of ${nameOf(message.author)} avatar`} onPress={() => onPressAuthor(message.author)}>
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
   gutter: { width: AVATAR_SIZE, paddingTop: 2 },
   body: { flex: 1 },
   pending: { opacity: 0.6 },
+  highlight: { backgroundColor: theme.accentSoft },
   replyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24, marginBottom: 2 },
   replyName: { color: theme.muted, fontSize: 13, fontWeight: '600', maxWidth: '40%' },
   reply: { color: theme.muted, fontSize: 13, flexShrink: 1 },

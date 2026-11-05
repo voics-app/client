@@ -96,6 +96,39 @@ describe('MessageService', () => {
     expect(timeline().hasMoreBefore).toBe(false);
   });
 
+  it('loads the window around a message and stays detached from the present until it reaches the latest message', async () => {
+    const api = makeApi();
+    api.messages.mockResolvedValue([msg(10), msg(11), msg(12)]);
+    const service = new MessageService(api);
+    await service.loadAround({ ...channel, last_message_id: snow(40) }, snow(11));
+    expect(api.messages).toHaveBeenCalledWith('c1', { around: snow(11), limit: PAGE_SIZE });
+    expect(timeline().ids).toEqual([snow(10), snow(11), snow(12)]);
+    expect(timeline()).toMatchObject({ hasMoreBefore: true, hasMoreAfter: true });
+    await service.loadAround({ ...channel, last_message_id: snow(12) }, snow(11));
+    expect(timeline().hasMoreAfter).toBe(false);
+  });
+
+  it('leaves the timeline alone when nothing comes back around a message', async () => {
+    const api = makeApi();
+    await new MessageService(api).loadAround(channel, snow(1));
+    expect(useMessageStore.getState().timelines['c1']).toBeUndefined();
+  });
+
+  it('extends a detached window towards the present from its newest message, one request at a time', async () => {
+    const api = makeApi();
+    api.messages.mockResolvedValueOnce([msg(10), msg(11)]);
+    const service = new MessageService(api);
+    await service.loadAround({ ...channel, last_message_id: snow(40) }, snow(10));
+    api.messages.mockResolvedValueOnce([msg(12)]);
+    await Promise.all([service.loadNewer('c1'), service.loadNewer('c1')]);
+    expect(api.messages).toHaveBeenCalledTimes(2);
+    expect(api.messages).toHaveBeenLastCalledWith('c1', { after: snow(11), limit: PAGE_SIZE });
+    expect(timeline().ids).toEqual([snow(10), snow(11), snow(12)]);
+    expect(timeline().hasMoreAfter).toBe(false);
+    await service.loadNewer('c1');
+    expect(api.messages).toHaveBeenCalledTimes(2);
+  });
+
   it('does not load older history twice at once or after the start was reached', async () => {
     const api = makeApi();
     api.messages.mockResolvedValueOnce(Array.from({ length: PAGE_SIZE }, (_, i) => msg(100 + i)));

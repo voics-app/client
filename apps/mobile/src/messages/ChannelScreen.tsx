@@ -37,6 +37,7 @@ import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useKeyboardVisible } from './useKeyboardVisible';
 import { useAppActive } from './useAppActive';
 import { useMessageService } from './useMessageService';
+import { useJumpToMessage } from './useJumpToMessage';
 import { theme } from '../theme';
 
 const COMPOSE: ComposerMode = { kind: 'compose' };
@@ -77,6 +78,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const title = !channel ? '' : guildId ? `#${channel.name}` : dmTitle(channel, relationships);
   const readable = access !== null && access.standard && access.canReadHistory;
   const loaded = timeline?.loaded ?? false;
+  const detached = timeline?.hasMoreAfter ?? false;
 
   const loadLatest = useCallback(() => {
     setLoadFailed(false);
@@ -87,7 +89,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   }, [service, channelId]);
 
   useEffect(() => {
-    if (readable && !loaded) loadLatest();
+    if (readable && !loaded && useReadNavStore.getState().jump?.channelId !== channelId) loadLatest();
     // Only the first open of a channel loads the latest page; later updates arrive from the gateway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readable, channelId]);
@@ -118,8 +120,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   }, [timeline]);
   const appActive = useAppActive();
   useEffect(() => {
-    if (appActive && readable && loaded && latestId) service.markRead(channelId, latestId);
-  }, [appActive, service, channelId, readable, loaded, latestId]);
+    if (appActive && readable && loaded && !detached && latestId) service.markRead(channelId, latestId);
+  }, [appActive, service, channelId, readable, loaded, detached, latestId]);
 
   const listRef = useRef<FlatList<ChatRow>>(null);
   const [away, setAway] = useState(false);
@@ -127,19 +129,17 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   useEffect(() => {
     // Open at the first unread message once the history is in; later arrivals do not move the list.
     if (!loaded || openedAt.current === channelId) return;
+    if (useReadNavStore.getState().jump?.channelId === channelId) {
+      openedAt.current = channelId;
+      return;
+    }
     const index = rows.findIndex((row) => row.kind === 'new');
     if (index < 0 && !firstUnreadId) return;
     openedAt.current = channelId;
     if (index >= 4) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, channelId, firstUnreadId]);
-  const jumpTo = useCallback(
-    (messageId: string) => {
-      const index = rows.findIndex((row) => row.kind === 'message' && row.message.id === messageId);
-      if (index >= 0) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
-    },
-    [rows],
-  );
+  const jumpTo = useCallback((messageId: string) => useReadNavStore.getState().requestJump(channelId, messageId), [channelId]);
   const findUser = useCallback(
     (id: string): User | undefined => {
       const member = guildId ? useGuildStore.getState().members[guildId]?.[id] : undefined;
@@ -155,6 +155,16 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   );
 
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
+  const { flashId } = useJumpToMessage({
+    channel,
+    rows,
+    service,
+    listRef,
+    onFailed: (reason) => {
+      setError(reason);
+      if (!loaded) loadLatest();
+    },
+  });
 
   const submit = useCallback(
     (text: string, current: ComposerMode, files: OutgoingFile[]) => {
@@ -257,6 +267,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             scrollEventThrottle={100}
             onEndReached={() => void service.loadOlder(channelId).catch(fail)}
             onEndReachedThreshold={0.5}
+            onStartReached={() => void service.loadNewer(channelId).catch(fail)}
+            onStartReachedThreshold={0.5}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
             renderItem={({ item }) =>
@@ -266,6 +278,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
               <MessageRow
                 message={item.message}
                 showHeader={item.showHeader}
+                highlighted={item.message.id === flashId}
                 replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
                 onLongPress={(m) => {
                   tapLight();
@@ -279,7 +292,14 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
               )
             }
           />
-          {away && <JumpToLatest onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })} />}
+          {(away || detached) && (
+            <JumpToLatest
+              onPress={() => {
+                if (detached) loadLatest();
+                listRef.current?.scrollToOffset({ offset: 0, animated: true });
+              }}
+            />
+          )}
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
