@@ -94,7 +94,7 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false });
   });
 
   it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {
@@ -122,5 +122,14 @@ describe('dmAccess', () => {
 
   it('marks private delivery as not standard', () => {
     expect(dmAccess(channel({ guild_id: null, type: 1, delivery_mode: 'p2p' })).standard).toBe(false);
+  });
+});
+
+describe('blocking the author', () => {
+  it('is offered for other people, not for yourself, bots or people already blocked', () => {
+    expect(messageActions(msg('x'), access(BASIC), 'me').blockAuthor).toBe(true);
+    expect(messageActions(msg('me'), access(BASIC), 'me').blockAuthor).toBe(false);
+    expect(messageActions(msg('x', { author: { id: 'x', bot: true } as never }), access(BASIC), 'me').blockAuthor).toBe(false);
+    expect(messageActions(msg('x'), access(BASIC), 'me', true).blockAuthor).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { Composer } from '../../src/messages/Composer';
 
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
@@ -54,5 +55,21 @@ describe('Composer attachments', () => {
     await fireEvent.press(await screen.findByText('Photo library'));
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
     expect(screen.queryByLabelText('Send')).toBeNull();
+  });
+});
+
+describe('Composer emoticons', () => {
+  beforeEach(() => usePrefsStore.setState(DEFAULT_PREFS));
+
+  it('turns emoticons into emoji on send, unless Convert emoticons is off', async () => {
+    const onSubmit = jest.fn();
+    await mount(onSubmit);
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'nice :)');
+    await fireEvent.press(screen.getByLabelText('Send'));
+    expect(onSubmit.mock.calls[0]![0]).not.toContain(':)');
+    usePrefsStore.getState().set('convertEmoticons', false);
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'nice :)');
+    await fireEvent.press(screen.getByLabelText('Send'));
+    expect(onSubmit.mock.calls[1]![0]).toBe('nice :)');
   });
 });

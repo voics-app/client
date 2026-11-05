@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { reactionKey, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import type { User } from '@discordy/core/contracts/rest';
+import { roleColorStyle } from '@discordy/core/domain/appearance';
 import { replyPreviewText } from '@discordy/core/domain/chatDisplay';
 import { formatMessageTime } from '@discordy/core/domain/messageTime';
 import { isSystemType } from '@discordy/core/domain/systemMessage';
@@ -38,7 +39,8 @@ export interface MessageRowProps {
 function MessageRowView({ message, replied, showHeader, highlighted, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
   const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted, canReply, onReplyTo, onOpenThread } = useChatContext();
-  const roleColor = useRoleColor(guildId, message.author.id);
+  const roleColorMode = usePrefsStore((s) => s.roleColors);
+  const role = roleColorStyle(useRoleColor(guildId, message.author.id), roleColorMode);
   if (isSystemType(message.type)) {
     const target = message.mentions?.[0];
     return <SystemRow message={message} authorName={nameOf(message.author)} targetName={target ? nameOf(target) : null} />;
@@ -76,7 +78,10 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
         {showHeader && (
           <View style={styles.header}>
             <Pressable accessibilityRole="button" accessibilityLabel={`View profile of ${nameOf(message.author)}`} onPress={() => onPressAuthor(message.author)}>
-              <Text style={[styles.author, roleColor ? { color: roleColor } : null]}>{nameOf(message.author)}</Text>
+              <View style={styles.authorLine}>
+                {role.dot && <View testID="role-dot" style={[styles.roleDot, { backgroundColor: role.dot }]} />}
+                <Text style={[styles.author, role.tint ? { color: role.tint } : null]}>{nameOf(message.author)}</Text>
+              </View>
             </Pressable>
             <Text style={styles.time}>{formatMessageTime(message.timestamp, Date.now())}</Text>
           </View>
@@ -150,6 +155,8 @@ const styles = StyleSheet.create({
   reply: { color: theme.muted, fontSize: 13, flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 },
   author: { color: theme.text, fontWeight: '700', fontSize: 16 },
+  authorLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  roleDot: { width: 10, height: 10, borderRadius: 5 },
   time: { color: theme.muted, fontSize: 12 },
   edited: { color: theme.muted, fontSize: 12 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },

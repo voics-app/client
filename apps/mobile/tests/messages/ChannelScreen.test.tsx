@@ -7,7 +7,7 @@ import { useMessageStore } from '@discordy/core/application/stores/messageStore'
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
-import { ChannelType, type GuildFull, type Message } from '@discordy/core/contracts/rest';
+import { ChannelType, RelationshipType, type GuildFull, type Message } from '@discordy/core/contracts/rest';
 import { EPHEMERAL_MESSAGE } from '../../src/servers/channelScreenKind';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 
@@ -17,6 +17,7 @@ const mockApi = {
   sendMessage: jest.fn(async (_c: string, body: { content: string; nonce: string }): Promise<Message> => message(900, { content: body.content, nonce: body.nonce })),
   editMessage: jest.fn(async (_c: string, id: string, patch: { content?: string }): Promise<Message> => message(1, { id, ...patch })),
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
+  putRelationship: jest.fn(async (_id: string, _body?: object): Promise<void> => undefined),
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   updateGuildNotificationSettings: jest.fn(async (_g: string | null, patch: object) => ({ guild_id: 'g1', message_notifications: null, suppress_everyone: false, suppress_roles: false, muted: false, mute_config: null, hide_muted_channels: false, channel_overrides: [], ...patch })),
@@ -279,6 +280,21 @@ describe('channel screen', () => {
     await waitFor(() => expect(mockApi.editMessage).toHaveBeenCalledWith('general', snow(1), { content: 'message one' }));
     expect(await screen.findByText('message one')).toBeTruthy();
     expect(screen.getByLabelText('Message').props.value).toBe('');
+  });
+
+  it('blocks the author of another message after confirmation, and offers no block on your own messages', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await open();
+    await fireEvent(await screen.findByText('message 1'), 'longPress');
+    expect(screen.queryByText('Block User')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Close Message actions', { includeHiddenElements: true }));
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Block User'));
+    expect(mockApi.putRelationship).not.toHaveBeenCalled();
+    expect(alert.mock.calls[0]![0]).toBe('Block Pat?');
+    await act(async () => alert.mock.calls[0]![2]!.find((b) => b.style === 'destructive')!.onPress!());
+    expect(mockApi.putRelationship).toHaveBeenCalledWith('u2', { type: RelationshipType.BLOCKED });
+    alert.mockRestore();
   });
 
   it('deletes an own message after confirmation', async () => {

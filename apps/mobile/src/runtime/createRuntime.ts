@@ -1,16 +1,19 @@
 /** Mobile composition root: wires the shared HTTP and gateway clients, the session manager and dispatch routing. */
 import { ALL_INTENTS } from '@discordy/core/contracts/gateway';
 import type { AuthResponse, ReadyPayload } from '@discordy/core/contracts/rest';
+import { PrefsSync } from '@discordy/core/application/syncedPrefs';
 import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import { currentPresence } from '@discordy/core/application/selfPresence';
 import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { TurnCredentials } from '@discordy/core/application/turnCredentials';
+import { errorMessage } from '@discordy/core/application/errorMessage';
 import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
 import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
+import { Alert } from 'react-native';
 import { offerBanner } from '../notifications/bannerStore';
 import type { MobileVoice } from '../voice/mobileVoice';
 
@@ -80,7 +83,14 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   const turn = new TurnCredentials(() => gateway.renewSession());
   const voice = config.createVoice?.({ gateway, iceServers: () => turn.iceServers() }) ?? null;
   // Push notifications arrive with the native build; until then new messages raise the in-app banner.
+  // Theme, accent, text size, reduced motion and the other synced preferences follow the account, as on desktop.
+  const prefsSync = new PrefsSync({
+    updateSettings: (patch) => api.updateSettings(patch),
+    onError: (error) => Alert.alert('Could not save your settings', errorMessage(error)),
+  });
+  prefsSync.start();
   const dispatch = createDispatchRouter({
+    onUserSettings: (settings, ready, userId) => prefsSync.onSettings(settings, ready, userId),
     onVoiceServerUpdate: (update) => voice?.controller.onVoiceServerUpdate(update),
     onVoiceState: (state) => voice?.controller.onVoiceState(state),
     onIncomingMessage: offerBanner,
@@ -114,6 +124,12 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     vault: config.vault,
     runtime: sessionRuntime,
     deviceName: config.deviceName,
+    onChange: (signedIn) => {
+      if (!signedIn) {
+        prefsSync.stop();
+        prefsSync.start();
+      }
+    },
     // Encrypted modes need the native crypto core, which comes to mobile in M3: no identity, no device registration.
     identity: async () => null,
   });

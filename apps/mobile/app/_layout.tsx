@@ -1,4 +1,5 @@
 import '../src/install';
+import { appliedAppearance } from '../src/appearance/boot';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -29,7 +30,7 @@ export default function RootLayout() {
   const signedIn = status === 'connecting' || status === 'ready';
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={appliedAppearance().theme === 'light' ? 'dark' : 'light'} />
       {status === 'booting' ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
           <ActivityIndicator color={theme.muted} />
@@ -59,7 +60,8 @@ export default function RootLayout() {
             <Stack.Screen name="servers/[guildId]/settings/invites" options={{ title: 'Invites', ...pushed }} />
             <Stack.Screen name="servers/[guildId]/settings/channels" options={{ title: 'Channels', ...pushed }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications', animation: 'slide_from_right' }} />
-            <Stack.Screen name="you" options={{ title: 'You', animation: 'slide_from_right' }} />
+            <Stack.Screen name="settings/index" options={{ title: 'Settings', ...pushed }} />
+            <Stack.Screen name="settings/[page]" options={{ title: 'Settings', ...pushed }} />
             <Stack.Screen name="voice/[channelId]" options={{ title: 'Voice', animation: 'slide_from_bottom' }} />
           </Stack.Protected>
         </Stack>

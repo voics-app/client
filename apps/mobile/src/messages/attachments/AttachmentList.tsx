@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import type { Attachment } from '@discordy/core/contracts/rest';
 import { displayFilename, formatBytes, isSpoiler, previewKind, splitAttachments } from '@discordy/core/domain/media';
@@ -15,7 +16,11 @@ import { MediaViewer } from './MediaViewer';
 export function AttachmentList({ attachments, messageId, sending }: { attachments: Attachment[]; messageId: string; sending: boolean }) {
   const { width } = useWindowDimensions();
   const [viewing, setViewing] = useState<number | null>(null);
-  const { media, files } = splitAttachments(attachments);
+  const inlineMedia = usePrefsStore((s) => s.inlineMedia);
+  const split = splitAttachments(attachments);
+  // Chat > Display images and videos: when off, they show as file rows instead of inline.
+  const media = inlineMedia ? split.media : [];
+  const files = inlineMedia ? split.files : attachments;
   const upload = useUploadStore((s) => s.uploads[messageId]);
   // 16 padding each side, 40 avatar and a 12 gap.
   const available = width - 16 * 2 - 40 - 12;

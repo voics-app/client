@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Alert, StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useTrustedDomainStore } from '@discordy/core/application/stores/composerStores';
 import { ChatContext, type ChatContextValue } from '../../src/messages/chatContext';
 import { MarkdownText } from '../../src/messages/markdown/MarkdownText';
@@ -36,6 +37,7 @@ const styleOf = (text: string) => StyleSheet.flatten(screen.getByText(text).prop
 
 beforeEach(() => {
   jest.clearAllMocks();
+  usePrefsStore.setState(DEFAULT_PREFS);
   useTrustedDomainStore.setState({ domains: [] });
   useGuildStore.setState({
     members: { g1: { 222: { user: { id: '222', username: 'pat', global_name: 'Pat', discriminator: '0', avatar: null }, roles: [] } } },
@@ -145,5 +147,15 @@ describe('MarkdownText', () => {
     await render(<MarkdownText source="hello" trailing={<>{' (edited)'}</>} />);
     expect(screen.getByText(/hello/).props.children).toBeTruthy();
     expect(screen.getByText(/\(edited\)/)).toBeTruthy();
+  });
+});
+
+describe('Always underline links', () => {
+  it('underlines a link only when the setting is on', async () => {
+    await show('see https://example.com now');
+    expect(styleOf('https://example.com').textDecorationLine).toBeUndefined();
+    usePrefsStore.getState().set('linkUnderline', true);
+    await show('see https://example.com now');
+    expect(screen.getAllByText('https://example.com').map((n) => StyleSheet.flatten(n.props.style).textDecorationLine)).toContain('underline');
   });
 });

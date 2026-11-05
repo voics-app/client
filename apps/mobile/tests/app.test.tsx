@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { renderRouter } from 'expo-router/testing-library';
@@ -181,16 +182,21 @@ describe('app shell', () => {
     expect(screen.getByText('Online')).toBeTruthy();
   });
 
-  it('reaches the profile and settings from the user panel, and signs out there', async () => {
+  it('reaches the user settings from the user panel, and logs out there after confirming', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await openApp();
     await fireEvent.press(screen.getByLabelText('Account and status'));
-    expect(screen).toHavePathname('/you');
-    expect(await screen.findByText('Show reactions under messages')).toBeTruthy();
+    expect(screen).toHavePathname('/settings');
+    expect(await screen.findByLabelText('Search settings')).toBeTruthy();
     await act(async () => router.back());
     await fireEvent.press(screen.getByLabelText('User settings'));
-    expect(screen).toHavePathname('/you');
-    await fireEvent.press(await screen.findByText('Sign out'));
+    expect(screen).toHavePathname('/settings');
+    await fireEvent.press(await screen.findByLabelText('Log out'));
+    expect(mockSession.logout).not.toHaveBeenCalled();
+    expect(alert.mock.calls[0]![0]).toBe('Log out?');
+    await act(async () => alert.mock.calls[0]![2]!.find((b) => b.style === 'destructive')!.onPress!());
     expect(mockSession.logout).toHaveBeenCalledTimes(1);
+    alert.mockRestore();
   });
 
   it('returns to sign-in when the session ends', async () => {

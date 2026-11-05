@@ -5,6 +5,7 @@
  */
 import type { UserSettingsTab } from '@discordy/core/application/stores/uiStore';
 import { rowSlug } from '@discordy/core/domain/rowSlug';
+import { searchSettingsIndex } from '@discordy/core/domain/settingsSearch';
 import { USER_TABS } from './userTabs';
 
 export interface SettingEntry {
@@ -65,36 +66,9 @@ export const USER_SETTINGS_INDEX: SettingEntry[] = [
   row('about', 'Version'), row('about', 'Platform'), row('about', 'Update feed'),
 ];
 
-/** Lower is better; null when a token matches nowhere. Every token of the query must match. */
-function score(query: string, label: string, keywords: string): number | null {
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return null;
-  const l = label.toLowerCase();
-  const rest = keywords.toLowerCase();
-  let total = 0;
-  for (const t of tokens) {
-    if (l.startsWith(t)) total += 0;
-    else if (l.split(/[^a-z0-9]+/).some((w) => w.startsWith(t))) total += 1;
-    else if (l.includes(t)) total += 2;
-    else if (rest.includes(t)) total += 4;
-    else return null;
-  }
-  return total;
-}
-
 /** Tabs and rows matching `query`, best first. An empty query yields nothing. */
 export function searchSettings(query: string, entries: readonly SettingEntry[] = USER_SETTINGS_INDEX, limit = 12): SettingHit[] {
-  const scored: { hit: SettingHit; s: number; order: number }[] = [];
-  let order = 0;
-  for (const tab of USER_TABS) {
-    const tabScore = score(query, tab.label, TAB_KEYWORDS[tab.id]);
-    // A tab edges out a row with the same score.
-    if (tabScore !== null) scored.push({ hit: { tab: tab.id, tabLabel: tab.label, label: tab.label, rowId: null }, s: tabScore - 0.5, order: order++ });
-    for (const e of entries) {
-      if (e.tab !== tab.id) continue;
-      const s = score(query, e.label, `${e.keywords ?? ''} ${tab.label}`);
-      if (s !== null) scored.push({ hit: { tab: tab.id, tabLabel: tab.label, label: e.label, rowId: rowSlug(e.label) }, s, order: order++ });
-    }
-  }
-  return scored.sort((a, b) => a.s - b.s || a.order - b.order).slice(0, limit).map((x) => x.hit);
+  const pages = USER_TABS.map((t) => ({ id: t.id, label: t.label, keywords: TAB_KEYWORDS[t.id] }));
+  const rows = entries.map((e) => ({ page: e.tab, label: e.label, ...(e.keywords ? { keywords: e.keywords } : {}) }));
+  return searchSettingsIndex(query, pages, rows, limit).map((h) => ({ tab: h.page, tabLabel: h.pageLabel, label: h.label, rowId: h.rowId }));
 }

@@ -13,7 +13,7 @@ import { useMessageStore, type ChatMessage } from '@discordy/core/application/st
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { User } from '@discordy/core/contracts/rest';
+import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { firstUnreadMessageId, unreadBar } from '@discordy/core/domain/unread';
 import { buildRows, showJumpToLatest, type ChatRow } from './chatRows';
@@ -25,6 +25,8 @@ import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { blockUser } from '../friends/friendActions';
+import { confirmDestructive } from '../ui/attempt';
 import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
 import { ChannelDetails } from './ChannelDetails';
 import { NewThreadSheet } from '../threads/NewThreadSheet';
@@ -199,6 +201,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       { text: 'Delete', style: 'destructive', onPress: () => void service.remove(channelId, message.id).catch(fail) },
     ]);
 
+  const confirmBlock = (author: User) =>
+    confirmDestructive(`Block ${nameOf(author)}?`, 'They will not be able to message you or send a friend request, and you will not be friends any more.', 'Block', () => void blockUser(author.id));
+
   const chat = useMemo<ChatContextValue>(
     () => ({
       guildId,
@@ -236,7 +241,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   const lockedReason = channel && thread ? threadBlockedReason(channel, access?.canManageThreads ?? false) : null;
   const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : lockedReason ?? (!access.canSend ? NO_SEND_NOTICE : null);
-  const actions = selected && access && userId ? messageActions(selected, access, userId) : null;
+  const actions = selected && access && userId ? messageActions(selected, access, userId, relationships[selected.author.id]?.type === RelationshipType.BLOCKED) : null;
   const close = () => setSelected(null);
 
   return (
@@ -368,6 +373,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onSelectText={() => {
             setSelecting(selected);
+            close();
+          }}
+          onBlock={() => {
+            if (selected) confirmBlock(selected.author);
             close();
           }}
         />

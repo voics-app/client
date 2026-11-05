@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { convertEmoticons } from '@discordy/core/domain/emoticons';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
@@ -65,7 +66,8 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
   };
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(text.trim(), mode, files);
+    const typed = text.trim();
+    onSubmit(usePrefsStore.getState().convertEmoticons ? convertEmoticons(typed) : typed, mode, files);
     setText('');
     setFiles([]);
   };

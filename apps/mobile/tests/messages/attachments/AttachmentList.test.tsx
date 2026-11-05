@@ -2,6 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { fireEvent, render as renderPlain, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import type { Attachment } from '@discordy/core/contracts/rest';
 import { AttachmentList } from '../../../src/messages/attachments/AttachmentList';
@@ -14,7 +15,18 @@ const render = (ui: ReactElement) => renderPlain(<SafeAreaProvider initialMetric
 const att = (id: string, filename: string, content_type: string, extra: Partial<Attachment> = {}): Attachment => ({ id, filename, content_type, size: 2048, url: `https://cdn.test/${filename}`, ...extra });
 
 describe('AttachmentList', () => {
-  beforeEach(() => useUploadStore.setState({ uploads: {} }));
+  beforeEach(() => {
+    useUploadStore.setState({ uploads: {} });
+    usePrefsStore.setState(DEFAULT_PREFS);
+  });
+
+  it('shows images as file rows when Display images and videos is off', async () => {
+    usePrefsStore.getState().set('inlineMedia', false);
+    await render(<AttachmentList attachments={[att('1', 'a.png', 'image/png'), att('2', 'doc.pdf', 'application/pdf')]} messageId="m" sending={false} />);
+    expect(screen.getByText('a.png')).toBeTruthy();
+    expect(screen.getByText('doc.pdf')).toBeTruthy();
+    expect(screen.queryByLabelText('Spoiler image, tap to reveal')).toBeNull();
+  });
 
   it('shows images, opens them full screen and closes the viewer', async () => {
     await render(<AttachmentList attachments={[att('1', 'a.png', 'image/png'), att('2', 'b.png', 'image/png')]} messageId="m" sending={false} />);
