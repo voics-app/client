@@ -10,19 +10,27 @@ const MEMBERS = { me: person('me', ['mod']), pat: person('pat', ['regular']), bo
 const PERMS = Permission.KICK_MEMBERS | Permission.BAN_MEMBERS;
 
 describe('moderationRights', () => {
+  const NONE = { kick: false, ban: false, roles: false, timeout: false, nickname: false, any: false };
+
   it('lets a moderator kick and ban someone below their highest role', () => {
-    expect(moderationRights(guild, PERMS, MEMBERS.me, 'me', MEMBERS.pat)).toEqual({ kick: true, ban: true });
+    expect(moderationRights(guild, PERMS, MEMBERS.me, 'me', MEMBERS.pat)).toEqual({ ...NONE, kick: true, ban: true, any: true });
   });
 
-  it('never offers actions on yourself, an equal role or the owner', () => {
-    for (const target of [MEMBERS.me, MEMBERS.boss, MEMBERS.owner]) {
-      expect(moderationRights(guild, PERMS, MEMBERS.me, 'me', target)).toEqual({ kick: false, ban: false });
-    }
+  it('never offers actions on an equal role or the owner, and on yourself only the nickname', () => {
+    for (const target of [MEMBERS.boss, MEMBERS.owner]) expect(moderationRights(guild, PERMS | Permission.MANAGE_ROLES | Permission.MODERATE_MEMBERS | Permission.MANAGE_NICKNAMES, MEMBERS.me, 'me', target)).toEqual(NONE);
+    expect(moderationRights(guild, PERMS, MEMBERS.me, 'me', MEMBERS.me)).toEqual(NONE);
+    expect(moderationRights(guild, Permission.CHANGE_NICKNAME, MEMBERS.me, 'me', MEMBERS.me)).toEqual({ ...NONE, nickname: true, any: true });
   });
 
   it('offers only what the permissions allow', () => {
-    expect(moderationRights(guild, Permission.KICK_MEMBERS, MEMBERS.me, 'me', MEMBERS.pat)).toEqual({ kick: true, ban: false });
-    expect(moderationRights(guild, 0n, MEMBERS.me, 'me', MEMBERS.pat)).toEqual({ kick: false, ban: false });
+    expect(moderationRights(guild, Permission.KICK_MEMBERS, MEMBERS.me, 'me', MEMBERS.pat)).toEqual({ ...NONE, kick: true, any: true });
+    expect(moderationRights(guild, 0n, MEMBERS.me, 'me', MEMBERS.pat)).toEqual(NONE);
+  });
+
+  it('offers roles, timeout and nicknames with their own permissions', () => {
+    expect(moderationRights(guild, Permission.MANAGE_ROLES, MEMBERS.me, 'me', MEMBERS.pat)).toMatchObject({ roles: true, timeout: false, nickname: false });
+    expect(moderationRights(guild, Permission.MODERATE_MEMBERS, MEMBERS.me, 'me', MEMBERS.pat)).toMatchObject({ roles: false, timeout: true, nickname: false });
+    expect(moderationRights(guild, Permission.MANAGE_NICKNAMES, MEMBERS.me, 'me', MEMBERS.pat)).toMatchObject({ roles: false, timeout: false, nickname: true });
   });
 });
 

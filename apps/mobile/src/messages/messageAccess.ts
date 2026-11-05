@@ -3,6 +3,7 @@ import type { ChatMessage } from '@discordy/core/application/stores/messageStore
 import { Permission } from '@discordy/core/contracts/permissions';
 import type { Channel, GuildMember } from '@discordy/core/contracts/rest';
 import { isThread } from '@discordy/core/domain/threads';
+import { canForward } from '@discordy/core/domain/forward';
 import { idsOf } from '@discordy/core/domain/menuModel';
 import { buildMessageMenu } from '@discordy/core/domain/messageMenuModel';
 import { computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
@@ -68,12 +69,16 @@ export interface MessageActions {
   unpin: boolean;
   /** Start a thread from the message. */
   thread: boolean;
+  /** Block the author: not yourself, a bot, or someone you already blocked (desktop's user menu offers it on the same terms). */
+  blockAuthor: boolean;
+  /** Forward to another chat: only messages stored on the server (not system, ephemeral or private ones). */
+  forward: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false };
+const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
-export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string): MessageActions {
+export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string, authorBlocked = false): MessageActions {
   if (message.localState) return NONE;
   const hasText = (message.content ?? '').trim() !== '';
   const ids = new Set(
@@ -85,7 +90,7 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
           canReact: access.canReact,
           canManageMessages: access.canManageMessages,
           canCreateThread: access.canCreateThread,
-          forwardSupported: false,
+          forwardSupported: true,
           canSpeak: false,
           hasText,
           pinned: message.pinned,
@@ -97,5 +102,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread'), blockAuthor: message.author.id !== userId && !message.author.bot && !authorBlocked, forward: access.standard && ids.has('forward') && canForward(message, 'standard') };
 }

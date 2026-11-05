@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeCustomStatus,
+  buildCustomStatus,
   customStatusActivities,
   effectiveStatus,
   expiryFor,
@@ -59,5 +60,21 @@ describe('custom status', () => {
     expect(p).toMatchObject({ status: 'idle', afk: true });
     expect(p.activities).toHaveLength(1);
     expect(selfPresencePayload('dnd', null, true, 0)).toEqual({ status: 'dnd', activities: [], afk: false });
+  });
+});
+
+describe('buildCustomStatus', () => {
+  it('stores trimmed text with its expiry and emoji', () => {
+    expect(buildCustomStatus('  at lunch ', '2026-01-01T00:00:00.000Z', { name: '🍜' })).toEqual({ text: 'at lunch', emoji_id: null, emoji_name: '🍜', expires_at: '2026-01-01T00:00:00.000Z' });
+  });
+
+  it('keeps an emoji with no text, and clears the status when both are empty', () => {
+    expect(buildCustomStatus('', null, { name: '🍜', id: '7' })).toEqual({ text: null, emoji_id: '7', emoji_name: '🍜', expires_at: null });
+    expect(buildCustomStatus('   ')).toBeNull();
+    expect(buildCustomStatus(null)).toBeNull();
+  });
+
+  it('caps the text at 128 characters', () => {
+    expect(buildCustomStatus('x'.repeat(200))?.text).toHaveLength(128);
   });
 });

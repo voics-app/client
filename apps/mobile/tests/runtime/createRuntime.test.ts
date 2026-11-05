@@ -2,6 +2,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { StoredSession } from '@discordy/core/application/ports/sessionVault';
 import type { SocketLike } from '@discordy/core/infrastructure/net/socket';
+import { messageCache } from '../../src/offline/messageCache';
 import { createRuntime } from '../../src/runtime/createRuntime';
 
 class FakeSocket implements SocketLike {
@@ -128,5 +129,14 @@ describe('mobile runtime', () => {
     expect(runtime.gateway.state).toBe('closed');
     expect(useSessionStore.getState().status).toBe('signedOut');
     expect(useSessionStore.getState().user).toBeNull();
+  });
+
+  it('empties the offline message cache when the session ends', async () => {
+    const { runtime } = setup();
+    await runtime.session.login({ email: 'me@example.test', password: 'pw' });
+    messageCache.save('c1', [{ id: '1', channel_id: 'c1', content: 'private-ish', author: { id: 'u2' }, attachments: [], timestamp: '', type: 0 } as never]);
+    expect(messageCache.load('c1')).toHaveLength(1);
+    await runtime.session.logout();
+    expect(messageCache.load('c1')).toEqual([]);
   });
 });

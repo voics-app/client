@@ -10,13 +10,15 @@ export interface ButtonProps {
   tone?: ButtonTone;
   busy?: boolean;
   disabled?: boolean;
+  /** Spoken name when the label alone is ambiguous, such as several rows that each say "Log out". */
+  accessibilityLabel?: string;
 }
 
-export function Button({ label, onPress, tone = 'plain', busy = false, disabled = false }: ButtonProps) {
+export function Button({ label, onPress, tone = 'plain', busy = false, disabled = false, accessibilityLabel }: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}

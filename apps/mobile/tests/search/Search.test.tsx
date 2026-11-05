@@ -87,6 +87,17 @@ describe('search', () => {
     expect(screen.getByLabelText('Remove filter from:pat')).toBeTruthy();
   });
 
+  it('sorts results: newest first by default, then oldest or most relevant, searching again each time', async () => {
+    await openSearch();
+    await searchFor('deploy');
+    await waitFor(() => expect(mockApi.searchMessages).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ sort_by: 'timestamp', sort_order: 'desc' })));
+    await fireEvent.press(screen.getByLabelText('Sort: Oldest'));
+    await waitFor(() => expect(mockApi.searchMessages).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ sort_by: 'timestamp', sort_order: 'asc', offset: 0 })));
+    await fireEvent.press(screen.getByLabelText('Sort: Most relevant'));
+    await waitFor(() => expect(mockApi.searchMessages).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ sort_by: 'relevance', sort_order: 'desc' })));
+    expect(screen.getByLabelText('Sort: Most relevant').props.accessibilityState.selected).toBe(true);
+  });
+
   it('removes a filter chip and searches again', async () => {
     await openSearch();
     await searchFor('deploy from:pat');

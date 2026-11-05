@@ -1,28 +1,16 @@
 /** Commands that reorder channels and categories: optimistic update, bulk PATCH, revert on failure (client#59). */
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { diffMoves, isListed, layoutOf, newParentOf, overwritesDiffer, stepCategory, stepChannel, type ChannelLayout, type ChannelMove } from '@discordy/core/domain/channelOrder';
+import { guildChannels, sendChannelMoves } from '@discordy/core/application/channelOrderCommands';
+import { diffMoves, layoutOf, newParentOf, overwritesDiffer, stepCategory, stepChannel, type ChannelLayout, type ChannelMove } from '@discordy/core/domain/channelOrder';
 import type { Channel } from '@discordy/core/contracts/rest';
 import { attempt } from './actions';
 import { getRuntime } from './runtime';
 
-export const guildChannels = (guildId: string): Channel[] =>
-  Object.values(useGuildStore.getState().channels).filter((c) => c.guild_id === guildId && isListed(c));
-
-function applyLocally(moves: ChannelMove[], extra: (move: ChannelMove) => Partial<Channel> = () => ({})): Channel[] {
-  const store = useGuildStore.getState();
-  const before = moves.flatMap((m) => (store.channels[m.id] ? [store.channels[m.id]!] : []));
-  for (const m of moves) {
-    const current = store.channels[m.id];
-    if (current) store.upsertChannel({ ...current, position: m.position, ...(m.parent_id !== undefined ? { parent_id: m.parent_id } : {}), ...extra(m) });
-  }
-  return before;
-}
+export { guildChannels };
 
 async function send(guildId: string, moves: ChannelMove[], extra?: (move: ChannelMove) => Partial<Channel>): Promise<boolean> {
-  const before = applyLocally(moves, extra);
-  const ok = await attempt(() => getRuntime().api.reorderChannels(guildId, moves).then(() => true), 'Could not reorder channels');
-  if (!ok) before.forEach((c) => useGuildStore.getState().upsertChannel(c));
+  const ok = await attempt(() => sendChannelMoves(getRuntime().api, guildId, moves, extra).then(() => true), 'Could not reorder channels');
   return Boolean(ok);
 }
 

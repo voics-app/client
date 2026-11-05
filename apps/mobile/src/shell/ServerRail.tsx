@@ -9,7 +9,8 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { GuildFolder } from '@discordy/core/contracts/rest';
 import { folderLabel } from '@discordy/core/domain/railLayout';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
-import { JoinServerSheet } from '../invites/JoinServerSheet';
+import { AddServerSheet } from '../servers/AddServerSheet';
+import { RailMenu, type RailTarget } from './RailMenu';
 import { metrics, theme } from '../theme';
 import { Badge } from './Badge';
 import { ServerIcon } from './ServerIcon';
@@ -33,12 +34,14 @@ interface RailItemProps {
   unread: boolean;
   mentions: number;
   onPress: () => void;
+  /** Opens the menu that reorders and groups; a long press, as touch has no dragging here. */
+  onLongPress?: () => void;
   tile: (active: boolean) => ReactNode;
   expanded?: boolean;
 }
 
 /** One rail slot: the left-edge pill (selected) or pip (unread), the tile and the mention badge, laid out like desktop's `.rail-item`. */
-function RailItem({ label, active, unread, mentions, onPress, tile, expanded }: RailItemProps) {
+function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile, expanded }: RailItemProps) {
   return (
     <View style={styles.item}>
       {active ? <View testID="rail-pill" style={styles.pill} /> : unread && <View testID="rail-pip" style={styles.pip} />}
@@ -47,6 +50,7 @@ function RailItem({ label, active, unread, mentions, onPress, tile, expanded }: 
         accessibilityLabel={label}
         accessibilityState={{ selected: active, ...(expanded === undefined ? {} : { expanded }) }}
         onPress={onPress}
+        {...(onLongPress ? { onLongPress, delayLongPress: 350 } : {})}
         style={({ pressed }) => [styles.tile, active && styles.tileActive, pressed && styles.tilePressed]}
       >
         {tile(active)}
@@ -60,7 +64,7 @@ function RailItem({ label, active, unread, mentions, onPress, tile, expanded }: 
   );
 }
 
-function GuildItem({ guildId, active }: { guildId: string; active: boolean }) {
+function GuildItem({ guildId, active, onEdit }: { guildId: string; active: boolean; onEdit(target: RailTarget): void }) {
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const { unread, mentions } = useActivity([guildId]);
   const navigate = useUiStore((s) => s.navigate);
@@ -72,12 +76,13 @@ function GuildItem({ guildId, active }: { guildId: string; active: boolean }) {
       unread={unread && !active}
       mentions={mentions}
       onPress={() => navigate({ kind: 'guild', guildId, channelId: null })}
+      onLongPress={() => onEdit({ kind: 'guild', id: guildId })}
       tile={(selected) => <ServerIcon guild={guild} active={selected} />}
     />
   );
 }
 
-function FolderItem({ folder, activeGuildId }: { folder: GuildFolder; activeGuildId: string | null }) {
+function FolderItem({ folder, activeGuildId, onEdit }: { folder: GuildFolder; activeGuildId: string | null; onEdit(target: RailTarget): void }) {
   const key = `folder-${folder.id}`;
   const closed = usePrefsStore((s) => s.collapsedCategories[key] ?? false);
   const guilds = useGuildStore((s) => s.guilds);
@@ -93,6 +98,7 @@ function FolderItem({ folder, activeGuildId }: { folder: GuildFolder; activeGuil
         mentions={closed ? activity.mentions : 0}
         expanded={!closed}
         onPress={() => usePrefsStore.getState().toggleMap('collapsedCategories', key)}
+        onLongPress={() => onEdit({ kind: 'folder', id: folder.id! })}
         tile={() =>
           closed ? (
             <View style={styles.folderGrid}>
@@ -103,11 +109,11 @@ function FolderItem({ folder, activeGuildId }: { folder: GuildFolder; activeGuil
               ))}
             </View>
           ) : (
-            <Ionicons name="folder" size={24} color={theme.muted} />
+            <Ionicons name="folder" size={24} color={folder.color ? `#${folder.color.toString(16).padStart(6, '0')}` : theme.muted} />
           )
         }
       />
-      {!closed && folder.guild_ids.map((id) => <GuildItem key={id} guildId={id} active={activeGuildId === id} />)}
+      {!closed && folder.guild_ids.map((id) => <GuildItem key={id} guildId={id} active={activeGuildId === id} onEdit={onEdit} />)}
     </View>
   );
 }
@@ -120,7 +126,8 @@ export function ServerRail() {
   const view = useUiStore((s) => s.view);
   const navigate = useUiStore((s) => s.navigate);
   const dmMentions = useMemo(() => dmMentionTotal(channels, reads), [channels, reads]);
-  const [joining, setJoining] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<RailTarget | null>(null);
   const homeActive = view.kind === 'home';
   const activeGuildId = view.kind === 'guild' ? view.guildId : null;
 
@@ -138,14 +145,15 @@ export function ServerRail() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {rail.map((entry) =>
           entry.id === null ? (
-            <GuildItem key={entry.guild_ids[0]} guildId={entry.guild_ids[0]!} active={activeGuildId === entry.guild_ids[0]} />
+            <GuildItem key={entry.guild_ids[0]} guildId={entry.guild_ids[0]!} active={activeGuildId === entry.guild_ids[0]} onEdit={setEditing} />
           ) : (
-            <FolderItem key={`folder-${entry.id}`} folder={entry} activeGuildId={activeGuildId} />
+            <FolderItem key={`folder-${entry.id}`} folder={entry} activeGuildId={activeGuildId} onEdit={setEditing} />
           ),
         )}
-        <RailItem label="Join a server" active={false} unread={false} mentions={0} onPress={() => setJoining(true)} tile={() => <Ionicons name="add" size={26} color={theme.success} />} />
+        <RailItem label="Add a server" active={false} unread={false} mentions={0} onPress={() => setAdding(true)} tile={() => <Ionicons name="add" size={26} color={theme.success} />} />
       </ScrollView>
-      <JoinServerSheet visible={joining} onClose={() => setJoining(false)} />
+      <AddServerSheet visible={adding} onClose={() => setAdding(false)} />
+      <RailMenu target={editing} onClose={() => setEditing(null)} />
     </View>
   );
 }

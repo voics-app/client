@@ -1,6 +1,6 @@
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { channelRowView } from '../../src/servers/channelRowModel';
-import { channelScreenKind, EPHEMERAL_MESSAGE, FORUM_MESSAGE, P2P_MESSAGE } from '../../src/servers/channelScreenKind';
+import { channelScreenKind, EPHEMERAL_MESSAGE, P2P_MESSAGE } from '../../src/servers/channelScreenKind';
 
 const channel = (type: number, extra: Partial<Channel> = {}) => ({ id: 'c1', type, guild_id: 'g1', name: 'room', delivery_mode: 'standard', ...extra }) as Channel;
 
@@ -41,10 +41,10 @@ describe('channelScreenKind', () => {
     expect(channelScreenKind(channel(ChannelType.GUILD_STAGE_VOICE))).toEqual({ screen: 'voice' });
   });
 
-  it('explains ephemeral, peer-to-peer and forum channels instead of opening them', () => {
+  it('explains ephemeral and peer-to-peer channels instead of opening them, and opens a forum as a forum', () => {
     expect(channelScreenKind(channel(ChannelType.GUILD_TEXT, { delivery_mode: 'ephemeral' }))).toEqual({ screen: 'unsupported', message: EPHEMERAL_MESSAGE });
     expect(channelScreenKind(channel(ChannelType.GUILD_TEXT, { delivery_mode: 'p2p' }))).toEqual({ screen: 'unsupported', message: P2P_MESSAGE });
-    expect(channelScreenKind(channel(ChannelType.GUILD_FORUM))).toEqual({ screen: 'unsupported', message: FORUM_MESSAGE });
+    expect(channelScreenKind(channel(ChannelType.GUILD_FORUM))).toEqual({ screen: 'forum' });
   });
 
   it('opens standard text and announcement channels as chat, and an unknown channel as chat too', () => {

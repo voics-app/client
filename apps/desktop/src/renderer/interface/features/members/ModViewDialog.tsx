@@ -7,7 +7,7 @@ import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
-import { AUDIT_ACTIONS } from '../settings/server/auditActions';
+import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
 
 /** Moderator view of a user, member or not: membership, ban and the audit entries about them. */
 export function ModViewDialog({ guildId, userId }: { guildId: string; userId: string }) {

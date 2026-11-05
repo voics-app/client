@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { ChatContext, type ChatContextValue } from '../../src/messages/chatContext';
 import { MessageRow, type MessageRowProps } from '../../src/messages/MessageRow';
@@ -36,10 +37,33 @@ const row = (m: ChatMessage, props: Partial<MessageRowProps> = {}, context = ctx
   );
 
 beforeEach(() => {
+  usePrefsStore.setState(DEFAULT_PREFS);
   useGuildStore.setState({
     guilds: { g1: { id: 'g1', roles: [{ id: 'r1', name: 'Mod', color: 0xff8800, position: 2 }, { id: 'r0', name: 'Low', color: 0x00ff00, position: 1 }] } },
     members: { g1: { '222': { user: PAT, roles: ['r0', 'r1'] } } },
   } as never);
+});
+
+describe('MessageRow appearance settings', () => {
+  it('shows the role colour as a dot beside a plain name when Role colours is As a dot', async () => {
+    usePrefsStore.getState().set('roleColors', 'dot');
+    await row(message());
+    expect(StyleSheet.flatten(screen.getByText('Pat').props.style).color).toBe('#edeef4');
+    expect(StyleSheet.flatten(screen.getByTestId('role-dot').props.style).backgroundColor).toBe('#ff8800');
+  });
+
+  it('drops the role colour when Role colours is Hidden', async () => {
+    usePrefsStore.getState().set('roleColors', 'hidden');
+    await row(message());
+    expect(StyleSheet.flatten(screen.getByText('Pat').props.style).color).toBe('#edeef4');
+    expect(screen.queryByTestId('role-dot')).toBeNull();
+  });
+
+  it('scales the message text with Text size', async () => {
+    usePrefsStore.getState().set('fontScale', 1.25);
+    await row(message({ content: 'plain words' }));
+    expect(StyleSheet.flatten(screen.getByText('plain words').props.style).fontSize).toBe(20);
+  });
 });
 
 describe('MessageRow', () => {

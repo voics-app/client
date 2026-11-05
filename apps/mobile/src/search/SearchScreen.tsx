@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
+import { SEARCH_SORTS, type SearchSort } from '@discordy/core/application/stores/searchStore';
 import type { Message } from '@discordy/core/contracts/rest';
 import { applySuggestion, FILTER_KEYS, parseQuery, suggest, withoutFilter } from '@discordy/core/domain/messageSearch';
 import { openMessage } from '../navigation/openMessage';
@@ -27,6 +28,7 @@ export function SearchScreen({ channelId }: { channelId: string }) {
   const [input, setInput] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [tab, setTab] = useState<SearchTab>('messages');
+  const [sort, setSort] = useState<SearchSort>('newest');
   const [focused, setFocused] = useState(true);
   const searchable = target?.mode === 'standard';
   const suggestions = useMemo(() => (focused && target ? suggest(input, target.candidates, 6) : []), [focused, input, target]);
@@ -34,10 +36,10 @@ export function SearchScreen({ channelId }: { channelId: string }) {
   const hits = useMemo(() => hitsOf(state.groups), [state.groups]);
 
   useEffect(() => {
-    void search(tab, submitted);
-    // A new tab or a new query searches again; `search` only changes with the target.
+    void search(tab, submitted, sort);
+    // A new tab, query or order searches again; `search` only changes with the target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, submitted]);
+  }, [tab, submitted, sort]);
 
   const submit = (text: string) => {
     setFocused(false);
@@ -67,6 +69,13 @@ export function SearchScreen({ channelId }: { channelId: string }) {
           ))}
         </ScrollView>
       )}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        {SEARCH_SORTS.map((s) => (
+          <Pressable key={s.value} accessibilityRole="radio" accessibilityLabel={`Sort: ${s.label}`} accessibilityState={{ selected: sort === s.value }} onPress={() => setSort(s.value)} style={[styles.chip, sort === s.value && styles.chipOn]}>
+            <Text style={styles.chipText}>{s.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
       {state.status === 'ready' && (
         <Text style={styles.summary}>{`${state.total} ${state.total === 1 ? 'result' : 'results'} in ${target?.guildName ?? target?.channel.name ?? 'this chat'}${state.indexBuilding ? ' (the search index is still being built, so results may be incomplete)' : ''}`}</Text>
       )}
@@ -135,7 +144,7 @@ export function SearchScreen({ channelId }: { channelId: string }) {
           <ActivityIndicator color={theme.muted} />
         </View>
       ) : state.status === 'error' ? (
-        <Pressable accessibilityRole="button" onPress={() => void search(tab, submitted)} style={styles.retry}>
+        <Pressable accessibilityRole="button" onPress={() => void search(tab, submitted, sort)} style={styles.retry}>
           <Text style={styles.retryText}>{`${state.error ?? 'Search failed'} Try again`}</Text>
         </Pressable>
       ) : (
@@ -180,6 +189,7 @@ const styles = StyleSheet.create({
   tabTextOn: { color: theme.text },
   chips: { paddingHorizontal: 12, paddingTop: 8, gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 12, borderRadius: 22, backgroundColor: theme.accentSoft },
+  chipOn: { borderWidth: 1, borderColor: theme.accent },
   chipText: { color: theme.text, fontSize: 14 },
   summary: { color: theme.muted, fontSize: 13, paddingHorizontal: 16, paddingVertical: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

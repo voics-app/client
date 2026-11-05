@@ -8,7 +8,7 @@ import { metrics, theme } from '../theme';
 
 const STATUS_LABEL: Record<string, string> = { online: 'Online', idle: 'Idle', dnd: 'Do not disturb', invisible: 'Invisible' };
 
-/** Desktop's UserPanel: avatar, name and status at the foot of the column. The name opens the You screen (profile, preferences, sign out); so does the gear. */
+/** Desktop's UserPanel: avatar, name and status at the foot of the column. The name and the gear open the user settings. */
 export function UserPanel() {
   const user = useSessionStore((s) => s.user);
   const status = useSessionStore((s) => s.settings.status);
@@ -17,7 +17,7 @@ export function UserPanel() {
   const custom = activeCustomStatus(storedCustom, Date.now());
   const customText = custom ? [custom.emoji_id ? '' : custom.emoji_name, custom.text].filter(Boolean).join(' ') : '';
   const name = user.global_name || user.username;
-  const open = () => router.push('/you');
+  const open = () => router.push('/settings');
 
   return (
     <View style={styles.panel}>

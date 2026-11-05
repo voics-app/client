@@ -1,7 +1,7 @@
 import { LockKey, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { SEARCH_PAGE_SIZE, useSearchStore, type SearchSort } from '@discordy/core/application/stores/searchStore';
+import { SEARCH_PAGE_SIZE, SEARCH_SORTS, useSearchStore, type SearchSort } from '@discordy/core/application/stores/searchStore';
 import { parseQuery, splitHighlight, withoutFilter, FILTER_KEYS } from '@discordy/core/domain/messageSearch';
 import type { Message } from '@discordy/core/contracts/rest';
 import { jumpToMessage, rerunSearch, submitSearch } from '../../app/searchActions';
@@ -50,11 +50,7 @@ function ResultCard({ group, terms, showChannel }: { group: Message[]; terms: st
   );
 }
 
-const SORTS: { value: SearchSort; label: string }[] = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'relevant', label: 'Most relevant' },
-];
+const SORTS = SEARCH_SORTS;
 
 export function SearchPanel({ channelId }: { channelId: string }) {
   const state = useSearchStore();

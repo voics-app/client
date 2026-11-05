@@ -18,6 +18,7 @@ jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSessio
 async function openJoin() {
   seedServer(0n);
   await renderRouter('./app', { initialUrl: '/servers/g1' });
+  await fireEvent.press(await screen.findByLabelText('Add a server'));
   await fireEvent.press(await screen.findByLabelText('Join a server'));
   await screen.findByLabelText('Invite link or code');
 }
@@ -28,9 +29,10 @@ describe('join a server', () => {
     resetStores();
   });
 
-  it('has a Join a server button at the end of the rail', async () => {
+  it('has an Add a server button at the end of the rail with Join a server in it', async () => {
     seedServer(0n);
     await renderRouter('./app', { initialUrl: '/' });
+    await fireEvent.press(await screen.findByLabelText('Add a server'));
     expect(await screen.findByLabelText('Join a server')).toBeTruthy();
   });
 

@@ -39,6 +39,17 @@ export function clampStatusText(text: string): string {
   return [...text.trim()].slice(0, CUSTOM_STATUS_MAX).join('');
 }
 
+export interface StatusEmoji {
+  name: string;
+  id?: string | null;
+}
+
+/** The custom status to store for an editor's text, expiry and emoji; null when both text and emoji are empty, which clears it. */
+export function buildCustomStatus(text: string | null, expiresAt: string | null = null, emoji: StatusEmoji | null = null): CustomStatus | null {
+  const clean = text ? clampStatusText(text) : '';
+  return clean || emoji ? { text: clean || null, emoji_id: emoji?.id ?? null, emoji_name: emoji?.name ?? null, expires_at: expiresAt } : null;
+}
+
 /** Characters left in the editor. */
 export function statusCharsLeft(text: string): number {
   return CUSTOM_STATUS_MAX - [...text].length;

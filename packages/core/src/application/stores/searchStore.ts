@@ -5,6 +5,13 @@ import type { Message } from '../../contracts/rest';
 export type SearchStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type SearchSort = 'newest' | 'oldest' | 'relevant';
 
+/** The orders a person can pick for results, as the clients label them. */
+export const SEARCH_SORTS: readonly { value: SearchSort; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'relevant', label: 'Most relevant' },
+];
+
 export const SEARCH_PAGE_SIZE = 25;
 
 export interface SearchState {

@@ -145,15 +145,11 @@ describe('You tab', () => {
     usePrefsStore.getState().set('showReactions', true);
   });
 
-  it('shows account info and a device-local reactions switch next to sign-out', async () => {
+  it('turns reaction chips off in the Chat settings', async () => {
     seed([]);
-    await renderRouter('./app', { initialUrl: '/you' });
-    expect(await screen.findByText('Me Myself')).toBeTruthy();
-    expect(screen.getByText('me@example.test')).toBeTruthy();
-    await fireEvent(screen.getByLabelText('Show reactions under messages'), 'valueChange', false);
+    await renderRouter('./app', { initialUrl: '/settings/chat' });
+    await fireEvent(await screen.findByLabelText('Show reactions'), 'valueChange', false);
     expect(usePrefsStore.getState().showReactions).toBe(false);
-    await fireEvent.press(screen.getByText('Sign out'));
-    expect(mockSession.logout).toHaveBeenCalled();
   });
 
   it('hides reaction chips in messages when the switch is off', async () => {

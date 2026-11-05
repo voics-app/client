@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -14,7 +14,7 @@ import { Sheet } from '../ui/Sheet';
 import { inviteCodeOf, invitePreview } from './joinModel';
 
 /** Desktop's Join a server dialog: paste an invite link or code, look at the server, then accept. A server you are already in just opens. */
-export function JoinServerSheet({ visible, onClose }: { visible: boolean; onClose(): void }) {
+export function JoinServerSheet({ visible, onClose, initialCode }: { visible: boolean; onClose(): void; initialCode?: string }) {
   const [text, setText] = useState('');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,12 +29,12 @@ export function JoinServerSheet({ visible, onClose }: { visible: boolean; onClos
   };
   const open = (guildId: string) => useUiStore.getState().navigate({ kind: 'guild', guildId, channelId: null });
 
-  const lookup = async () => {
-    if (!code) return;
+  const lookup = async (given: string | null = code) => {
+    if (!given) return;
     setBusy(true);
     setError(null);
     try {
-      const found = await getRuntime().api.invite(code);
+      const found = await getRuntime().api.invite(given);
       const guildId = found.guild?.id;
       if (guildId && useGuildStore.getState().guilds[guildId]) {
         close();
@@ -60,6 +60,16 @@ export function JoinServerSheet({ visible, onClose }: { visible: boolean; onClos
     // The server arrives over the gateway a moment after the invite is accepted.
     if (guildId) setTimeout(() => open(guildId), 300);
   };
+
+  useEffect(() => {
+    // A tapped invite link arrives with its code: show the server at once.
+    if (visible && initialCode) {
+      setText(initialCode);
+      void lookup(initialCode);
+    }
+    // Only a new link or opening the sheet starts a lookup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, initialCode]);
 
   const preview = invite ? invitePreview(invite) : null;
   return (

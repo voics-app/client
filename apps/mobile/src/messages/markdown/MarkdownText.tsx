@@ -32,7 +32,9 @@ export interface MarkdownTextProps {
 export function MarkdownText({ source, selectable, fontSize = 16, trailing }: MarkdownTextProps) {
   const nodes = useMemo(() => parseMarkdown(source), [source]);
   const big = useMemo(() => isEmojiOnly(source), [source]);
-  return <Blocks nodes={nodes} selectable={selectable} big={big} fontSize={fontSize} trailing={trailing} />;
+  // Appearance > Text size scales every message.
+  const scale = usePrefsStore((s) => s.fontScale);
+  return <Blocks nodes={nodes} selectable={selectable} big={big} fontSize={Math.round(fontSize * scale * 10) / 10} trailing={trailing} />;
 }
 
 interface FlowProps {
@@ -191,6 +193,16 @@ function Styled({ style, nodes }: { style: object; nodes: MarkdownNode[] }) {
   );
 }
 
+/** A link, underlined when Accessibility > Always underline links is on. */
+function LinkText({ url, label }: { url: string; label: MarkdownNode[] | undefined }) {
+  const underline = usePrefsStore((s) => s.linkUnderline);
+  return (
+    <Text accessibilityRole="link" style={[styles.link, underline && styles.underline]} onPress={() => followLink(url, label !== undefined)}>
+      {label ? <Inline nodes={label} big={false} /> : url}
+    </Text>
+  );
+}
+
 function InlineNode({ node, big }: { node: MarkdownNode; big: boolean }): ReactNode {
   switch (node.type) {
     case 'text':
@@ -218,11 +230,7 @@ function InlineNode({ node, big }: { node: MarkdownNode; big: boolean }): ReactN
       return <Image accessibilityLabel={`:${node.name}:`} source={{ uri: `${BRAND.cdnUrl}/emojis/${node.id}.${node.animated ? 'gif' : 'png'}` }} style={{ width: size, height: size }} />;
     }
     case 'link':
-      return (
-        <Text accessibilityRole="link" style={styles.link} onPress={() => followLink(node.url, node.label !== undefined)}>
-          {node.label ? <Inline nodes={node.label} big={false} /> : node.url}
-        </Text>
-      );
+      return <LinkText url={node.url} label={node.label} />;
     case 'timestamp':
       return <Text style={styles.mention}>{formatTimestamp(node.unix, node.style)}</Text>;
     default:

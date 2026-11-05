@@ -20,13 +20,15 @@ export interface MessageActionSheetProps {
   onMarkUnread(): void;
   onPin(): void;
   onSelectText(): void;
+  onBlock(): void;
+  onForward(): void;
   onClose(): void;
 }
 
 const QUICK = quickReactions([]);
 
 /** Bottom sheet with only the actions the user may take on one message. */
-export function MessageActionSheet({ actions: current, onReact, onMoreReactions, onReply, onCreateThread, onEdit, onDelete, onCopyText, onCopyLink, onMarkUnread, onPin, onSelectText, onClose }: MessageActionSheetProps) {
+export function MessageActionSheet({ actions: current, onReact, onMoreReactions, onReply, onCreateThread, onEdit, onDelete, onCopyText, onCopyLink, onMarkUnread, onPin, onSelectText, onBlock, onForward, onClose }: MessageActionSheetProps) {
   const actions = useLastValue(current);
   return (
     <BottomSheet visible={current !== null} onClose={onClose} label="Message actions">
@@ -48,11 +50,13 @@ export function MessageActionSheet({ actions: current, onReact, onMoreReactions,
           {actions.thread && <Option icon="chatbubbles-outline" label="Create Thread" onPress={onCreateThread} />}
           {actions.copyText && <Option icon="copy-outline" label="Copy Text" onPress={onCopyText} />}
           {actions.copyText && <Option icon="text-outline" label="Select Text" onPress={onSelectText} />}
+          {actions.forward && <Option icon="arrow-redo-outline" label="Forward" onPress={onForward} />}
           {actions.copyLink && <Option icon="link-outline" label="Copy Message Link" onPress={onCopyLink} />}
           {actions.markUnread && <Option icon="mail-unread-outline" label="Mark Unread" onPress={onMarkUnread} />}
           {(actions.pin || actions.unpin) && <Option icon="pin-outline" label={actions.unpin ? 'Unpin Message' : 'Pin Message'} onPress={onPin} />}
           {actions.edit && <Option icon="create-outline" label="Edit" onPress={onEdit} />}
           {actions.delete && <Option icon="trash-outline" label="Delete" danger onPress={onDelete} />}
+          {actions.blockAuthor && <Option icon="ban-outline" label="Block User" danger onPress={onBlock} />}
         </View>
       )}
     </BottomSheet>

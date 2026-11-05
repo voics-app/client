@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { SearchService, type SearchTarget } from '@discordy/core/application/searchService';
-import { SEARCH_PAGE_SIZE } from '@discordy/core/application/stores/searchStore';
+import { SEARCH_PAGE_SIZE, type SearchSort } from '@discordy/core/application/stores/searchStore';
 import type { Message } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../runtime';
 import { runSearch } from './searchRunner';
@@ -26,21 +26,21 @@ export function useSearch(target: SearchTarget | null) {
   const service = useMemo(() => new SearchService({ api: getRuntime().api, localMessages: async () => [] }), []);
   const [state, setState] = useState<SearchState>(IDLE);
   const ticket = useRef(0);
-  const last = useRef<{ tab: SearchTab; input: string; loaded: number } | null>(null);
+  const last = useRef<{ tab: SearchTab; input: string; loaded: number; sort: SearchSort } | null>(null);
 
   const search = useCallback(
-    async (tab: SearchTab, input: string) => {
+    async (tab: SearchTab, input: string, sort: SearchSort = 'newest') => {
       const mine = ++ticket.current;
-      last.current = { tab, input, loaded: 0 };
+      last.current = { tab, input, loaded: 0, sort };
       if (!target || !input.trim()) {
         setState(IDLE);
         return;
       }
       setState((s) => ({ ...s, status: 'loading', error: null, groups: [], loadingMore: false }));
-      const result = await runSearch(service, target, tab, input, 0);
+      const result = await runSearch(service, target, tab, input, 0, sort);
       if (mine !== ticket.current) return;
       if (result.kind === 'ready') {
-        last.current = { tab, input, loaded: SEARCH_PAGE_SIZE };
+        last.current = { tab, input, loaded: SEARCH_PAGE_SIZE, sort };
         setState({ status: 'ready', groups: result.groups, total: result.total, hasMore: result.hasMore, loadingMore: false, error: null, indexBuilding: result.indexBuilding, terms: result.terms });
       } else setState(result.kind === 'error' ? { ...IDLE, status: 'error', error: result.message } : IDLE);
     },
@@ -52,7 +52,7 @@ export function useSearch(target: SearchTarget | null) {
     if (!target || !at || state.status !== 'ready' || !state.hasMore || state.loadingMore) return;
     const mine = ticket.current;
     setState((s) => ({ ...s, loadingMore: true }));
-    const result = await runSearch(service, target, at.tab, at.input, at.loaded);
+    const result = await runSearch(service, target, at.tab, at.input, at.loaded, at.sort);
     if (mine !== ticket.current) return;
     if (result.kind !== 'ready') {
       setState((s) => ({ ...s, loadingMore: false, hasMore: false, error: result.kind === 'error' ? result.message : null }));

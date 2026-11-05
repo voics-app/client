@@ -12,8 +12,13 @@ describe('settingsPages', () => {
     expect(ids(Permission.MANAGE_GUILD | Permission.MANAGE_ROLES | Permission.MANAGE_CHANNELS)).toEqual(['overview', 'roles', 'members', 'invites', 'channels']);
   });
 
-  it('does not offer pages the mobile app does not have, even with the permission', () => {
-    expect(ids(Permission.BAN_MEMBERS | Permission.VIEW_AUDIT_LOG | Permission.MANAGE_GUILD_EXPRESSIONS)).toEqual(['members']);
+  it('adds Emoji, Bans and Audit log with their own permissions', () => {
+    expect(ids(Permission.BAN_MEMBERS | Permission.VIEW_AUDIT_LOG | Permission.MANAGE_GUILD_EXPRESSIONS)).toEqual(['emoji', 'members', 'bans', 'audit']);
+    expect(ids(Permission.BAN_MEMBERS)).toEqual(['members', 'bans']);
+  });
+
+  it('does not offer the desktop pages the mobile app does not have (template, discovery)', () => {
+    expect(ids(Permission.MANAGE_GUILD)).toEqual(['overview', 'members', 'invites']);
   });
 
   it('shows Channels only with Manage Channels', () => {
