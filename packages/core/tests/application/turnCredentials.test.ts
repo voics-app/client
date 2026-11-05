@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
+import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 
 const turn = (username: string) => ({ urls: ['turn:t.test:3478'], username, credential: 'c', ttl: 3600 });
 

@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VoiceOp, type SessionDescription } from '@discordy/core/contracts/voice';
-import { VoiceSession, type VoiceSessionOptions } from '@renderer/infrastructure/voice/voiceSession';
-import { voiceUrl } from '@renderer/infrastructure/voice/voiceUrl';
+import type { MediaPeerConnection, MediaTrackLike } from '@discordy/core/application/ports/media';
+import { VoiceSession, type VoiceSessionOptions } from '@discordy/core/application/voice/voiceSession';
+import { voiceUrl } from '@discordy/core/application/voice/voiceUrl';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
-import { FakeSocket } from '../infrastructure/fakeSocket';
-import { FakePeerConnection } from './fakes';
+import { FakeSocket } from '../../infrastructure/fakeSocket';
+import { FakePeerConnection } from '../../support/fakePeerConnection';
 
 const description = (over: Partial<SessionDescription> = {}): SessionDescription => ({
   ice_ufrag: 'srvufrag',
@@ -28,7 +29,8 @@ function makeSession(over: Partial<VoiceSessionOptions> = {}): VoiceSession {
     sessionId: 'sess',
     token: 'tok',
     socketFactory: (url) => new FakeSocket(url),
-    createPeerConnection: () => new FakePeerConnection() as unknown as RTCPeerConnection,
+    createPeerConnection: () => new FakePeerConnection() as unknown as MediaPeerConnection,
+    createStream: (track) => ({ getTracks: () => [track], getVideoTracks: () => [] }),
     random: () => 0,
     renegotiationDelayMs: 1,
     ...over,
@@ -204,12 +206,29 @@ describe('VoiceSession protocol', () => {
     expect(pc.remoteDescriptions[2]).toContain('a=inactive');
   });
 
+  it('reports the level of the audio it sends from the media-source stats, for platforms that cannot meter the mic', async () => {
+    const session = makeSession();
+    const levels: number[] = [];
+    session.onLocalLevel((level) => levels.push(level));
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    const pc = FakePeerConnection.latest();
+    pc.stats = [
+      { type: 'media-source', kind: 'video', audioLevel: 0.9 },
+      { type: 'media-source', kind: 'audio', audioLevel: 0.25 },
+    ];
+    pc.setState('connected');
+    await vi.advanceTimersByTimeAsync(210);
+    expect(levels).toEqual([0.25]);
+  });
+
   it('reports the real outbound ssrcs in a VIDEO op when the camera starts', async () => {
     const session = makeSession();
     const socket = await connectToReady(session);
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
     await vi.advanceTimersByTimeAsync(5);
-    await session.setCameraTrack({ kind: 'video' } as MediaStreamTrack);
+    await session.setCameraTrack({ kind: 'video' } as MediaTrackLike);
     const video = socket.sent.filter((f) => f.op === VoiceOp.VIDEO).at(-1)!.d as { audio_ssrc: number; streams: { type: string; ssrc: number }[] };
     expect(video.audio_ssrc).toBe(555);
     expect(video.streams).toEqual([expect.objectContaining({ type: 'video', ssrc: 777 })]);
@@ -220,7 +239,7 @@ describe('VoiceSession protocol', () => {
     const socket = await connectToReady(session);
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
     await vi.advanceTimersByTimeAsync(5);
-    const track = { kind: 'video', contentHint: '' } as unknown as MediaStreamTrack;
+    const track = { kind: 'video', contentHint: '' } as unknown as MediaTrackLike;
     await session.setScreenTrack(track, { constraints: { width: 1920, height: 1080, frameRate: 60, maxBitrateKbps: 6000 }, contentHint: 'motion' });
     const sender = FakePeerConnection.latest().transceivers[2]!.sender;
     expect(sender.params.encodings[0]).toEqual({ maxBitrate: 6_000_000, maxFramerate: 60 });

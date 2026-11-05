@@ -21,16 +21,23 @@ import {
   type VoiceHello,
   type VoiceIdentify,
   type VoiceReady,
-} from '@discordy/core/contracts/voice';
-import { reconnectDelay } from '@discordy/core/domain/backoff';
-import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '@discordy/core/domain/sdp';
-import { presetConstraints, type CaptureConstraints } from '@discordy/core/domain/videoPresets';
-import type { ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '@renderer/application/voice/ports';
-import { useVoiceStore, type CallQuality } from '@discordy/core/application/stores/voiceStore';
-import { Listeners } from '@discordy/core/infrastructure/net/emitter';
-import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '@discordy/core/infrastructure/net/socket';
-import type { DaveSession } from './daveSession';
-import type { FrameCryptorPort } from './frameCryptor';
+} from '../../contracts/voice';
+import { reconnectDelay } from '../../domain/backoff';
+import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '../../domain/sdp';
+import { presetConstraints, type CaptureConstraints } from '../../domain/videoPresets';
+import type {
+  MediaPeerConnection,
+  MediaStreamLike,
+  MediaTrackLike,
+  RtpEncodingLike,
+  RtpSenderLike,
+  TrackEventLike,
+  TransceiverLike,
+} from '../ports/media';
+import type { FrameCryptorPort, MediaGroupHooks, MediaGroupSession, ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '../ports/voice';
+import { useVoiceStore, type CallQuality, type MediaHandle } from '../stores/voiceStore';
+import { Listeners } from '../../infrastructure/net/emitter';
+import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '../../infrastructure/net/socket';
 import { extendAnswer, type RemoteSource, type SectionPlan, type SourceKind } from './remoteSections';
 import { voiceUrl } from './voiceUrl';
 
@@ -42,10 +49,12 @@ export interface VoiceSessionOptions {
   sessionId: string;
   token: string;
   socketFactory: SocketFactory;
-  createPeerConnection: () => RTCPeerConnection;
+  createPeerConnection: () => MediaPeerConnection;
+  /** Wraps a bare remote track when the track event carries no stream (`new MediaStream([track])`). */
+  createStream: (track: MediaTrackLike) => MediaStreamLike;
   /** Present when the runtime can protect media frames; required if the node announces E2EE. */
   cryptor?: FrameCryptorPort;
-  createDave?: (send: (op: number, d: unknown) => void, hooks: { onActive(active: boolean): void; onError(message: string): void; hasPeers(): boolean }) => DaveSession;
+  createDave?: (send: (op: number, d: unknown) => void, hooks: MediaGroupHooks) => MediaGroupSession;
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
@@ -59,7 +68,7 @@ const kindOf = (source: SourceKind): 'audio' | 'video' => (source === 'audio' ? 
 
 export class VoiceSession implements VoiceSessionPort {
   private socket: SocketLike | null = null;
-  private pc: RTCPeerConnection | null = null;
+  private pc: MediaPeerConnection | null = null;
   private heartbeat: ReturnType<typeof setTimeout> | null = null;
   private acked = true;
   private attempts = 0;
@@ -74,16 +83,16 @@ export class VoiceSession implements VoiceSessionPort {
   private description: SessionDescription | null = null;
   private negotiation: Promise<void> = Promise.resolve();
 
-  private audioTransceiver: RTCRtpTransceiver | null = null;
-  private cameraTransceiver: RTCRtpTransceiver | null = null;
-  private screenTransceiver: RTCRtpTransceiver | null = null;
-  private micTrack: MediaStreamTrack | null = null;
+  private audioTransceiver: TransceiverLike | null = null;
+  private cameraTransceiver: TransceiverLike | null = null;
+  private screenTransceiver: TransceiverLike | null = null;
+  private micTrack: MediaTrackLike | null = null;
   private plans: SectionPlan[] = [];
   private readonly sources = new Map<string, RemoteSource>();
-  private readonly transceivers = new Map<string, RTCRtpTransceiver>();
+  private readonly transceivers = new Map<string, TransceiverLike>();
   private readonly ssrcUsers = new Map<number, string>();
   private lastBytes: { sent: number; at: number } | null = null;
-  private dave: DaveSession | null = null;
+  private dave: MediaGroupSession | null = null;
   private e2eeActive = false;
   private peersSeen = false;
   private earlyDave: { op: number; d: unknown }[] = [];
@@ -93,7 +102,8 @@ export class VoiceSession implements VoiceSessionPort {
   private readonly status = new Listeners<[SessionStatus]>();
   private readonly closedListeners = new Listeners<[SessionClosed]>();
   private readonly e2ee = new Listeners<[boolean]>();
-  private readonly remoteAudio = new Listeners<[string, MediaStream | null]>();
+  private readonly remoteAudio = new Listeners<[string, MediaStreamLike | null]>();
+  private readonly localLevel = new Listeners<[number]>();
   private readonly random: () => number;
 
   constructor(private readonly options: VoiceSessionOptions) {
@@ -113,8 +123,13 @@ export class VoiceSession implements VoiceSessionPort {
   onE2ee(listener: (active: boolean) => void): () => void {
     return this.e2ee.add(listener);
   }
-  onRemoteAudio(listener: (userId: string, stream: MediaStream | null) => void): () => void {
+  onRemoteAudio(listener: (userId: string, stream: MediaStreamLike | null) => void): () => void {
     return this.remoteAudio.add(listener);
+  }
+
+  /** Level (0 to 1) of the audio this device sends, read from the `media-source` stats. For platforms with no audio graph to meter the mic. */
+  onLocalLevel(listener: (level: number) => void): () => void {
+    return this.localLevel.add(listener);
   }
 
   connect(): void {
@@ -465,19 +480,19 @@ export class VoiceSession implements VoiceSessionPort {
     else useVoiceStore.getState().removeRemoteStreams(source.userId, source.source);
   }
 
-  private onTrack(event: RTCTrackEvent): void {
+  private onTrack(event: TrackEventLike): void {
     const mid = event.transceiver.mid;
     const plan = this.plans.find((p) => p.mid === mid);
     if (!plan || plan.role !== 'remote') return;
     const { source } = plan;
-    const stream = event.streams[0] ?? new MediaStream([event.track]);
+    const stream = event.streams[0] ?? this.options.createStream(event.track);
     if (this.description?.e2ee) {
       this.options.cryptor?.attachReceiver(event.receiver, kindOf(source.source), source.source === 'audio' ? 'opus' : this.codecName(), source.userId);
     } else {
       this.options.cryptor?.bypass(event.receiver);
     }
     if (source.source === 'audio') this.remoteAudio.emit(source.userId, stream);
-    else useVoiceStore.getState().setRemoteStream({ userId: source.userId, kind: source.source, stream });
+    else useVoiceStore.getState().setRemoteStream({ userId: source.userId, kind: source.source, stream: stream as MediaHandle });
   }
 
   private scheduleRenegotiation(): void {
@@ -525,12 +540,12 @@ export class VoiceSession implements VoiceSessionPort {
 
   // ---- local media -----------------------------------------------------
 
-  async setMicTrack(track: MediaStreamTrack | null): Promise<void> {
+  async setMicTrack(track: MediaTrackLike | null): Promise<void> {
     this.micTrack = track;
     await this.audioTransceiver?.sender.replaceTrack(track);
   }
 
-  async setCameraTrack(track: MediaStreamTrack | null, constraints?: CaptureConstraints): Promise<void> {
+  async setCameraTrack(track: MediaTrackLike | null, constraints?: CaptureConstraints): Promise<void> {
     const sender = this.cameraTransceiver?.sender;
     if (!sender) return;
     await sender.replaceTrack(track);
@@ -538,7 +553,7 @@ export class VoiceSession implements VoiceSessionPort {
     await this.announceVideo();
   }
 
-  async setScreenTrack(track: MediaStreamTrack | null, options?: ScreenTrackOptions): Promise<void> {
+  async setScreenTrack(track: MediaTrackLike | null, options?: ScreenTrackOptions): Promise<void> {
     const sender = this.screenTransceiver?.sender;
     if (!sender) return;
     if (track && options) track.contentHint = options.contentHint;
@@ -552,10 +567,10 @@ export class VoiceSession implements VoiceSessionPort {
     if (sender) await this.applySenderParameters(sender, constraints);
   }
 
-  private async applySenderParameters(sender: RTCRtpSender, constraints: CaptureConstraints): Promise<void> {
+  private async applySenderParameters(sender: RtpSenderLike, constraints: CaptureConstraints): Promise<void> {
     const params = sender.getParameters();
     const encodings = params.encodings && params.encodings.length > 0 ? params.encodings : [{}];
-    const first = encodings[0] as RTCRtpEncodingParameters;
+    const first = encodings[0] as RtpEncodingLike;
     first.maxBitrate = constraints.maxBitrateKbps * 1000;
     if (constraints.frameRate !== undefined) first.maxFramerate = constraints.frameRate;
     await sender.setParameters({ ...params, encodings });
@@ -565,7 +580,7 @@ export class VoiceSession implements VoiceSessionPort {
   private async announceVideo(): Promise<void> {
     const ready = this.ready;
     if (!ready) return;
-    const ssrcOf = async (transceiver: RTCRtpTransceiver | null): Promise<number> => {
+    const ssrcOf = async (transceiver: TransceiverLike | null): Promise<number> => {
       if (!transceiver?.sender.track) return 0;
       const report = await transceiver.sender.getStats();
       for (const stat of report.values()) if (stat.type === 'outbound-rtp' && typeof stat.ssrc === 'number') return stat.ssrc as number;
@@ -614,6 +629,7 @@ export class VoiceSession implements VoiceSessionPort {
     const report = await pc.getStats();
     const store = useVoiceStore.getState();
     for (const stat of report.values()) {
+      if (stat.type === 'media-source' && stat.kind === 'audio' && typeof stat.audioLevel === 'number') this.localLevel.emit(stat.audioLevel);
       if (stat.type !== 'inbound-rtp' || stat.kind !== 'audio') continue;
       const userId = this.ssrcUsers.get(stat.ssrc as number);
       if (userId && typeof stat.audioLevel === 'number') {

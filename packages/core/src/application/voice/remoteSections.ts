@@ -5,8 +5,8 @@
  * becomes one more m-section appended to the synthesized answer, with its ssrc
  * declared so Chromium raises `track` for it.
  */
-import type { SessionDescription } from '@discordy/core/contracts/voice';
-import { VIDEO_BWE_FMTP } from '@discordy/core/domain/sdp';
+import type { SessionDescription } from '../../contracts/voice';
+import { VIDEO_BWE_FMTP } from '../../domain/sdp';
 
 export type SourceKind = 'audio' | 'camera' | 'screen';
 

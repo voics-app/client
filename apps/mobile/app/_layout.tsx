@@ -8,6 +8,7 @@ import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
 import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
+import { IncomingCall } from '../src/voice/IncomingCall';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
 export const unstable_settings = { anchor: 'index' };
@@ -53,9 +54,11 @@ export default function RootLayout() {
             <Stack.Screen name="servers/[guildId]/settings/channels" options={{ title: 'Channels', ...pushed }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications', animation: 'slide_from_right' }} />
             <Stack.Screen name="you" options={{ title: 'You', animation: 'slide_from_right' }} />
+            <Stack.Screen name="voice/[channelId]" options={{ title: 'Voice', animation: 'slide_from_bottom' }} />
           </Stack.Protected>
         </Stack>
       )}
+      {signedIn && <IncomingCall />}
     </>
   );
 }

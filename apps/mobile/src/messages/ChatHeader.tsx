@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { User } from '@discordy/core/contracts/rest';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
+import { openCallScreen, voiceAvailable } from '../voice/voiceActions';
 
 export const CALLS_NOTICE = "Calls aren't in this test version yet.";
+
+export const VIDEO_NOTICE = 'Video calls come in a later test version. Voice calls work.';
 
 const showCallsNotice = () => Alert.alert('Calls', CALLS_NOTICE);
 
@@ -39,10 +43,17 @@ export interface ChatHeaderActionsProps {
 }
 
 export function ChatHeaderActions({ onProfile, calls, trailing }: ChatHeaderActionsProps) {
+  const { channelId } = useLocalSearchParams<{ channelId?: string }>();
+  // Expo Go has no native WebRTC and keeps the notice; a development build starts the voice call.
+  const call = (video: boolean) => {
+    if (!voiceAvailable() || !channelId) showCallsNotice();
+    else if (video) Alert.alert('Video call', VIDEO_NOTICE);
+    else openCallScreen(channelId);
+  };
   return (
     <View style={styles.actions}>
-      {calls && <HeaderButton icon="call-outline" label="Voice call" onPress={showCallsNotice} />}
-      {calls && <HeaderButton icon="videocam-outline" label="Video call" onPress={showCallsNotice} />}
+      {calls && <HeaderButton icon="call-outline" label="Voice call" onPress={() => call(false)} />}
+      {calls && <HeaderButton icon="videocam-outline" label="Video call" onPress={() => call(true)} />}
       {onProfile && <HeaderButton icon="person-circle-outline" label="View profile" onPress={onProfile} />}
       {trailing}
     </View>

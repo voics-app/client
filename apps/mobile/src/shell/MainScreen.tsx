@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUiStore, type View as ViewState } from '@discordy/core/application/stores/uiStore';
 import { metrics, theme } from '../theme';
+import { VoiceBar } from '../voice/VoiceBar';
 import { ChannelColumn } from './ChannelColumn';
 import { DmColumn } from './DmColumn';
 import { ServerRail } from './ServerRail';
@@ -18,6 +19,7 @@ export function MainScreen({ select }: { select?: ViewState }) {
       <ServerRail />
       <View style={[styles.column, { paddingBottom: insets.bottom }]}>
         {view.kind === 'guild' ? <ChannelColumn guildId={view.guildId} /> : <DmColumn />}
+        <VoiceBar />
         <UserPanel />
       </View>
     </View>
