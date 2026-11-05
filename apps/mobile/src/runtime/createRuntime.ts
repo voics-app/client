@@ -137,13 +137,11 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   });
   gateway.onOp((op, data) => privacy?.handleGatewayOp(op, data));
   gateway.onState((state) => useSessionStore.getState().setGateway(state));
-  gateway.onFatal(() => {
-    void voice?.controller.leave();
-    void manager?.sessionExpired();
-  });
+  gateway.onFatal((code) => void manager?.gatewayClosed(code));
 
   const sessionRuntime: SessionRuntime = {
     api,
+    renewSession: () => http.renewSession(),
     connect: () => gateway.connect(),
     disconnect: () => {
       turn.clear();

@@ -64,7 +64,7 @@ describe('login with a second factor', () => {
         me: vi.fn(async () => user),
         registerDevice: vi.fn(async () => ({ device_id: 'd' })),
       };
-      const runtime: SessionRuntime = { api: api as unknown as SessionRuntime['api'], connect: vi.fn(), disconnect: vi.fn(), setTokens: vi.fn() };
+      const runtime: SessionRuntime = { api: api as unknown as SessionRuntime['api'], connect: vi.fn(), renewSession: vi.fn(async () => 'renewed' as const), disconnect: vi.fn(), setTokens: vi.fn() };
       await new SessionManager({ vault, runtime, identity: async () => null }).loginMfa({ ticket: 'tkt', code: '123456' });
       expect(api.loginMfa).toHaveBeenCalledWith({ ticket: 'tkt', code: '123456' });
       expect(runtime.setTokens).toHaveBeenLastCalledWith({ access: 'a', refresh: 'r' });

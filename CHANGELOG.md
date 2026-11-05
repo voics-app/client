@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- You stay signed in: an expired access token on the gateway now refreshes the session instead of deleting the login, and a failed refresh while offline keeps it too.
+
 - Mobile app: parity polish (client#280). The magnifier in the column header opens a quick switcher over channels, conversations, servers and screens (prefixes @ # ! *, recent and unread first). Typing / in a chat lists slash commands; a command opens a sheet for its options, and bots' buttons, select menus and forms work in messages. Tablets (iPad, `supportsTablet` on) keep the rail and channel list beside the chat. The user panel shows the presence dot on your avatar and opens a status sheet (status, custom status, Edit profile, Settings). A collapsed category keeps the open channel, mentions, unread text channels and occupied voice channels visible, as on desktop. Appearance says that a theme or accent change needs a restart. Stickers are not built (desktop has none either); polls and voice messages wait for an owner decision.
 - Internal: the status choices and the status shown on your own avatar (`selfPresence`), the quick switcher's channel items (`quickSwitcher`), the people, role and channel choices for command options and selects (`entityChoices`) and the form, select and button rules of message components (`slashCommand`) moved into `@discordy/core`; desktop uses them. No change in desktop behaviour.
 - Mobile app: forums, forwarding, drafts and offline messages (client#279). A forum channel shows its posts and, with the permission to start threads, New post. Forward is in the message menu, with a picker of chats and channels and an optional comment (encrypted chats cannot receive forwards), and forwarded messages show what was forwarded. Unsent text is kept per chat as a draft. The newest messages of recent chats are saved on the phone, so a chat opens at once and still opens offline; they are removed when you sign out.
