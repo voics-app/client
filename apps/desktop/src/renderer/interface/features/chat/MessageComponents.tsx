@@ -2,28 +2,19 @@ import { ArrowSquareOut } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { ComponentType, CommandOptionType, type Message, type MessageComponent } from '@discordy/core/contracts/rest';
+import { buttonTone, safeComponentUrl, selectLimits, toggleSelected } from '@discordy/core/domain/slashCommand';
 import { reportError } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { Select } from '../../shared/ui/Form';
 import { EntityPicker } from './SlashCommandPanel';
 
-const BUTTON_STYLES: Record<number, string> = { 1: 'primary', 2: 'secondary', 3: 'success', 4: 'danger', 5: 'link' };
 const ENTITY_SELECTS: Record<number, number> = {
   [ComponentType.USER_SELECT]: CommandOptionType.USER,
   [ComponentType.ROLE_SELECT]: CommandOptionType.ROLE,
   [ComponentType.MENTIONABLE_SELECT]: CommandOptionType.MENTIONABLE,
   [ComponentType.CHANNEL_SELECT]: CommandOptionType.CHANNEL,
 };
-
-function safeUrl(url: string | undefined): string | null {
-  try {
-    const u = new URL(url ?? '');
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
-  } catch {
-    return null;
-  }
-}
 
 /** Sends a component interaction; keeps the control disabled while the request is in flight. */
 function usePress(message: Message) {
@@ -50,9 +41,9 @@ function EmojiLabel({ component }: { component: MessageComponent }) {
 
 function ButtonView({ message, component }: { message: Message; component: MessageComponent }) {
   const { busy, press } = usePress(message);
-  const tone = BUTTON_STYLES[component.style ?? 1] ?? 'secondary';
+  const tone = buttonTone(component.style);
   if (tone === 'link') {
-    const href = safeUrl(component.url);
+    const href = safeComponentUrl(component.url);
     return (
       <a className="component-btn is-link" href={href ?? undefined} target="_blank" rel="noreferrer" aria-disabled={!href || component.disabled || undefined}>
         <EmojiLabel component={component} />
@@ -72,8 +63,8 @@ function ButtonView({ message, component }: { message: Message; component: Messa
 function StringSelect({ message, component }: { message: Message; component: MessageComponent }) {
   const { busy, press } = usePress(message);
   const [picked, setPicked] = useState<string[]>(() => (component.options ?? []).filter((o) => o.default).map((o) => o.value));
-  const multi = (component.max_values ?? 1) > 1;
-  const min = component.min_values ?? 1;
+  const { min, max } = selectLimits(component);
+  const multi = max > 1;
   const label = component.placeholder ?? 'Select an option';
   if (!multi) {
     return (
@@ -83,8 +74,7 @@ function StringSelect({ message, component }: { message: Message; component: Mes
       </Select>
     );
   }
-  const toggle = (value: string) =>
-    setPicked((cur) => (cur.includes(value) ? cur.filter((v) => v !== value) : cur.length < (component.max_values ?? 25) ? [...cur, value] : cur));
+  const toggle = (value: string) => setPicked((cur) => toggleSelected(cur, value, component.max_values ?? 25));
   return (
     <fieldset className="component-multi" disabled={component.disabled || busy}>
       <legend>{label}</legend>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchScore, parseQuery, rankItems, recentChannelIds, type SwitcherItem } from '@discordy/core/domain/quickSwitcher';
+import { channelSwitcherItem, isSwitchable, matchScore, parseQuery, rankItems, recentChannelIds, type SwitcherItem } from '@discordy/core/domain/quickSwitcher';
 import { pickUnreadChannel } from '@discordy/core/domain/unreadNav';
 
 const items: SwitcherItem[] = [
@@ -92,5 +92,22 @@ describe('pickUnreadChannel with mentions first', () => {
     expect(pickUnreadChannel(only, 'b', 1, true)).toBe('c');
     expect(pickUnreadChannel(only, 'b', 1, false)).toBe('c');
     expect(pickUnreadChannel(only, 'a', 1, false)).toBe('b');
+  });
+});
+
+describe('channelSwitcherItem', () => {
+  const facts = { name: 'general', guildName: 'Home', unread: true, mentions: 2, recent: 1 };
+  it('labels a text channel with a hash and carries the server and counts', () => {
+    expect(channelSwitcherItem({ id: '5', type: 0, guild_id: 'g1' }, facts)).toEqual({ id: 'c-5', kind: 'text', label: '#general', hint: 'Home', guildId: 'g1', unread: true, mentions: 2, recent: 1 });
+  });
+  it('keeps a voice channel name bare and a DM without a server', () => {
+    expect(channelSwitcherItem({ id: '6', type: 2, guild_id: 'g1' }, { ...facts, name: 'Lounge', recent: -1 })).toMatchObject({ kind: 'voice', label: 'Lounge' });
+    const dm = channelSwitcherItem({ id: '7', type: 1 }, { name: 'Ann', guildName: undefined, unread: false, mentions: 0, recent: -1 });
+    expect(dm).toEqual({ id: 'c-7', kind: 'dm', label: 'Ann', unread: false, mentions: 0 });
+  });
+  it('skips categories and forums', () => {
+    expect(isSwitchable({ type: 4 })).toBe(false);
+    expect(isSwitchable({ type: 15 })).toBe(false);
+    expect(isSwitchable({ type: 0 })).toBe(true);
   });
 });

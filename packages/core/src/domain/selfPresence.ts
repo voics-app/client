@@ -106,3 +106,28 @@ export function selfPresencePayload(manual: ManualStatus | undefined, custom: Cu
   const status = effectiveStatus(manual, autoIdle);
   return { status, activities: customStatusActivities(custom, nowMs), afk: status === 'idle' && autoIdle };
 }
+
+/** The statuses a person can pick for themselves, in the order of the user panel menu. */
+export const STATUS_CHOICES: readonly { id: ManualStatus; label: string; hint: string }[] = [
+  { id: 'online', label: 'Online', hint: '' },
+  { id: 'idle', label: 'Idle', hint: '' },
+  { id: 'dnd', label: 'Do not disturb', hint: 'Mutes notifications' },
+  { id: 'invisible', label: 'Invisible', hint: 'Appear offline' },
+];
+
+/** The status shown on your own avatar: the one the gateway reports back (so automatic idle shows), else the one you chose. */
+export function shownStatus(presence: PresenceStatus | undefined, chosen: PresenceStatus | undefined): ManualStatus {
+  const status = presence && presence !== 'offline' ? presence : chosen;
+  return status && status !== 'offline' ? status : 'online';
+}
+
+/** Name of a status for the line under your name. */
+export function statusLabel(status: ManualStatus): string {
+  return STATUS_CHOICES.find((s) => s.id === status)?.label ?? 'Online';
+}
+
+/** The custom status as one line (emoji then text; a custom emoji image cannot be written as text, so only its text shows). */
+export function customStatusLine(status: CustomStatus | null | undefined, nowMs: number): string {
+  const active = activeCustomStatus(status, nowMs);
+  return active ? [active.emoji_id ? '' : active.emoji_name, active.text].filter(Boolean).join(' ') : '';
+}

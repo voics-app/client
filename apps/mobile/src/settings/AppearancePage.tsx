@@ -14,7 +14,7 @@ export function AppearancePage({ highlight }: { highlight: string | null }) {
   const restart = needsRestart(appliedAppearance(), prefs, Appearance.getColorScheme());
   return (
     <SettingsPage highlight={highlight}>
-      <SettingRow title="Theme" stacked>
+      <SettingRow title="Theme" description="Takes effect after you restart Voics." stacked>
         <View accessibilityRole="radiogroup" accessibilityLabel="Theme" style={styles.cards}>
           {THEME_CHOICES.map((t) => {
             const palette = paletteFor(t.id, prefs.accent);
@@ -32,7 +32,7 @@ export function AppearancePage({ highlight }: { highlight: string | null }) {
           })}
         </View>
       </SettingRow>
-      <SettingRow title="Accent" stacked>
+      <SettingRow title="Accent" description="Takes effect after you restart Voics." stacked>
         <View accessibilityRole="radiogroup" accessibilityLabel="Accent colour" style={styles.accents}>
           {ACCENT_CHOICES.map((a) => (
             <Pressable key={a.id} accessibilityRole="radio" accessibilityLabel={a.label} accessibilityState={{ selected: prefs.accent === a.id }} onPress={() => prefs.set('accent', a.id)} style={[styles.dot, { backgroundColor: paletteFor('dark', a.id).accent }, prefs.accent === a.id && styles.dotOn]} />

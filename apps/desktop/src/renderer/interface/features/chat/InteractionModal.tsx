@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
-import { ComponentType, type MessageComponent } from '@discordy/core/contracts/rest';
+import { modalInitialValues, modalInputs, modalReady } from '@discordy/core/domain/slashCommand';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';
@@ -9,25 +9,21 @@ import { Modal } from '../../shared/ui/Modal';
 
 const PARAGRAPH = 2;
 
-function textInputs(components: MessageComponent[]): MessageComponent[] {
-  return components.flatMap((c) => (c.type === ComponentType.ACTION_ROW ? textInputs(c.components ?? []) : c.type === ComponentType.TEXT_INPUT ? [c] : []));
-}
-
 /** Renders the modal an application opened in response to an interaction; submitting sends a modal-submit interaction. */
 export function InteractionModal() {
   const modal = useInteractionStore((s) => s.modal);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const inputs = modal ? textInputs(modal.components) : [];
+  const inputs = modal ? modalInputs(modal.components) : [];
 
   useEffect(() => {
-    setValues(Object.fromEntries(inputs.map((i) => [i.custom_id ?? '', i.value ?? ''])));
+    setValues(modalInitialValues(inputs));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modal?.interactionId]);
 
   if (!modal) return null;
   const close = () => useInteractionStore.getState().closeModal();
-  const missing = inputs.some((i) => (i.required ?? true) && !(values[i.custom_id ?? ''] ?? '').trim());
+  const missing = !modalReady(inputs, values);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

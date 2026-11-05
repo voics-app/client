@@ -17,7 +17,9 @@ const config: ExpoConfig = {
   backgroundColor: '#0c0d12',
   ios: {
     bundleIdentifier: brand.appId,
-    supportsTablet: false,
+    supportsTablet: true,
+    // iPad stays in portrait like the phone (the app is portrait only), which Apple accepts only for an app that opts out of Split View and Slide Over.
+    requireFullScreen: true,
     infoPlist: {
       NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSCameraUsageDescription: CAMERA_USAGE,
