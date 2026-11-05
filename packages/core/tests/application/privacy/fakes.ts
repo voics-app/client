@@ -1,13 +1,13 @@
 import { vi } from 'vitest';
-import type { Channel, User } from '@discordy/core/contracts/rest';
-import type { CryptoBridge, LocalMessageRecord } from '@shared/ipc';
-import type { ApiPort } from '@discordy/core/application/ports/api';
-import type { GatewayPort } from '@discordy/core/application/ports/gateway';
-import type { DataChannelLike, PeerConnectionLike } from '@renderer/application/privacy/p2pService';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { Channel, User } from '../../../src/contracts/rest';
+import type { CryptoBridge, LocalMessageRecord } from '../../../src/application/ports/crypto';
+import type { ApiPort } from '../../../src/application/ports/api';
+import type { GatewayPort } from '../../../src/application/ports/gateway';
+import type { DataChannelLike, PeerConnectionLike } from '../../../src/application/privacy/p2pService';
+import { useGuildStore } from '../../../src/application/stores/guildStore';
+import { useMessageStore } from '../../../src/application/stores/messageStore';
+import { usePrivacyStore } from '../../../src/application/stores/privacyStore';
+import { useSessionStore } from '../../../src/application/stores/sessionStore';
 
 export const SELF = { userId: '1', deviceId: '10', identityKeyB64: 'key-self' };
 export const BOB = { userId: '2', deviceId: '20', identityKeyB64: 'key-bob' };

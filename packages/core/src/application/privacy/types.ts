@@ -1,8 +1,8 @@
 /** Shared types and wire helpers for the private delivery modes (Ephemeral E2EE and P2P). */
-import type { Channel, DeliveryMode, User } from '@discordy/core/contracts/rest';
-import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '@discordy/core/domain/privateAttachment';
-import { snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
-import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import type { Channel, DeliveryMode, User } from '../../contracts/rest';
+import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '../../domain/privateAttachment';
+import { snowflakeFromTimestamp } from '../../domain/snowflake';
+import type { ChatMessage } from '../stores/messageStore';
 
 export interface SelfIdentity {
   userId: string;

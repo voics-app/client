@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GatewayOp, type E2EEEnvelope } from '@discordy/core/contracts/gateway';
-import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
-import { EphemeralService } from '@renderer/application/privacy/ephemeralService';
-import { mayCommit } from '@renderer/application/privacy/groupRemoval';
-import { LocalHistory } from '@renderer/application/privacy/localHistory';
-import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
-import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
+import { GatewayOp, type E2EEEnvelope } from '../../../src/contracts/gateway';
+import { DeviceDirectory } from '../../../src/application/privacy/deviceDirectory';
+import { EphemeralService } from '../../../src/application/privacy/ephemeralService';
+import { mayCommit } from '../../../src/application/privacy/groupRemoval';
+import { LocalHistory } from '../../../src/application/privacy/localHistory';
+import { PrivateMessaging } from '../../../src/application/privacy/privateMessaging';
+import { usePrivacyStore } from '../../../src/application/stores/privacyStore';
 import { BOB, FakeGateway, asApi, dm, fakeApi, fakeCrypto, resetStores } from './fakes';
 
 const CAROL = { userId: '3', deviceId: '30', identityKeyB64: 'key-carol' };

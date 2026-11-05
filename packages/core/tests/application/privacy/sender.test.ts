@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
-import { GatewayOp } from '@discordy/core/contracts/gateway';
-import type { Channel, Message } from '@discordy/core/contracts/rest';
-import { LocalHistory } from '@renderer/application/privacy/localHistory';
-import { MessageSender } from '@renderer/application/privacy/messageSender';
-import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
-import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { ApiError } from '../../../src/infrastructure/http/httpClient';
+import { GatewayOp } from '../../../src/contracts/gateway';
+import type { Channel, Message } from '../../../src/contracts/rest';
+import { LocalHistory } from '../../../src/application/privacy/localHistory';
+import { MessageSender } from '../../../src/application/privacy/messageSender';
+import { PrivateMessaging } from '../../../src/application/privacy/privateMessaging';
+import { usePrivacyStore } from '../../../src/application/stores/privacyStore';
+import { useGuildStore } from '../../../src/application/stores/guildStore';
+import { useMessageStore } from '../../../src/application/stores/messageStore';
+import { useSessionStore } from '../../../src/application/stores/sessionStore';
 import { FakeGateway, FakePeerConnection, SELF, asApi, bobUser, dm, fakeApi, fakeCrypto, resetStores, selfUser } from './fakes';
 
 const serverMessage = (over: Partial<Message> = {}): Message => ({

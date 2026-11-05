@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GatewayOp, type E2EEEnvelope } from '@discordy/core/contracts/gateway';
-import { AttachmentService } from '@renderer/application/privacy/attachmentService';
-import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
-import { EphemeralService } from '@renderer/application/privacy/ephemeralService';
-import { LocalHistory } from '@renderer/application/privacy/localHistory';
-import { b64ToUtf8, utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useTransferStore } from '@discordy/core/application/stores/transferStore';
-import { privateRefOf } from '@discordy/core/domain/privateAttachment';
+import { GatewayOp, type E2EEEnvelope } from '../../../src/contracts/gateway';
+import { AttachmentService } from '../../../src/application/privacy/attachmentService';
+import { DeviceDirectory } from '../../../src/application/privacy/deviceDirectory';
+import { EphemeralService } from '../../../src/application/privacy/ephemeralService';
+import { LocalHistory } from '../../../src/application/privacy/localHistory';
+import { b64ToUtf8, utf8ToB64 } from '../../../src/application/privacy/types';
+import { useMessageStore } from '../../../src/application/stores/messageStore';
+import { useTransferStore } from '../../../src/application/stores/transferStore';
+import { privateRefOf } from '../../../src/domain/privateAttachment';
 import { BOB, FakeGateway, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores } from './fakes';
 
 const PLAINTEXT = 'PLAINTEXT-FILE-CONTENT-12345';

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GatewayOp } from '@discordy/core/contracts/gateway';
-import type { P2PSignal } from '@discordy/core/contracts/gateway';
-import { AttachmentService } from '@renderer/application/privacy/attachmentService';
-import { encryptFile } from '@renderer/application/privacy/attachmentCipher';
-import { DeviceDirectory } from '@renderer/application/privacy/deviceDirectory';
-import { LocalHistory } from '@renderer/application/privacy/localHistory';
-import { P2PService } from '@renderer/application/privacy/p2pService';
-import { fingerprintSigningPayload } from '@discordy/core/domain/p2pIdentity';
-import { utf8ToB64 } from '@renderer/application/privacy/types';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
-import { useTransferStore } from '@discordy/core/application/stores/transferStore';
+import { GatewayOp } from '../../../src/contracts/gateway';
+import type { P2PSignal } from '../../../src/contracts/gateway';
+import { AttachmentService } from '../../../src/application/privacy/attachmentService';
+import { encryptFile } from '../../../src/application/privacy/attachmentCipher';
+import { DeviceDirectory } from '../../../src/application/privacy/deviceDirectory';
+import { LocalHistory } from '../../../src/application/privacy/localHistory';
+import { P2PService } from '../../../src/application/privacy/p2pService';
+import { fingerprintSigningPayload } from '../../../src/domain/p2pIdentity';
+import { utf8ToB64 } from '../../../src/application/privacy/types';
+import { useMessageStore } from '../../../src/application/stores/messageStore';
+import { useTransferStore } from '../../../src/application/stores/transferStore';
 import { BOB, FakeGateway, FakePeerConnection, SDP, SELF, asApi, dm, fakeApi, fakeCrypto, resetStores, tick } from './fakes';
 
 const CHUNK = 16 * 1024;

@@ -1,11 +1,11 @@
-import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import type { ChatMessage } from '../stores/messageStore';
 /** Facade over the private delivery modes; the composition root wires one instance per signed-in session. */
-import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '@discordy/core/contracts/gateway';
-import type { CryptoBridge } from '@shared/ipc';
-import type { ApiPort } from '@discordy/core/application/ports/api';
-import type { GatewayPort } from '@discordy/core/application/ports/gateway';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
+import { GatewayOp, type ChannelDeliveryModeUpdate, type E2EEEnvelope, type P2PSignal, type P2PSignalFailed } from '../../contracts/gateway';
+import type { CryptoBridge } from '../ports/crypto';
+import type { ApiPort } from '../ports/api';
+import type { GatewayPort } from '../ports/gateway';
+import { useGuildStore } from '../stores/guildStore';
+import { usePrivacyStore } from '../stores/privacyStore';
 import { AttachmentService } from './attachmentService';
 import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';
@@ -13,7 +13,7 @@ import { LocalHistory } from './localHistory';
 import { MessageSender } from './messageSender';
 import { P2PService, type PeerConnectionConfig, type PeerConnectionLike } from './p2pService';
 import type { SelfIdentity } from './types';
-import { BRAND } from '@shared/brand';
+import { brand } from '../../domain/brandConfig';
 
 export interface PrivateMessagingDeps {
   gateway: GatewayPort;
@@ -72,7 +72,7 @@ export class PrivateMessaging {
 
   /** Step 1 (before registering the device): opens the encrypted store and returns the identity public key (base64). */
   initialiseIdentity(): Promise<string> {
-    return this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? `${BRAND.displayName} desktop`);
+    return this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? `${brand().displayName} desktop`);
   }
 
   /** Step 2 (after READY): publishes key packages when needed. Failures never block the rest of the app. */

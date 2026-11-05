@@ -5,7 +5,7 @@
  * committer, issues a Remove commit. The epoch change rotates every group secret, so
  * removed devices can no longer decrypt later messages or derive later media keys.
  */
-import type { CryptoBridge } from '@shared/ipc';
+import type { CryptoBridge } from '../ports/crypto';
 import type { DeviceDirectory } from './deviceDirectory';
 import { participantsOf } from './deviceDirectory';
 import type { SelfIdentity } from './types';

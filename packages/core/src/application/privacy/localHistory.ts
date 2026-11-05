@@ -1,6 +1,6 @@
 /** Local private-message history in the encrypted local store (via the crypto bridge). */
-import type { CryptoBridge } from '@shared/ipc';
-import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import type { CryptoBridge } from '../ports/crypto';
+import type { ChatMessage } from '../stores/messageStore';
 
 export class LocalHistory {
   constructor(private readonly crypto: () => CryptoBridge | undefined) {}

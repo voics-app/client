@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AttachmentError, decryptFile, encryptFile } from '@renderer/application/privacy/attachmentCipher';
+import { AttachmentError, decryptFile, encryptFile } from '../../../src/application/privacy/attachmentCipher';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 

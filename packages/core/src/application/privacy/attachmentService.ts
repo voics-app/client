@@ -3,7 +3,7 @@
  * AES-256-GCM key; only ciphertext ever leaves it (to the CDN for Ephemeral, to the peer for P2P).
  * Keys, nonces, hashes and names travel inside the encrypted message envelope.
  */
-import type { Attachment } from '@discordy/core/contracts/rest';
+import type { Attachment } from '../../contracts/rest';
 import {
   checkOutgoingFiles,
   privateRefOf,
@@ -13,10 +13,10 @@ import {
   type PrivateAttachment,
   type PrivateFileRef,
   type PrivateMode,
-} from '@discordy/core/domain/privateAttachment';
-import type { ApiPort } from '@discordy/core/application/ports/api';
-import { useTransferStore } from '@discordy/core/application/stores/transferStore';
-import type { AttachmentFailure } from '@discordy/core/domain/attachmentFailure';
+} from '../../domain/privateAttachment';
+import type { ApiPort } from '../ports/api';
+import { useTransferStore } from '../stores/transferStore';
+import type { AttachmentFailure } from '../../domain/attachmentFailure';
 import { AttachmentError, decryptFile, encryptFile, type EncryptedFile } from './attachmentCipher';
 
 export interface AttachmentDeps {

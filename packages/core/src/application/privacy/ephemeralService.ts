@@ -5,15 +5,15 @@
  * native crypto module is unavailable every send fails loudly.
  */
 import { privacyDebug } from './debugLog';
-import type { Channel, User } from '@discordy/core/contracts/rest';
-import { GatewayOp, type E2EEContentType, type E2EEEnvelope, type E2EERecipient } from '@discordy/core/contracts/gateway';
-import type { CryptoBridge } from '@shared/ipc';
-import type { ApiPort } from '@discordy/core/application/ports/api';
-import type { GatewayPort } from '@discordy/core/application/ports/gateway';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
-import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { Channel, User } from '../../contracts/rest';
+import { GatewayOp, type E2EEContentType, type E2EEEnvelope, type E2EERecipient } from '../../contracts/gateway';
+import type { CryptoBridge } from '../ports/crypto';
+import type { ApiPort } from '../ports/api';
+import type { GatewayPort } from '../ports/gateway';
+import { useGuildStore } from '../stores/guildStore';
+import { useMessageStore, type ChatMessage } from '../stores/messageStore';
+import { usePrivacyStore } from '../stores/privacyStore';
+import { useSessionStore } from '../stores/sessionStore';
 import type { DeviceDirectory} from './deviceDirectory';
 import { participantsOf } from './deviceDirectory';
 import { removeStaleDevices, type Membership } from './groupRemoval';
