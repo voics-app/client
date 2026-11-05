@@ -19,6 +19,10 @@ export interface ChatContextValue {
   /** Whether the user may reply here; swiping a message left only replies then. */
   canReply: boolean;
   onReplyTo(message: ChatMessage): void;
+  /** Opens the pinned messages of this channel (the link in a pin system message). */
+  onOpenPins(): void;
+  /** Opens a thread (the link in a thread system message). */
+  onOpenThread(threadId: string): void;
 }
 
 const NOOP: ChatContextValue = {
@@ -33,7 +37,12 @@ const NOOP: ChatContextValue = {
   onWhoReacted: () => undefined,
   canReply: false,
   onReplyTo: () => undefined,
+  onOpenPins: () => undefined,
+  onOpenThread: () => undefined,
 };
 
 export const ChatContext = createContext<ChatContextValue>(NOOP);
 export const useChatContext = () => useContext(ChatContext);
+
+/** A context for screens that show messages outside a chat (pins, search): names and colours of the server, and taps that do nothing. */
+export const chatContextFor = (guildId: string | undefined): ChatContextValue => ({ ...NOOP, guildId });

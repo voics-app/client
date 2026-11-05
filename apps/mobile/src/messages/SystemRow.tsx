@@ -22,7 +22,7 @@ const TONES: Record<SystemTone, string> = { positive: theme.success, negative: t
 
 /** A server-generated message (join, pin, call, group changes) as one line with its icon, from `domain/systemMessage`. */
 export function SystemRow({ message, authorName, targetName }: { message: ChatMessage; authorName: string; targetName: string | null }) {
-  const { onJumpToMessage, onWave } = useChatContext();
+  const { onJumpToMessage, onWave, onOpenPins } = useChatContext();
   const spec = systemSpec({
     type: message.type,
     messageId: message.id,
@@ -46,6 +46,13 @@ export function SystemRow({ message, authorName, targetName }: { message: ChatMe
     if (p.t === 'link' && p.action === 'jump' && reference) {
       return (
         <Text key={i} accessibilityRole="link" style={styles.link} onPress={() => onJumpToMessage(reference)}>
+          {p.text}
+        </Text>
+      );
+    }
+    if (p.t === 'link' && p.action === 'pins') {
+      return (
+        <Text key={i} accessibilityRole="link" style={styles.link} onPress={onOpenPins}>
           {p.text}
         </Text>
       );

@@ -26,6 +26,7 @@ import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
+import { ChannelDetails } from './ChannelDetails';
 import { ChannelMenu } from './ChannelMenu';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
@@ -63,6 +64,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [reactors, setReactors] = useState<ReactionTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +206,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         if (guildId) router.push(`/servers/${guildId}/${id}`);
       },
       onJumpToMessage: jumpTo,
+      onOpenPins: () => router.push(`/pins/${channelId}`),
+      onOpenThread: () => undefined,
       canReact: access?.canReact ?? false,
       canReply: access?.canSend ?? false,
       onReplyTo: (m) => {
@@ -228,7 +232,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={headerHeight}>
         <Stack.Screen
           options={{
-            headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
+            headerTitle: () => <ChatHeaderTitle title={title} peer={peer} onPress={() => (peer ? setProfileUser(peer) : setDetailsOpen(true))} />,
             headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} onMenu={() => setMenuOpen(true)} />,
           }}
         />
@@ -349,6 +353,16 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             setSelecting(selected);
             close();
           }}
+        />
+        <ChannelDetails
+          visible={detailsOpen}
+          channel={channel}
+          title={title}
+          guildId={guildId}
+          onClose={() => setDetailsOpen(false)}
+          onOpenPins={() => router.push(`/pins/${channelId}`)}
+          onOpenMembers={() => guildId && router.push(`/servers/${guildId}/members`)}
+          onOpenProfile={setProfileUser}
         />
         <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onClose={() => setMenuOpen(false)} onMarkRead={() => {
             useReadNavStore.getState().dismissBar(channelId);

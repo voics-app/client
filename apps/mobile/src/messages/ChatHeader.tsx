@@ -13,21 +13,28 @@ export const VIDEO_NOTICE = 'Video calls come in a later test version. Voice cal
 
 const showCallsNotice = () => Alert.alert('Calls', CALLS_NOTICE);
 
-/** The header title: `# name` in a server, the person's avatar and name in a direct message. */
-export function ChatHeaderTitle({ title, peer }: { title: string; peer: User | null }) {
-  return (
-    <View style={styles.title}>
+/** The header title: `# name` in a server, the person's avatar and name in a direct message. With `onPress` it is a button (channel details, or the profile in a 1:1 DM). */
+export function ChatHeaderTitle({ title, peer, onPress }: { title: string; peer: User | null; onPress?: () => void }) {
+  const body = (
+    <>
       {peer && <Avatar user={peer} size={28} />}
       <Text accessibilityRole="header" numberOfLines={1} style={styles.titleText}>
         {title}
       </Text>
-    </View>
+    </>
+  );
+  return onPress ? (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title} details`} onPress={onPress} style={[styles.title, styles.titleButton]}>
+      {body}
+    </Pressable>
+  ) : (
+    <View style={styles.title}>{body}</View>
   );
 }
 
 function HeaderButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress(): void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress} style={styles.button}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.button}>
       <Ionicons name={icon} size={22} color={theme.text} />
     </Pressable>
   );
@@ -65,7 +72,8 @@ export function ChatHeaderActions({ onProfile, calls, trailing, onMenu }: ChatHe
 
 const styles = StyleSheet.create({
   title: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 220 },
+  titleButton: { minHeight: 44 },
   titleText: { color: theme.text, fontSize: 17, fontWeight: '700', flexShrink: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  button: { padding: 2 },
+  actions: { flexDirection: 'row', alignItems: 'center' },
+  button: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

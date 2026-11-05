@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { RelationshipType } from '@discordy/core/contracts/rest';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { friendRequestError } from '@discordy/core/domain/friendsModel';
@@ -25,4 +26,10 @@ export async function sendFriendRequest(username: string): Promise<FriendRequest
   } catch (error) {
     return { ok: false, text: error instanceof ApiError ? friendRequestError(error.status, error.message, name) : errorMessage(error) };
   }
+}
+
+/** Sends a request from a profile, where there is no form to show the result in: a failure is alerted, success arrives as the relationship update. */
+export async function addFriend(username: string): Promise<void> {
+  const result = await sendFriendRequest(username);
+  if (!result.ok) Alert.alert('Could not send the request', result.text);
 }
