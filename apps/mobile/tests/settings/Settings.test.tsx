@@ -5,6 +5,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { usePushPrefs, usePushStatus } from '../../src/notifications/push/pushStore';
 import { RelationshipType, type AuthSession, type Relationship, type User } from '@discordy/core/contracts/rest';
 
 const ME: User = { id: 'u1', username: 'me', global_name: 'Me Myself', avatar: null, email: 'me@example.test', bio: 'hello', verified: true, mfa_enabled: false };
@@ -31,6 +32,8 @@ const mockApi = {
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn(async () => undefined) };
 const mockGateway = { state: 'idle', resumeNow: jest.fn(), send: jest.fn() };
+// These tests run the app as Expo Go does: no native modules, so push is off until a test says otherwise.
+jest.mock('../../src/native/isNativeBuild', () => ({ isNativeBuild: false }));
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: mockGateway, api: mockApi, apiUrl: 'https://api.test' }) }));
 
 const alertButtons = (alert: jest.SpyInstance) => alert.mock.calls.at(-1)![2]!;
@@ -48,6 +51,8 @@ describe('settings', () => {
     useGuildStore.getState().reset();
     useRelationshipStore.getState().hydrate([]);
     usePrefsStore.setState(DEFAULT_PREFS);
+    usePushStatus.getState().setStatus('unavailable');
+    usePushPrefs.setState({ offered: false, previews: true });
     useSessionStore.setState({ status: 'ready', user: ME as never, settings: { default_delivery_mode: 'standard' } });
   });
   afterEach(() => alert.mockRestore());
@@ -292,6 +297,25 @@ describe('settings', () => {
       await fireEvent(screen.getByLabelText('Convert emoticons'), 'valueChange', false);
       await fireEvent.press(screen.getByLabelText('Show spoiler content: Always'));
       expect(usePrefsStore.getState()).toMatchObject({ inlineMedia: false, convertEmoticons: false, spoilerDisplay: 'always' });
+    });
+
+    it('shows push as unavailable in Expo Go and keeps its switches off', async () => {
+      await open('/settings/notifications');
+      expect(await screen.findByText('Not available in Expo Go')).toBeTruthy();
+      expect(screen.getByLabelText("Show message previews").props.disabled).toBe(true);
+      expect(screen.queryByLabelText('Turn on')).toBeNull();
+    });
+
+    it('turns push on from the page, keeps the previews choice and sends a refused person to iOS Settings', async () => {
+      await open('/settings/notifications');
+      act(() => usePushStatus.getState().setStatus('undetermined'));
+      expect(await screen.findByLabelText('Turn on')).toBeTruthy();
+      await fireEvent(screen.getByLabelText('Show message previews'), 'valueChange', false);
+      expect(usePushPrefs.getState().previews).toBe(false);
+      act(() => usePushStatus.getState().setStatus('denied'));
+      expect(await screen.findByLabelText('Open Settings')).toBeTruthy();
+      act(() => usePushStatus.getState().setStatus('granted'));
+      expect(await screen.findByText('On')).toBeTruthy();
     });
   });
 });

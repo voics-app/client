@@ -34,6 +34,8 @@ export interface SessionDeps {
   /** Opens the native identity for the user; null when the native module is unavailable. */
   identity(userId: string): Promise<{ identityKeyB64: string } | null>;
   deviceName?: string;
+  /** Runs before the server logout, while the tokens still work: the app removes its push token here. A failure is ignored. */
+  beforeLogout?(): Promise<void>;
   /** Called after sign-in/out so private-messaging engines can start or stop. */
   onChange?(signedIn: boolean): void;
   /** Sign-in still succeeds; the user is told encrypted modes are off on this device. */
@@ -78,6 +80,7 @@ export class SessionManager {
   }
 
   async logout(): Promise<void> {
+    await this.deps.beforeLogout?.().catch(() => undefined);
     try {
       await this.deps.runtime.api.logout();
     } catch {

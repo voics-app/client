@@ -16,6 +16,7 @@ import type {
   CreateMessageBody,
   DeliveryMode,
   AuthSession,
+  PushTokenBody,
   Device,
   Emoji,
   Guild,
@@ -120,6 +121,15 @@ export class DiscordyApi implements ApiPort {
   }
   claimKeyPackage(userId: string, deviceId: string) {
     return this.post<{ package_b64: string }>(`/users/${userId}/devices/${deviceId}/key-packages/claim`);
+  }
+
+  /** Stores the push token of this session (the app calls it on every start, so a rotated token is refreshed the same way). */
+  registerPushToken(body: PushTokenBody) {
+    return this.post<void>('/users/@me/devices/push', body);
+  }
+  /** Removes the push token of this session. Removing one that is not there is fine. */
+  removePushToken() {
+    return this.del<void>('/users/@me/devices/push');
   }
 
   listSessions() {

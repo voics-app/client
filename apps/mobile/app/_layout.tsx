@@ -10,6 +10,7 @@ import { watchForeground } from '../src/runtime/foreground';
 import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
 import { InAppBanner } from '../src/notifications/InAppBanner';
+import { PushNotifications } from '../src/notifications/push/PushNotifications';
 import { InteractionModal } from '../src/commands/InteractionModal';
 import { InviteLinkSheet } from '../src/invites/InviteLinkSheet';
 import { WideShell } from '../src/shell/WideShell';
@@ -80,6 +81,7 @@ export default function RootLayout() {
         </Shell>
       )}
       {signedIn && <IncomingCall />}
+      <PushNotifications />
       {signedIn && <InAppBanner />}
       {signedIn && <InviteLinkSheet />}
       {signedIn && <InteractionModal />}

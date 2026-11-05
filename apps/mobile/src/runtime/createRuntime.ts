@@ -41,6 +41,8 @@ export interface RuntimeConfig {
   fetchBytes?: (url: string) => Promise<Uint8Array>;
   /** Public CDN origin, for private attachment links. */
   cdnUrl?: string;
+  /** Removes this session's push token; runs before the logout request, while the session still works. Absent where push does not exist. */
+  removePushToken?: () => Promise<void>;
 }
 
 export interface MobileRuntime {
@@ -115,7 +117,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
         onIncoming: (message) => registerIncoming(message, offerBanner),
       })
     : null;
-  // Push notifications arrive with the native build; until then new messages raise the in-app banner.
+  // New messages in the open app raise the in-app banner; pushes for a closed app come from the notifier (notifications/push).
   // Theme, accent, text size, reduced motion and the other synced preferences follow the account, as on desktop.
   const prefsSync = new PrefsSync({
     updateSettings: (patch) => api.updateSettings(patch),
@@ -161,6 +163,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     vault: config.vault,
     runtime: sessionRuntime,
     deviceName: config.deviceName,
+    ...(config.removePushToken ? { beforeLogout: config.removePushToken } : {}),
     onChange: (signedIn) => {
       if (!signedIn) {
         // Nothing of this account stays on the phone: the saved messages go with the session.
