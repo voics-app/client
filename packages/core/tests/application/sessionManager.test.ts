@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionManager, type SessionVault, type SessionRuntime } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -32,8 +32,84 @@ function runtime(): SessionRuntime & { connect: ReturnType<typeof vi.fn> } {
     connect: vi.fn(),
     disconnect: vi.fn(),
     setTokens: vi.fn(),
+    renewSession: vi.fn(async () => 'renewed' as const),
   };
 }
+
+const stored: StoredSession = { accessToken: 'old', refreshToken: 'r0', userId: '1', deviceId: null };
+
+describe('SessionManager gateway rejection', () => {
+  beforeEach(() => useSessionStore.getState().reset());
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps the login when the gateway rejects an expired access token and the refresh works', async () => {
+    const rt = runtime();
+    const v = vault(stored);
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await m.boot();
+
+    await m.gatewayClosed(4004);
+
+    expect(rt.renewSession).toHaveBeenCalledTimes(1);
+    expect(v.clear).not.toHaveBeenCalled();
+    expect(rt.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('signs out when the server refuses the refresh token', async () => {
+    const rt = runtime();
+    vi.mocked(rt.renewSession).mockResolvedValue('expired');
+    const v = vault(stored);
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await m.boot();
+
+    await m.gatewayClosed(4004);
+
+    expect(v.clear).toHaveBeenCalled();
+    expect(useSessionStore.getState().status).toBe('signedOut');
+  });
+
+  it('keeps the login and tries again when the server cannot be reached', async () => {
+    vi.useFakeTimers();
+    const rt = runtime();
+    vi.mocked(rt.renewSession).mockResolvedValueOnce('unavailable').mockResolvedValue('renewed');
+    const v = vault(stored);
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await m.boot();
+
+    await m.gatewayClosed(4004);
+    expect(v.clear).not.toHaveBeenCalled();
+    expect(rt.connect).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(rt.connect).toHaveBeenCalledTimes(2);
+    expect(v.clear).not.toHaveBeenCalled();
+  });
+
+  it('signs out when the gateway also rejects a token that was just renewed', async () => {
+    const rt = runtime();
+    const v = vault(stored);
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await m.boot();
+
+    await m.gatewayClosed(4004);
+    await m.gatewayClosed(4004);
+
+    expect(rt.renewSession).toHaveBeenCalledTimes(1);
+    expect(v.clear).toHaveBeenCalled();
+  });
+
+  it('signs out on the other fatal close codes', async () => {
+    const rt = runtime();
+    const v = vault(stored);
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await m.boot();
+
+    await m.gatewayClosed(4014);
+
+    expect(rt.renewSession).not.toHaveBeenCalled();
+    expect(v.clear).toHaveBeenCalled();
+  });
+});
 
 describe('SessionManager', () => {
   beforeEach(() => useSessionStore.getState().reset());

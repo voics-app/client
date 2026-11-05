@@ -55,6 +55,27 @@ describe('HttpClient', () => {
     expect((error as ApiError).message).toBe('Request failed with HTTP 413');
   });
 
+  it('keeps the session when the refresh fails because the server cannot be reached', async () => {
+    const t = { access: () => 'old', refresh: vi.fn(async () => Promise.reject(new ApiError(0, 0, 'Network error'))), expired: vi.fn() };
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: (async () => json(401, {})) as unknown as typeof fetch, tokens: t });
+    await expect(client.request('GET', '/x')).rejects.toBeInstanceOf(ApiError);
+    expect(t.expired).not.toHaveBeenCalled();
+  });
+
+  it('keeps the session when the refresh fails with a server error', async () => {
+    const t = { access: () => 'old', refresh: vi.fn(async () => Promise.reject(new ApiError(503, 0, 'down'))), expired: vi.fn() };
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: (async () => json(401, {})) as unknown as typeof fetch, tokens: t });
+    await expect(client.renewSession()).resolves.toBe('unavailable');
+    expect(t.expired).not.toHaveBeenCalled();
+  });
+
+  it('reports the session as expired when the server refuses the refresh token', async () => {
+    const t = { access: () => 'old', refresh: vi.fn(async () => Promise.reject(new ApiError(401, 0, 'refused'))), expired: vi.fn() };
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: (async () => json(401, {})) as unknown as typeof fetch, tokens: t });
+    await expect(client.request('GET', '/x')).rejects.toBeInstanceOf(ApiError);
+    expect(t.expired).toHaveBeenCalledTimes(1);
+  });
+
   it('reports an expired session when refresh fails', async () => {
     const t = { access: () => 'old', refresh: vi.fn(async () => null), expired: vi.fn() };
     const client = new HttpClient({ baseUrl: 'https://api.test', fetch: async () => json(401, { code: 0, message: 'no' }), tokens: t });
