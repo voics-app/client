@@ -5,8 +5,6 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { getRuntime } from '../runtime';
 
-export const VOICE_UNAVAILABLE = "Voice and calls aren't in this test version. Install the development build of Voics to use them.";
-
 /** False in Expo Go, where the native WebRTC module does not exist. */
 export function voiceAvailable(): boolean {
   return Boolean(getRuntime().voice);

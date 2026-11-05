@@ -1,6 +1,5 @@
-import type { GuildMeta } from '@discordy/core/application/stores/guildStore';
-import { ChannelType, type Channel, type GuildMember, type User, type VoiceState } from '@discordy/core/contracts/rest';
-import { callHeadline, participantRows, voiceChannelRows } from '../../src/voice/voiceModel';
+import type { GuildMember, User, VoiceState } from '@discordy/core/contracts/rest';
+import { callHeadline, participantRows } from '../../src/voice/voiceModel';
 
 const user = (id: string, name: string, extra: Partial<User> = {}): User => ({ id, username: name, global_name: null, avatar: null, ...extra });
 const state = (user_id: string, extra: Partial<VoiceState> = {}): VoiceState => ({
@@ -82,31 +81,5 @@ describe('callHeadline', () => {
   it('shows why a call failed', () => {
     expect(callHeadline({ status: 'failed', error: 'The voice server did not respond', e2ee: false })).toBe('The voice server did not respond');
     expect(callHeadline({ status: 'failed', error: null, e2ee: false })).toBe('The call failed');
-  });
-});
-
-describe('voiceChannelRows', () => {
-  const guild = { id: 'g1', name: 'Home', owner_id: 'owner', roles: [] } as unknown as GuildMeta;
-  const channel = (id: string, extra: Partial<Channel> = {}): Channel => ({ id, guild_id: 'g1', type: ChannelType.GUILD_VOICE, name: id, position: 0, ...extra }) as Channel;
-
-  it('lists voice channels only, in the server order, with their occupants', () => {
-    const channels = {
-      t1: channel('t1', { type: ChannelType.GUILD_TEXT }),
-      v2: channel('v2', { position: 2 }),
-      v1: channel('v1', { position: 1, user_limit: 2 }),
-      other: channel('other', { guild_id: 'g2' }),
-    };
-    const states = { u2: state('u2', { channel_id: 'v1' }), u3: state('u3', { channel_id: 'v1' }), u4: state('u4', { channel_id: 'v2' }) };
-    const rows = voiceChannelRows({ guild, channels, members: undefined, userId: 'owner', states });
-    expect(rows.map((r) => [r.channel.id, r.occupants])).toEqual([
-      ['v1', 2],
-      ['v2', 1],
-    ]);
-    expect(rows[0]?.capacity).toMatchObject({ label: '2/2', full: true });
-  });
-
-  it('hides a channel the user cannot see', () => {
-    const channels = { v1: channel('v1', { permission_overwrites: [{ id: 'g1', type: 0, allow: '0', deny: String(1n << 10n) }] }) };
-    expect(voiceChannelRows({ guild, channels, members: undefined, userId: 'someone', states: undefined })).toEqual([]);
   });
 });

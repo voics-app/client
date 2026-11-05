@@ -59,11 +59,4 @@ export function flushPendingRoute(): void {
   routeQueue.flush();
 }
 
-export function channelIcon(type: number): 'text' | 'voice' | 'announcement' | 'forum' | 'stage' | 'thread' {
-  if (type === ChannelType.GUILD_VOICE) return 'voice';
-  if (type === ChannelType.GUILD_STAGE_VOICE) return 'stage';
-  if (type === ChannelType.GUILD_ANNOUNCEMENT) return 'announcement';
-  if (type === ChannelType.GUILD_FORUM) return 'forum';
-  if (type >= 10 && type <= 12) return 'thread';
-  return 'text';
-}
+export { channelIcon } from '@discordy/core/domain/channelKind';

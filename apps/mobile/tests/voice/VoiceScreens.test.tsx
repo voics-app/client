@@ -56,6 +56,11 @@ function seedGuild() {
   useGuildStore.getState().hydrate([guild], []);
 }
 
+async function openLounge() {
+  await fireEvent.press(await screen.findByLabelText('Open voice channel Lounge'));
+  await fireEvent.press(await screen.findByLabelText('Join voice'));
+}
+
 const dm = (id: string): Channel => ({ id, type: ChannelType.DM, delivery_mode: 'standard', recipients: [PAT] }) as Channel;
 
 describe('voice screens', () => {
@@ -71,24 +76,14 @@ describe('voice screens', () => {
     mockVoice = { controller: mockController, route: mockRoute };
   });
 
-  it('lists the voice channels under the text channels with how many are in them', async () => {
-    seedGuild();
-    useVoiceStore.getState().hydrate('g1', [voiceState('u2')]);
-    await renderRouter('./app', { initialUrl: '/servers/g1' });
-    expect(await screen.findByText('VOICE CHANNELS')).toBeTruthy();
-    expect(screen.getByLabelText('Join voice channel Lounge')).toBeTruthy();
-    expect(screen.getByText('1')).toBeTruthy();
-  });
-
-  it('keeps Expo Go working: a voice channel only explains that voice needs the development build', async () => {
+  it('keeps Expo Go working: a voice channel shows the plain note and no Join button', async () => {
     mockVoice = null;
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     seedGuild();
     await renderRouter('./app', { initialUrl: '/servers/g1' });
-    await fireEvent.press(await screen.findByLabelText('Join voice channel Lounge'));
-    expect(alert).toHaveBeenCalledWith('Voice', expect.stringContaining('development build'));
+    await fireEvent.press(await screen.findByLabelText('Open voice channel Lounge'));
+    expect(await screen.findByText("Voice isn't in this test version yet")).toBeTruthy();
+    expect(screen.queryByLabelText('Join voice')).toBeNull();
     expect(mockController.join).not.toHaveBeenCalled();
-    alert.mockRestore();
   });
 
   it('joins on opening the voice screen and shows who is here, who speaks and who is muted', async () => {
@@ -97,7 +92,7 @@ describe('voice screens', () => {
     useVoiceStore.setState({ speaking: { u1: 0.5 } });
     useVoiceStore.getState().setCall({ status: 'connected', channelId: 'lounge', guildId: 'g1' });
     await renderRouter('./app', { initialUrl: '/servers/g1' });
-    await fireEvent.press(await screen.findByLabelText('Join voice channel Lounge'));
+    await openLounge();
     expect(await screen.findByText('Voice connected')).toBeTruthy();
     expect(mockController.join).toHaveBeenCalledTimes(0);
     expect(screen.getByLabelText('Me Myself, you, speaking')).toBeTruthy();
@@ -108,7 +103,7 @@ describe('voice screens', () => {
   it('joins when it opens while no call is running, and leaves with the red button', async () => {
     seedGuild();
     await renderRouter('./app', { initialUrl: '/servers/g1' });
-    await fireEvent.press(await screen.findByLabelText('Join voice channel Lounge'));
+    await openLounge();
     await waitFor(() => expect(mockController.join).toHaveBeenCalledWith({ guildId: 'g1', channelId: 'lounge' }));
     await fireEvent.press(screen.getByLabelText('Leave voice'));
     expect(mockController.leave).toHaveBeenCalledTimes(1);
@@ -118,7 +113,7 @@ describe('voice screens', () => {
   it('has mute, deafen and an audio route switch', async () => {
     seedGuild();
     await renderRouter('./app', { initialUrl: '/servers/g1' });
-    await fireEvent.press(await screen.findByLabelText('Join voice channel Lounge'));
+    await openLounge();
     await fireEvent.press(await screen.findByLabelText('Mute'));
     await fireEvent.press(screen.getByLabelText('Deafen'));
     await fireEvent.press(screen.getByLabelText('Switch to earpiece'));
@@ -131,7 +126,7 @@ describe('voice screens', () => {
     seedGuild();
     useVoiceStore.getState().setCall({ status: 'failed', channelId: 'lounge', error: 'Microphone access is off.' });
     await renderRouter('./app', { initialUrl: '/servers/g1' });
-    await fireEvent.press(await screen.findByLabelText('Join voice channel Lounge'));
+    await openLounge();
     expect(await screen.findByText('Microphone access is off.')).toBeTruthy();
   });
 

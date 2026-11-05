@@ -25,9 +25,6 @@ export interface ChannelSection {
   channels: Channel[];
 }
 
-/** Text channels the first mobile release can open. Voice, stage and forum channels follow with their own screens. */
-const TEXT_TYPES: readonly number[] = [ChannelType.GUILD_TEXT, ChannelType.GUILD_ANNOUNCEMENT];
-
 export interface ChannelListInput {
   guild: GuildMeta;
   channels: Record<string, Channel>;
@@ -35,14 +32,14 @@ export interface ChannelListInput {
   userId: string;
 }
 
-/** Channels of one server, grouped by category in the server's order, hiding what the user cannot see. */
+/** Channels of one server (every kind the desktop sidebar lists), grouped by category in the server's order, hiding what the user cannot see. */
 export function channelSections({ guild, channels, members, userId }: ChannelListInput): ChannelSection[] {
   const inGuild = Object.values(channels).filter((c) => c.guild_id === guild.id);
   const ctx = { guildId: guild.id, ownerId: guild.owner_id, userId, memberRoleIds: members?.[userId]?.roles ?? [], roles: guild.roles };
   const byId = new Map(inGuild.map((c) => [c.id, c]));
   const visible = (id: string): Channel | null => {
     const channel = byId.get(id);
-    if (!channel || !TEXT_TYPES.includes(channel.type)) return null;
+    if (!channel || channel.type === ChannelType.GUILD_CATEGORY) return null;
     return hasPermission(computeChannelPermissions(ctx, channel.permission_overwrites ?? []), Permission.VIEW_CHANNEL) ? channel : null;
   };
   const resolve = (ids: string[]) => ids.flatMap((id) => visible(id) ?? []);
