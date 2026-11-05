@@ -8,7 +8,7 @@ import { InteractionService } from '@discordy/core/application/interactionServic
 import { SessionManager, type SessionRuntime, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
-import { TurnCredentials } from '@renderer/application/privacy/turnCredentials';
+import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 import type { IceServer } from '@discordy/core/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';
 import { browserPeerConnection } from '@renderer/infrastructure/privacy/browserPeerConnection';

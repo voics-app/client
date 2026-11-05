@@ -1,5 +1,5 @@
 import { RelationshipType, type Relationship, type User } from '@discordy/core/contracts/rest';
-import { avatarUris, profileView } from '../../src/profile/profileModel';
+import { avatarUris, mutualServers, profileActions, profileView } from '../../src/profile/profileModel';
 
 const user: User = { id: '2', username: 'pat', global_name: 'Pat', avatar: 'abc', bio: 'Hello there' };
 const friend = (since?: string): Relationship => ({ id: '2', type: RelationshipType.FRIEND, user, ...(since ? { since } : {}) });
@@ -13,7 +13,17 @@ describe('profileView', () => {
 
   it('falls back to the username and leaves out what is unknown', () => {
     const view = profileView({ ...user, global_name: null, bio: undefined }, undefined);
-    expect(view).toEqual({ name: 'pat', username: 'pat', bio: '', friendsSince: null });
+    expect(view).toEqual({ name: 'pat', username: 'pat', bio: '', friendsSince: null, roles: [], memberSince: null });
+  });
+
+  it('lists the roles held in the server and when the person joined, highest role first', () => {
+    const role = (id: string, name: string, position: number) => ({ id, name, color: 0, hoist: false, position, permissions: '0', managed: false, mentionable: false });
+    const view = profileView(user, undefined, undefined, {
+      roles: [role('r1', 'Mods', 2), role('r2', 'Regulars', 1), role('r3', 'Other', 9)],
+      member: { user, roles: ['r2', 'r1'], joined_at: '2024-05-06T10:00:00Z', deaf: false, mute: false },
+    });
+    expect(view.roles).toEqual(['Mods', 'Regulars']);
+    expect(view.memberSince?.getUTCFullYear()).toBe(2024);
   });
 
   it('prefers the freshly fetched About me', () => {
@@ -30,5 +40,36 @@ describe('avatarUris', () => {
     expect(avatarUris('https://cdn.test', user)[0]).toBe('https://cdn.test/avatars/2/abc.png?size=128');
     expect(avatarUris('https://cdn.test', { ...user, avatar: null })).toEqual([]);
     expect(avatarUris('', user)).toEqual([]);
+  });
+});
+
+describe('mutualServers', () => {
+  it('names the shared servers with the nickname there and drops servers you left', () => {
+    expect(mutualServers([{ id: 'g1', nick: 'Patty' }, { id: 'g2' }, { id: 'gone', nick: 'x' }], { g1: { name: 'Home' }, g2: { name: 'Club' } })).toEqual([
+      { id: 'g1', name: 'Home', nick: 'Patty' },
+      { id: 'g2', name: 'Club', nick: null },
+    ]);
+  });
+});
+
+describe('profileActions', () => {
+  const rel = (type: RelationshipType): Relationship => ({ id: '2', type, user });
+
+  it('offers nothing for yourself', () => {
+    expect(profileActions(true, false, undefined)).toEqual({ message: false, friend: null, block: null });
+  });
+
+  it.each([
+    [undefined, 'add'],
+    [RelationshipType.FRIEND, 'remove'],
+    [RelationshipType.OUTGOING, 'sent'],
+    [RelationshipType.INCOMING, 'accept'],
+  ])('a relationship of %s offers the friend action %s and Block', (type, friend) => {
+    expect(profileActions(false, false, type === undefined ? undefined : rel(type))).toEqual({ message: true, friend, block: 'block' });
+  });
+
+  it('offers only Unblock for someone you blocked, and no friending for a bot', () => {
+    expect(profileActions(false, false, rel(RelationshipType.BLOCKED))).toEqual({ message: false, friend: null, block: 'unblock' });
+    expect(profileActions(false, true, undefined)).toEqual({ message: true, friend: null, block: 'block' });
   });
 });

@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
@@ -10,6 +11,7 @@ import { ChannelType, RelationshipType, type Channel, type Message, type User } 
 
 const mockApi = {
   messages: jest.fn(async (_c: string, _q?: object): Promise<Message[]> => []),
+  ack: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
   userProfile: jest.fn(async (id: string) => ({ user: { id, username: 'pat', global_name: 'Pat', avatar: null, bio: 'Fresh bio from the server' }, mutual_guilds: [], mutual_friends: [] })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
@@ -22,7 +24,22 @@ const THUMBS_UP = '\u{1F44D}';
 
 const dm = (id: string, extra: Partial<Channel> = {}): Channel => ({ id, type: ChannelType.DM, delivery_mode: 'standard', recipients: [PAT], ...extra }) as Channel;
 const message = (id: string, extra: Partial<Message> = {}): Message =>
-  ({ id, channel_id: '1000', author: PAT, content: 'hey you', timestamp: new Date().toISOString(), edited_timestamp: null, mention_everyone: false, mentions: [], mention_roles: [], attachments: [], embeds: [], pinned: false, type: 0, ...extra }) as Message;
+  ({
+    id,
+    channel_id: '1000',
+    author: PAT,
+    content: 'hey you',
+    timestamp: new Date().toISOString(),
+    edited_timestamp: null,
+    mention_everyone: false,
+    mentions: [],
+    mention_roles: [],
+    attachments: [],
+    embeds: [],
+    pinned: false,
+    type: 0,
+    ...extra,
+  }) as Message;
 
 function seed(channels: Channel[]) {
   useSessionStore.setState({ status: 'ready', user: ME as never });
@@ -84,6 +101,20 @@ describe('direct messages', () => {
     expect(mockApi.userProfile).toHaveBeenCalledWith('u2');
   });
 
+  it('shows the friend in the header with call and video buttons that only show a notice', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    seed([dm('1000')]);
+    await renderRouter('./app', { initialUrl: '/dms' });
+    await fireEvent.press(await screen.findByLabelText('Open Pat'));
+    expect(await screen.findByRole('header', { name: 'Pat' })).toBeTruthy();
+    expect(screen.getByLabelText('Message').props.placeholder).toBe('Message @Pat');
+    await fireEvent.press(screen.getByLabelText('Voice call'));
+    await fireEvent.press(screen.getByLabelText('Video call'));
+    expect(alert).toHaveBeenCalledTimes(2);
+    expect(alert).toHaveBeenCalledWith('Calls', "Calls aren't in this test version yet.");
+    alert.mockRestore();
+  });
+
   it('has no header profile button in a group conversation, but author names open a profile', async () => {
     seed([dm('1000', { type: ChannelType.GROUP_DM, name: 'Book club', recipients: [PAT, SAM] })]);
     await renderRouter('./app', { initialUrl: '/dms' });
@@ -114,15 +145,11 @@ describe('You tab', () => {
     usePrefsStore.getState().set('showReactions', true);
   });
 
-  it('shows account info and a device-local reactions switch next to sign-out', async () => {
+  it('turns reaction chips off in the Chat settings', async () => {
     seed([]);
-    await renderRouter('./app', { initialUrl: '/you' });
-    expect(await screen.findByText('Me Myself')).toBeTruthy();
-    expect(screen.getByText('me@example.test')).toBeTruthy();
-    await fireEvent(screen.getByLabelText('Show reactions under messages'), 'valueChange', false);
+    await renderRouter('./app', { initialUrl: '/settings/chat' });
+    await fireEvent(await screen.findByLabelText('Show reactions'), 'valueChange', false);
     expect(usePrefsStore.getState().showReactions).toBe(false);
-    await fireEvent.press(screen.getByText('Sign out'));
-    expect(mockSession.logout).toHaveBeenCalled();
   });
 
   it('hides reaction chips in messages when the switch is off', async () => {

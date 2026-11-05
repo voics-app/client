@@ -5,10 +5,9 @@ import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { isMentioned, isSilent, shouldAlert, type NotifyLevel } from '@discordy/core/domain/notificationPolicy';
-import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@discordy/core/domain/notificationSettings';
+import { alertBody, incomingAlert } from '@discordy/core/domain/incomingAlert';
+import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { summarizeActivity } from '@discordy/core/domain/unread';
-import { toPlainText, parseMarkdown } from '@discordy/core/domain/markdown';
 import { shouldPlaySound } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { ChannelType } from '@discordy/core/contracts/rest';
@@ -35,22 +34,21 @@ export function currentActivity(): { mentions: number; unread: number } {
 /** Desktop notification and taskbar flash for an incoming message, following the notification rules. */
 export function notifyIncoming(message: ChatMessage): void {
   const me = useSessionStore.getState().user;
-  if (!me || message.author.id === me.id || isSilent(message)) return;
+  if (!me) return;
   const prefs = usePrefsStore.getState();
   const channel = useGuildStore.getState().channels[message.channel_id];
-  const settings = useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)];
-  const guildDefault = serverDefaultLevel(message.guild_id ? useGuildStore.getState().guilds[message.guild_id]?.default_message_notifications : 0);
-  const synced = effectiveLevelDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, guildDefault);
-  const level: NotifyLevel = synced === 2 ? 'none' : synced === 1 || prefs.notifyOnlyMentions ? 'mentions' : 'all';
-  const myRoleIds = (message.guild_id ? useGuildStore.getState().members[message.guild_id]?.[me.id]?.roles : undefined) ?? [];
-  const mentioned = isMentioned(message, { meId: me.id, myRoleIds, suppressEveryone: settings?.suppress_everyone, suppressRoles: settings?.suppress_roles });
   const doNotDisturb = useSessionStore.getState().settings.status === 'dnd';
-  const alert = shouldAlert({
-    mentioned,
-    level,
-    muted: isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now()),
+  const alert = incomingAlert({
+    message,
+    meId: me.id,
+    channel,
+    settings: useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)],
+    guildDefaultNotifications: message.guild_id ? useGuildStore.getState().guilds[message.guild_id]?.default_message_notifications : 0,
+    myRoleIds: (message.guild_id ? useGuildStore.getState().members[message.guild_id]?.[me.id]?.roles : undefined) ?? [],
+    onlyMentionsPref: prefs.notifyOnlyMentions,
     viewingChannel: document.hasFocus() && activeChannelId() === message.channel_id,
     doNotDisturb,
+    now: Date.now(),
   });
   if (!alert) return;
   // The sound is ours (a toast's own sound depends on the OS and is off for background apps), so it
@@ -60,9 +58,8 @@ export function notifyIncoming(message: ChatMessage): void {
   }
   if (!prefs.notifyDesktop) return;
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
-  // Private (E2EE/P2P) plaintext never goes to the OS notification centre.
-  const isPrivate = message.deliveryMode === 'ephemeral' || message.deliveryMode === 'p2p';
-  const body = isPrivate ? 'Sent a private message' : toPlainText(parseMarkdown(message.content)).slice(0, 180) || 'Sent an attachment';
+  // Private (E2EE/P2P) plaintext never goes to the OS notification centre (alertBody hides it).
+  const body = alertBody(message);
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
   bridge?.app.notify({ title, body, route, silent: true });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();

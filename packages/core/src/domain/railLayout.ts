@@ -13,6 +13,11 @@ export function flatten(rail: GuildFolder[]): string[] {
   return rail.flatMap((e) => e.guild_ids);
 }
 
+/** Oldest first: snowflakes are numeric strings, so a shorter id is an older one. */
+function bySnowflake(a: string, b: string): number {
+  return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+}
+
 /** Reconciles a stored layout with the servers the user is actually in: drops unknown/duplicate ids and empty folders, appends new servers. */
 export function normalizeRail(rail: GuildFolder[], guildIds: string[]): GuildFolder[] {
   const known = new Set(guildIds);
@@ -24,7 +29,8 @@ export function normalizeRail(rail: GuildFolder[], guildIds: string[]): GuildFol
     if (ids.length === 0) continue;
     out.push(entry.id === null ? single(ids[0]!) : { ...entry, guild_ids: ids });
   }
-  for (const id of guildIds) if (!seen.has(id)) out.push(single(id));
+  // The gateway sends servers in no fixed order: without this the rail reshuffles on every start.
+  for (const id of [...guildIds].sort(bySnowflake)) if (!seen.has(id)) out.push(single(id));
   return out;
 }
 

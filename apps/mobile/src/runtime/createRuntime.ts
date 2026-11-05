@@ -1,14 +1,22 @@
 /** Mobile composition root: wires the shared HTTP and gateway clients, the session manager and dispatch routing. */
 import { ALL_INTENTS } from '@discordy/core/contracts/gateway';
-import type { AuthResponse } from '@discordy/core/contracts/rest';
+import type { AuthResponse, ReadyPayload } from '@discordy/core/contracts/rest';
+import { PrefsSync } from '@discordy/core/application/syncedPrefs';
 import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import { currentPresence } from '@discordy/core/application/selfPresence';
 import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { TurnCredentials } from '@discordy/core/application/turnCredentials';
+import { errorMessage } from '@discordy/core/application/errorMessage';
+import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
-import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
+import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
+import { Alert } from 'react-native';
+import { offerBanner } from '../notifications/bannerStore';
+import { messageCache } from '../offline/messageCache';
+import type { MobileVoice } from '../voice/mobileVoice';
 
 export interface RuntimeConfig {
   apiUrl: string;
@@ -20,13 +28,21 @@ export interface RuntimeConfig {
   vault: SessionVault;
   socketFactory: SocketFactory;
   fetch?: typeof fetch;
+  /** Uploads attachments with progress; without it they use a plain PUT and report no progress. */
+  progressUpload?: ProgressUpload;
+  /** Builds the voice stack; returns null where native WebRTC is not available (Expo Go). */
+  createVoice?: (deps: { gateway: GatewayClient; iceServers: () => IceServer[] }) => MobileVoice | null;
 }
 
 export interface MobileRuntime {
+  /** The API origin; invite links are built from it. */
+  apiUrl: string;
   http: HttpClient;
   api: DiscordyApi;
   gateway: GatewayClient;
   session: SessionManager;
+  /** Null in Expo Go, which has no native WebRTC. */
+  voice: MobileVoice | null;
 }
 
 export function createRuntime(config: RuntimeConfig): MobileRuntime {
@@ -36,6 +52,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   const http: HttpClient = new HttpClient({
     baseUrl: config.apiUrl,
     ...(config.fetch ? { fetch: config.fetch } : {}),
+    ...(config.progressUpload ? { progressUpload: config.progressUpload } : {}),
     tokens: {
       access: () => tokens.access,
       refresh: async () => {
@@ -64,20 +81,40 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     presence: () => currentPresence(),
   });
 
-  // Push notifications, message UI and voice arrive in later milestones; their hooks stay no-ops until then.
+  const turn = new TurnCredentials(() => gateway.renewSession());
+  const voice = config.createVoice?.({ gateway, iceServers: () => turn.iceServers() }) ?? null;
+  // Push notifications arrive with the native build; until then new messages raise the in-app banner.
+  // Theme, accent, text size, reduced motion and the other synced preferences follow the account, as on desktop.
+  const prefsSync = new PrefsSync({
+    updateSettings: (patch) => api.updateSettings(patch),
+    onError: (error) => Alert.alert('Could not save your settings', errorMessage(error)),
+  });
+  prefsSync.start();
   const dispatch = createDispatchRouter({
-    onVoiceServerUpdate: () => undefined,
-    onIncomingMessage: () => undefined,
+    onUserSettings: (settings, ready, userId) => prefsSync.onSettings(settings, ready, userId),
+    onVoiceServerUpdate: (update) => voice?.controller.onVoiceServerUpdate(update),
+    onVoiceState: (state) => voice?.controller.onVoiceState(state),
+    onIncomingMessage: offerBanner,
     invalidate: () => undefined,
   });
-  gateway.onDispatch(dispatch);
+  gateway.onDispatch((event, data) => {
+    dispatch(event, data);
+    if (event === 'READY') turn.update((data as ReadyPayload).turn);
+  });
   gateway.onState((state) => useSessionStore.getState().setGateway(state));
-  gateway.onFatal(() => void manager?.sessionExpired());
+  gateway.onFatal(() => {
+    void voice?.controller.leave();
+    void manager?.sessionExpired();
+  });
 
   const sessionRuntime: SessionRuntime = {
     api,
     connect: () => gateway.connect(),
-    disconnect: () => gateway.disconnect(),
+    disconnect: () => {
+      turn.clear();
+      void voice?.controller.leave();
+      gateway.disconnect();
+    },
     setTokens: (pair) => {
       tokens.access = pair.access;
       tokens.refresh = pair.refresh;
@@ -88,9 +125,17 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     vault: config.vault,
     runtime: sessionRuntime,
     deviceName: config.deviceName,
+    onChange: (signedIn) => {
+      if (!signedIn) {
+        // Nothing of this account stays on the phone: the saved messages go with the session.
+        messageCache.clear();
+        prefsSync.stop();
+        prefsSync.start();
+      }
+    },
     // Encrypted modes need the native crypto core, which comes to mobile in M3: no identity, no device registration.
     identity: async () => null,
   });
 
-  return { http, api, gateway, session: manager };
+  return { apiUrl: config.apiUrl, http, api, gateway, session: manager, voice };
 }

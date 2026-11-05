@@ -18,7 +18,7 @@ import { Input, Select } from '../../../shared/ui/Form';
 import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
 import { readAsDataUrl } from '../imageUpload';
-import { AUDIT_ACTIONS } from './auditActions';
+import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (

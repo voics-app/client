@@ -2,6 +2,8 @@
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { createStreamSampler } from './streamSampler';
 import { cameraCaptureConstraints } from '@discordy/core/domain/videoPresets';
+import type { MediaPeerConnection } from '@discordy/core/application/ports/media';
+import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -9,7 +11,6 @@ import { createBrowserMicPipeline, createBrowserMixer } from '../audio/browserAu
 import { browserSocketFactory } from '../net/socket';
 import { DaveSession } from './daveSession';
 import { FrameCryptor } from './frameCryptor';
-import { VoiceSession } from './voiceSession';
 
 export interface BrowserVoiceOptions {
   gateway: Pick<GatewayPort, 'send'>;
@@ -41,7 +42,8 @@ function createVoiceSession(
     // `encodedInsertableStreams` enables the createEncodedStreams fallback, needed only on Chromium without
     // RTCRtpScriptTransform. With it set, every sender and receiver must be piped (FrameCryptor.bypass for clear calls).
     createPeerConnection: () =>
-      new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: iceServers?.() ?? [], ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration),
+      new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: iceServers?.() ?? [], ...(LEGACY_ENCODED_STREAMS ? { encodedInsertableStreams: true } : {}) } as RTCConfiguration) as unknown as MediaPeerConnection,
+    createStream: (track) => new MediaStream([track as MediaStreamTrack]),
     cryptor,
     createDave: bridge
       ? (send, hooks) =>

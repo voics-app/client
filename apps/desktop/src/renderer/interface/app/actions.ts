@@ -1,14 +1,11 @@
 /** UI-facing commands: wrap API calls with consistent error toasts. */
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { deleteGuild as deleteGuildCommand, leaveGuild as leaveGuildCommand, markChannelRead as markChannelReadCommand, markGuildRead as markGuildReadCommand, saveRail as saveRailCommand } from '@discordy/core/application/guildCommands';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { forwardBody } from '@discordy/core/domain/forward';
+import { forwardMessage as forwardMessageCommand } from '@discordy/core/application/forwardCommands';
 import { idBefore } from '@discordy/core/domain/unread';
-import { flatten } from '@discordy/core/domain/railLayout';
-import { ChannelType, type GuildFolder, type Message } from '@discordy/core/contracts/rest';
+import type { GuildFolder, Message } from '@discordy/core/contracts/rest';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
@@ -29,46 +26,22 @@ export async function attempt<T>(run: () => Promise<T>, title?: string): Promise
   }
 }
 
-export function markChannelRead(channelId: string): void {
-  const channel = useGuildStore.getState().channels[channelId];
-  const last = channel?.last_message_id;
-  if (!last) return;
-  const read = useReadStateStore.getState().byChannel[channelId];
-  if (read?.lastReadId === last && read.mentionCount === 0) return;
-  useReadStateStore.getState().markRead(channelId, last);
-  void getRuntime().api.ack(channelId, last).catch(() => undefined);
-}
+export const markChannelRead = (channelId: string): void => markChannelReadCommand(getRuntime().api, channelId);
 
-export function markGuildRead(guildId: string): void {
-  for (const c of Object.values(useGuildStore.getState().channels)) {
-    if (c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT) markChannelRead(c.id);
-  }
-}
+export const markGuildRead = (guildId: string): void => markGuildReadCommand(getRuntime().api, guildId);
 
 /** Applies a new server-rail layout locally right away, then syncs it to the user's other devices. */
 export async function saveRail(rail: GuildFolder[]): Promise<void> {
-  const store = useGuildStore.getState();
-  const previous = store.rail;
-  store.setRail(rail);
-  const next = useGuildStore.getState().rail;
-  const saved = await attempt(
-    () => getRuntime().api.updateSettings({ guild_folders: next, guild_positions: flatten(next) }),
-    'Could not save server order',
-  );
-  if (!saved) useGuildStore.getState().setRail(previous);
+  await attempt(() => saveRailCommand(getRuntime().api, rail), 'Could not save server order');
 }
 
 export async function leaveGuild(guildId: string): Promise<void> {
-  const me = useSessionStore.getState().user?.id;
-  if (!me) return;
-  await getRuntime().api.kickMember(guildId, me);
-  useGuildStore.getState().removeGuild(guildId);
+  await leaveGuildCommand(getRuntime().api, guildId);
   useUiStore.getState().navigate({ kind: 'home', channelId: null });
 }
 
 export async function deleteGuild(guildId: string): Promise<void> {
-  await getRuntime().api.deleteGuild(guildId);
-  useGuildStore.getState().removeGuild(guildId);
+  await deleteGuildCommand(getRuntime().api, guildId);
   useUiStore.getState().navigate({ kind: 'home', channelId: null });
 }
 
@@ -84,9 +57,8 @@ export async function copyText(text: string, label = 'Copied'): Promise<void> {
 /** Opens the channel and scrolls to (and flashes) the message, loading history around it when it is not in memory. */
 /** Forwards a message into another chat: the server snapshots it, so the copy keeps working if the original goes away. Resolves to whether it was sent. */
 export async function forwardMessage(message: Message, targetChannelId: string, comment: string): Promise<boolean> {
-  const sent = await attempt(() => getRuntime().api.sendMessage(targetChannelId, forwardBody(message, comment, `fwd-${Date.now().toString(36)}`)), 'Could not forward message');
+  const sent = await attempt(() => forwardMessageCommand(getRuntime().api, message, targetChannelId, comment).then(() => true), 'Could not forward message');
   if (!sent) return false;
-  useMessageStore.getState().receive(sent);
   useUiStore.getState().toast({ tone: 'success', title: 'Message forwarded' });
   return true;
 }
