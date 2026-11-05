@@ -8,6 +8,8 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, RelationshipType, type GuildFull, type Message } from '@discordy/core/contracts/rest';
+import { useDraftStore } from '@discordy/core/application/stores/composerStores';
+import { messageCache } from '../../src/offline/messageCache';
 import { EPHEMERAL_MESSAGE } from '../../src/servers/channelScreenKind';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 
@@ -82,6 +84,8 @@ describe('channel screen', () => {
     useSessionStore.getState().reset();
     useGuildStore.getState().reset();
     useMessageStore.getState().reset();
+    messageCache.clear();
+    useDraftStore.setState({ drafts: {} });
     useReadStateStore.getState().reset();
     mockApi.messages.mockResolvedValue([message(2, { author: OTHER }), message(1)]);
   });
@@ -295,6 +299,29 @@ describe('channel screen', () => {
     await act(async () => alert.mock.calls[0]![2]!.find((b) => b.style === 'destructive')!.onPress!());
     expect(mockApi.putRelationship).toHaveBeenCalledWith('u2', { type: RelationshipType.BLOCKED });
     alert.mockRestore();
+  });
+
+  it('forwards a message to another channel with a comment, after picking where', async () => {
+    await open();
+    await act(async () => {
+      useGuildStore.getState().upsertChannel({ id: 'random', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'random', position: 5, delivery_mode: 'standard' } as never);
+    });
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Forward'));
+    await fireEvent.changeText(await screen.findByLabelText('Optional message'), 'see this');
+    await fireEvent.press(await screen.findByLabelText('Send to random'));
+    await waitFor(() => expect(mockApi.sendMessage).toHaveBeenCalledWith('random', expect.objectContaining({ content: 'see this', message_reference: expect.objectContaining({ type: 1, message_id: snow(2), channel_id: 'general' }) })));
+  });
+
+  it('shows an encrypted channel as a disabled destination for a forward', async () => {
+    await open();
+    await act(async () => {
+      useGuildStore.getState().upsertChannel({ id: 'secret', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'secret', position: 6, delivery_mode: 'ephemeral' } as never);
+    });
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Forward'));
+    expect((await screen.findByLabelText('Send to secret')).props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByText('End-to-end encrypted chats cannot receive forwarded messages')).toBeTruthy();
   });
 
   it('deletes an own message after confirmation', async () => {

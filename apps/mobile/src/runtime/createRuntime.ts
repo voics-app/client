@@ -15,6 +15,7 @@ import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
 import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
 import { Alert } from 'react-native';
 import { offerBanner } from '../notifications/bannerStore';
+import { messageCache } from '../offline/messageCache';
 import type { MobileVoice } from '../voice/mobileVoice';
 
 export interface RuntimeConfig {
@@ -126,6 +127,8 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     deviceName: config.deviceName,
     onChange: (signedIn) => {
       if (!signedIn) {
+        // Nothing of this account stays on the phone: the saved messages go with the session.
+        messageCache.clear();
         prefsSync.stop();
         prefsSync.start();
       }

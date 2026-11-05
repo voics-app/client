@@ -2,11 +2,9 @@ import { Hash, UsersThree } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { forwardSnapshot, forwardTargets, type ForwardTarget } from '@discordy/core/domain/forward';
-import { computeChannelPermissions } from '@discordy/core/domain/permissions';
-import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
+import { permissionsInChannel } from '@discordy/core/application/forwardCommands';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { forwardMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
@@ -24,17 +22,6 @@ function dmName(channel: Channel): string {
   return recipients[0] ? displayName(recipients[0]) : 'Direct message';
 }
 
-/** Channel-level permissions of the current user, read from the stores at call time. */
-function permissionsIn(channel: Channel): bigint {
-  const { guilds, members, channels } = useGuildStore.getState();
-  const me = useSessionStore.getState().user?.id;
-  const guild = channel.guild_id ? guilds[channel.guild_id] : undefined;
-  if (!channel.guild_id || !guild || !me) return ALL_PERMISSIONS;
-  const parent = channel.parent_id ? channels[channel.parent_id] : undefined;
-  const ctx = { guildId: channel.guild_id, ownerId: guild.owner_id, userId: me, memberRoleIds: members[channel.guild_id]?.[me]?.roles ?? [], roles: guild.roles };
-  return computeChannelPermissions(ctx, (parent && channel.type >= 10 && channel.type <= 12 ? parent : channel).permission_overwrites ?? []);
-}
-
 /** Picker for "Forward": recent DMs and group DMs, then channels the user can send in, with an optional comment. */
 export function ForwardDialog({ message }: ForwardDialogProps) {
   const [query, setQuery] = useState('');
@@ -46,7 +33,7 @@ export function ForwardDialog({ message }: ForwardDialogProps) {
   const close = () => useUiStore.getState().openDialog(null);
   const hasAttachments = message.attachments.length > 0 || (forwardSnapshot(message)?.attachments.length ?? 0) > 0;
   const targets = useMemo(
-    () => forwardTargets({ channels, guilds, closed, query, hasAttachments, dmName, modeOf: (c) => getRuntime().privacy.sender.resolveMode(c), permissionsOf: permissionsIn }),
+    () => forwardTargets({ channels, guilds, closed, query, hasAttachments, dmName, modeOf: (c) => getRuntime().privacy.sender.resolveMode(c), permissionsOf: permissionsInChannel }),
     [channels, guilds, closed, query, hasAttachments],
   );
   const send = async (target: ForwardTarget) => {

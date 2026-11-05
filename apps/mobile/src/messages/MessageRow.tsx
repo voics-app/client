@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { reactionKey, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import type { User } from '@discordy/core/contracts/rest';
+import { forwardSnapshot } from '@discordy/core/domain/forward';
 import { roleColorStyle } from '@discordy/core/domain/appearance';
 import { replyPreviewText } from '@discordy/core/domain/chatDisplay';
 import { formatMessageTime } from '@discordy/core/domain/messageTime';
@@ -46,6 +47,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
     const target = message.mentions?.[0];
     return <SystemRow message={message} authorName={nameOf(message.author)} targetName={target ? nameOf(target) : null} />;
   }
+  const forwarded = forwardSnapshot(message);
   const preview = replied ?? message.referenced_message ?? undefined;
   const referenceId = message.message_reference?.message_id;
   const row = (
@@ -87,7 +89,14 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
             <Text style={styles.time}>{formatMessageTime(message.timestamp, Date.now())}</Text>
           </View>
         )}
-        <MarkdownText source={message.content} trailing={message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null} />
+        {(message.content !== '' || !forwarded) && <MarkdownText source={message.content} trailing={message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null} />}
+        {forwarded && (
+          <View accessibilityLabel="Forwarded message" style={styles.forwarded}>
+            <Text style={styles.forwardedLabel}>Forwarded</Text>
+            {forwarded.content !== '' && <MarkdownText source={forwarded.content} />}
+            {forwarded.attachments.length > 0 && <AttachmentList attachments={forwarded.attachments} messageId={`${message.id}-fwd`} sending={false} />}
+          </View>
+        )}
         {message.content !== '' && <InviteCards content={message.content} />}
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
@@ -157,6 +166,8 @@ const styles = StyleSheet.create({
   reply: { color: theme.muted, fontSize: 13, flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 },
   author: { color: theme.text, fontWeight: '700', fontSize: 16 },
+  forwarded: { marginTop: 4, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: theme.hairlineStrong },
+  forwardedLabel: { color: theme.subtle, fontSize: 12, fontWeight: '600', marginBottom: 2 },
   authorLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   roleDot: { width: 10, height: 10, borderRadius: 5 },
   time: { color: theme.muted, fontSize: 12 },

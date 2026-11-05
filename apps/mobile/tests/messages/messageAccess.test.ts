@@ -94,7 +94,7 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false });
   });
 
   it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {
@@ -131,5 +131,14 @@ describe('blocking the author', () => {
     expect(messageActions(msg('me'), access(BASIC), 'me').blockAuthor).toBe(false);
     expect(messageActions(msg('x', { author: { id: 'x', bot: true } as never }), access(BASIC), 'me').blockAuthor).toBe(false);
     expect(messageActions(msg('x'), access(BASIC), 'me', true).blockAuthor).toBe(false);
+  });
+});
+
+describe('forwarding', () => {
+  it('is offered for stored messages, not system messages, private chats or unsent ones', () => {
+    expect(messageActions(msg('x', { type: 0 }), access(BASIC), 'me').forward).toBe(true);
+    expect(messageActions(msg('x', { type: 7 }), access(BASIC), 'me').forward).toBe(false);
+    expect(messageActions(msg('x', { type: 0 }), { ...access(BASIC), standard: false }, 'me').forward).toBe(false);
+    expect(messageActions({ ...msg('x', { type: 0 }), localState: 'sending' } as never, access(BASIC), 'me').forward).toBe(false);
   });
 });

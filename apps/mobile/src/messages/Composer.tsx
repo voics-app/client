@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
+import { useDraftStore } from '@discordy/core/application/stores/composerStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
@@ -25,11 +26,13 @@ export interface ComposerProps {
   canAttach: boolean;
   /** The server whose custom emoji the picker offers. */
   guildId?: string | undefined;
+  /** The chat whose unsent text is kept as a draft (core `useDraftStore`, standard delivery only); without it nothing is kept. */
+  draftKey?: string | undefined;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
@@ -38,9 +41,25 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   useEffect(() => {
-    setText(mode.kind === 'edit' ? mode.content : '');
+    // Composing (or replying) starts from the chat's draft; editing starts from the message.
+    setText(mode.kind === 'edit' ? mode.content : draftKey ? (useDraftStore.getState().drafts[draftKey]?.text ?? '') : '');
     if (mode.kind === 'edit') setFiles([]);
-  }, [mode]);
+    // A new mode or chat reloads the text; later keystrokes are the draft's to follow, not this effect's.
+  }, [mode, draftKey]);
+  useEffect(() => {
+    if (!draftKey || mode.kind === 'edit') return;
+    const timer = setTimeout(() => useDraftStore.getState().setDraft(draftKey, text, null), 400);
+    return () => clearTimeout(timer);
+  }, [text, draftKey, mode.kind]);
+  const latest = useRef({ text, editing: mode.kind === 'edit' });
+  latest.current = { text, editing: mode.kind === 'edit' };
+  // Leaving the chat saves what was typed in the last moments, which the pause above has not saved yet.
+  useEffect(
+    () => () => {
+      if (draftKey && !latest.current.editing) useDraftStore.getState().setDraft(draftKey, latest.current.text, null);
+    },
+    [draftKey],
+  );
 
   if (blockedReason) {
     return (
@@ -70,6 +89,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
     onSubmit(usePrefsStore.getState().convertEmoticons ? convertEmoticons(typed) : typed, mode, files);
     setText('');
     setFiles([]);
+    if (draftKey && mode.kind !== 'edit') useDraftStore.getState().clearDraft(draftKey);
   };
 
   return (

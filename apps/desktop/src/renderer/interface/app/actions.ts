@@ -1,10 +1,9 @@
 /** UI-facing commands: wrap API calls with consistent error toasts. */
 import { deleteGuild as deleteGuildCommand, leaveGuild as leaveGuildCommand, markChannelRead as markChannelReadCommand, markGuildRead as markGuildReadCommand, saveRail as saveRailCommand } from '@discordy/core/application/guildCommands';
-import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { forwardBody } from '@discordy/core/domain/forward';
+import { forwardMessage as forwardMessageCommand } from '@discordy/core/application/forwardCommands';
 import { idBefore } from '@discordy/core/domain/unread';
 import type { GuildFolder, Message } from '@discordy/core/contracts/rest';
 import { errorMessage } from '@discordy/core/application/errorMessage';
@@ -58,9 +57,8 @@ export async function copyText(text: string, label = 'Copied'): Promise<void> {
 /** Opens the channel and scrolls to (and flashes) the message, loading history around it when it is not in memory. */
 /** Forwards a message into another chat: the server snapshots it, so the copy keeps working if the original goes away. Resolves to whether it was sent. */
 export async function forwardMessage(message: Message, targetChannelId: string, comment: string): Promise<boolean> {
-  const sent = await attempt(() => getRuntime().api.sendMessage(targetChannelId, forwardBody(message, comment, `fwd-${Date.now().toString(36)}`)), 'Could not forward message');
+  const sent = await attempt(() => forwardMessageCommand(getRuntime().api, message, targetChannelId, comment).then(() => true), 'Could not forward message');
   if (!sent) return false;
-  useMessageStore.getState().receive(sent);
   useUiStore.getState().toast({ tone: 'success', title: 'Message forwarded' });
   return true;
 }

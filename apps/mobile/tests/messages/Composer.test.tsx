@@ -1,7 +1,8 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useDraftStore } from '@discordy/core/application/stores/composerStores';
 import { DEFAULT_PREFS, usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { Composer } from '../../src/messages/Composer';
 
@@ -71,5 +72,54 @@ describe('Composer emoticons', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'nice :)');
     await fireEvent.press(screen.getByLabelText('Send'));
     expect(onSubmit.mock.calls[1]![0]).toBe('nice :)');
+  });
+});
+
+describe('Composer drafts', () => {
+  const withDraft = (draftKey: string | undefined, onSubmit = jest.fn()) =>
+    render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <Composer mode={{ kind: 'compose' }} blockedReason={null} placeholder="Message" canAttach draftKey={draftKey} onSubmit={onSubmit} onCancelMode={jest.fn()} />
+      </SafeAreaProvider>,
+    );
+  beforeEach(() => {
+    jest.useFakeTimers();
+    useDraftStore.setState({ drafts: {} });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('keeps unsent text per chat after a short pause and restores it when the chat opens again', async () => {
+    const first = await withDraft('c1');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'half written');
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(useDraftStore.getState().drafts['c1']?.text).toBe('half written');
+    await first.unmount();
+    await withDraft('c1');
+    expect(screen.getByLabelText('Message').props.value).toBe('half written');
+    await withDraft('c2');
+    expect(useDraftStore.getState().drafts['c2']).toBeUndefined();
+  });
+
+  it('saves what was typed just before leaving, and clears the draft on send', async () => {
+    const onSubmit = jest.fn();
+    const first = await withDraft('c1', onSubmit);
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'quick');
+    await first.unmount();
+    expect(useDraftStore.getState().drafts['c1']?.text).toBe('quick');
+    await withDraft('c1', onSubmit);
+    await fireEvent.press(screen.getByLabelText('Send'));
+    expect(onSubmit).toHaveBeenCalled();
+    expect(useDraftStore.getState().drafts['c1']).toBeUndefined();
+  });
+
+  it('keeps nothing without a draft key, as in private chats', async () => {
+    await withDraft(undefined);
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'secret');
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(useDraftStore.getState().drafts).toEqual({});
   });
 });

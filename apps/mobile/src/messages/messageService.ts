@@ -10,6 +10,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
+import { messageCache, type MessageCache } from '../offline/messageCache';
 import { UploadCancelled, type OutgoingFile } from './outgoingFile';
 
 export const PAGE_SIZE = 50;
@@ -40,11 +41,31 @@ export class MessageService {
     private readonly api: MessageApi,
     private readonly now: () => number = Date.now,
     private readonly readBlob: ReadBlob = readFromDevice,
+    private readonly cache: MessageCache = messageCache,
   ) {}
 
+  /**
+   * Opens a chat on its newest page. The messages saved on the phone show first, so a chat opens at once and still opens offline; the fresh page replaces them
+   * and is saved. When the server cannot be reached the saved messages stay and the failure says so.
+   */
   async loadLatest(channelId: string): Promise<void> {
-    const page = await this.api.messages(channelId, { limit: PAGE_SIZE });
+    const store = useMessageStore.getState();
+    const cached = store.timelines[channelId]?.loaded ? [] : this.cache.load(channelId);
+    if (cached.length > 0) store.setHistory(channelId, cached, { prepend: false, hasMoreBefore: true });
+    let page: Awaited<ReturnType<MessageApi['messages']>>;
+    try {
+      page = await this.api.messages(channelId, { limit: PAGE_SIZE });
+    } catch (error) {
+      throw cached.length > 0 ? new Error(`${errorMessage(error)} Showing the messages saved on this phone.`) : error;
+    }
     useMessageStore.getState().setHistory(channelId, page, { prepend: false, hasMoreBefore: page.length >= PAGE_SIZE });
+    this.saveRecent(channelId);
+  }
+
+  /** Saves the newest messages of a chat that is on screen, for offline use. */
+  saveRecent(channelId: string): void {
+    const timeline = useMessageStore.getState().timelines[channelId];
+    if (timeline?.loaded) this.cache.save(channelId, timeline.ids.flatMap((id) => (timeline.byId[id] ? [timeline.byId[id]!] : [])));
   }
 
   /** The window of messages around one message (a pin, search hit, link or inbox entry). The window is detached from the present until it reaches the channel's latest message. */

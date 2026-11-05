@@ -23,6 +23,7 @@ import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
 import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
+import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { blockUser } from '../friends/friendActions';
@@ -70,6 +71,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const [threadFrom, setThreadFrom] = useState<ChatMessage | null>(null);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [reactors, setReactors] = useState<ReactionTarget | null>(null);
@@ -102,6 +104,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     // Only the first open of a channel loads the latest page; later updates arrive from the gateway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readable, channelId]);
+
+  useEffect(() => () => service.saveRecent(channelId), [service, channelId]);
 
   const anchor = useReadNavStore((st) => st.anchors[channelId]);
   const barDismissed = useReadNavStore((st) => st.barDismissed[channelId] ?? false);
@@ -324,8 +328,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
+        <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
@@ -373,6 +378,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onSelectText={() => {
             setSelecting(selected);
+            close();
+          }}
+          onForward={() => {
+            setForwarding(selected);
             close();
           }}
           onBlock={() => {

@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { EPHEMERAL_MESSAGE, FORUM_MESSAGE } from '../../src/servers/channelScreenKind';
+import { EPHEMERAL_MESSAGE } from '../../src/servers/channelScreenKind';
 import { VOICE_UNAVAILABLE } from '../../src/voice/VoiceChannelScreen';
 import { resetStores, seedServer, seedVoice } from '../support/server';
 
@@ -92,10 +92,10 @@ describe('channel kinds in the column', () => {
     expect(mockApi.messages).not.toHaveBeenCalled();
   });
 
-  it('opens a forum channel on a plain message', async () => {
+  it('opens a forum channel on its list of posts', async () => {
     await openServer();
     await fireEvent.press(screen.getByLabelText('Open #ideas'));
-    expect(await screen.findByText(FORUM_MESSAGE)).toBeTruthy();
+    expect(await screen.findByText('No posts yet.')).toBeTruthy();
   });
 
   it('lists the channels of every kind in the server order', async () => {
