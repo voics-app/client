@@ -68,7 +68,7 @@ FunctionEnd
 !macro customUnInstall
   ${IfNot} ${isUpdated}
     ; Without the app this registration would point at a missing file.
-    DeleteRegKey HKCU "SoftwareClasses${APP_PROTOCOL}"
+    DeleteRegKey HKCU "Software\Classes\${APP_PROTOCOL}"
     ; Silent / scripted opt-in: Setup uninstaller started with /DELETEDATA (or electron-builder's --delete-app-data).
     ClearErrors
     ${GetParameters} $R8
