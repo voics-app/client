@@ -4,6 +4,7 @@ import { baseConfigs, reactHooks, sharedTsRules, tseslint } from '../../eslint.b
 export default tseslint.config(
   { ignores: ['node_modules/**', '.expo/**', 'ios/**', 'android/**', 'coverage/**', '*.js'] },
   ...baseConfigs,
+  { files: ['**/*.mjs'], languageOptions: { globals: globals.node } },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.node, ...globals.jest } },

@@ -21,7 +21,7 @@ export interface ChannelAccess {
   canManageThreads: boolean;
   /** Use Application Commands: slash commands in the composer. */
   canUseCommands: boolean;
-  /** Server-stored delivery. Ephemeral and P2P channels need the encryption core, which comes to mobile later. */
+  /** Server-stored delivery. Ephemeral and P2P chats keep their messages on devices: no edit, delete, pin, forward or attachments on mobile. */
   standard: boolean;
 }
 
@@ -44,7 +44,7 @@ export function channelAccess({ guild, channel, members, userId, parent }: Chann
     canSend: can(thread ? Permission.SEND_MESSAGES_IN_THREADS : Permission.SEND_MESSAGES),
     canReact: can(Permission.ADD_REACTIONS),
     canReadHistory: can(Permission.READ_MESSAGE_HISTORY),
-    canAttach: can(Permission.ATTACH_FILES),
+    canAttach: channel.delivery_mode === 'standard' && can(Permission.ATTACH_FILES),
     canManageMessages: can(Permission.MANAGE_MESSAGES),
     canCreateThread: !thread && can(Permission.CREATE_PUBLIC_THREADS),
     canManageThreads: can(Permission.MANAGE_THREADS),
@@ -55,7 +55,7 @@ export function channelAccess({ guild, channel, members, userId, parent }: Chann
 
 /** In a DM every participant may send, react and read; there are no roles to moderate with. */
 export function dmAccess(channel: Channel): ChannelAccess {
-  return { canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: channel.delivery_mode === 'standard' };
+  return { canSend: true, canReact: true, canReadHistory: true, canAttach: channel.delivery_mode === 'standard', canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: channel.delivery_mode === 'standard' };
 }
 
 export interface MessageActions {

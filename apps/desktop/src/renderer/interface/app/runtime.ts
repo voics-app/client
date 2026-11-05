@@ -7,7 +7,7 @@ import { createDispatchRouter } from '@discordy/core/application/dispatchRouter'
 import { InteractionService } from '@discordy/core/application/interactionService';
 import { SessionManager, type SessionRuntime, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { PrivateMessaging } from '@renderer/application/privacy/privateMessaging';
+import { PrivateMessaging } from '@discordy/core/application/privacy/privateMessaging';
 import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 import type { IceServer } from '@discordy/core/domain/turn';
 import { fetchBytes } from '@renderer/infrastructure/http/fetchBytes';

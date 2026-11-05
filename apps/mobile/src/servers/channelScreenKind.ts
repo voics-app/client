@@ -12,13 +12,16 @@ export type ChannelScreenKind =
 export const EPHEMERAL_MESSAGE = "Ephemeral channels are end-to-end encrypted. They aren't in this test version yet.";
 export const P2P_MESSAGE = "Peer-to-peer channels are end-to-end encrypted. They aren't in this test version yet.";
 
-/** Which screen opens a tapped server channel. Unknown channels fall through to chat, which says it is not available. */
-export function channelScreenKind(channel: Channel | undefined): ChannelScreenKind {
+/**
+ * Which screen opens a tapped server channel. Unknown channels fall through to chat, which says it is not available.
+ * `privateModes` is true in a native build with the crypto module: Ephemeral and P2P channels then open as chats.
+ */
+export function channelScreenKind(channel: Channel | undefined, privateModes = false): ChannelScreenKind {
   if (!channel) return { screen: 'chat' };
   const kind = channelIcon(channel.type);
   if (isVoiceKind(kind)) return { screen: 'voice' };
-  if (channel.delivery_mode === 'ephemeral') return { screen: 'unsupported', message: EPHEMERAL_MESSAGE };
-  if (channel.delivery_mode === 'p2p') return { screen: 'unsupported', message: P2P_MESSAGE };
+  if (!privateModes && channel.delivery_mode === 'ephemeral') return { screen: 'unsupported', message: EPHEMERAL_MESSAGE };
+  if (!privateModes && channel.delivery_mode === 'p2p') return { screen: 'unsupported', message: P2P_MESSAGE };
   if (kind === 'forum') return { screen: 'forum' };
   return { screen: 'chat' };
 }

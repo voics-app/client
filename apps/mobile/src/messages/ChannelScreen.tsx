@@ -39,6 +39,10 @@ import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
+import { ModeBadge } from '../privacy/ModeBadge';
+import { PeerStatusBar } from '../privacy/PeerStatusBar';
+import { SafetyNumberSheet } from '../privacy/SafetyNumberSheet';
+import { getRuntime } from '../runtime';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
 import { useKeyboardVisible } from './useKeyboardVisible';
@@ -79,6 +83,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [safetyPeer, setSafetyPeer] = useState<string | null>(null);
+  // Ephemeral and P2P chats open only where the native crypto module exists; Expo Go keeps the notice.
+  const privateModes = Boolean(getRuntime().privacy);
 
   const access = useMemo(() => {
     if (!channel || !userId) return null;
@@ -88,7 +95,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const thread = isThread(channel);
   const peer = !guildId && channel && headerButtons(channel).profile ? channel.recipients![0]! : null;
   const title = !channel ? '' : guildId ? (thread ? (channel.name ?? 'Thread') : `#${channel.name}`) : dmTitle(channel, relationships);
-  const readable = access !== null && access.standard && access.canReadHistory;
+  const readable = access !== null && (access.standard || privateModes) && access.canReadHistory;
   const loaded = timeline?.loaded ?? false;
   const detached = timeline?.hasMoreAfter ?? false;
 
@@ -245,7 +252,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   );
 
   const lockedReason = channel && thread ? threadBlockedReason(channel, access?.canManageThreads ?? false) : null;
-  const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : lockedReason ?? (!access.canSend ? NO_SEND_NOTICE : null);
+  const blockedReason = !access ? null : !access.standard && !privateModes ? PRIVATE_NOTICE : lockedReason ?? (!access.canSend ? NO_SEND_NOTICE : null);
   const actions = selected && access && userId ? messageActions(selected, access, userId, relationships[selected.author.id]?.type === RelationshipType.BLOCKED) : null;
   const close = () => setSelected(null);
 
@@ -258,6 +265,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} onMenu={() => setMenuOpen(true)} />,
           }}
         />
+        {channel && (
+          <View style={styles.modeStrip}>
+            <ModeBadge mode={channel.delivery_mode ?? 'standard'} />
+          </View>
+        )}
         {bar && <UnreadBar count={bar.count} more={bar.more} onMarkRead={() => useReadNavStore.getState().dismissBar(channelId)} />}
         {error && (
           <Pressable accessibilityRole="button" accessibilityLabel="Dismiss error" onPress={() => setError(null)} style={styles.error}>
@@ -330,10 +342,12 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
+          {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
+        <SafetyNumberSheet peerId={safetyPeer} onClose={() => setSafetyPeer(null)} />
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
           actions={actions}
@@ -429,6 +443,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 }
 
 const styles = StyleSheet.create({
+  modeStrip: { paddingHorizontal: 14, paddingVertical: 6 },
   screen: { flex: 1, backgroundColor: theme.background },
   list: { flex: 1 },
   /** The list is inverted, so top is the gap above the composer and bottom is the gap under the oldest message. */

@@ -47,6 +47,12 @@ describe('channelScreenKind', () => {
     expect(channelScreenKind(channel(ChannelType.GUILD_FORUM))).toEqual({ screen: 'forum' });
   });
 
+  it('opens ephemeral and peer-to-peer channels as chats when the build has the crypto module', () => {
+    expect(channelScreenKind(channel(ChannelType.GUILD_TEXT, { delivery_mode: 'ephemeral' }), true)).toEqual({ screen: 'chat' });
+    expect(channelScreenKind(channel(ChannelType.GUILD_TEXT, { delivery_mode: 'p2p' }), true)).toEqual({ screen: 'chat' });
+    expect(channelScreenKind(channel(ChannelType.GUILD_VOICE, { delivery_mode: 'p2p' }), true)).toEqual({ screen: 'voice' });
+  });
+
   it('opens standard text and announcement channels as chat, and an unknown channel as chat too', () => {
     expect(channelScreenKind(channel(ChannelType.GUILD_TEXT))).toEqual({ screen: 'chat' });
     expect(channelScreenKind(channel(ChannelType.GUILD_ANNOUNCEMENT))).toEqual({ screen: 'chat' });

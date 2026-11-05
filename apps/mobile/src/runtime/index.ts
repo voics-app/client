@@ -5,6 +5,7 @@ import { createSecureSessionVault } from '../adapters/secureSessionVault';
 import { nativeSocketFactory } from '../adapters/socket';
 import { uploadWithProgress } from '../adapters/xhrUpload';
 import { BRAND } from '../brand';
+import { loadNativePrivacy } from '../privacy/nativePrivacy';
 import { createMobileVoice } from '../voice/mobileVoice';
 import { loadNativeVoice } from '../voice/nativeVoice';
 import { createRuntime, type MobileRuntime } from './createRuntime';
@@ -28,6 +29,8 @@ export function getRuntime(): MobileRuntime {
     vault: createSecureSessionVault(expoSecureBackend),
     socketFactory: nativeSocketFactory,
     progressUpload: uploadWithProgress,
+    cdnUrl: BRAND.cdnUrl,
+    createPrivacy: loadNativePrivacy,
     createVoice: ({ gateway, iceServers }) => {
       const native = loadNativeVoice();
       return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers }) : null;

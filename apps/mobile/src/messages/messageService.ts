@@ -10,6 +10,8 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
+import type { MessageSender } from '@discordy/core/application/privacy/messageSender';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { messageCache, type MessageCache } from '../offline/messageCache';
 import { UploadCancelled, type OutgoingFile } from './outgoingFile';
 
@@ -31,6 +33,9 @@ const readFromDevice: ReadBlob = async (file) => {
   return blob.type ? blob : blob.slice(0, blob.size, file.mimeType);
 };
 
+/** The Ephemeral and P2P side of the sender; absent in Expo Go, where those chats cannot be opened. */
+export type PrivateChat = Pick<MessageSender, 'resolveMode' | 'send' | 'loadHistory'>;
+
 export class MessageService {
   private readonly paging = new Set<string>();
   private sequence = 0;
@@ -42,13 +47,23 @@ export class MessageService {
     private readonly now: () => number = Date.now,
     private readonly readBlob: ReadBlob = readFromDevice,
     private readonly cache: MessageCache = messageCache,
+    private readonly privateChat: PrivateChat | null = null,
   ) {}
+
+  /** The channel when it delivers over Ephemeral or P2P and this build can open such chats; null for standard chats. */
+  private privateChannel(channelId: string): Channel | null {
+    const channel = useGuildStore.getState().channels[channelId];
+    return channel && this.privateChat && this.privateChat.resolveMode(channel) !== 'standard' ? channel : null;
+  }
 
   /**
    * Opens a chat on its newest page. The messages saved on the phone show first, so a chat opens at once and still opens offline; the fresh page replaces them
    * and is saved. When the server cannot be reached the saved messages stay and the failure says so.
    */
   async loadLatest(channelId: string): Promise<void> {
+    const encrypted = this.privateChannel(channelId);
+    // Private chats live in the encrypted store on this phone: nothing to ask the server for, and nothing saved in the plain message cache.
+    if (encrypted) return this.privateChat!.loadHistory(encrypted);
     const store = useMessageStore.getState();
     const cached = store.timelines[channelId]?.loaded ? [] : this.cache.load(channelId);
     if (cached.length > 0) store.setHistory(channelId, cached, { prepend: false, hasMoreBefore: true });
@@ -64,6 +79,7 @@ export class MessageService {
 
   /** Saves the newest messages of a chat that is on screen, for offline use. */
   saveRecent(channelId: string): void {
+    if (this.privateChannel(channelId)) return;
     const timeline = useMessageStore.getState().timelines[channelId];
     if (timeline?.loaded) this.cache.save(channelId, timeline.ids.flatMap((id) => (timeline.byId[id] ? [timeline.byId[id]!] : [])));
   }
@@ -125,6 +141,8 @@ export class MessageService {
     if (!oldest) return;
     this.paging.add(channelId);
     try {
+      const encrypted = this.privateChannel(channelId);
+      if (encrypted) return await this.privateChat!.loadHistory(encrypted, oldest);
       const page = await this.api.messages(channelId, { before: oldest, limit: PAGE_SIZE });
       useMessageStore.getState().setHistory(channelId, page, { prepend: true, hasMoreBefore: page.length >= PAGE_SIZE });
     } finally {
@@ -137,6 +155,7 @@ export class MessageService {
     const user = useSessionStore.getState().user;
     if (!user) throw new Error('Not signed in');
     const nonce = this.nonce();
+    const encrypted = this.privateChannel(channel.id) !== null;
     const reference = input.replyTo ? { message_id: input.replyTo, channel_id: channel.id, guild_id: channel.guild_id ?? undefined } : undefined;
     const store = useMessageStore.getState();
     store.addOptimistic({
@@ -156,10 +175,16 @@ export class MessageService {
       type: reference ? 19 : 0,
       nonce,
       message_reference: reference,
-      deliveryMode: 'standard',
+      deliveryMode: encrypted ? this.privateChat!.resolveMode(channel) : 'standard',
     });
     this.unsent.set(nonce, input);
     try {
+      if (encrypted) {
+        await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}) });
+        this.unsent.delete(nonce);
+        useMessageStore.getState().remove(channel.id, nonce);
+        return true;
+      }
       const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
       const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
