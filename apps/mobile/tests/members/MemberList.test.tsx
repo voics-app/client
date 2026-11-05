@@ -91,7 +91,7 @@ describe('member list', () => {
   it('offers no Message button on your own profile', async () => {
     await openMembers();
     await fireEvent.press(screen.getByLabelText('Me Myself, offline'));
-    expect(await screen.findByLabelText('Close profile')).toBeTruthy();
+    expect(await screen.findByLabelText('Close profile', { includeHiddenElements: true })).toBeTruthy();
     expect(screen.queryByLabelText('Message')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
-import { Stack } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
@@ -11,11 +12,13 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import type { User } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { groupMessages } from '@discordy/core/domain/messageGrouping';
+import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
 import { ProfileSheet } from '../profile/ProfileSheet';
@@ -46,6 +49,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
+  const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -90,6 +94,28 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     if (appActive && readable && loaded && latestId) service.markRead(channelId, latestId);
   }, [appActive, service, channelId, readable, loaded, latestId]);
 
+  const listRef = useRef<FlatList<(typeof rows)[number]>>(null);
+  const jumpTo = useCallback(
+    (messageId: string) => {
+      const index = rows.findIndex((row) => row.message.id === messageId);
+      if (index >= 0) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+    },
+    [rows],
+  );
+  const findUser = useCallback(
+    (id: string): User | undefined => {
+      const member = guildId ? useGuildStore.getState().members[guildId]?.[id] : undefined;
+      if (member?.user) return member.user;
+      for (const m of Object.values(timeline?.byId ?? {})) {
+        if (m.author.id === id) return m.author;
+        const mentioned = m.mentions?.find((u) => u.id === id);
+        if (mentioned) return mentioned;
+      }
+      return undefined;
+    },
+    [guildId, timeline],
+  );
+
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
 
   const submit = useCallback(
@@ -117,88 +143,120 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       { text: 'Delete', style: 'destructive', onPress: () => void service.remove(channelId, message.id).catch(fail) },
     ]);
 
+  const chat = useMemo<ChatContextValue>(
+    () => ({
+      guildId,
+      canManageMessages: access?.canManageMessages ?? false,
+      onPressUser: (id) => {
+        const user = findUser(id);
+        if (user) setProfileUser(user);
+      },
+      onPressChannel: (id) => {
+        if (guildId) router.push(`/servers/${guildId}/${id}`);
+      },
+      onJumpToMessage: jumpTo,
+      onWave: (id) => {
+        if (channel) void service.send(channel, { content: '\u{1F44B}', replyTo: id });
+      },
+    }),
+    [guildId, access, findUser, jumpTo, channel, service],
+  );
+
   const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : !access.canSend ? NO_SEND_NOTICE : null;
   const actions = selected && access && userId ? messageActions(selected, access, userId) : null;
   const close = () => setSelected(null);
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={headerHeight}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
-          headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} />,
-        }}
-      />
-      {error && (
-        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss error" onPress={() => setError(null)} style={styles.error}>
-          <Text style={styles.errorText}>{error}</Text>
-        </Pressable>
-      )}
-      {!access ? (
-        <Text style={styles.notice}>This channel is not available.</Text>
-      ) : !readable ? (
-        <Text style={styles.notice}>{!access.standard ? PRIVATE_HISTORY_NOTICE : NO_HISTORY_NOTICE}</Text>
-      ) : !loaded ? (
-        <View style={styles.center}>
-          {loadFailed ? (
-            <Pressable accessibilityRole="button" onPress={loadLatest}>
-              <Text style={styles.retry}>Try again</Text>
-            </Pressable>
-          ) : (
-            <ActivityIndicator color={theme.muted} />
-          )}
-        </View>
-      ) : (
-        <FlatList
-          testID="message-list"
-          style={styles.list}
-          inverted
-          contentContainerStyle={styles.listContent}
-          data={rows}
-          keyExtractor={(row) => row.message.id}
-          onEndReached={() => void service.loadOlder(channelId).catch(fail)}
-          onEndReachedThreshold={0.5}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
-          renderItem={({ item }) => (
-            <MessageRow
-              message={item.message}
-              showHeader={item.showHeader}
-              replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
-              onLongPress={setSelected}
-              onToggleReaction={toggleReaction}
-              onPressAuthor={setProfileUser}
-              onRetry={(m) => channel && void service.retry(channel, m.id)}
-              onDiscard={(m) => service.discard(channelId, m.id)}
-            />
-          )}
+    <ChatContext.Provider value={chat}>
+      <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={headerHeight}>
+        <Stack.Screen
+          options={{
+            headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
+            headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} />,
+          }}
         />
-      )}
-      <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-        <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
-      </View>
-      <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
-      <MessageActionSheet
-        actions={actions}
-        onClose={close}
-        onReact={(emoji) => {
-          if (selected) toggleReaction(selected, emoji);
-          close();
-        }}
-        onReply={() => {
-          if (selected) setMode({ kind: 'reply', messageId: selected.id, authorName: nameOf(selected.author) });
-          close();
-        }}
-        onEdit={() => {
-          if (selected) setMode({ kind: 'edit', messageId: selected.id, content: selected.content });
-          close();
-        }}
-        onDelete={() => {
-          if (selected) confirmDelete(selected);
-          close();
-        }}
-      />
-    </KeyboardAvoidingView>
+        {error && (
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss error" onPress={() => setError(null)} style={styles.error}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Pressable>
+        )}
+        {!access ? (
+          <Text style={styles.notice}>This channel is not available.</Text>
+        ) : !readable ? (
+          <Text style={styles.notice}>{!access.standard ? PRIVATE_HISTORY_NOTICE : NO_HISTORY_NOTICE}</Text>
+        ) : !loaded ? (
+          <View style={styles.center}>
+            {loadFailed ? (
+              <Pressable accessibilityRole="button" onPress={loadLatest}>
+                <Text style={styles.retry}>Try again</Text>
+              </Pressable>
+            ) : (
+              <ActivityIndicator color={theme.muted} />
+            )}
+          </View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            onScrollToIndexFailed={(info) => listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })}
+            testID="message-list"
+            style={styles.list}
+            inverted
+            contentContainerStyle={styles.listContent}
+            data={rows}
+            keyExtractor={(row) => row.message.id}
+            onEndReached={() => void service.loadOlder(channelId).catch(fail)}
+            onEndReachedThreshold={0.5}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
+            renderItem={({ item }) => (
+              <MessageRow
+                message={item.message}
+                showHeader={item.showHeader}
+                replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
+                onLongPress={setSelected}
+                onToggleReaction={toggleReaction}
+                onPressAuthor={setProfileUser}
+                onRetry={(m) => channel && void service.retry(channel, m.id)}
+                onDiscard={(m) => service.discard(channelId, m.id)}
+              />
+            )}
+          />
+        )}
+        <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
+          <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+        </View>
+        <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
+        <MessageActionSheet
+          actions={actions}
+          onClose={close}
+          onReact={(emoji) => {
+            if (selected) toggleReaction(selected, emoji);
+            close();
+          }}
+          onReply={() => {
+            if (selected) setMode({ kind: 'reply', messageId: selected.id, authorName: nameOf(selected.author) });
+            close();
+          }}
+          onEdit={() => {
+            if (selected) setMode({ kind: 'edit', messageId: selected.id, content: selected.content });
+            close();
+          }}
+          onDelete={() => {
+            if (selected) confirmDelete(selected);
+            close();
+          }}
+          onCopyText={() => {
+            if (selected) void Clipboard.setStringAsync(selected.content).catch(fail);
+            close();
+          }}
+          onSelectText={() => {
+            setSelecting(selected);
+            close();
+          }}
+        />
+        <SelectTextSheet message={selecting} onClose={() => setSelecting(null)} />
+      </KeyboardAvoidingView>
+    </ChatContext.Provider>
   );
 }
 

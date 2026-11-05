@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -8,6 +9,10 @@ import { formatMessageTime } from '@discordy/core/domain/messageTime';
 import { isSystemType } from '@discordy/core/domain/systemMessage';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
+import { useChatContext } from './chatContext';
+import { MarkdownText } from './markdown/MarkdownText';
+import { SystemRow } from './SystemRow';
+import { useRoleColor } from './useRoleColor';
 
 export const AVATAR_SIZE = 40;
 
@@ -27,10 +32,14 @@ export interface MessageRowProps {
 
 function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
+  const { guildId, onJumpToMessage } = useChatContext();
+  const roleColor = useRoleColor(guildId, message.author.id);
   if (isSystemType(message.type)) {
-    return <Text style={styles.system}>{nameOf(message.author)} - system message</Text>;
+    const target = message.mentions?.[0];
+    return <SystemRow message={message} authorName={nameOf(message.author)} targetName={target ? nameOf(target) : null} />;
   }
   const preview = replied ?? message.referenced_message ?? undefined;
+  const referenceId = message.message_reference?.message_id;
   return (
     <Pressable onLongPress={() => onLongPress(message)} delayLongPress={300} style={[styles.row, showHeader && styles.groupStart, message.localState && styles.pending]}>
       <View style={styles.gutter}>
@@ -42,22 +51,32 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
       </View>
       <View style={styles.body}>
         {message.message_reference && (
-          <Text style={styles.reply} numberOfLines={1}>
-            {preview ? `${nameOf(preview.author)}: ${replyPreviewText(preview.content, true)}` : 'Original message unavailable'}
-          </Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Jump to the original message" disabled={!referenceId} onPress={() => referenceId && onJumpToMessage(referenceId)} style={styles.replyRow}>
+            <Ionicons name="return-up-forward" size={14} color={theme.subtle} />
+            {preview ? (
+              <>
+                <Avatar user={preview.author} size={16} />
+                <Text style={styles.replyName} numberOfLines={1}>{`@${nameOf(preview.author)}`}</Text>
+                <Text style={styles.reply} numberOfLines={1}>
+                  {replyPreviewText(preview.content, false) || 'Attachment'}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.reply} numberOfLines={1}>
+                {message.referenced_message === null ? 'Original message was deleted' : 'Original message unavailable'}
+              </Text>
+            )}
+          </Pressable>
         )}
         {showHeader && (
           <View style={styles.header}>
             <Pressable accessibilityRole="button" accessibilityLabel={`View profile of ${nameOf(message.author)}`} onPress={() => onPressAuthor(message.author)}>
-              <Text style={styles.author}>{nameOf(message.author)}</Text>
+              <Text style={[styles.author, roleColor ? { color: roleColor } : null]}>{nameOf(message.author)}</Text>
             </Pressable>
             <Text style={styles.time}>{formatMessageTime(message.timestamp, Date.now())}</Text>
           </View>
         )}
-        <Text style={styles.content}>
-          {message.content}
-          {message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null}
-        </Text>
+        <MarkdownText source={message.content} trailing={message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null} />
         {message.attachments.length > 0 && <Text style={styles.edited}>{message.attachments.length} attachment(s), shown in a later release</Text>}
         {showReactions && message.reactions && message.reactions.length > 0 && (
           <View style={styles.reactions}>
@@ -103,13 +122,13 @@ const styles = StyleSheet.create({
   gutter: { width: AVATAR_SIZE, paddingTop: 2 },
   body: { flex: 1 },
   pending: { opacity: 0.6 },
-  reply: { color: theme.muted, fontSize: 13, marginBottom: 2 },
+  replyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24, marginBottom: 2 },
+  replyName: { color: theme.muted, fontSize: 13, fontWeight: '600', maxWidth: '40%' },
+  reply: { color: theme.muted, fontSize: 13, flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 },
   author: { color: theme.text, fontWeight: '700', fontSize: 16 },
   time: { color: theme.muted, fontSize: 12 },
-  content: { color: theme.text, fontSize: 16, lineHeight: 22 },
   edited: { color: theme.muted, fontSize: 12 },
-  system: { color: theme.muted, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 16, paddingVertical: 6 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   chip: { backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: theme.surface },
   chipMine: { borderColor: theme.accent },
