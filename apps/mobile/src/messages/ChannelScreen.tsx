@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { channelLink } from '@discordy/core/domain/channelMenuModel';
 import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
@@ -294,6 +295,18 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onMoreReactions={() => {
             setReactingTo(selected?.id ?? null);
+            close();
+          }}
+          onCopyLink={() => {
+            if (selected) void Clipboard.setStringAsync(channelLink(guildId, channelId, selected.id)).catch(fail);
+            close();
+          }}
+          onMarkUnread={() => {
+            if (selected) service.markUnread(channelId, selected.id);
+            close();
+          }}
+          onPin={() => {
+            if (selected) service.setPinned(channelId, selected.id, !selected.pinned).catch(fail);
             close();
           }}
           onCopyText={() => {

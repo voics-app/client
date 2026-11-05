@@ -19,6 +19,8 @@ const mockApi = {
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+  pin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
+  unpin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   reactionUsers: jest.fn(async (_c: string, _id: string, _e: string): Promise<{ id: string; username: string }[]> => []),
 };
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(async () => true) }));
@@ -169,6 +171,37 @@ describe('channel screen', () => {
     const selectable = await screen.findByLabelText('Select text');
     expect(selectable).toBeTruthy();
     expect(screen.getAllByText('message 2').some((node) => node.props.selectable === true)).toBe(true);
+  });
+
+  it('copies a link to the message', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Copy Message Link'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`://channels/g1/general/${snow(2)}$`)));
+  });
+
+  it('marks a message unread: the marker moves before it and the chat shows the New divider', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Mark Unread'));
+    await waitFor(() => expect(mockApi.ack).toHaveBeenCalledWith('general', snow(1), { manual: true, mentionCount: 0 }));
+    expect(await screen.findByLabelText('New messages')).toBeTruthy();
+  });
+
+  it('offers no pin to regular members', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    expect(screen.queryByText('Pin Message')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Close Message actions', { includeHiddenElements: true }));
+    await waitFor(() => expect(screen.queryByText('Mark Unread')).toBeNull());
+  });
+
+  it('pins a message for a moderator', async () => {
+    await open(BASIC | Permission.MANAGE_MESSAGES);
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Pin Message'));
+    await waitFor(() => expect(mockApi.pin).toHaveBeenCalledWith('general', snow(2)));
+    expect(timeline().byId[snow(2)]?.pinned).toBe(true);
   });
 
   it('offers delete on other messages to moderators', async () => {

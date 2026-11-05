@@ -37,6 +37,8 @@ function makeApi() {
     deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
     addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
     removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+    pin: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
+    unpin: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
     createAttachmentSlots: jest.fn(async (_c: string, files: { filename: string }[]) => ({ attachments: files.map((f, i) => ({ id: `slot${i}`, upload_url: `https://cdn.test/up/${i}`, upload_filename: `key/${f.filename}` })) })),
     upload: jest.fn(async (_url: string, _file: Blob, onProgress?: (loaded: number, total: number) => void, _signal?: AbortSignal): Promise<void> => onProgress?.(10, 10)),
   };
@@ -177,6 +179,27 @@ describe('MessageService', () => {
     useMessageStore.getState().receive(msg(1));
     await expect(new MessageService(api).toggleReaction('c1', snow(1), '👍')).rejects.toThrow('Missing Permissions');
     expect(timeline().byId[snow(1)]?.reactions).toEqual([]);
+  });
+
+  describe('menu actions', () => {
+    it('pins a message at once and undoes it when the server refuses', async () => {
+      const api = makeApi();
+      useMessageStore.getState().receive(msg(1));
+      const service = new MessageService(api);
+      await service.setPinned('c1', snow(1), true);
+      expect(api.pin).toHaveBeenCalledWith('c1', snow(1));
+      expect(timeline().byId[snow(1)]?.pinned).toBe(true);
+      api.unpin.mockRejectedValueOnce(new ApiError(403, 0, 'Missing Permissions'));
+      await expect(service.setPinned('c1', snow(1), false)).rejects.toThrow('Missing Permissions');
+      expect(timeline().byId[snow(1)]?.pinned).toBe(true);
+    });
+
+    it('marks a message unread by moving the marker to just before it', () => {
+      const api = makeApi();
+      new MessageService(api).markUnread('c1', snow(5));
+      expect(useReadStateStore.getState().byChannel['c1']).toEqual({ lastReadId: snow(4), mentionCount: 0 });
+      expect(api.ack).toHaveBeenCalledWith('c1', snow(4), { manual: true, mentionCount: 0 });
+    });
   });
 
   describe('attachments', () => {

@@ -51,9 +51,14 @@ export interface MessageActions {
   react: boolean;
   /** Copy Text and Select Text: only for messages that have text. */
   copyText: boolean;
+  copyLink: boolean;
+  markUnread: boolean;
+  /** Pin or unpin: only for people with Manage Messages. */
+  pin: boolean;
+  unpin: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false };
+const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
 export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string): MessageActions {
@@ -80,5 +85,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin') };
 }

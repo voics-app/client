@@ -58,7 +58,19 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false });
+  });
+
+  it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {
+    expect(messageActions(msg('other'), mine, 'me')).toMatchObject({ copyLink: true, markUnread: true, pin: false, unpin: false });
+    const mod = access(BASIC | Permission.MANAGE_MESSAGES);
+    expect(messageActions(msg('other'), mod, 'me')).toMatchObject({ pin: true, unpin: false });
+    expect(messageActions(msg('other', { pinned: true }), mod, 'me')).toMatchObject({ pin: false, unpin: true });
+  });
+
+  it('offers no pin in private channels', () => {
+    const priv = access(BASIC | Permission.MANAGE_MESSAGES, { delivery_mode: 'ephemeral' });
+    expect(messageActions(msg('other'), priv, 'me')).toMatchObject({ pin: false, unpin: false });
   });
 
   it('offers Copy Text only on messages that have text', () => {

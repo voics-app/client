@@ -4,6 +4,8 @@ import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { reactionKey, useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
+import { idBefore } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
@@ -12,7 +14,7 @@ import { UploadCancelled, type OutgoingFile } from './outgoingFile';
 
 export const PAGE_SIZE = 50;
 
-export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction' | 'createAttachmentSlots' | 'upload'>;
+export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'editMessage' | 'deleteMessage' | 'addReaction' | 'removeReaction' | 'createAttachmentSlots' | 'upload' | 'pin' | 'unpin'>;
 
 export interface SendInput {
   content: string;
@@ -51,6 +53,23 @@ export class MessageService {
     if (read?.lastReadId && compareSnowflakes(read.lastReadId, messageId) >= 0 && read.mentionCount === 0) return;
     useReadStateStore.getState().markRead(channelId, messageId);
     void this.api.ack(channelId, messageId).catch(() => undefined);
+  }
+
+  /** Pins or unpins a message, showing the change at once and undoing it if the server refuses. */
+  async setPinned(channelId: string, messageId: string, pinned: boolean): Promise<void> {
+    useMessageStore.getState().patch(channelId, messageId, { pinned });
+    await (pinned ? this.api.pin(channelId, messageId) : this.api.unpin(channelId, messageId)).catch((error: unknown) => {
+      useMessageStore.getState().patch(channelId, messageId, { pinned: !pinned });
+      throw error;
+    });
+  }
+
+  /** Moves the read marker to just before this message, so it and everything after it count as unread again (the chat shows its New divider). */
+  markUnread(channelId: string, messageId: string): void {
+    const marker = idBefore(messageId);
+    useReadStateStore.getState().setPosition(channelId, marker, 0);
+    useReadNavStore.getState().setAnchor(channelId, marker);
+    void this.api.ack(channelId, marker, { manual: true, mentionCount: 0 }).catch(() => undefined);
   }
 
   /** Older history, from the oldest message the server has given us. One request per channel at a time. */
