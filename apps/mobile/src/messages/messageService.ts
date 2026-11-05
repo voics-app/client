@@ -87,8 +87,8 @@ export class MessageService {
     }
   }
 
-  /** Never throws: a failed send stays in the timeline, marked failed with the reason, for Retry or Discard. */
-  async send(channel: Channel, input: SendInput): Promise<void> {
+  /** Never throws: a failed send stays in the timeline, marked failed with the reason, for Retry or Discard. Resolves true when the server took the message. */
+  async send(channel: Channel, input: SendInput): Promise<boolean> {
     const user = useSessionStore.getState().user;
     if (!user) throw new Error('Not signed in');
     const nonce = this.nonce();
@@ -120,21 +120,23 @@ export class MessageService {
       const sent = await this.api.sendMessage(channel.id, body);
       this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });
+      return true;
     } catch (error) {
       if (error instanceof UploadCancelled) {
         this.discard(channel.id, nonce);
-        return;
+        return false;
       }
       useMessageStore.getState().failOptimistic(channel.id, nonce, errorMessage(error));
+      return false;
     }
   }
 
-  async retry(channel: Channel, nonce: string): Promise<void> {
+  async retry(channel: Channel, nonce: string): Promise<boolean> {
     const failed = useMessageStore.getState().timelines[channel.id]?.byId[nonce];
-    if (failed?.localState !== 'failed') return;
+    if (failed?.localState !== 'failed') return false;
     const input = this.unsent.get(nonce);
     this.discard(channel.id, nonce);
-    await this.send(channel, input ?? { content: failed.content, ...(failed.message_reference?.message_id ? { replyTo: failed.message_reference.message_id } : {}) });
+    return this.send(channel, input ?? { content: failed.content, ...(failed.message_reference?.message_id ? { replyTo: failed.message_reference.message_id } : {}) });
   }
 
   discard(channelId: string, nonce: string): void {

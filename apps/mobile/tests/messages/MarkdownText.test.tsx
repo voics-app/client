@@ -20,6 +20,8 @@ const context = (extra: Partial<ChatContextValue> = {}): ChatContextValue => ({
   canReact: false,
   onMoreReactions: jest.fn(),
   onWhoReacted: jest.fn(),
+  canReply: false,
+  onReplyTo: jest.fn(),
   ...extra,
 });
 const show = (source: string, ctx = context(), selectable?: boolean) =>

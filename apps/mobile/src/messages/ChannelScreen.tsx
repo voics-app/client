@@ -25,6 +25,7 @@ import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
@@ -159,7 +160,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       setMode(COMPOSE);
       setError(null);
       if (current.kind === 'edit') service.edit(channelId, current.messageId, text).catch(fail);
-      else void service.send(channel, { content: text, ...(files.length > 0 ? { files } : {}), ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) });
+      else void service.send(channel, { content: text, ...(files.length > 0 ? { files } : {}), ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) }).then((ok) => (ok ? notifySuccess() : notifyError()));
     },
     [service, channel, channelId, fail],
   );
@@ -167,6 +168,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const toggleReaction = useCallback(
     (message: ChatMessage, emoji: string) => {
       setError(null);
+      tickSelection();
       service.toggleReaction(channelId, message.id, emoji).catch(fail);
     },
     [service, channelId, fail],
@@ -191,6 +193,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
       },
       onJumpToMessage: jumpTo,
       canReact: access?.canReact ?? false,
+      canReply: access?.canSend ?? false,
+      onReplyTo: (m) => {
+        tapLight();
+        setMode({ kind: 'reply', messageId: m.id, authorName: nameOf(m.author) });
+      },
       onMoreReactions: setReactingTo,
       onWhoReacted: (messageId, emoji) => setReactors({ channelId, messageId, emoji }),
       onWave: (id) => {
@@ -258,7 +265,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
                 message={item.message}
                 showHeader={item.showHeader}
                 replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
-                onLongPress={setSelected}
+                onLongPress={(m) => {
+                  tapLight();
+                  setSelected(m);
+                }}
                 onToggleReaction={toggleReaction}
                 onPressAuthor={setProfileUser}
                 onRetry={(m) => channel && void service.retry(channel, m.id)}

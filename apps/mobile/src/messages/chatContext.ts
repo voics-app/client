@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 /** What the rendered text of a channel needs from its screen: the guild for names and colours, and what a tap on a mention, link or reply does. */
 export interface ChatContextValue {
@@ -15,6 +16,9 @@ export interface ChatContextValue {
   onMoreReactions(messageId: string): void;
   /** Opens the list of people who reacted with one emoji (its `reactionKey`). */
   onWhoReacted(messageId: string, emoji: string): void;
+  /** Whether the user may reply here; swiping a message left only replies then. */
+  canReply: boolean;
+  onReplyTo(message: ChatMessage): void;
 }
 
 const NOOP: ChatContextValue = {
@@ -27,6 +31,8 @@ const NOOP: ChatContextValue = {
   canReact: false,
   onMoreReactions: () => undefined,
   onWhoReacted: () => undefined,
+  canReply: false,
+  onReplyTo: () => undefined,
 };
 
 export const ChatContext = createContext<ChatContextValue>(NOOP);

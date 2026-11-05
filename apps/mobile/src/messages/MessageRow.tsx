@@ -13,6 +13,7 @@ import { theme } from '../theme';
 import { AttachmentList } from './attachments/AttachmentList';
 import { useChatContext } from './chatContext';
 import { MarkdownText } from './markdown/MarkdownText';
+import { SwipeToReply } from './SwipeToReply';
 import { SystemRow } from './SystemRow';
 import { useRoleColor } from './useRoleColor';
 
@@ -34,7 +35,7 @@ export interface MessageRowProps {
 
 function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
-  const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted } = useChatContext();
+  const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted, canReply, onReplyTo } = useChatContext();
   const roleColor = useRoleColor(guildId, message.author.id);
   if (isSystemType(message.type)) {
     const target = message.mentions?.[0];
@@ -42,7 +43,7 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
   }
   const preview = replied ?? message.referenced_message ?? undefined;
   const referenceId = message.message_reference?.message_id;
-  return (
+  const row = (
     <Pressable onLongPress={() => onLongPress(message)} delayLongPress={300} style={[styles.row, showHeader && styles.groupStart, message.localState && styles.pending]}>
       <View style={styles.gutter}>
         {showHeader && (
@@ -120,6 +121,7 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
       </View>
     </Pressable>
   );
+  return canReply && !message.localState ? <SwipeToReply onReply={() => onReplyTo(message)}>{row}</SwipeToReply> : row;
 }
 
 export const MessageRow = memo(MessageRowView);

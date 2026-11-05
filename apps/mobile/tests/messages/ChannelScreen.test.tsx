@@ -173,6 +173,18 @@ describe('channel screen', () => {
     expect(screen.getAllByText('message 2').some((node) => node.props.selectable === true)).toBe(true);
   });
 
+  it('gives haptic feedback on a long press, a reaction and a send', async () => {
+    const Haptics = jest.requireMock('expo-haptics') as { impactAsync: jest.Mock; selectionAsync: jest.Mock; notificationAsync: jest.Mock };
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    expect(Haptics.impactAsync).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText('React with 👍'));
+    expect(Haptics.selectionAsync).toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hello');
+    await fireEvent.press(screen.getByLabelText('Send'));
+    await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledWith('success'));
+  });
+
   it('copies a link to the message', async () => {
     await open();
     await fireEvent(await screen.findByText('message 2'), 'longPress');
