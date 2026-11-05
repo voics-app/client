@@ -19,6 +19,11 @@ const ctx = (extra: Partial<ChatContextValue> = {}): ChatContextValue => ({
   onPressChannel: jest.fn(),
   onJumpToMessage: jest.fn(),
   onWave: jest.fn(),
+  canReact: false,
+  onMoreReactions: jest.fn(),
+  onWhoReacted: jest.fn(),
+  canReply: false,
+  onReplyTo: jest.fn(),
   ...extra,
 });
 const row = (m: ChatMessage, props: Partial<MessageRowProps> = {}, context = ctx()) =>

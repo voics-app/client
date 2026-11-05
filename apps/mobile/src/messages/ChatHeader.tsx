@@ -40,9 +40,11 @@ export interface ChatHeaderActionsProps {
   calls: boolean;
   /** The right-most slot, where a channel's members button goes. */
   trailing?: ReactNode;
+  /** Opens the channel menu (mark as read, mute, notifications, invite). */
+  onMenu?: () => void;
 }
 
-export function ChatHeaderActions({ onProfile, calls, trailing }: ChatHeaderActionsProps) {
+export function ChatHeaderActions({ onProfile, calls, trailing, onMenu }: ChatHeaderActionsProps) {
   const { channelId } = useLocalSearchParams<{ channelId?: string }>();
   // Expo Go has no native WebRTC and keeps the notice; a development build starts the voice call.
   const call = (video: boolean) => {
@@ -56,6 +58,7 @@ export function ChatHeaderActions({ onProfile, calls, trailing }: ChatHeaderActi
       {calls && <HeaderButton icon="videocam-outline" label="Video call" onPress={() => call(true)} />}
       {onProfile && <HeaderButton icon="person-circle-outline" label="View profile" onPress={onProfile} />}
       {trailing}
+      {onMenu && <HeaderButton icon="ellipsis-horizontal" label="Channel menu" onPress={onMenu} />}
     </View>
   );
 }

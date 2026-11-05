@@ -19,6 +19,10 @@ const mockApi = {
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+  updateGuildNotificationSettings: jest.fn(async (_g: string | null, patch: object) => ({ guild_id: 'g1', message_notifications: null, suppress_everyone: false, suppress_roles: false, muted: false, mute_config: null, hide_muted_channels: false, channel_overrides: [], ...patch })),
+  pin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
+  unpin: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
+  reactionUsers: jest.fn(async (_c: string, _id: string, _e: string): Promise<{ id: string; username: string }[]> => []),
 };
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(async () => true) }));
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
@@ -26,7 +30,7 @@ jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSessio
 
 const ME = { id: 'u1', username: 'me', global_name: 'Me Myself', discriminator: '0', avatar: null };
 const OTHER = { id: 'u2', username: 'pat', global_name: 'Pat', discriminator: '0', avatar: null };
-const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS;
+const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS | Permission.ATTACH_FILES;
 
 const snow = (n: number) => String(1000000 + n);
 function message(n: number, extra: Partial<Message> = {}): Message {
@@ -170,6 +174,94 @@ describe('channel screen', () => {
     expect(screen.getAllByText('message 2').some((node) => node.props.selectable === true)).toBe(true);
   });
 
+  it('gives haptic feedback on a long press, a reaction and a send', async () => {
+    const Haptics = jest.requireMock('expo-haptics') as { impactAsync: jest.Mock; selectionAsync: jest.Mock; notificationAsync: jest.Mock };
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    expect(Haptics.impactAsync).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText('React with 👍'));
+    expect(Haptics.selectionAsync).toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hello');
+    await fireEvent.press(screen.getByLabelText('Send'));
+    await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledWith('success'));
+  });
+
+  it('mutes the channel for an hour from the header menu', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await fireEvent.press(await screen.findByLabelText('Mute channel'));
+    await fireEvent.press(await screen.findByLabelText('For 1 hour'));
+    await waitFor(() => expect(mockApi.updateGuildNotificationSettings).toHaveBeenCalledWith('g1', { channel_overrides: [expect.objectContaining({ channel_id: 'general', muted: true })] }));
+  });
+
+  it('sets the notification level of the channel from the header menu', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await fireEvent.press(await screen.findByLabelText('Notification settings'));
+    await fireEvent.press(await screen.findByLabelText('Only @mentions'));
+    await waitFor(() => expect(mockApi.updateGuildNotificationSettings).toHaveBeenCalledWith('g1', { channel_overrides: [{ channel_id: 'general', message_notifications: 1 }] }));
+  });
+
+  it('marks the channel as read from the header menu, dismissing the unread bar', async () => {
+    useReadStateStore.getState().setPosition('general', snow(0));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.getByText('1 new message')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await waitFor(() => expect(screen.getAllByLabelText('Mark as read', { includeHiddenElements: true })).toHaveLength(2));
+    // The menu entry comes after the bar's own button, which has the same label.
+    await fireEvent.press(screen.getAllByLabelText('Mark as read', { includeHiddenElements: true })[1]!);
+    await waitFor(() => expect(screen.queryByText('1 new message')).toBeNull());
+  });
+
+  it('offers Invite people in the header menu only with Create Invite', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    await screen.findByLabelText('Mark as read', { includeHiddenElements: true });
+    expect(screen.queryByLabelText('Invite people')).toBeNull();
+  });
+
+  it('shows Invite people in the header menu with Create Invite', async () => {
+    await open(BASIC | Permission.CREATE_INSTANT_INVITE);
+    await screen.findByText('message 1');
+    await fireEvent.press(screen.getByLabelText('Channel menu'));
+    expect(await screen.findByLabelText('Invite people', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('copies a link to the message', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Copy Message Link'));
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`://channels/g1/general/${snow(2)}$`)));
+  });
+
+  it('marks a message unread: the marker moves before it and the chat shows the New divider', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Mark Unread'));
+    await waitFor(() => expect(mockApi.ack).toHaveBeenCalledWith('general', snow(1), { manual: true, mentionCount: 0 }));
+    expect(await screen.findByLabelText('New messages')).toBeTruthy();
+  });
+
+  it('offers no pin to regular members', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    expect(screen.queryByText('Pin Message')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Close Message actions', { includeHiddenElements: true }));
+    await waitFor(() => expect(screen.queryByText('Mark Unread')).toBeNull());
+  });
+
+  it('pins a message for a moderator', async () => {
+    await open(BASIC | Permission.MANAGE_MESSAGES);
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByText('Pin Message'));
+    await waitFor(() => expect(mockApi.pin).toHaveBeenCalledWith('general', snow(2)));
+    expect(timeline().byId[snow(2)]?.pinned).toBe(true);
+  });
+
   it('offers delete on other messages to moderators', async () => {
     await open(BASIC | Permission.MANAGE_MESSAGES);
     await fireEvent(await screen.findByText('message 2'), 'longPress');
@@ -224,6 +316,45 @@ describe('channel screen', () => {
     expect(screen.queryByLabelText('👍 1, you reacted')).toBeNull();
   });
 
+  it('adds a reaction from the emoji picker, found by search', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByLabelText('More reactions'));
+    await fireEvent.changeText(await screen.findByLabelText('Search emoji'), 'fire');
+    await fireEvent.press(await screen.findByLabelText('🔥'));
+    await waitFor(() => expect(mockApi.addReaction).toHaveBeenCalledWith('general', snow(2), '🔥'));
+  });
+
+  it('adds a reaction with the + chip under a message', async () => {
+    await open();
+    await act(async () => useMessageStore.getState().reactionAdd('general', snow(2), { id: null, name: '👍' }, false));
+    await fireEvent.press(await screen.findByLabelText('Add reaction'));
+    await fireEvent.press(await screen.findByLabelText('😂'));
+    await waitFor(() => expect(mockApi.addReaction).toHaveBeenCalledWith('general', snow(2), '😂'));
+  });
+
+  it('lists who reacted when a chip is long pressed', async () => {
+    mockApi.reactionUsers.mockResolvedValueOnce([{ id: 'u2', username: 'pat' }, { id: 'u9', username: 'sam' }]);
+    await open();
+    await act(async () => useMessageStore.getState().reactionAdd('general', snow(2), { id: null, name: '👍' }, false));
+    await fireEvent(await screen.findByLabelText('👍 1'), 'longPress');
+    expect(await screen.findByText('pat')).toBeTruthy();
+    expect(screen.getByText('sam')).toBeTruthy();
+    expect(mockApi.reactionUsers).toHaveBeenCalledWith('general', snow(2), '👍');
+  });
+
+  it('inserts an emoji from the composer picker into the message', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi ');
+    await fireEvent(screen.getByLabelText('Message'), 'selectionChange', { nativeEvent: { selection: { start: 3, end: 3 } } });
+    await fireEvent.press(screen.getByLabelText('Add emoji'));
+    await fireEvent.changeText(await screen.findByLabelText('Search emoji'), 'tada');
+    await fireEvent.press(await screen.findByLabelText('🎉'));
+    await waitFor(() => expect(screen.getByLabelText('Message').props.value).toContain('🎉'));
+    expect(screen.getByLabelText('Message').props.value.startsWith('hi ')).toBe(true);
+  });
+
   it('tells the user when a reaction is refused', async () => {
     mockApi.addReaction.mockRejectedValueOnce(new ApiError(403, 0, 'Missing Permissions'));
     await open();
@@ -263,6 +394,36 @@ describe('channel screen', () => {
     await waitFor(() => expect(mockApi.ack).toHaveBeenLastCalledWith('general', snow(3)));
   });
 
+  it('marks the first unread message with a New divider and a count bar, which Mark as read dismisses', async () => {
+    useReadStateStore.getState().hydrate([{ id: 'general', last_message_id: snow(2), mention_count: 0 }]);
+    useReadStateStore.getState().setPosition('general', snow(0));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.getByLabelText('New messages')).toBeTruthy();
+    expect(screen.getByText('1 new message')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Mark as read'));
+    expect(screen.queryByText('1 new message')).toBeNull();
+    expect(screen.getByLabelText('New messages')).toBeTruthy();
+  });
+
+  it('shows no divider when everything was read', async () => {
+    useReadStateStore.getState().setPosition('general', snow(5));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.queryByLabelText('New messages')).toBeNull();
+    expect(screen.queryByText(/new message/)).toBeNull();
+  });
+
+  it('offers Jump to latest after scrolling away and returns to the newest message', async () => {
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.queryByLabelText('Jump to latest')).toBeNull();
+    await fireEvent.scroll(screen.getByTestId('message-list'), { nativeEvent: { contentOffset: { y: 3000 }, layoutMeasurement: { height: 600 }, contentSize: { height: 9000 } } });
+    await fireEvent.press(await screen.findByLabelText('Jump to latest'));
+    await fireEvent.scroll(screen.getByTestId('message-list'), { nativeEvent: { contentOffset: { y: 0 }, layoutMeasurement: { height: 600 }, contentSize: { height: 9000 } } });
+    await waitFor(() => expect(screen.queryByLabelText('Jump to latest')).toBeNull());
+  });
+
   it('shows the channel name in the header with no profile or call buttons', async () => {
     await open();
     await screen.findByText('message 1');
@@ -272,8 +433,7 @@ describe('channel screen', () => {
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
-  it('hints with the channel name, shows Send only when there is text, and says attachments are not built', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  it('hints with the channel name, shows Send only when there is text, and offers attachments through the plus button', async () => {
     await open();
     await screen.findByText('message 1');
     expect(screen.getByLabelText('Message').props.placeholder).toBe('Message #general');
@@ -281,8 +441,15 @@ describe('channel screen', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
     expect(screen.getByLabelText('Send')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Add attachment'));
-    expect(alert).toHaveBeenCalledWith('Attachments', expect.stringContaining('aren'));
-    alert.mockRestore();
+    expect(await screen.findByText('Photo library')).toBeTruthy();
+    expect(screen.getByText('Take photo or video')).toBeTruthy();
+    expect(screen.getByText('Files')).toBeTruthy();
+  });
+
+  it('hides the plus button without ATTACH_FILES', async () => {
+    await open(BASIC & ~Permission.ATTACH_FILES);
+    await screen.findByText('message 1');
+    expect(screen.queryByLabelText('Add attachment')).toBeNull();
   });
 
   it('leaves room between the newest message and the composer', async () => {

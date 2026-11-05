@@ -11,6 +11,7 @@ export interface ChannelAccess {
   canSend: boolean;
   canReact: boolean;
   canReadHistory: boolean;
+  canAttach: boolean;
   canManageMessages: boolean;
   /** Server-stored delivery. Ephemeral and P2P channels need the encryption core, which comes to mobile later. */
   standard: boolean;
@@ -32,6 +33,7 @@ export function channelAccess({ guild, channel, members, userId }: ChannelAccess
     canSend: can(Permission.SEND_MESSAGES),
     canReact: can(Permission.ADD_REACTIONS),
     canReadHistory: can(Permission.READ_MESSAGE_HISTORY),
+    canAttach: can(Permission.ATTACH_FILES),
     canManageMessages: can(Permission.MANAGE_MESSAGES),
     standard: channel.delivery_mode === 'standard',
   };
@@ -39,7 +41,7 @@ export function channelAccess({ guild, channel, members, userId }: ChannelAccess
 
 /** In a DM every participant may send, react and read; there are no roles to moderate with. */
 export function dmAccess(channel: Channel): ChannelAccess {
-  return { canSend: true, canReact: true, canReadHistory: true, canManageMessages: false, standard: channel.delivery_mode === 'standard' };
+  return { canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, standard: channel.delivery_mode === 'standard' };
 }
 
 export interface MessageActions {
@@ -49,9 +51,14 @@ export interface MessageActions {
   react: boolean;
   /** Copy Text and Select Text: only for messages that have text. */
   copyText: boolean;
+  copyLink: boolean;
+  markUnread: boolean;
+  /** Pin or unpin: only for people with Manage Messages. */
+  pin: boolean;
+  unpin: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false };
+const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
 export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string): MessageActions {
@@ -78,5 +85,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin') };
 }

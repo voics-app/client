@@ -1,6 +1,7 @@
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
+import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { MessageService, PAGE_SIZE } from '../../src/messages/messageService';
@@ -36,6 +37,10 @@ function makeApi() {
     deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
     addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
     removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+    pin: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
+    unpin: jest.fn(async (_c: string, _m: string): Promise<void> => undefined),
+    createAttachmentSlots: jest.fn(async (_c: string, files: { filename: string }[]) => ({ attachments: files.map((f, i) => ({ id: `slot${i}`, upload_url: `https://cdn.test/up/${i}`, upload_filename: `key/${f.filename}` })) })),
+    upload: jest.fn(async (_url: string, _file: Blob, onProgress?: (loaded: number, total: number) => void, _signal?: AbortSignal): Promise<void> => onProgress?.(10, 10)),
   };
 }
 const timeline = () => useMessageStore.getState().timelines['c1']!;
@@ -174,5 +179,66 @@ describe('MessageService', () => {
     useMessageStore.getState().receive(msg(1));
     await expect(new MessageService(api).toggleReaction('c1', snow(1), '👍')).rejects.toThrow('Missing Permissions');
     expect(timeline().byId[snow(1)]?.reactions).toEqual([]);
+  });
+
+  describe('menu actions', () => {
+    it('pins a message at once and undoes it when the server refuses', async () => {
+      const api = makeApi();
+      useMessageStore.getState().receive(msg(1));
+      const service = new MessageService(api);
+      await service.setPinned('c1', snow(1), true);
+      expect(api.pin).toHaveBeenCalledWith('c1', snow(1));
+      expect(timeline().byId[snow(1)]?.pinned).toBe(true);
+      api.unpin.mockRejectedValueOnce(new ApiError(403, 0, 'Missing Permissions'));
+      await expect(service.setPinned('c1', snow(1), false)).rejects.toThrow('Missing Permissions');
+      expect(timeline().byId[snow(1)]?.pinned).toBe(true);
+    });
+
+    it('marks a message unread by moving the marker to just before it', () => {
+      const api = makeApi();
+      new MessageService(api).markUnread('c1', snow(5));
+      expect(useReadStateStore.getState().byChannel['c1']).toEqual({ lastReadId: snow(4), mentionCount: 0 });
+      expect(api.ack).toHaveBeenCalledWith('c1', snow(4), { manual: true, mentionCount: 0 });
+    });
+  });
+
+  describe('attachments', () => {
+    const photo = { uri: 'file:///cache/a.jpg', name: 'a.jpg', size: 10, mimeType: 'image/jpeg' };
+    const blob = { size: 10, type: 'image/jpeg' } as Blob;
+    const readBlob = jest.fn(async () => blob);
+
+    it('uploads through slots, then sends the message with the attachment list', async () => {
+      const api = makeApi();
+      const service = new MessageService(api, () => 0, readBlob);
+      await service.send(channel, { content: 'look', files: [photo] });
+      expect(api.createAttachmentSlots).toHaveBeenCalledWith('c1', [{ filename: 'a.jpg', file_size: 10 }]);
+      expect(api.upload).toHaveBeenCalledWith('https://cdn.test/up/0', blob, expect.any(Function), expect.any(AbortSignal));
+      expect(api.sendMessage).toHaveBeenCalledWith('c1', expect.objectContaining({ content: 'look', attachments: [{ id: 'slot0', filename: 'a.jpg', uploaded_filename: 'key/a.jpg' }] }));
+      expect(useUploadStore.getState().uploads).toEqual({});
+    });
+
+    it('shows the local file in the unsent message with upload progress, and keeps the files for Retry', async () => {
+      const api = makeApi();
+      api.upload.mockRejectedValueOnce(new Error('offline'));
+      const service = new MessageService(api, () => 0, readBlob);
+      await service.send(channel, { content: '', files: [photo] });
+      const failed = Object.values(timeline().byId).find((m) => m.localState === 'failed')!;
+      expect(failed.attachments[0]).toMatchObject({ filename: 'a.jpg', url: photo.uri, content_type: 'image/jpeg' });
+      expect(api.sendMessage).not.toHaveBeenCalled();
+      await service.retry(channel, failed.id);
+      expect(api.createAttachmentSlots).toHaveBeenCalledTimes(2);
+      expect(api.sendMessage).toHaveBeenCalledWith('c1', expect.objectContaining({ attachments: expect.any(Array) }));
+    });
+
+    it('removes the message when the upload is cancelled', async () => {
+      const api = makeApi();
+      api.upload.mockImplementationOnce(async (_u, _f, _p, signal) => {
+        useUploadStore.getState().uploads[Object.keys(useUploadStore.getState().uploads)[0]!]!.abort();
+        if (signal?.aborted) throw new Error('aborted');
+      });
+      await new MessageService(api, () => 0, readBlob).send(channel, { content: 'x', files: [photo] });
+      expect(Object.values(timeline().byId).filter((m) => m.localState)).toEqual([]);
+      expect(api.sendMessage).not.toHaveBeenCalled();
+    });
   });
 });

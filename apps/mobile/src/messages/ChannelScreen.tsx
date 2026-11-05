@@ -1,4 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { channelLink } from '@discordy/core/domain/channelMenuModel';
+import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,17 +10,25 @@ import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Pressable, St
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
-import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
+import { useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { User } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
-import { groupMessages } from '@discordy/core/domain/messageGrouping';
+import { firstUnreadMessageId, unreadBar } from '@discordy/core/domain/unread';
+import { buildRows, showJumpToLatest, type ChatRow } from './chatRows';
+import { JumpToLatest, NewDivider, UnreadBar } from './UnreadMarkers';
 import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
+import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
+import { ChannelMenu } from './ChannelMenu';
+import { EmojiPicker } from '../emoji/EmojiPicker';
+import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
@@ -50,6 +61,9 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reactingTo, setReactingTo] = useState<string | null>(null);
+  const [reactors, setReactors] = useState<ReactionTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -78,12 +92,25 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readable, channelId]);
 
-  const rows = useMemo(() => {
+  const anchor = useReadNavStore((st) => st.anchors[channelId]);
+  const barDismissed = useReadNavStore((st) => st.barDismissed[channelId] ?? false);
+  useEffect(() => {
+    // The read marker as it was when the chat opened drives the "New" divider; acking the latest message below does not move it.
+    useReadNavStore.getState().captureAnchor(channelId, useReadStateStore.getState().byChannel[channelId]?.lastReadId ?? null);
+    return () => useReadNavStore.getState().releaseAnchor(channelId);
+  }, [channelId]);
+
+  const markers = useMemo(() => (timeline ? timeline.ids.flatMap((id) => (timeline.byId[id] && !timeline.byId[id]!.localState ? [{ id, authorId: timeline.byId[id]!.author.id }] : [])) : []), [timeline]);
+  const firstUnreadId = useMemo(() => firstUnreadMessageId(markers, anchor, userId), [markers, anchor, userId]);
+  const rows = useMemo<ChatRow[]>(() => {
     if (!timeline) return [];
-    const ordered = timeline.ids.flatMap((id) => timeline.byId[id] ?? []);
-    const grouped = groupMessages(ordered.map((message) => ({ id: message.id, authorId: message.author.id, timestamp: Date.parse(message.timestamp), breaksGroup: message.type === 19, message })));
-    return grouped.map((g) => ({ message: g.message.message, showHeader: g.startsGroup })).reverse();
-  }, [timeline]);
+    return buildRows(timeline.ids.flatMap((id) => timeline.byId[id] ?? []), firstUnreadId);
+  }, [timeline, firstUnreadId]);
+  const bar = useMemo(() => {
+    if (barDismissed || !anchor) return null;
+    const model = unreadBar(markers, anchor, userId, timeline?.hasMoreBefore ?? false);
+    return model && model.count > 0 ? model : null;
+  }, [barDismissed, anchor, markers, userId, timeline?.hasMoreBefore]);
 
   const latestId = useMemo(() => {
     const ids = timeline?.ids ?? [];
@@ -94,10 +121,21 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
     if (appActive && readable && loaded && latestId) service.markRead(channelId, latestId);
   }, [appActive, service, channelId, readable, loaded, latestId]);
 
-  const listRef = useRef<FlatList<(typeof rows)[number]>>(null);
+  const listRef = useRef<FlatList<ChatRow>>(null);
+  const [away, setAway] = useState(false);
+  const openedAt = useRef<string | null>(null);
+  useEffect(() => {
+    // Open at the first unread message once the history is in; later arrivals do not move the list.
+    if (!loaded || openedAt.current === channelId) return;
+    const index = rows.findIndex((row) => row.kind === 'new');
+    if (index < 0 && !firstUnreadId) return;
+    openedAt.current = channelId;
+    if (index >= 4) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, channelId, firstUnreadId]);
   const jumpTo = useCallback(
     (messageId: string) => {
-      const index = rows.findIndex((row) => row.message.id === messageId);
+      const index = rows.findIndex((row) => row.kind === 'message' && row.message.id === messageId);
       if (index >= 0) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
     },
     [rows],
@@ -119,12 +157,12 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const fail = useCallback((e: unknown) => setError(errorMessage(e)), []);
 
   const submit = useCallback(
-    (text: string, current: ComposerMode) => {
+    (text: string, current: ComposerMode, files: OutgoingFile[]) => {
       if (!channel) return;
       setMode(COMPOSE);
       setError(null);
       if (current.kind === 'edit') service.edit(channelId, current.messageId, text).catch(fail);
-      else void service.send(channel, { content: text, ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) });
+      else void service.send(channel, { content: text, ...(files.length > 0 ? { files } : {}), ...(current.kind === 'reply' ? { replyTo: current.messageId } : {}) }).then((ok) => (ok ? notifySuccess() : notifyError()));
     },
     [service, channel, channelId, fail],
   );
@@ -132,6 +170,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const toggleReaction = useCallback(
     (message: ChatMessage, emoji: string) => {
       setError(null);
+      tickSelection();
       service.toggleReaction(channelId, message.id, emoji).catch(fail);
     },
     [service, channelId, fail],
@@ -155,11 +194,19 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         if (guildId) router.push(`/servers/${guildId}/${id}`);
       },
       onJumpToMessage: jumpTo,
+      canReact: access?.canReact ?? false,
+      canReply: access?.canSend ?? false,
+      onReplyTo: (m) => {
+        tapLight();
+        setMode({ kind: 'reply', messageId: m.id, authorName: nameOf(m.author) });
+      },
+      onMoreReactions: setReactingTo,
+      onWhoReacted: (messageId, emoji) => setReactors({ channelId, messageId, emoji }),
       onWave: (id) => {
         if (channel) void service.send(channel, { content: '\u{1F44B}', replyTo: id });
       },
     }),
-    [guildId, access, findUser, jumpTo, channel, service],
+    [guildId, channelId, access, findUser, jumpTo, channel, service],
   );
 
   const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : !access.canSend ? NO_SEND_NOTICE : null;
@@ -172,9 +219,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         <Stack.Screen
           options={{
             headerTitle: () => <ChatHeaderTitle title={title} peer={peer} />,
-            headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} />,
+            headerRight: () => <ChatHeaderActions calls={!guildId} onProfile={peer ? () => setProfileUser(peer) : undefined} trailing={guildId ? <MembersButton guildId={guildId} /> : undefined} onMenu={() => setMenuOpen(true)} />,
           }}
         />
+        {bar && <UnreadBar count={bar.count} more={bar.more} onMarkRead={() => useReadNavStore.getState().dismissBar(channelId)} />}
         {error && (
           <Pressable accessibilityRole="button" accessibilityLabel="Dismiss error" onPress={() => setError(null)} style={styles.error}>
             <Text style={styles.errorText}>{error}</Text>
@@ -195,6 +243,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             )}
           </View>
         ) : (
+          <View style={styles.list}>
           <FlatList
             ref={listRef}
             onScrollToIndexFailed={(info) => listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })}
@@ -203,27 +252,38 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             inverted
             contentContainerStyle={styles.listContent}
             data={rows}
-            keyExtractor={(row) => row.message.id}
+            keyExtractor={(row) => row.key}
+            onScroll={(e) => setAway(showJumpToLatest(e.nativeEvent.contentOffset.y, e.nativeEvent.layoutMeasurement.height))}
+            scrollEventThrottle={100}
             onEndReached={() => void service.loadOlder(channelId).catch(fail)}
             onEndReachedThreshold={0.5}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
-            renderItem={({ item }) => (
+            renderItem={({ item }) =>
+              item.kind === 'new' ? (
+                <NewDivider />
+              ) : (
               <MessageRow
                 message={item.message}
                 showHeader={item.showHeader}
                 replied={item.message.message_reference?.message_id ? timeline?.byId[item.message.message_reference.message_id] : undefined}
-                onLongPress={setSelected}
+                onLongPress={(m) => {
+                  tapLight();
+                  setSelected(m);
+                }}
                 onToggleReaction={toggleReaction}
                 onPressAuthor={setProfileUser}
                 onRetry={(m) => channel && void service.retry(channel, m.id)}
                 onDiscard={(m) => service.discard(channelId, m.id)}
               />
-            )}
+              )
+            }
           />
+          {away && <JumpToLatest onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })} />}
+          </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-          <Composer mode={mode} blockedReason={blockedReason} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
@@ -245,6 +305,22 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             if (selected) confirmDelete(selected);
             close();
           }}
+          onMoreReactions={() => {
+            setReactingTo(selected?.id ?? null);
+            close();
+          }}
+          onCopyLink={() => {
+            if (selected) void Clipboard.setStringAsync(channelLink(guildId, channelId, selected.id)).catch(fail);
+            close();
+          }}
+          onMarkUnread={() => {
+            if (selected) service.markUnread(channelId, selected.id);
+            close();
+          }}
+          onPin={() => {
+            if (selected) service.setPinned(channelId, selected.id, !selected.pinned).catch(fail);
+            close();
+          }}
           onCopyText={() => {
             if (selected) void Clipboard.setStringAsync(selected.content).catch(fail);
             close();
@@ -254,6 +330,24 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             close();
           }}
         />
+        <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onClose={() => setMenuOpen(false)} onMarkRead={() => {
+            useReadNavStore.getState().dismissBar(channelId);
+            if (latestId) service.markRead(channelId, latestId);
+          }} />
+        <EmojiPicker
+          visible={reactingTo !== null}
+          guildId={guildId}
+          onClose={() => setReactingTo(null)}
+          onPick={(emoji) => {
+            const target = reactingTo ? timeline?.byId[reactingTo] : undefined;
+            if (target) {
+              usePrefsStore.getState().recordReaction(emoji);
+              toggleReaction(target, quickApiForm(emoji));
+            }
+            setReactingTo(null);
+          }}
+        />
+        <ReactionUsersSheet target={reactors} onClose={() => setReactors(null)} />
         <SelectTextSheet message={selecting} onClose={() => setSelecting(null)} />
       </KeyboardAvoidingView>
     </ChatContext.Provider>

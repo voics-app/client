@@ -10,7 +10,7 @@ import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
-import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
+import { HttpClient, type ProgressUpload } from '@discordy/core/infrastructure/http/httpClient';
 import type { MobileVoice } from '../voice/mobileVoice';
 
 export interface RuntimeConfig {
@@ -23,6 +23,8 @@ export interface RuntimeConfig {
   vault: SessionVault;
   socketFactory: SocketFactory;
   fetch?: typeof fetch;
+  /** Uploads attachments with progress; without it they use a plain PUT and report no progress. */
+  progressUpload?: ProgressUpload;
   /** Builds the voice stack; returns null where native WebRTC is not available (Expo Go). */
   createVoice?: (deps: { gateway: GatewayClient; iceServers: () => IceServer[] }) => MobileVoice | null;
 }
@@ -45,6 +47,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   const http: HttpClient = new HttpClient({
     baseUrl: config.apiUrl,
     ...(config.fetch ? { fetch: config.fetch } : {}),
+    ...(config.progressUpload ? { progressUpload: config.progressUpload } : {}),
     tokens: {
       access: () => tokens.access,
       refresh: async () => {

@@ -33,7 +33,9 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     'expo-sqlite',
-    ['expo-image-picker', { photosPermission: `${brand.displayName} reads a photo only when you choose one, for example as a server icon.` }],
+    ['expo-image-picker', { photosPermission: `${brand.displayName} reads a photo or video only when you choose one, for example to attach it to a message or as a server icon.`, cameraPermission: `${brand.displayName} uses the camera only when you take a photo or video to send.` }],
+    'expo-video',
+    'expo-audio',
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
