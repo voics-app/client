@@ -1,3 +1,4 @@
+import { openDm } from '@discordy/core/application/dmCommands';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { bulkLeaveOutcomeMessage, leaveSequentially, type BulkLeaveResult } from '@discordy/core/domain/groupDmSelection';
@@ -17,11 +18,8 @@ export function closeDm(channelId: string): void {
 
 /** Makes sure the 1:1 DM with a user exists and is listed (a closed one is reopened); resolves to its id. */
 export async function ensureDm(userId: string): Promise<string | null> {
-  const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
-  if (!channel) return null;
-  useGuildStore.getState().upsertChannel(channel);
-  useClosedDmStore.getState().reopen(channel.id);
-  return channel.id;
+  const channel = await attempt(() => openDm(getRuntime().api, [userId]), 'Could not open conversation');
+  return channel?.id ?? null;
 }
 
 /** Drops a group DM we left from the local lists and leaves its conversation view if it was open. */

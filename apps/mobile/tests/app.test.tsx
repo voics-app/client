@@ -172,7 +172,7 @@ describe('app shell', () => {
     await openApp();
     await fireEvent.press(screen.getByLabelText('Notifications'));
     expect(screen).toHavePathname('/notifications');
-    expect(await screen.findByText('Mentions and replies will appear here.')).toBeTruthy();
+    expect(await screen.findByText(/No recent mentions/)).toBeTruthy();
   });
 
   it('shows the signed-in user in the user panel', async () => {

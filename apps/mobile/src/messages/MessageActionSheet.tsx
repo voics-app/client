@@ -11,6 +11,7 @@ export interface MessageActionSheetProps {
   actions: MessageActions | null;
   onReact(emoji: string): void;
   onReply(): void;
+  onCreateThread(): void;
   onEdit(): void;
   onDelete(): void;
   onMoreReactions(): void;
@@ -25,7 +26,7 @@ export interface MessageActionSheetProps {
 const QUICK = quickReactions([]);
 
 /** Bottom sheet with only the actions the user may take on one message. */
-export function MessageActionSheet({ actions: current, onReact, onMoreReactions, onReply, onEdit, onDelete, onCopyText, onCopyLink, onMarkUnread, onPin, onSelectText, onClose }: MessageActionSheetProps) {
+export function MessageActionSheet({ actions: current, onReact, onMoreReactions, onReply, onCreateThread, onEdit, onDelete, onCopyText, onCopyLink, onMarkUnread, onPin, onSelectText, onClose }: MessageActionSheetProps) {
   const actions = useLastValue(current);
   return (
     <BottomSheet visible={current !== null} onClose={onClose} label="Message actions">
@@ -44,6 +45,7 @@ export function MessageActionSheet({ actions: current, onReact, onMoreReactions,
             </View>
           )}
           {actions.reply && <Option icon="arrow-undo-outline" label="Reply" onPress={onReply} />}
+          {actions.thread && <Option icon="chatbubbles-outline" label="Create Thread" onPress={onCreateThread} />}
           {actions.copyText && <Option icon="copy-outline" label="Copy Text" onPress={onCopyText} />}
           {actions.copyText && <Option icon="text-outline" label="Select Text" onPress={onSelectText} />}
           {actions.copyLink && <Option icon="link-outline" label="Copy Message Link" onPress={onCopyLink} />}

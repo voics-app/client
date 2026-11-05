@@ -6,6 +6,8 @@ import { theme } from '../theme';
 export interface SheetProps {
   visible: boolean;
   title?: string;
+  /** Spoken name of the sheet when it has no title; defaults to the close label. */
+  label?: string;
   /** Accessibility label of the backdrop, which closes the sheet. */
   closeLabel: string;
   onClose(): void;
@@ -13,9 +15,9 @@ export interface SheetProps {
 }
 
 /** The app's bottom sheet (fading backdrop, sliding sheet, drag handle) with an optional title and a scrolling body. */
-export function Sheet({ visible, title, closeLabel, onClose, children }: SheetProps) {
+export function Sheet({ visible, title, label, closeLabel, onClose, children }: SheetProps) {
   return (
-    <BottomSheet visible={visible} onClose={onClose} label={title ?? closeLabel} closeLabel={closeLabel}>
+    <BottomSheet visible={visible} onClose={onClose} label={title ?? label ?? closeLabel} closeLabel={closeLabel}>
       {title && (
         <Text accessibilityRole="header" style={styles.title}>
           {title}

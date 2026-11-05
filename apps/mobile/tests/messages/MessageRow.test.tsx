@@ -24,6 +24,8 @@ const ctx = (extra: Partial<ChatContextValue> = {}): ChatContextValue => ({
   onWhoReacted: jest.fn(),
   canReply: false,
   onReplyTo: jest.fn(),
+  onOpenPins: jest.fn(),
+  onOpenThread: jest.fn(),
   ...extra,
 });
 const row = (m: ChatMessage, props: Partial<MessageRowProps> = {}, context = ctx()) =>
@@ -83,6 +85,13 @@ describe('MessageRow', () => {
     await row(message({ type: 6, content: '', message_reference: { message_id: '0' } as never }), {}, ctx({ onJumpToMessage }));
     await fireEvent.press(screen.getByText('a message'));
     expect(onJumpToMessage).toHaveBeenCalledWith('0');
+  });
+
+  it('opens the pinned messages from the link in a pin notice', async () => {
+    const onOpenPins = jest.fn();
+    await row(message({ type: 6, content: '', message_reference: { message_id: '0' } as never }), {}, ctx({ onOpenPins }));
+    await fireEvent.press(screen.getByText('pinned messages'));
+    expect(onOpenPins).toHaveBeenCalledTimes(1);
   });
 
   it('offers a wave on join messages', async () => {

@@ -47,6 +47,30 @@ export class MessageService {
     useMessageStore.getState().setHistory(channelId, page, { prepend: false, hasMoreBefore: page.length >= PAGE_SIZE });
   }
 
+  /** The window of messages around one message (a pin, search hit, link or inbox entry). The window is detached from the present until it reaches the channel's latest message. */
+  async loadAround(channel: Channel, messageId: string): Promise<void> {
+    const page = await this.api.messages(channel.id, { around: messageId, limit: PAGE_SIZE });
+    if (page.length === 0) return;
+    const newest = page.reduce((max, m) => (compareSnowflakes(m.id, max) > 0 ? m.id : max), page[0]!.id);
+    const last = channel.last_message_id;
+    useMessageStore.getState().setHistory(channel.id, page, { prepend: false, hasMoreBefore: true, hasMoreAfter: !last || compareSnowflakes(newest, last) < 0 });
+  }
+
+  /** Extends a detached window towards the present. One request per channel at a time. */
+  async loadNewer(channelId: string): Promise<void> {
+    const timeline = useMessageStore.getState().timelines[channelId];
+    if (!timeline?.hasMoreAfter || this.paging.has(channelId)) return;
+    const newest = timeline.ids.findLast((id) => !timeline.byId[id]?.localState);
+    if (!newest) return;
+    this.paging.add(channelId);
+    try {
+      const page = await this.api.messages(channelId, { after: newest, limit: PAGE_SIZE });
+      useMessageStore.getState().setHistory(channelId, page, { prepend: false, append: true, hasMoreBefore: true, hasMoreAfter: page.length >= PAGE_SIZE });
+    } finally {
+      this.paging.delete(channelId);
+    }
+  }
+
   /** Tells the server (and this device's unread dots) that the channel is read up to the given message, as desktop does when a channel is open at its latest message. */
   markRead(channelId: string, messageId: string): void {
     const read = useReadStateStore.getState().byChannel[channelId];

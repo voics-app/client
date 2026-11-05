@@ -3,10 +3,10 @@ import { formatBadgeCount } from '@discordy/core/domain/unread';
 import { theme } from '../theme';
 
 /** Desktop's `.count-danger`: a red pill with the mention count. `ring` draws the cut-out border the rail badge has. */
-export function Badge({ value, ring = false }: { value: number; ring?: boolean }) {
+export function Badge({ value, ring = false, noun = 'mentions' }: { value: number; ring?: boolean; /** What is counted, for the spoken label. */ noun?: string }) {
   if (value <= 0) return null;
   return (
-    <View accessibilityLabel={`${value} mentions`} style={[styles.pill, ring && styles.ring]}>
+    <View accessibilityLabel={`${value} ${noun}`} style={[styles.pill, ring && styles.ring]}>
       <Text style={styles.text}>{formatBadgeCount(value)}</Text>
     </View>
   );

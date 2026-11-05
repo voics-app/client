@@ -1,5 +1,5 @@
 import { RelationshipType, type Relationship, type User } from '@discordy/core/contracts/rest';
-import { avatarUris, profileView } from '../../src/profile/profileModel';
+import { avatarUris, mutualServers, profileActions, profileView } from '../../src/profile/profileModel';
 
 const user: User = { id: '2', username: 'pat', global_name: 'Pat', avatar: 'abc', bio: 'Hello there' };
 const friend = (since?: string): Relationship => ({ id: '2', type: RelationshipType.FRIEND, user, ...(since ? { since } : {}) });
@@ -40,5 +40,36 @@ describe('avatarUris', () => {
     expect(avatarUris('https://cdn.test', user)[0]).toBe('https://cdn.test/avatars/2/abc.png?size=128');
     expect(avatarUris('https://cdn.test', { ...user, avatar: null })).toEqual([]);
     expect(avatarUris('', user)).toEqual([]);
+  });
+});
+
+describe('mutualServers', () => {
+  it('names the shared servers with the nickname there and drops servers you left', () => {
+    expect(mutualServers([{ id: 'g1', nick: 'Patty' }, { id: 'g2' }, { id: 'gone', nick: 'x' }], { g1: { name: 'Home' }, g2: { name: 'Club' } })).toEqual([
+      { id: 'g1', name: 'Home', nick: 'Patty' },
+      { id: 'g2', name: 'Club', nick: null },
+    ]);
+  });
+});
+
+describe('profileActions', () => {
+  const rel = (type: RelationshipType): Relationship => ({ id: '2', type, user });
+
+  it('offers nothing for yourself', () => {
+    expect(profileActions(true, false, undefined)).toEqual({ message: false, friend: null, block: null });
+  });
+
+  it.each([
+    [undefined, 'add'],
+    [RelationshipType.FRIEND, 'remove'],
+    [RelationshipType.OUTGOING, 'sent'],
+    [RelationshipType.INCOMING, 'accept'],
+  ])('a relationship of %s offers the friend action %s and Block', (type, friend) => {
+    expect(profileActions(false, false, type === undefined ? undefined : rel(type))).toEqual({ message: true, friend, block: 'block' });
+  });
+
+  it('offers only Unblock for someone you blocked, and no friending for a bot', () => {
+    expect(profileActions(false, false, rel(RelationshipType.BLOCKED))).toEqual({ message: false, friend: null, block: 'unblock' });
+    expect(profileActions(false, true, undefined)).toEqual({ message: true, friend: null, block: 'block' });
   });
 });

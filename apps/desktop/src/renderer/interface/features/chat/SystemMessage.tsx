@@ -1,4 +1,5 @@
 import { ChatTeardropText, DotsThree, EnvelopeSimple, HandWaving, Hash, Image as ImageIcon, PencilSimple, Phone, PhoneX, PushPin, SignIn, SignOut, Smiley, Trash, Warning } from '@phosphor-icons/react';
+import { threadIdOf } from '@discordy/core/domain/threads';
 import { useState, type FocusEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -59,7 +60,7 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
   const canManage = can(perms, Permission.MANAGE_MESSAGES);
   const canReact = can(perms, Permission.ADD_REACTIONS);
   const target = message.mentions?.[0];
-  const threadId = message.thread?.id ?? message.message_reference?.channel_id;
+  const threadId = threadIdOf(message);
   const spec = systemSpec({
     type: message.type,
     messageId: message.id,

@@ -1,5 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { EPHEMERAL_MESSAGE, FORUM_MESSAGE } from '../../src/servers/channelScreenKind';
 import { VOICE_UNAVAILABLE } from '../../src/voice/VoiceChannelScreen';
 import { resetStores, seedServer, seedVoice } from '../support/server';
@@ -59,6 +60,23 @@ describe('channel kinds in the column', () => {
     expect(screen.getByText('In this channel, 1')).toBeTruthy();
     expect(screen.getByLabelText('Pat')).toBeTruthy();
     expect(mockApi.messages).not.toHaveBeenCalled();
+  });
+
+  it('opens the text chat of a voice channel from its screen, with the history and a composer', async () => {
+    await openServer();
+    await fireEvent.press(screen.getByLabelText('Open voice channel lobby'));
+    await fireEvent.press(await screen.findByLabelText('Open text chat'));
+    expect(await screen.findByLabelText('Message')).toBeTruthy();
+    expect(mockApi.messages).toHaveBeenCalledWith('lobby', { limit: 50 });
+    expect(screen.queryByText(VOICE_UNAVAILABLE)).toBeNull();
+  });
+
+  it('offers no text chat for a voice channel with private delivery', async () => {
+    useGuildStore.getState().upsertChannel({ ...useGuildStore.getState().channels['lobby']!, delivery_mode: 'p2p' });
+    await openServer();
+    await fireEvent.press(screen.getByLabelText('Open voice channel lobby'));
+    await screen.findByText(VOICE_UNAVAILABLE);
+    expect(screen.queryByLabelText('Open text chat')).toBeNull();
   });
 
   it('says so when nobody is in the voice channel', async () => {

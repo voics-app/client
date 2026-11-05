@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Animated, Dimensions, Easing, Keyboard, Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Easing, Keyboard, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { BACKDROP_OPACITY, CLOSE_MS, OPEN_MS, shouldDismiss } from './sheetMotion';
@@ -21,7 +21,7 @@ const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 
 /**
  * One bottom sheet for the whole app. The dim backdrop fades in on its own while only the sheet slides up, so an open keyboard never shows
- * a black layer riding along. Tap outside or drag the handle down to dismiss; the keyboard closes first.
+ * a black layer riding along. A text field in the sheet lifts it above the keyboard. Tap outside or drag the handle down to dismiss; the keyboard closes first.
  */
 export function BottomSheet({ visible, onClose, label, closeLabel, children, tall }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
@@ -71,7 +71,7 @@ export function BottomSheet({ visible, onClose, label, closeLabel, children, tal
   const backdrop = y.interpolate({ inputRange: [0, sheetHeight], outputRange: [BACKDROP_OPACITY, 0], extrapolate: 'clamp' });
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.root} pointerEvents="box-none">
+      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined} pointerEvents="box-none">
         <Animated.View testID="sheet-backdrop" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdrop }]} />
         <Pressable accessibilityRole="button" accessibilityLabel={closeLabel ?? `Close ${label}`} style={StyleSheet.absoluteFill} onPress={onClose} />
         <Animated.View
@@ -92,7 +92,7 @@ export function BottomSheet({ visible, onClose, label, closeLabel, children, tal
           </View>
           {children}
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

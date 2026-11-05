@@ -13,7 +13,7 @@ const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: strin
 
 describe('channelAccess', () => {
   it('allows sending, reacting and reading for a regular member', () => {
-    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canManageMessages: false, standard: true });
+    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canManageMessages: false, canCreateThread: false, canManageThreads: false, standard: true });
   });
 
   it('blocks sending when SEND_MESSAGES is missing', () => {
@@ -32,6 +32,42 @@ describe('channelAccess', () => {
 
   it('marks channels that are not standard delivery', () => {
     expect(access(BASIC, { delivery_mode: 'ephemeral' }).standard).toBe(false);
+  });
+});
+
+describe('thread permissions', () => {
+  const THREADS = BASIC | Permission.CREATE_PUBLIC_THREADS;
+  const thread = { id: 't1', type: 11, parent_id: 'c1' } as Partial<Channel>;
+
+  it('may start a thread from a message in a channel with Create Public Threads, but not inside a thread', () => {
+    expect(access(THREADS).canCreateThread).toBe(true);
+    expect(access(BASIC).canCreateThread).toBe(false);
+    expect(access(THREADS, thread).canCreateThread).toBe(false);
+  });
+
+  it('offers Create Thread in the message actions only then', () => {
+    expect(messageActions(msg('x'), access(THREADS), 'me').thread).toBe(true);
+    expect(messageActions(msg('x'), access(BASIC), 'me').thread).toBe(false);
+    expect(messageActions(msg('x'), { ...access(THREADS), standard: false }, 'me').thread).toBe(false);
+  });
+
+  it('writes in a thread with Send Messages in Threads, not Send Messages', () => {
+    expect(access(BASIC, thread).canSend).toBe(false);
+    expect(access(BASIC | Permission.SEND_MESSAGES_IN_THREADS, thread).canSend).toBe(true);
+    expect(access((BASIC | Permission.SEND_MESSAGES_IN_THREADS) & ~Permission.SEND_MESSAGES, thread).canSend).toBe(true);
+  });
+
+  it('takes a thread permission overwrites from its parent channel', () => {
+    const deny = { id: 'g1', type: 0 as const, allow: '0', deny: String(Permission.SEND_MESSAGES_IN_THREADS) };
+    const parent = channel({ permission_overwrites: [deny] });
+    const input = { guild: guild(BASIC | Permission.SEND_MESSAGES_IN_THREADS), channel: channel(thread), members: undefined, userId: 'me' };
+    expect(channelAccess(input).canSend).toBe(true);
+    expect(channelAccess({ ...input, parent }).canSend).toBe(false);
+  });
+
+  it('lets Manage Threads write in a locked thread', () => {
+    expect(access(BASIC | Permission.MANAGE_THREADS).canManageThreads).toBe(true);
+    expect(access(BASIC).canManageThreads).toBe(false);
   });
 });
 
@@ -58,7 +94,7 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false });
   });
 
   it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {
@@ -81,7 +117,7 @@ describe('messageActions', () => {
 
 describe('dmAccess', () => {
   it('lets participants send, react and read, but never moderate', () => {
-    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, standard: true });
+    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, standard: true });
   });
 
   it('marks private delivery as not standard', () => {
