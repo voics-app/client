@@ -20,6 +20,7 @@ export interface ComposerProps {
 
 export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
+  const [multiline, setMultiline] = useState(false);
   useEffect(() => {
     setText(mode.kind === 'edit' ? mode.content : '');
   }, [mode]);
@@ -50,13 +51,13 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
           </Pressable>
         </View>
       )}
-      <View style={styles.field}>
+      <View style={[styles.field, multiline ? styles.fieldGrown : styles.fieldSingle]}>
         {mode.kind === 'compose' && (
           <Pressable accessibilityRole="button" accessibilityLabel="Add attachment" hitSlop={6} onPress={() => Alert.alert('Attachments', ATTACHMENTS_NOTICE)} style={styles.plus}>
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
-        <TextInput accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline />
+        <TextInput accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
         {canSubmit && (
           <Pressable accessibilityRole="button" accessibilityLabel={mode.kind === 'edit' ? 'Save edit' : 'Send'} onPress={submit} style={styles.send}>
             <Ionicons name={mode.kind === 'edit' ? 'checkmark' : 'arrow-up'} size={20} color={theme.accentText} />
@@ -67,6 +68,10 @@ export function Composer({ mode, blockedReason, placeholder, onSubmit, onCancelM
     </View>
   );
 }
+
+/** The input is one line while its content is shorter than two lines; then the plus and send buttons centre on it, and from two lines they stick to the bottom. */
+export const isMultiline = (contentHeight: number): boolean => contentHeight > LINE_HEIGHT * 1.5;
+const LINE_HEIGHT = 21;
 
 const SIZE = 44;
 /** Plus, send and one line of input share this height, so a single-line field centres all three on one line. */
@@ -79,7 +84,6 @@ const styles = StyleSheet.create({
   bannerAction: { color: theme.accent, fontSize: 13, fontWeight: '600' },
   field: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
     backgroundColor: theme.raised,
     borderRadius: SIZE / 2 + 2,
     borderWidth: 1,
@@ -88,8 +92,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minHeight: SIZE + 4,
   },
+  fieldSingle: { alignItems: 'center' },
+  fieldGrown: { alignItems: 'flex-end' },
   plus: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: 21, paddingHorizontal: 8, paddingTop: 9.5, paddingBottom: 9.5, minHeight: BUTTON, maxHeight: 132 },
+  input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: LINE_HEIGHT, textAlignVertical: 'center', paddingHorizontal: 8, paddingTop: 9.5, paddingBottom: 9.5, minHeight: BUTTON, maxHeight: 132 },
   send: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
   counter: { color: theme.muted, fontSize: 12, alignSelf: 'flex-end', paddingTop: 4 },
   over: { color: theme.danger },

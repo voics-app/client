@@ -263,6 +263,36 @@ describe('channel screen', () => {
     await waitFor(() => expect(mockApi.ack).toHaveBeenLastCalledWith('general', snow(3)));
   });
 
+  it('marks the first unread message with a New divider and a count bar, which Mark as read dismisses', async () => {
+    useReadStateStore.getState().hydrate([{ id: 'general', last_message_id: snow(2), mention_count: 0 }]);
+    useReadStateStore.getState().setPosition('general', snow(0));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.getByLabelText('New messages')).toBeTruthy();
+    expect(screen.getByText('1 new message')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Mark as read'));
+    expect(screen.queryByText('1 new message')).toBeNull();
+    expect(screen.getByLabelText('New messages')).toBeTruthy();
+  });
+
+  it('shows no divider when everything was read', async () => {
+    useReadStateStore.getState().setPosition('general', snow(5));
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.queryByLabelText('New messages')).toBeNull();
+    expect(screen.queryByText(/new message/)).toBeNull();
+  });
+
+  it('offers Jump to latest after scrolling away and returns to the newest message', async () => {
+    await open();
+    await screen.findByText('message 2');
+    expect(screen.queryByLabelText('Jump to latest')).toBeNull();
+    await fireEvent.scroll(screen.getByTestId('message-list'), { nativeEvent: { contentOffset: { y: 3000 }, layoutMeasurement: { height: 600 }, contentSize: { height: 9000 } } });
+    await fireEvent.press(await screen.findByLabelText('Jump to latest'));
+    await fireEvent.scroll(screen.getByTestId('message-list'), { nativeEvent: { contentOffset: { y: 0 }, layoutMeasurement: { height: 600 }, contentSize: { height: 9000 } } });
+    await waitFor(() => expect(screen.queryByLabelText('Jump to latest')).toBeNull());
+  });
+
   it('shows the channel name in the header with no profile or call buttons', async () => {
     await open();
     await screen.findByText('message 1');
