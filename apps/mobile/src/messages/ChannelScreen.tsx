@@ -378,11 +378,12 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           guildId={guildId}
           onClose={() => setDetailsOpen(false)}
           onOpenPins={() => router.push(`/pins/${channelId}`)}
+          onOpenSearch={() => router.push(`/search/${channelId}`)}
           onOpenMembers={() => guildId && router.push(`/servers/${guildId}/members`)}
           onOpenThreads={guildId && !thread ? () => router.push(`/threads/${channelId}`) : undefined}
           onOpenProfile={setProfileUser}
         />
-        <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onClose={() => setMenuOpen(false)} onMarkRead={() => {
+        <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onSearch={() => router.push(`/search/${channelId}`)} onClose={() => setMenuOpen(false)} onMarkRead={() => {
             useReadNavStore.getState().dismissBar(channelId);
             if (latestId) service.markRead(channelId, latestId);
           }} />

@@ -1,10 +1,10 @@
 /** Wires message search to the runtime: builds the search target from the open chat and runs it. */
-import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
+import { SearchService, type SearchTarget } from '@discordy/core/application/searchService';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSearchStore } from '@discordy/core/application/stores/searchStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { ChannelType } from '@discordy/core/contracts/rest';
+import { searchCandidates } from '@discordy/core/domain/searchCandidates';
 import { displayName } from '../shared/hooks/useNames';
 import { getRuntime } from './runtime';
 
@@ -28,28 +28,18 @@ export function searchTarget(channelId: string): SearchTarget | null {
   const guilds = useGuildStore.getState();
   const channel = guilds.channels[channelId];
   if (!channel) return null;
-  const me = useSessionStore.getState().user;
-  const users = new Map<string, { id: string; name: string }>();
-  const addUser = (id: string, name: string) => users.set(`${id}:${name}`, { id, name });
-  if (channel.guild_id) {
-    for (const m of Object.values(guilds.members[channel.guild_id] ?? {})) {
-      addUser(m.user.id, m.user.username);
-      const shown = displayName(m.user, m.nick);
-      if (shown !== m.user.username) addUser(m.user.id, shown);
-    }
-  } else {
-    for (const u of [...(channel.recipients ?? []), ...(me ? [me] : [])]) addUser(u.id, u.username);
-  }
-  const channels = channel.guild_id
-    ? Object.values(guilds.channels)
-        .filter((c) => c.guild_id === channel.guild_id && (c.type === ChannelType.GUILD_TEXT || c.type === ChannelType.GUILD_ANNOUNCEMENT))
-        .map((c) => ({ id: c.id, name: c.name ?? c.id }))
-    : [];
+  const candidates = searchCandidates({
+    channel,
+    members: channel.guild_id ? guilds.members[channel.guild_id] : undefined,
+    channels: Object.values(guilds.channels),
+    me: useSessionStore.getState().user,
+    displayName,
+  });
   return {
     channel,
     guildName: channel.guild_id ? (guilds.guilds[channel.guild_id]?.name ?? null) : null,
     mode: getRuntime().privacy.sender.resolveMode(channel),
-    candidates: { users: [...users.values()], channels },
+    candidates,
   };
 }
 

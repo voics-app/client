@@ -25,10 +25,11 @@ export interface ChannelMenuProps {
   channelId: string;
   onClose(): void;
   onMarkRead(): void;
+  onSearch(): void;
 }
 
 /** The chat header's menu: Mark as read, Mute or Unmute, Notification settings and (in a server, with the permission) Invite people. */
-export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead }: ChannelMenuProps) {
+export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead, onSearch }: ChannelMenuProps) {
   const [step, setStep] = useState<Step>('menu');
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const channels = useGuildStore((s) => s.channels);
@@ -55,6 +56,14 @@ export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead }
     <Sheet visible={visible} {...(title ? { title } : {})} closeLabel="Close channel menu" onClose={close}>
       {step === 'menu' && (
         <>
+          <SheetOption
+            label="Search"
+            icon={icon('search-outline')}
+            onPress={() => {
+              close();
+              onSearch();
+            }}
+          />
           <SheetOption
             label="Mark as read"
             icon={icon('checkmark-done-outline')}

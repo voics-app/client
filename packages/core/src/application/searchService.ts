@@ -23,12 +23,23 @@ const SORTS: Record<SearchSort, Pick<SearchParams, 'sort_by' | 'sort_order'>> = 
   relevant: { sort_by: 'relevance', sort_order: 'desc' },
 };
 
-function errorText(error: unknown): string {
+export function errorText(error: unknown): string {
   const status = (error as { status?: number }).status;
   if (status === 429) return 'You are searching too fast. Try again in a few seconds.';
   if (status === 503) return 'Search is unavailable right now.';
   return error instanceof Error ? error.message : 'Search failed';
 }
+
+/** One page of results, before it reaches any store. */
+export interface SearchPage {
+  groups: Message[][];
+  total: number;
+  indexBuilding: boolean;
+  /** Words to highlight in the hits. */
+  terms: string[];
+}
+
+export type SearchOutcome = { kind: 'empty' } | { kind: 'problems'; problems: string[] } | ({ kind: 'page' } & SearchPage);
 
 export class SearchService {
   /** Guards against a slow response replacing a newer search. */
@@ -36,31 +47,43 @@ export class SearchService {
 
   constructor(private readonly deps: SearchServiceDeps) {}
 
+  /** Runs one search without touching the search store: the page of results for `input` at `offset`, or why there is nothing to search. Throws what the server answered when it fails. */
+  async page(target: SearchTarget, input: string, options: { offset?: number; sort?: SearchSort } = {}): Promise<SearchOutcome> {
+    const parsed = parseQuery(input);
+    if (!parsed.text && parsed.filters.length === 0) return { kind: 'empty' };
+    const offset = options.offset ?? 0;
+    const sort = target.mode === 'standard' ? (options.sort ?? 'newest') : 'newest';
+    const { params, problems } = toSearchParams(parsed, target.candidates, { ...SORTS[sort], offset, limit: SEARCH_PAGE_SIZE });
+    if (problems.length > 0) return { kind: 'problems', problems };
+    const result = target.mode === 'standard' ? await this.remote(target, params) : await this.local(target, params, sort, offset);
+    return { kind: 'page', ...result, terms: highlightTerms(parsed.text) };
+  }
+
   async run(target: SearchTarget, input: string, options: { offset?: number } = {}): Promise<void> {
     const store = useSearchStore.getState();
     const parsed = parseQuery(input);
     const offset = options.offset ?? 0;
     const scopeLabel = target.channel.guild_id ? (target.guildName ?? 'this server') : `#${target.channel.name ?? 'this chat'}`;
+    const base = { input, submitted: input, terms: highlightTerms(parsed.text), scopeLabel, offset, problems: [] as string[], local: target.mode !== 'standard' };
+    const ticket = ++this.ticket;
+    let outcome: SearchOutcome;
     if (!parsed.text && parsed.filters.length === 0) {
       store.set({ submitted: '', status: 'idle', error: null, problems: [], groups: [], total: 0, offset: 0 });
       return;
     }
-    const sort = target.mode === 'standard' ? store.sort : 'newest';
-    const { params, problems } = toSearchParams(parsed, target.candidates, { ...SORTS[sort], offset, limit: SEARCH_PAGE_SIZE });
-    const base = { input, submitted: input, terms: highlightTerms(parsed.text), scopeLabel, offset, problems, local: target.mode !== 'standard' };
-    if (problems.length > 0) {
-      store.set({ ...base, status: 'error', error: problems.join('. '), groups: [], total: 0 });
-      return;
-    }
-    const ticket = ++this.ticket;
     store.set({ ...base, status: 'loading', error: null });
     try {
-      const result = target.mode === 'standard' ? await this.remote(target, params) : await this.local(target, params, sort, offset);
-      if (ticket !== this.ticket) return;
-      useSearchStore.getState().set({ status: 'ready', groups: result.groups, total: result.total, indexBuilding: result.indexBuilding });
+      outcome = await this.page(target, input, { offset, sort: store.sort });
     } catch (error) {
       if (ticket !== this.ticket) return;
       useSearchStore.getState().set({ status: 'error', error: errorText(error), groups: [], total: 0 });
+      return;
+    }
+    if (ticket !== this.ticket) return;
+    if (outcome.kind === 'problems') {
+      useSearchStore.getState().set({ ...base, problems: outcome.problems, status: 'error', error: outcome.problems.join('. '), groups: [], total: 0 });
+    } else if (outcome.kind === 'page') {
+      useSearchStore.getState().set({ status: 'ready', groups: outcome.groups, total: outcome.total, indexBuilding: outcome.indexBuilding });
     }
   }
 

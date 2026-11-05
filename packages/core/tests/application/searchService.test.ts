@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Channel, Message, MessageSearchResponse } from '@discordy/core/contracts/rest';
-import { SearchService, type SearchTarget } from '@renderer/application/search/searchService';
+import { errorText, SearchService, type SearchTarget } from '@discordy/core/application/searchService';
 import { useSearchStore } from '@discordy/core/application/stores/searchStore';
 
 function msg(id: string, content: string, hit = false): Message {
@@ -105,5 +105,37 @@ describe('SearchService', () => {
     release({ total_results: 5, messages: [] });
     await first;
     expect(useSearchStore.getState()).toMatchObject({ total: 1, submitted: 'new' });
+  });
+});
+
+describe('SearchService.page', () => {
+  beforeEach(() => useSearchStore.getState().reset());
+
+  it('returns a page of results at an offset and leaves the search store alone', async () => {
+    const searchMessages = vi.fn().mockResolvedValue({ total_results: 40, messages: [[msg('2', 'deploy', true)]] });
+    const service = new SearchService({ api: { searchMessages }, localMessages: vi.fn() });
+    const outcome = await service.page(target(guildChannel), 'deploy', { offset: 25, sort: 'oldest' });
+    expect(outcome).toMatchObject({ kind: 'page', total: 40, indexBuilding: false, terms: ['deploy'] });
+    expect(searchMessages).toHaveBeenCalledWith({ guildId: 'g1', channelId: 'c1' }, expect.objectContaining({ offset: 25, sort_order: 'asc' }));
+    expect(useSearchStore.getState().status).toBe('idle');
+  });
+
+  it('says there is nothing to search for an empty query, and why a filter cannot be used', async () => {
+    const searchMessages = vi.fn();
+    const service = new SearchService({ api: { searchMessages }, localMessages: vi.fn() });
+    expect(await service.page(target(guildChannel), '  ')).toEqual({ kind: 'empty' });
+    expect(await service.page(target(guildChannel), 'from:ghost')).toEqual({ kind: 'problems', problems: ['No member named "ghost"'] });
+    expect(searchMessages).not.toHaveBeenCalled();
+  });
+
+  it('throws what the server answered', async () => {
+    const service = new SearchService({ api: { searchMessages: vi.fn().mockRejectedValue(new Error('boom')) }, localMessages: vi.fn() });
+    await expect(service.page(target(guildChannel), 'hello')).rejects.toThrow('boom');
+  });
+
+  it('words errors the same way for every client', () => {
+    expect(errorText(Object.assign(new Error('x'), { status: 429 }))).toMatch(/too fast/);
+    expect(errorText(new Error('plain'))).toBe('plain');
+    expect(errorText('odd')).toBe('Search failed');
   });
 });

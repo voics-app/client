@@ -15,6 +15,7 @@ export interface ChannelDetailsProps {
   guildId: string | undefined;
   onClose(): void;
   onOpenPins(): void;
+  onOpenSearch(): void;
   onOpenMembers(): void;
   /** Set where the channel can have threads (a server text or announcement channel). */
   onOpenThreads?: (() => void) | undefined;
@@ -26,7 +27,7 @@ export interface ChannelDetailsProps {
 const icon = (name: keyof typeof Ionicons.glyphMap) => <Ionicons name={name} size={20} color={theme.text} />;
 
 /** What tapping the chat title opens, as in Discord's iOS app: the channel's name and topic, then Pinned messages, the member list (or a group's people) and Copy link. */
-export function ChannelDetails({ visible, channel, title, guildId, onClose, onOpenPins, onOpenMembers, onOpenThreads, onOpenProfile, children }: ChannelDetailsProps) {
+export function ChannelDetails({ visible, channel, title, guildId, onClose, onOpenPins, onOpenSearch, onOpenMembers, onOpenThreads, onOpenProfile, children }: ChannelDetailsProps) {
   const people = !guildId ? (channel?.recipients ?? []) : [];
   const run = (action: () => void) => () => {
     onClose();
@@ -40,6 +41,7 @@ export function ChannelDetails({ visible, channel, title, guildId, onClose, onOp
         </Text>
         {channel?.topic ? <Text style={styles.topic}>{channel.topic}</Text> : null}
       </View>
+      <SheetOption label="Search" icon={icon('search-outline')} onPress={run(onOpenSearch)} />
       <SheetOption label="Pinned messages" icon={icon('pin-outline')} onPress={run(onOpenPins)} />
       {onOpenThreads && <SheetOption label="Threads" icon={icon('chatbubbles-outline')} onPress={run(onOpenThreads)} />}
       {guildId && <SheetOption label="Members" icon={icon('people-outline')} onPress={run(onOpenMembers)} />}

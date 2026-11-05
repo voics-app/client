@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
@@ -9,6 +9,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { GuildFolder } from '@discordy/core/contracts/rest';
 import { folderLabel } from '@discordy/core/domain/railLayout';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
+import { JoinServerSheet } from '../invites/JoinServerSheet';
 import { metrics, theme } from '../theme';
 import { Badge } from './Badge';
 import { ServerIcon } from './ServerIcon';
@@ -119,6 +120,7 @@ export function ServerRail() {
   const view = useUiStore((s) => s.view);
   const navigate = useUiStore((s) => s.navigate);
   const dmMentions = useMemo(() => dmMentionTotal(channels, reads), [channels, reads]);
+  const [joining, setJoining] = useState(false);
   const homeActive = view.kind === 'home';
   const activeGuildId = view.kind === 'guild' ? view.guildId : null;
 
@@ -141,7 +143,9 @@ export function ServerRail() {
             <FolderItem key={`folder-${entry.id}`} folder={entry} activeGuildId={activeGuildId} />
           ),
         )}
+        <RailItem label="Join a server" active={false} unread={false} mentions={0} onPress={() => setJoining(true)} tile={() => <Ionicons name="add" size={26} color={theme.success} />} />
       </ScrollView>
+      <JoinServerSheet visible={joining} onClose={() => setJoining(false)} />
     </View>
   );
 }
