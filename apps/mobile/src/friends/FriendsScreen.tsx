@@ -9,7 +9,8 @@ import { StatusAvatar } from '../members/StatusAvatar';
 import { Avatar } from '../profile/Avatar';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { theme } from '../theme';
-import { Field, Notice, TextButton } from '../ui/controls';
+import { Field, TextButton } from '../ui/controls';
+import { EmptyState } from '../ui/EmptyState';
 import { AddFriendForm } from './AddFriendForm';
 import { acceptRequest, removeRelationship } from './friendActions';
 import { emptyFriendsText, FRIEND_TABS, friendsList, type FriendItem } from './friendsListModel';
@@ -96,7 +97,7 @@ export function FriendsScreen() {
             data={list.entries}
             keyExtractor={(e) => (e.kind === 'heading' ? e.title : e.rel.id)}
             keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={<Notice>{emptyFriendsText(tab, query)}</Notice>}
+            ListEmptyComponent={<EmptyState icon="people-outline" title={tab === 'pending' ? 'No pending requests' : tab === 'blocked' ? 'Nobody blocked' : 'No friends here'} body={emptyFriendsText(tab, query)} />}
             renderItem={({ item }) =>
               item.kind === 'heading' ? (
                 <Text accessibilityRole="header" style={styles.heading}>

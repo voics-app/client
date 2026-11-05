@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
@@ -9,6 +9,8 @@ import { ServerIcon } from '../shell/ServerIcon';
 import { theme } from '../theme';
 import { attempt } from '../ui/attempt';
 import { Button, Notice } from '../ui/controls';
+import { EmptyState } from '../ui/EmptyState';
+import { RowSkeletons } from '../ui/Skeleton';
 
 export const DISCOVER_PAGE = 24;
 
@@ -133,7 +135,7 @@ export function DiscoverScreen() {
       ListHeaderComponent={header}
       ListEmptyComponent={
         status === 'loading' ? (
-          <ActivityIndicator color={theme.muted} style={styles.center} />
+          <RowSkeletons />
         ) : status === 'error' ? (
           <View>
             <Notice>Could not load servers. Check your connection and try again.</Notice>
@@ -142,7 +144,7 @@ export function DiscoverScreen() {
             </View>
           </View>
         ) : (
-          <Notice>No servers match. Try different words or filters.</Notice>
+          <EmptyState icon="compass-outline" title="No servers found" body="No servers match. Try different words or filters." />
         )
       }
       ListFooterComponent={status === 'ready' && guilds.length < total ? <View style={styles.retry}><Button label="Load more" busy={loadingMore} onPress={() => void load(guilds.length)} /></View> : undefined}

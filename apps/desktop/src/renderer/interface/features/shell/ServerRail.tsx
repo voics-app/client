@@ -13,9 +13,11 @@ import { openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
 import { assetCandidates } from '@discordy/core/domain/assets';
 import { AssetImage } from '../../shared/ui/AssetImage';
-import { isChannelMutedDeep, isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { DM_SCOPE, isChannelMuted, isChannelMutedDeep, isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { initialsOf } from '../../shared/ui/Avatar';
+import { Avatar, initialsOf } from '../../shared/ui/Avatar';
+import { displayName } from '../../shared/hooks/useNames';
+import { unreadDms, type UnreadDm } from '@discordy/core/domain/unreadDms';
 import { Count } from '../../shared/ui/Misc';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { snappy } from '../../shared/ui/motion';
@@ -227,6 +229,26 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
   );
 }
 
+/** A conversation with unread messages, above the servers: the person's avatar with the number of new messages. */
+function UnreadDmItem({ dm }: { dm: UnreadDm }) {
+  const navigate = useUiStore((s) => s.navigate);
+  const recipients = dm.channel.recipients ?? [];
+  const name = dm.channel.name || recipients.map((u) => displayName(u)).join(', ') || 'Unknown';
+  const peer = recipients.length === 1 ? recipients[0]! : null;
+  return (
+    <div className="rail-item">
+      <Tooltip label={name} side="right" delay={150}>
+        <button type="button" className="guild-btn" aria-label={`${name}, ${dm.count} unread`} onClick={() => navigate({ kind: 'home', channelId: dm.channel.id })}>
+          <Avatar id={peer?.id ?? dm.channel.id} name={name} avatar={peer?.avatar ?? null} size={48} />
+        </button>
+      </Tooltip>
+      <span className="rail-badge">
+        <Count value={dm.count} tone="danger" />
+      </span>
+    </div>
+  );
+}
+
 function useRailDnd(): DndApi {
   const [drag, setDrag] = useState<DragItem | null>(null);
   const [hover, setHover] = useState<{ key: string; zone: DropZone } | null>(null);
@@ -267,6 +289,8 @@ export function ServerRail() {
     () => Object.values(channels).filter((c) => !c.guild_id).reduce((sum, c) => sum + (reads[c.id]?.mentionCount ?? 0), 0),
     [channels, reads],
   );
+  const dmSettings = useNotificationSettingsStore((s) => s.byScope[DM_SCOPE]);
+  const dms = useMemo(() => unreadDms(channels, reads, (c) => isChannelMuted(dmSettings, c.id, Date.now())), [channels, reads, dmSettings]);
   const homeActive = view.kind === 'home';
   const activeGuildId = view.kind === 'guild' ? view.guildId : null;
 
@@ -285,12 +309,15 @@ export function ServerRail() {
             <House size={24} weight={homeActive ? 'fill' : 'regular'} />
           </button>
         </Tooltip>
-        {dmMentions > 0 && (
+        {dmMentions > 0 && dms.length === 0 && (
           <span className="rail-badge">
             <Count value={dmMentions} tone="danger" />
           </span>
         )}
       </div>
+      {dms.map((dm) => (
+        <UnreadDmItem key={dm.channel.id} dm={dm} />
+      ))}
       <div className="rail-sep" />
       <div className="rail-scroll">
         {rail.map((entry) =>

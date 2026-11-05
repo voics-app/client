@@ -9,6 +9,7 @@ import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@disc
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from './stores/voiceStore';
 import { brand } from '@discordy/core/domain/brandConfig';
+import { GatewayCloseCode } from '@discordy/core/contracts/gateway';
 
 export interface SessionVault {
   load(): Promise<StoredSession | null>;
@@ -21,11 +22,17 @@ export interface TokenPair {
   refresh: string | null;
 }
 
+/** A token this new being rejected means the session itself was revoked, not that the token aged out. */
+const FRESH_TOKEN_MS = 30_000;
+const RENEW_RETRY_MS = 5_000;
+
 export interface SessionRuntime {
   api: ApiPort;
   connect(): void;
   disconnect(): void;
   setTokens(tokens: TokenPair): void;
+  /** Rotates the tokens. Only 'expired' means the session is gone. */
+  renewSession(): Promise<'renewed' | 'expired' | 'unavailable'>;
 }
 
 export interface SessionDeps {
@@ -44,6 +51,9 @@ export interface SessionDeps {
 
 export class SessionManager {
   private stored: StoredSession | null = null;
+
+  private renewedAt = 0;
+  private retry: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly deps: SessionDeps) {}
 
@@ -89,6 +99,26 @@ export class SessionManager {
     await this.teardown();
   }
 
+  /**
+   * The gateway closed for good. Access tokens last minutes and the stored one is usually stale after a restart, so a
+   * rejected token only means the session is gone if the refresh is refused too. Offline, the login is kept and retried.
+   */
+  async gatewayClosed(code: number): Promise<void> {
+    if (code !== GatewayCloseCode.AUTHENTICATION_FAILED || Date.now() - this.renewedAt < FRESH_TOKEN_MS) {
+      await this.sessionExpired();
+      return;
+    }
+    const renewal = await this.deps.runtime.renewSession();
+    if (renewal === 'renewed') {
+      this.renewedAt = Date.now();
+      this.deps.runtime.connect();
+    } else if (renewal === 'expired') {
+      await this.sessionExpired();
+    } else {
+      this.retry = setTimeout(() => void this.gatewayClosed(code), RENEW_RETRY_MS);
+    }
+  }
+
   /** Invoked by the HTTP layer when refresh fails: the session is gone server-side. */
   async sessionExpired(): Promise<void> {
     await this.teardown();
@@ -132,6 +162,9 @@ export class SessionManager {
   }
 
   private async teardown(): Promise<void> {
+    if (this.retry) clearTimeout(this.retry);
+    this.retry = null;
+    this.renewedAt = 0;
     this.deps.onChange?.(false);
     this.deps.runtime.disconnect();
     this.deps.runtime.setTokens({ access: null, refresh: null });

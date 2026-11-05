@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -14,6 +14,13 @@ import { AddServerSheet } from '../servers/AddServerSheet';
 import { RailMenu, type RailTarget } from './RailMenu';
 import { metrics, theme } from '../theme';
 import { Badge } from './Badge';
+import { PressableScale } from '../ui/PressableScale';
+import { unreadDms, type UnreadDm } from '@discordy/core/domain/unreadDms';
+import { DM_SCOPE, isChannelMuted } from '@discordy/core/domain/notificationSettings';
+import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { dmTitle } from '../dms/dmModel';
+import { openChat } from '../navigation/openChat';
+import { Avatar } from '../profile/Avatar';
 import { ServerIcon } from './ServerIcon';
 import { dmMentionTotal, guildActivity, initialsOf, type Activity } from './railModel';
 
@@ -46,7 +53,7 @@ function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile,
   return (
     <View style={styles.item}>
       {active ? <View testID="rail-pill" style={styles.pill} /> : unread && <View testID="rail-pip" style={styles.pip} />}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ selected: active, ...(expanded === undefined ? {} : { expanded }) }}
@@ -55,13 +62,30 @@ function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile,
         style={({ pressed }) => [styles.tile, active && styles.tileActive, pressed && styles.tilePressed]}
       >
         {tile(active)}
-      </Pressable>
+      </PressableScale>
       {mentions > 0 && (
         <View style={styles.badge}>
           <Badge value={mentions} ring />
         </View>
       )}
     </View>
+  );
+}
+
+/** A conversation with unread messages, above the servers: the person's avatar with the number of new messages. */
+function UnreadDmItem({ dm }: { dm: UnreadDm }) {
+  const relationships = useRelationshipStore((s) => s.byUser);
+  const recipients = dm.channel.recipients ?? [];
+  const peer = recipients.length === 1 ? recipients[0]! : null;
+  return (
+    <RailItem
+      label={`${dmTitle(dm.channel, relationships)}, ${dm.count} unread`}
+      active={false}
+      unread={false}
+      mentions={dm.count}
+      onPress={() => openChat({ channelId: dm.channel.id })}
+      tile={() => (peer ? <Avatar user={peer} size={metrics.serverTile} /> : <Ionicons name="people" size={24} color={theme.muted} />)}
+    />
   );
 }
 
@@ -126,6 +150,8 @@ export function ServerRail() {
   const view = useUiStore((s) => s.view);
   const navigate = useUiStore((s) => s.navigate);
   const dmMentions = useMemo(() => dmMentionTotal(channels, reads), [channels, reads]);
+  const dmSettings = useNotificationSettingsStore((s) => s.byScope[DM_SCOPE]);
+  const dms = useMemo(() => unreadDms(channels, reads, (c) => isChannelMuted(dmSettings, c.id, Date.now())), [channels, reads, dmSettings]);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<RailTarget | null>(null);
   const homeActive = view.kind === 'home';
@@ -137,12 +163,15 @@ export function ServerRail() {
         label="Direct messages"
         active={homeActive}
         unread={false}
-        mentions={dmMentions}
+        mentions={dms.length > 0 ? 0 : dmMentions}
         onPress={() => navigate({ kind: 'home', channelId: null })}
         tile={(active) => <Ionicons name={active ? 'home' : 'home-outline'} size={24} color={active ? theme.accentText : theme.muted} />}
       />
-      <View style={styles.separator} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {dms.map((dm) => (
+          <UnreadDmItem key={dm.channel.id} dm={dm} />
+        ))}
+        <View style={styles.separator} />
         {rail.map((entry) =>
           entry.id === null ? (
             <GuildItem key={entry.guild_ids[0]} guildId={entry.guild_ids[0]!} active={activeGuildId === entry.guild_ids[0]} onEdit={setEditing} />

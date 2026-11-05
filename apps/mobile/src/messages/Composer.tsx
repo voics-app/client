@@ -19,6 +19,9 @@ import { addFiles } from './attachmentPicker';
 import type { OutgoingFile } from './outgoingFile';
 import { PendingFiles } from './PendingFiles';
 
+/** Lets the keyboard gesture area find the input it hands the keyboard back to while the list is dragged. */
+export const COMPOSER_INPUT_ID = 'composer-input';
+
 export type ComposerMode = { kind: 'compose' } | { kind: 'reply'; messageId: string; authorName: string } | { kind: 'edit'; messageId: string; content: string };
 
 export interface ComposerProps {
@@ -130,7 +133,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
-        <TextInput accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline selection={forcedSelection} onSelectionChange={(e) => { setSelection(e.nativeEvent.selection); setForcedSelection(undefined); }} onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
+        <TextInput nativeID={COMPOSER_INPUT_ID} accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline selection={forcedSelection} onSelectionChange={(e) => { setSelection(e.nativeEvent.selection); setForcedSelection(undefined); }} onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
         <Pressable accessibilityRole="button" accessibilityLabel="Add emoji" hitSlop={6} onPress={() => setEmojiOpen(true)} style={styles.plus}>
           <Ionicons name="happy-outline" size={24} color={theme.muted} />
         </Pressable>
@@ -172,7 +175,7 @@ const styles = StyleSheet.create({
     minHeight: SIZE + 4,
   },
   fieldSingle: { alignItems: 'center' },
-  fieldGrown: { alignItems: 'flex-end' },
+  fieldGrown: { alignItems: 'flex-end', borderRadius: 20 },
   plus: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: LINE_HEIGHT, textAlignVertical: 'center', paddingHorizontal: 8, paddingTop: 9.5, paddingBottom: 9.5, minHeight: BUTTON, maxHeight: 132 },
   send: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },

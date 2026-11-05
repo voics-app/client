@@ -54,3 +54,13 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
   setBadgeCountAsync: jest.fn(async () => true),
 }));
+
+// The keyboard, gesture and animation libraries are native; their own Jest stand-ins let the screens render and animate under Jest.
+/* eslint-disable @typescript-eslint/no-require-imports */
+jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
+// Gesture recognition is native; here a gesture is a chainable no-op and the detector renders its child, so gesture behaviour is tested through its pure models.
+jest.mock('react-native-gesture-handler', () => {
+  const { View } = jest.requireActual('react-native');
+  const chain: object = new Proxy(() => chain, { get: () => () => chain });
+  return { Gesture: { Pan: () => chain, Tap: () => chain, Native: () => chain }, GestureDetector: ({ children }: { children: unknown }) => children, GestureHandlerRootView: View };
+});

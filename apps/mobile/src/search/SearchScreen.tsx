@@ -10,6 +10,7 @@ import { applySuggestion, FILTER_KEYS, parseQuery, suggest, withoutFilter } from
 import { openMessage } from '../navigation/openMessage';
 import { theme } from '../theme';
 import { Notice } from '../ui/controls';
+import { RowSkeletons } from '../ui/Skeleton';
 import { FileResult, LinkResult, MediaGrid, MessageHit } from './SearchResults';
 import { fileRows, hitsOf, linkRows, mediaTiles, SEARCH_TABS, type SearchTab } from './searchTabs';
 import { useSearchTarget } from './searchTarget';
@@ -140,9 +141,7 @@ export function SearchScreen({ channelId }: { channelId: string }) {
       ) : state.status === 'idle' && !submitted ? (
         <Notice>{`Type words to find, or narrow it down with ${FILTER_KEYS.map((k) => `${k}:`).join(' ')}`}</Notice>
       ) : state.status === 'loading' ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.muted} />
-        </View>
+        <RowSkeletons />
       ) : state.status === 'error' ? (
         <Pressable accessibilityRole="button" onPress={() => void search(tab, submitted, sort)} style={styles.retry}>
           <Text style={styles.retryText}>{`${state.error ?? 'Search failed'} Try again`}</Text>
