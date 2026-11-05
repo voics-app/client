@@ -98,7 +98,9 @@ describe('app shell', () => {
     await fireEvent.press(screen.getByLabelText('Home Base'));
     expect(await screen.findByText('general')).toBeTruthy();
     expect(screen.getByText('CAT')).toBeTruthy();
-    expect(screen.queryByText('lobby')).toBeNull();
+    // Voice channels are listed apart from the text channels, under their own heading.
+    expect(screen.getByText('VOICE CHANNELS')).toBeTruthy();
+    expect(screen.getByLabelText('Join voice channel lobby')).toBeTruthy();
     expect(selected('Home Base')).toBe(true);
     expect(selected('Direct messages')).toBe(false);
     expect(screen.getAllByTestId('rail-pill')).toHaveLength(1);

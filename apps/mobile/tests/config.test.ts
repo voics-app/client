@@ -8,4 +8,16 @@ describe('app.config', () => {
     expect(config.ios?.bundleIdentifier).toBe(brand.appId);
     expect(config.android?.package).toBe(brand.appId);
   });
+
+  it('asks for the microphone and camera, and keeps a call alive in the background', () => {
+    const plist = config.ios?.infoPlist ?? {};
+    expect(plist.NSMicrophoneUsageDescription).toMatch(/microphone/);
+    expect(plist.NSCameraUsageDescription).toMatch(/camera/);
+    expect(plist.UIBackgroundModes).toEqual(['audio']);
+  });
+
+  it('adds the development client and the WebRTC plugin', () => {
+    const names = (config.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+    expect(names).toEqual(expect.arrayContaining(['expo-dev-client', '@config-plugins/react-native-webrtc']));
+  });
 });

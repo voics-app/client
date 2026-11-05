@@ -1,6 +1,9 @@
 import type { ExpoConfig } from 'expo/config';
 import brand from '../desktop/brand.json';
 
+const MICROPHONE_USAGE = `Voics uses the microphone so other people can hear you in voice channels and calls.`;
+const CAMERA_USAGE = `Voics uses the camera to send your video in calls.`;
+
 // Name, URL scheme and bundle id come from brand.json, like desktop.
 const config: ExpoConfig = {
   name: brand.displayName,
@@ -14,12 +17,25 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: brand.appId,
     supportsTablet: false,
+    infoPlist: {
+      NSMicrophoneUsageDescription: MICROPHONE_USAGE,
+      NSCameraUsageDescription: CAMERA_USAGE,
+      // Keeps a voice call running (audio in and out) when the app is in the background or the screen is locked.
+      UIBackgroundModes: ['audio'],
+    },
   },
   android: {
     package: brand.appId,
     adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#0c0d12' },
   },
-  plugins: ['expo-router', 'expo-secure-store', 'expo-sqlite'],
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    'expo-sqlite',
+    // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
+    'expo-dev-client',
+    ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
+  ],
   experiments: { typedRoutes: true },
   extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl },
 };

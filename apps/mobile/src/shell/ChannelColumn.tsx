@@ -14,6 +14,7 @@ import { channelSections } from '../servers/serverModel';
 import { metrics, theme } from '../theme';
 import { Badge } from './Badge';
 import { ColumnHeader } from './ColumnHeader';
+import { VoiceChannelList } from '../voice/VoiceChannelList';
 import { channelFlags } from './railModel';
 
 function ChannelRow({ channel, guildId, active }: { channel: Channel; guildId: string; active: boolean }) {
@@ -64,6 +65,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
         contentContainerStyle={styles.content}
         sections={sections.map((s) => ({ key: s.id ?? 'loose', id: s.id, title: s.title, data: s.id && collapsed[s.id] ? [] : s.channels }))}
         keyExtractor={(channel) => channel.id}
+        ListFooterComponent={<VoiceChannelList guildId={guildId} />}
         ListEmptyComponent={<Text style={styles.empty}>{guild ? 'No text channels you can see.' : 'This server is not available.'}</Text>}
         renderSectionHeader={({ section }) =>
           section.title === null ? null : (

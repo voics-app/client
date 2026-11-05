@@ -3,6 +3,7 @@
  * RTP senders/receivers (RTCRtpScriptTransform, or Chromium encoded streams as
  * a fallback) and feeds it epoch keys.
  */
+import type { FrameCryptorPort } from '@discordy/core/application/ports/voice';
 import { importEpochBase, type MediaKind } from '@renderer/workers/frameCrypto';
 import type { TransformOptions, WorkerMessage } from '@renderer/workers/frameCryptoWorker';
 
@@ -11,21 +12,7 @@ export interface WorkerLike {
   terminate(): void;
 }
 
-export interface FrameCryptorPort {
-  /** False when neither transform API exists; callers must then refuse E2EE rather than send clear media. */
-  readonly supported: boolean;
-  attachSender(sender: RTCRtpSender, kind: MediaKind, codec: string, userId: string): void;
-  attachReceiver(receiver: RTCRtpReceiver, kind: MediaKind, codec: string, userId: string): void;
-  /** Pipes clear media straight through on a sender or receiver of a call that is not E2EE. Only the
-   * encoded-streams fallback needs it: with `encodedInsertableStreams` set, Chromium sends and plays
-   * nothing until every endpoint's streams are consumed. A no-op with RTCRtpScriptTransform. */
-  bypass(endpoint: RTCRtpSender | RTCRtpReceiver): void;
-  setEpoch(generation: number, secret: Uint8Array): Promise<void>;
-  activate(generation: number): void;
-  setPassthrough(value: boolean): void;
-  clear(): void;
-  dispose(): void;
-}
+export type { FrameCryptorPort };
 
 type ScriptTransformCtor = new (worker: Worker, options: TransformOptions) => unknown;
 
