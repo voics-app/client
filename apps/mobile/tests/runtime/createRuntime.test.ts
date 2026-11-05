@@ -139,4 +139,14 @@ describe('mobile runtime', () => {
     await runtime.session.logout();
     expect(messageCache.load('c1')).toEqual([]);
   });
+
+  it('offers the shared interaction service: a pressed component reaches POST /interactions', async () => {
+    const { runtime, fetchMock } = setup();
+    await runtime.session.login({ email: 'me@example.test', password: 'pw' });
+    fetchMock.mockImplementationOnce(async () => new Response(JSON.stringify({ id: 'i1' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    await runtime.interactions.pressComponent({ id: 'm1', channel_id: 'c1', guild_id: 'g1', application_id: 'app1' } as never, { type: 2, custom_id: 'ok' });
+    const call = fetchMock.mock.calls.at(-1)!;
+    expect(call[0]).toBe('https://api.test/api/v1/interactions');
+    expect(JSON.parse(String(call[1]?.body))).toMatchObject({ type: 3, application_id: 'app1', channel_id: 'c1', message_id: 'm1', data: { custom_id: 'ok', component_type: 2 } });
+  });
 });

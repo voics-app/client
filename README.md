@@ -16,7 +16,7 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 | `apps/desktop/src/renderer/interface` | React UI: design system, features, composition root |
 | `apps/mobile` | Expo (React Native) app skeleton: expo-router tabs (Servers, DMs, Notifications, You), name and scheme from `apps/desktop/brand.json`. See [apps/mobile/README.md](apps/mobile/README.md) |
 | `eslint.base.mjs` | ESLint rules shared by desktop and mobile |
-| `native/crypto` | napi-rs module: OpenMLS, Ed25519 identity, encrypted local store |
+| `native/crypto` | Rust crypto core (OpenMLS, Ed25519 identity, encrypted local store) with two interface layers: napi-rs for desktop and uniffi for iOS (XCFramework, built by the manual `crypto-ios` workflow) |
 
 ## Run locally
 

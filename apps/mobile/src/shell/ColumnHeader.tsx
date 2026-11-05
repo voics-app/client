@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { metrics, theme } from '../theme';
 
-/** Desktop's `.guild-header`: the server (or "Direct messages") name, plus the bell that opens notifications. With `onPressTitle` the name is a button (the server menu). */
+/** Desktop's `.guild-header`: the server (or "Direct messages") name, plus the quick switcher and the bell that opens notifications. With `onPressTitle` the name is a button (the server menu). */
 export function ColumnHeader({ title, onPressTitle }: { title: string; onPressTitle?: () => void }) {
   return (
     <View style={styles.header}>
@@ -19,9 +20,14 @@ export function ColumnHeader({ title, onPressTitle }: { title: string; onPressTi
           {title}
         </Text>
       )}
-      <Pressable accessibilityRole="button" accessibilityLabel="Notifications" hitSlop={8} onPress={() => router.push('/notifications')} style={styles.bell}>
-        <Ionicons name="notifications-outline" size={22} color={theme.muted} />
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Quick switcher" onPress={() => useUiStore.getState().openPalette(true)} style={styles.action}>
+          <Ionicons name="search-outline" size={22} color={theme.muted} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => router.push('/notifications')} style={styles.action}>
+          <Ionicons name="notifications-outline" size={22} color={theme.muted} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -32,12 +38,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 6,
     borderBottomWidth: 1,
     borderBottomColor: theme.hairline,
     borderTopLeftRadius: metrics.columnRadius,
   },
   titleButton: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, height: metrics.headerHeight },
   title: { flexShrink: 1, color: theme.text, fontSize: 15, fontWeight: '600', letterSpacing: -0.15 },
-  bell: { padding: 4 },
+  actions: { flexDirection: 'row' },
+  action: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

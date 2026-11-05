@@ -186,6 +186,7 @@ describe('app shell', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await openApp();
     await fireEvent.press(screen.getByLabelText('Account and status'));
+    await fireEvent.press(await screen.findByLabelText('Settings'));
     expect(screen).toHavePathname('/settings');
     expect(await screen.findByLabelText('Search settings')).toBeTruthy();
     await act(async () => router.back());

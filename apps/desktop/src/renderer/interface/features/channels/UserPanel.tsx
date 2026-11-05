@@ -4,9 +4,8 @@ import { usePresenceStore } from '@discordy/core/application/stores/peopleStores
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
-import type { PresenceStatus } from '@discordy/core/contracts/rest';
 import { menuTopAbove } from '@discordy/core/domain/menuPlacement';
-import { activeCustomStatus } from '@discordy/core/domain/selfPresence';
+import { customStatusLine, shownStatus, STATUS_CHOICES, statusLabel, type ManualStatus } from '@discordy/core/domain/selfPresence';
 import { setAutoIdle } from '@discordy/core/application/selfPresence';
 import { publishPresence } from '../../app/presenceActions';
 import { attempt } from '../../app/actions';
@@ -18,14 +17,7 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';
 import { DeviceArrow, useKeyHint } from '../voice/DeviceMenus';
 
-const STATUSES: { id: Exclude<PresenceStatus, 'offline'>; label: string; hint: string }[] = [
-  { id: 'online', label: 'Online', hint: '' },
-  { id: 'idle', label: 'Idle', hint: '' },
-  { id: 'dnd', label: 'Do not disturb', hint: 'Mutes desktop notifications' },
-  { id: 'invisible', label: 'Invisible', hint: 'Appear offline' },
-];
-
-export function setStatus(status: Exclude<PresenceStatus, 'offline'>): void {
+export function setStatus(status: ManualStatus): void {
   const rt = getRuntime();
   useSessionStore.getState().setSettings({ status });
   setAutoIdle(false);
@@ -46,13 +38,12 @@ export function UserPanel() {
   const deafenKeys = useKeyHint('toggleDeafen');
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!user) return null;
-  const status = (presence && presence !== 'offline' ? presence : settingsStatus) ?? 'online';
-  const active = activeCustomStatus(storedCustom, Date.now());
-  const customStatus = active ? [active.emoji_id ? '' : active.emoji_name, active.text].filter(Boolean).join(' ') : '';
+  const status = shownStatus(presence, settingsStatus);
+  const customStatus = customStatusLine(storedCustom, Date.now());
 
   const entries: MenuEntry[] = [
     { kind: 'label', label: 'Status' },
-    ...STATUSES.map<MenuEntry>((s) => ({ kind: 'item', label: s.label, checked: (settingsStatus ?? 'online') === s.id, onSelect: () => setStatus(s.id) })),
+    ...STATUS_CHOICES.map<MenuEntry>((s) => ({ kind: 'item', label: s.label, checked: (settingsStatus ?? 'online') === s.id, onSelect: () => setStatus(s.id) })),
     { kind: 'separator' },
     { kind: 'item', label: 'Set custom status', onSelect: () => openDialog({ kind: 'customStatus' }) },
     { kind: 'item', label: 'Edit profile', onSelect: () => openSettings({ kind: 'user', tab: 'profile' }) },
@@ -73,7 +64,7 @@ export function UserPanel() {
         <Avatar id={user.id} name={displayName(user)} avatar={user.avatar} size={34} status={status === 'invisible' ? 'offline' : status} />
         <span className="user-panel-copy">
           <span className="user-panel-name">{displayName(user)}</span>
-          <span className="user-panel-sub">{customStatus || STATUSES.find((s) => s.id === status)?.label}</span>
+          <span className="user-panel-sub">{customStatus || statusLabel(status)}</span>
         </span>
       </button>
       <div className="user-panel-actions">

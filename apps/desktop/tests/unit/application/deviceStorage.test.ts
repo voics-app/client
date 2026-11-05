@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createMemoryStorage, deviceStorage, installDeviceStorage } from '@discordy/core/application/ports/deviceStorage';
-import { privacyDebug } from '@renderer/application/privacy/debugLog';
+import { privacyDebug } from '@discordy/core/application/privacy/debugLog';
 import { vi } from 'vitest';
 
 describe('deviceStorage port', () => {

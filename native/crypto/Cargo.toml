@@ -22,8 +22,21 @@ chacha20poly1305 = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-napi = { version = "3", default-features = false, features = ["napi6"] }
-napi-derive = "3"
+napi = { version = "3", default-features = false, features = ["napi6"], optional = true }
+napi-derive = { version = "3", optional = true }
+uniffi = { version = "0.32", optional = true }
 
 [build-dependencies]
-napi-build = "2"
+napi-build = { version = "2", optional = true }
+
+[features]
+default = ["napi"]
+napi = ["dep:napi", "dep:napi-derive", "dep:napi-build"]
+uniffi = ["dep:uniffi"]
+# Only for generating the Swift binding (ios/build-xcframework.sh); never part of the desktop build.
+uniffi-cli = ["uniffi", "uniffi/cli"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["uniffi-cli"]
