@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     minHeight: SIZE + 4,
   },
   fieldSingle: { alignItems: 'center' },
-  fieldGrown: { alignItems: 'flex-end' },
+  fieldGrown: { alignItems: 'flex-end', borderRadius: 20 },
   plus: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, color: theme.text, fontSize: 16, lineHeight: LINE_HEIGHT, textAlignVertical: 'center', paddingHorizontal: 8, paddingTop: 9.5, paddingBottom: 9.5, minHeight: BUTTON, maxHeight: 132 },
   send: { width: BUTTON, height: BUTTON, borderRadius: BUTTON / 2, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },

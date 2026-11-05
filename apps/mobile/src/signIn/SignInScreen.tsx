@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { SessionManager } from '@discordy/core/application/sessionManager';
 import { BRAND } from '../brand';
-import { theme } from '../theme';
+import { radius, space, theme } from '../theme';
+import { Button, Input } from '../ui/controls';
 import { interpretSignInError } from './signInOutcome';
 
 export type SignInSession = Pick<SessionManager, 'login' | 'loginMfa'>;
@@ -47,7 +49,10 @@ export function SignInScreen({ session }: { session: SignInSession }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" bottomOffset={24}>
+      <View style={styles.mark}>
+        <Text style={styles.markText}>{BRAND.displayName.slice(0, 1)}</Text>
+      </View>
       <Text style={styles.title}>{BRAND.displayName}</Text>
       <Text style={styles.heading}>{ticket ? 'Two-factor authentication' : 'Welcome back'}</Text>
       {error && (
@@ -58,12 +63,11 @@ export function SignInScreen({ session }: { session: SignInSession }) {
       {ticket ? (
         <>
           <Text style={styles.hint}>Open your authenticator app, or enter one of your backup codes.</Text>
-          <TextInput
+          <Input
             style={styles.input}
             accessibilityLabel="Authenticator or backup code"
             placeholder="Code"
-            placeholderTextColor={theme.muted}
-            value={code}
+                        value={code}
             onChangeText={setCode}
             autoCapitalize="none"
             autoCorrect={false}
@@ -75,12 +79,11 @@ export function SignInScreen({ session }: { session: SignInSession }) {
         </>
       ) : (
         <>
-          <TextInput
+          <Input
             style={styles.input}
             accessibilityLabel="Email"
             placeholder="Email"
-            placeholderTextColor={theme.muted}
-            value={email}
+                        value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             autoCorrect={false}
@@ -89,12 +92,11 @@ export function SignInScreen({ session }: { session: SignInSession }) {
             textContentType="username"
           />
           {fields.email && <Text style={styles.fieldError}>{fields.email}</Text>}
-          <TextInput
+          <Input
             style={styles.input}
             accessibilityLabel="Password"
             placeholder="Password"
-            placeholderTextColor={theme.muted}
-            value={password}
+                        value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
@@ -105,35 +107,29 @@ export function SignInScreen({ session }: { session: SignInSession }) {
           {fields.password && <Text style={styles.fieldError}>{fields.password}</Text>}
         </>
       )}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !canSubmit }}
-        disabled={!canSubmit}
-        onPress={submit}
-        style={[styles.button, !canSubmit && styles.buttonDisabled]}
-      >
-        {busy ? <ActivityIndicator color={theme.text} /> : <Text style={styles.buttonText}>{ticket ? 'Verify' : 'Sign in'}</Text>}
-      </Pressable>
+      <View style={styles.action}>
+        <Button label={ticket ? 'Verify' : 'Sign in'} size="large" tone="primary" busy={busy} disabled={!canSubmit} onPress={submit} />
+      </View>
       {ticket && (
         <Pressable accessibilityRole="button" onPress={back} style={styles.linkButton}>
           <Text style={styles.link}>Back</Text>
         </Pressable>
       )}
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', backgroundColor: theme.background, padding: 24 },
-  title: { color: theme.text, fontSize: 32, fontWeight: '800', textAlign: 'center' },
-  heading: { color: theme.text, fontSize: 20, fontWeight: '700', marginTop: 24, marginBottom: 16 },
-  hint: { color: theme.muted, marginBottom: 12 },
-  error: { color: theme.danger, marginBottom: 12 },
-  fieldError: { color: theme.danger, marginTop: -8, marginBottom: 12 },
-  input: { backgroundColor: theme.surface, color: theme.text, borderRadius: 8, padding: 14, fontSize: 16, marginBottom: 12 },
-  button: { backgroundColor: theme.accent, borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 4 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: theme.text, fontSize: 16, fontWeight: '700' },
-  linkButton: { alignItems: 'center', marginTop: 16 },
+  container: { flexGrow: 1, justifyContent: 'center', backgroundColor: theme.background, padding: space[5] },
+  mark: { width: 72, height: 72, borderRadius: 22, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: space[3] },
+  markText: { color: theme.accentText, fontSize: 38, fontWeight: '800' },
+  title: { color: theme.text, fontSize: 30, fontWeight: '800', textAlign: 'center' },
+  heading: { color: theme.text, fontSize: 20, fontWeight: '700', marginTop: space[5], marginBottom: space[4] },
+  hint: { color: theme.muted, marginBottom: space[3], fontSize: 15 },
+  error: { color: theme.danger, marginBottom: space[3] },
+  fieldError: { color: theme.danger, marginTop: -8, marginBottom: space[3] },
+  input: { minHeight: 52, borderRadius: radius.control + 2, fontSize: 16, marginBottom: space[3], backgroundColor: theme.surface },
+  action: { marginTop: space[1] },
+  linkButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: space[3] },
   link: { color: theme.accent, fontSize: 16 },
 });

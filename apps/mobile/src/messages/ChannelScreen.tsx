@@ -26,6 +26,7 @@ import { composerPlaceholder } from './composerPlaceholder';
 import type { OutgoingFile } from './outgoingFile';
 import { EmptyState } from '../ui/EmptyState';
 import { MessageSkeletons } from '../ui/Skeleton';
+import { MembersEdgeSwipe } from './MembersEdgeSwipe';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
@@ -343,6 +344,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         </KeyboardGestureArea>
+        {guildId && <MembersEdgeSwipe guildId={guildId} />}
         <KeyboardStickyView offset={{ opened: insets.bottom }} style={styles.sticky}>
         {readable && loaded && (away || detached) && (
           <JumpToLatest

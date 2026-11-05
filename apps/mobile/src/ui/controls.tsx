@@ -56,28 +56,34 @@ export function Choices<T extends string | number>({ label, options, value, onCh
 }
 
 /** A labelled single-line or multi-line text input. */
-export function Field({ label, onFocus, onBlur, ...input }: { label: string } & ComponentProps<typeof TextInput>) {
-  const [focused, setFocused] = useState(false);
+export function Field({ label, ...input }: { label: string } & ComponentProps<typeof TextInput>) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor={theme.subtle}
-        autoCapitalize="none"
-        autoCorrect={false}
-        {...input}
-        onFocus={(e) => {
-          setFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          onBlur?.(e);
-        }}
-        style={[styles.input, focused && styles.focused, input.multiline && styles.multiline]}
-      />
+      <Input accessibilityLabel={label} {...input} />
     </View>
+  );
+}
+
+/** The app's text input: 44 pt, rounded, hairline border that turns accent while it has focus. */
+export function Input({ onFocus, onBlur, style, ...input }: ComponentProps<typeof TextInput>) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      placeholderTextColor={theme.subtle}
+      autoCapitalize="none"
+      autoCorrect={false}
+      {...input}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[styles.input, focused && styles.focused, input.multiline && styles.multiline, style]}
+    />
   );
 }
 
