@@ -21,3 +21,11 @@ describe('app.config', () => {
     expect(names).toEqual(expect.arrayContaining(['expo-dev-client', '@config-plugins/react-native-webrtc']));
   });
 });
+
+describe('app.config tablets', () => {
+  it('runs natively on iPad, full screen because the app is portrait only', () => {
+    expect(config.ios?.supportsTablet).toBe(true);
+    expect(config.ios?.requireFullScreen).toBe(true);
+    expect(config.orientation).toBe('portrait');
+  });
+});

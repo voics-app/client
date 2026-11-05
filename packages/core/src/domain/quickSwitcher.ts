@@ -1,5 +1,7 @@
 /** Quick switcher (Ctrl+K) model: prefix modes, scoring and ranking with recent and unread boosts. Pure, no stores. */
 
+import { ChannelType, type Channel } from '../contracts/rest';
+
 export type SwitcherMode = 'all' | 'people' | 'text' | 'voice' | 'server';
 export type SwitcherKind = 'dm' | 'text' | 'voice' | 'guild' | 'action';
 
@@ -93,4 +95,33 @@ export function recentChannelIds(entries: readonly { channelId: string | null }[
     if (id) seen.add(id);
   }
   return [...seen];
+}
+
+/** Categories and forums are containers, not places to jump to. */
+export const isSwitchable = (channel: Pick<Channel, 'type'>): boolean => channel.type !== ChannelType.GUILD_CATEGORY && channel.type !== ChannelType.GUILD_FORUM;
+
+export interface ChannelSwitcherFacts {
+  /** The conversation's title for a direct or group message; the channel name otherwise. */
+  name: string;
+  guildName: string | undefined;
+  unread: boolean;
+  mentions: number;
+  /** Position in the recent list from `recentChannelIds`, or -1. */
+  recent: number;
+}
+
+/** The switcher item for one channel or conversation, with `c-` plus the channel id as its id. */
+export function channelSwitcherItem(channel: Pick<Channel, 'id' | 'type' | 'guild_id'>, facts: ChannelSwitcherFacts): SwitcherItem {
+  const dm = !channel.guild_id;
+  const voice = channel.type === ChannelType.GUILD_VOICE || channel.type === ChannelType.GUILD_STAGE_VOICE;
+  return {
+    id: `c-${channel.id}`,
+    kind: dm ? 'dm' : voice ? 'voice' : 'text',
+    label: dm || voice ? facts.name : `#${facts.name}`,
+    ...(facts.guildName ? { hint: facts.guildName } : {}),
+    ...(channel.guild_id ? { guildId: channel.guild_id } : {}),
+    unread: facts.unread,
+    mentions: facts.mentions,
+    ...(facts.recent >= 0 ? { recent: facts.recent } : {}),
+  };
 }

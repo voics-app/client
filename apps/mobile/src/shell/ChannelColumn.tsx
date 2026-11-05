@@ -3,11 +3,15 @@ import { useMemo, useState } from 'react';
 import { Pressable, SectionList, StyleSheet, Text } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
+import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { scopeKey } from '@discordy/core/domain/notificationSettings';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { hasPermission } from '@discordy/core/domain/permissions';
-import { channelSections } from '../servers/serverModel';
+import { channelSections, channelsInSection } from '../servers/serverModel';
 import { useGuildPermissions } from '../servers/useGuildPermissions';
 import { theme } from '../theme';
 import { ChannelRow } from './ChannelRow';
@@ -22,6 +26,9 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
   const userId = useSessionStore((s) => s.user?.id);
   const activeChannelId = useUiStore((s) => (s.view.kind === 'guild' && s.view.guildId === guildId ? s.view.channelId : null));
   const collapsed = usePrefsStore((s) => s.collapsedCategories);
+  const reads = useReadStateStore((s) => s.byChannel);
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
+  const voiceStates = useVoiceStore((s) => s.states);
   const canMoveMembers = hasPermission(useGuildPermissions(guildId), Permission.MOVE_MEMBERS);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -37,7 +44,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
       <SectionList
         style={styles.list}
         contentContainerStyle={styles.content}
-        sections={sections.map((s) => ({ key: s.id ?? 'loose', id: s.id, title: s.title, data: s.id && collapsed[s.id] ? [] : s.channels }))}
+        sections={sections.map((s) => ({ key: s.id ?? 'loose', id: s.id, title: s.title, data: channelsInSection(s.channels, { collapsed: Boolean(s.id && collapsed[s.id]), activeId: activeChannelId, reads, settings, voiceStates, now: Date.now() }) }))}
         keyExtractor={(channel) => channel.id}
         ListEmptyComponent={<Text style={styles.empty}>{guild ? 'No channels you can see.' : 'This server is not available.'}</Text>}
         renderSectionHeader={({ section }) =>

@@ -19,6 +19,8 @@ export interface ChannelAccess {
   canCreateThread: boolean;
   /** Manage Threads: write in a locked thread. */
   canManageThreads: boolean;
+  /** Use Application Commands: slash commands in the composer. */
+  canUseCommands: boolean;
   /** Server-stored delivery. Ephemeral and P2P chats keep their messages on devices: no edit, delete, pin, forward or attachments on mobile. */
   standard: boolean;
 }
@@ -46,13 +48,14 @@ export function channelAccess({ guild, channel, members, userId, parent }: Chann
     canManageMessages: can(Permission.MANAGE_MESSAGES),
     canCreateThread: !thread && can(Permission.CREATE_PUBLIC_THREADS),
     canManageThreads: can(Permission.MANAGE_THREADS),
+    canUseCommands: can(Permission.USE_APPLICATION_COMMANDS),
     standard: channel.delivery_mode === 'standard',
   };
 }
 
 /** In a DM every participant may send, react and read; there are no roles to moderate with. */
 export function dmAccess(channel: Channel): ChannelAccess {
-  return { canSend: true, canReact: true, canReadHistory: true, canAttach: channel.delivery_mode === 'standard', canManageMessages: false, canCreateThread: false, canManageThreads: false, standard: channel.delivery_mode === 'standard' };
+  return { canSend: true, canReact: true, canReadHistory: true, canAttach: channel.delivery_mode === 'standard', canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: channel.delivery_mode === 'standard' };
 }
 
 export interface MessageActions {

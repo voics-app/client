@@ -38,3 +38,7 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light' },
   NotificationFeedbackType: { Success: 'success', Error: 'error' },
 }));
+
+// Jest's default window is 750 x 1334, which counts as a tablet; the tests are written for a phone, and the tablet tests set their own size.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require('react-native').Dimensions.set({ window: { width: 390, height: 844, scale: 3, fontScale: 1 }, screen: { width: 390, height: 844, scale: 3, fontScale: 1 } });

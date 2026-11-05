@@ -4,6 +4,7 @@ import type { AuthResponse, ReadyPayload } from '@discordy/core/contracts/rest';
 import { PrefsSync } from '@discordy/core/application/syncedPrefs';
 import { createDispatchRouter, registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { PrivateMessaging } from '@discordy/core/application/privacy/privateMessaging';
+import { InteractionService } from '@discordy/core/application/interactionService';
 import { currentPresence } from '@discordy/core/application/selfPresence';
 import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -48,6 +49,8 @@ export interface MobileRuntime {
   http: HttpClient;
   api: DiscordyApi;
   gateway: GatewayClient;
+  /** Slash commands, message components and modals. */
+  interactions: InteractionService;
   session: SessionManager;
   /** Null in Expo Go, which has no native WebRTC. */
   voice: MobileVoice | null;
@@ -174,7 +177,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     },
   });
 
-  return { apiUrl: config.apiUrl, http, api, gateway, session: manager, voice, privacy };
+  return { apiUrl: config.apiUrl, http, api, gateway, interactions: new InteractionService(api), session: manager, voice, privacy };
 }
 
 function defaultFetchBytes(request: typeof fetch): (url: string) => Promise<Uint8Array> {
