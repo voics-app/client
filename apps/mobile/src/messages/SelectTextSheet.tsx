@@ -1,18 +1,16 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { BottomSheet } from '../sheets/BottomSheet';
 import { useLastValue } from '../sheets/useLastValue';
-import { theme } from '../theme';
+import { MarkdownText } from './markdown/MarkdownText';
 
-/** A message in a sheet where the text can be selected natively (long press, drag handles, system Copy and Look Up). */
+/** A message in a sheet where the text can be selected natively (long press, drag handles, system Copy and Look Up); links and mentions stay tappable. */
 export function SelectTextSheet({ message: current, onClose }: { message: ChatMessage | null; onClose(): void }) {
   const message = useLastValue(current);
   return (
     <BottomSheet visible={current !== null} onClose={onClose} label="Select text" tall>
       <ScrollView contentContainerStyle={styles.body}>
-        <Text selectable style={styles.text}>
-          {message?.content}
-        </Text>
+        <MarkdownText source={message?.content ?? ''} selectable fontSize={17} />
       </ScrollView>
     </BottomSheet>
   );
@@ -20,5 +18,4 @@ export function SelectTextSheet({ message: current, onClose }: { message: ChatMe
 
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingBottom: 16 },
-  text: { color: theme.text, fontSize: 17, lineHeight: 24 },
 });
