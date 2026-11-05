@@ -3,10 +3,11 @@ import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { channelLink } from '@discordy/core/domain/channelMenuModel';
 import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { router, Stack } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
+import { KeyboardChatScrollView, KeyboardGestureArea, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSharedValue } from 'react-native-reanimated';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -23,7 +24,7 @@ import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
 import type { OutgoingFile } from './outgoingFile';
-import { Composer, type ComposerMode } from './Composer';
+import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
@@ -45,7 +46,6 @@ import { SafetyNumberSheet } from '../privacy/SafetyNumberSheet';
 import { getRuntime } from '../runtime';
 import { ProfileSheet } from '../profile/ProfileSheet';
 import { channelAccess, dmAccess, messageActions } from './messageAccess';
-import { useKeyboardVisible } from './useKeyboardVisible';
 import { useAppActive } from './useAppActive';
 import { useMessageService } from './useMessageService';
 import { useJumpToMessage } from './useJumpToMessage';
@@ -61,8 +61,13 @@ const NO_HISTORY_NOTICE = 'You do not have permission to read the history of thi
 export function ChannelScreen({ guildId, channelId }: { guildId?: string; channelId: string }) {
   const service = useMessageService();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const keyboardVisible = useKeyboardVisible();
+  // The composer's height (with the home-indicator padding) is the list's bottom padding: the dock floats over the list and rides the keyboard frame by frame on the UI thread.
+  const dockHeight = useSharedValue(0);
+  const onDockLayout = useCallback((e: LayoutChangeEvent) => void (dockHeight.value = e.nativeEvent.layout.height), [dockHeight]);
+  const renderScroll = useCallback(
+    (props: ScrollViewProps) => <KeyboardChatScrollView {...props} inverted keyboardLiftBehavior="always" offset={insets.bottom} extraContentPadding={dockHeight} keyboardDismissMode="interactive" />,
+    [insets.bottom, dockHeight],
+  );
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
   const parent = useGuildStore((s) => (channel?.parent_id ? s.channels[channel.parent_id] : undefined));
@@ -258,7 +263,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   return (
     <ChatContext.Provider value={chat}>
-      <KeyboardAvoidingView style={styles.screen} behavior="padding" keyboardVerticalOffset={headerHeight}>
+      <View style={styles.screen}>
+        <KeyboardGestureArea interpolator="ios" textInputNativeID={COMPOSER_INPUT_ID} style={styles.list}>
         <Stack.Screen
           options={{
             headerTitle: () => <ChatHeaderTitle title={title} peer={peer} onPress={() => (peer ? setProfileUser(peer) : setDetailsOpen(true))} />,
@@ -294,6 +300,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           <View style={styles.list}>
           <FlatList
             ref={listRef}
+            renderScrollComponent={renderScroll}
             onScrollToIndexFailed={(info) => listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })}
             testID="message-list"
             style={styles.list}
@@ -331,20 +338,23 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
               )
             }
           />
-          {(away || detached) && (
-            <JumpToLatest
-              onPress={() => {
-                if (detached) loadLatest();
-                listRef.current?.scrollToOffset({ offset: 0, animated: true });
-              }}
-            />
-          )}
           </View>
         )}
-        <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
+        </KeyboardGestureArea>
+        <KeyboardStickyView offset={{ opened: insets.bottom }} style={styles.sticky}>
+        {readable && loaded && (away || detached) && (
+          <JumpToLatest
+            onPress={() => {
+              if (detached) loadLatest();
+              listRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }}
+          />
+        )}
+        <View onLayout={onDockLayout} style={[styles.dock, { paddingBottom: insets.bottom }]}>
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
+        </KeyboardStickyView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <SafetyNumberSheet peerId={safetyPeer} onClose={() => setSafetyPeer(null)} />
@@ -437,7 +447,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         />
         <ReactionUsersSheet target={reactors} onClose={() => setReactors(null)} />
         <SelectTextSheet message={selecting} onClose={() => setSelecting(null)} />
-      </KeyboardAvoidingView>
+      </View>
     </ChatContext.Provider>
   );
 }
@@ -448,6 +458,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   /** The list is inverted, so top is the gap above the composer and bottom is the gap under the oldest message. */
   listContent: { paddingTop: 16, paddingBottom: 16 },
+  sticky: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   dock: { backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notice: { color: theme.muted, textAlign: 'center', padding: 32 },

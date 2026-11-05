@@ -26,7 +26,7 @@ export function UnreadBar({ count, more, onMarkRead }: { count: number; more: bo
   );
 }
 
-/** Round button over the list that returns to the newest message. */
+/** Round button over the list, just above the composer it is rendered in, that returns to the newest message. */
 export function JumpToLatest({ onPress }: { onPress(): void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Jump to latest" onPress={onPress} style={styles.jump}>
@@ -43,5 +43,5 @@ const styles = StyleSheet.create({
   barText: { color: theme.text, fontSize: 14, fontWeight: '600' },
   barAction: { minHeight: 44, minWidth: 44, paddingHorizontal: 12, justifyContent: 'center' },
   barActionText: { color: theme.accent, fontSize: 14, fontWeight: '600' },
-  jump: { position: 'absolute', right: 16, bottom: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: theme.raisedHover, borderWidth: 1, borderColor: theme.hairlineStrong, alignItems: 'center', justifyContent: 'center' },
+  jump: { position: 'absolute', right: 16, bottom: '100%', marginBottom: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: theme.raisedHover, borderWidth: 1, borderColor: theme.hairlineStrong, alignItems: 'center', justifyContent: 'center' },
 });
