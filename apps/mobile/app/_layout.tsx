@@ -3,13 +3,16 @@ import { appliedAppearance } from '../src/appearance/boot';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
-import { ActivityIndicator, AppState, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
 import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
 import { InAppBanner } from '../src/notifications/InAppBanner';
+import { PushNotifications } from '../src/notifications/push/PushNotifications';
 import { InteractionModal } from '../src/commands/InteractionModal';
 import { InviteLinkSheet } from '../src/invites/InviteLinkSheet';
 import { WideShell } from '../src/shell/WideShell';
@@ -34,7 +37,8 @@ export default function RootLayout() {
 
   const signedIn = status === 'connecting' || status === 'ready';
   return (
-    <>
+    <GestureHandlerRootView style={styles.root}>
+      <KeyboardProvider>
       <StatusBar style={appliedAppearance().theme === 'light' ? 'dark' : 'light'} />
       {status === 'booting' ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
@@ -80,10 +84,12 @@ export default function RootLayout() {
         </Shell>
       )}
       {signedIn && <IncomingCall />}
+      <PushNotifications />
       {signedIn && <InAppBanner />}
       {signedIn && <InviteLinkSheet />}
       {signedIn && <InteractionModal />}
-    </>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -91,3 +97,5 @@ export default function RootLayout() {
 function Shell({ wide, children }: { wide: boolean; children: ReactNode }) {
   return wide ? <WideShell>{children}</WideShell> : <>{children}</>;
 }
+
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: theme.background } });

@@ -6,7 +6,8 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMentionInboxStore } from '@discordy/core/application/stores/mentionInboxStore';
 import { openMessage } from '../navigation/openMessage';
 import { theme } from '../theme';
-import { Notice, TextButton } from '../ui/controls';
+import { TextButton } from '../ui/controls';
+import { EmptyState } from '../ui/EmptyState';
 import { inboxSections, type InboxRow } from './inboxModel';
 
 function InboxItem({ row }: { row: InboxRow }) {
@@ -52,7 +53,7 @@ export function NotificationsScreen() {
           </Text>
         )}
         renderItem={({ item }) => <InboxItem row={item} />}
-        ListEmptyComponent={<Notice>No recent mentions. Messages that mention you, your roles or @everyone, and replies to you, show up here.</Notice>}
+        ListEmptyComponent={<EmptyState icon="notifications-outline" title="You are all caught up" body="No recent mentions. Messages that mention you, your roles or @everyone, and replies to you, show up here." />}
         contentContainerStyle={styles.content}
       />
     </View>

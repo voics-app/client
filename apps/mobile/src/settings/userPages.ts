@@ -19,7 +19,7 @@ export const USER_PAGES: readonly UserPage[] = [
   { id: 'devices', label: 'Devices and sessions', group: 'User settings', icon: 'phone-portrait-outline', hint: 'Where you are logged in', keywords: 'devices sessions logged in log out other fingerprint identity' },
   { id: 'appearance', label: 'Appearance', group: 'App settings', icon: 'color-palette-outline', hint: 'Theme, accent, text size', keywords: 'theme dark light oled accent colour color text size font scale' },
   { id: 'accessibility', label: 'Accessibility', group: 'App settings', icon: 'accessibility-outline', hint: 'Motion, role colours, links', keywords: 'motion reduce animation role colours colors underline links' },
-  { id: 'notifications', label: 'Notifications', group: 'App settings', icon: 'notifications-outline', hint: 'Banners and mentions', keywords: 'banners mentions alerts do not disturb' },
+  { id: 'notifications', label: 'Notifications', group: 'App settings', icon: 'notifications-outline', hint: 'Push, banners and mentions', keywords: 'push banners mentions alerts do not disturb previews badge' },
   { id: 'chat', label: 'Chat', group: 'App settings', icon: 'chatbubble-outline', hint: 'Media, spoilers, reactions, emoticons', keywords: 'messages images videos media spoilers emoji reactions emoticons' },
 ];
 
@@ -56,7 +56,9 @@ export const USER_SETTING_ROWS: readonly SettingsRowInfo<UserPageId>[] = [
   row('accessibility', 'Match iPhone motion setting', 'sync system os'),
   row('accessibility', 'Role colours', 'role colors names'),
   row('accessibility', 'Always underline links'),
-  row('notifications', 'Only mentions', 'banners'),
+  row('notifications', 'Push notifications', 'push apns permission ios settings'),
+  row('notifications', 'Show message previews', 'push preview text'),
+  row('notifications', 'Only mentions', 'banners push'),
   row('chat', 'Display images and videos', 'attachments inline media'),
   row('chat', 'Show spoiler content', 'hidden reveal'),
   row('chat', 'Show reactions'),

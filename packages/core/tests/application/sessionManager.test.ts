@@ -187,6 +187,22 @@ describe('SessionManager', () => {
     expect(useGuildStore.getState().order).toEqual([]);
   });
 
+  it('runs beforeLogout before the server call, and a failing hook does not block the sign-out', async () => {
+    const v = vault({ accessToken: 'a', refreshToken: 'r', userId: '1', deviceId: null });
+    const rt = runtime();
+    const order: string[] = [];
+    (rt.api.logout as ReturnType<typeof vi.fn>).mockImplementation(async () => void order.push('server'));
+    const beforeLogout = vi.fn(async () => {
+      order.push('hook');
+      throw new Error('push token removal failed');
+    });
+    const m = new SessionManager({ vault: v, runtime: rt, identity: async () => null, beforeLogout });
+    await m.boot();
+    await m.logout();
+    expect(order).toEqual(['hook', 'server']);
+    expect(useSessionStore.getState().status).toBe('signedOut');
+  });
+
   it('signs out when the server rejects the session as expired', async () => {
     const v = vault({ accessToken: 'a', refreshToken: 'r', userId: '1', deviceId: null });
     const m = new SessionManager({ vault: v, runtime: runtime(), identity: async () => null });

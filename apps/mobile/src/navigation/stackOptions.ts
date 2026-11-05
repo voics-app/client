@@ -13,5 +13,8 @@ export const stackScreenOptions = {
   headerTintColor: theme.text,
   headerShadowVisible: false,
   headerBackButtonDisplayMode: 'minimal',
+  // The back swipe works from anywhere on the screen, not only the left edge, and the screen follows the finger.
+  fullScreenGestureEnabled: true,
+  gestureEnabled: true,
   contentStyle: { backgroundColor: theme.background },
 } as const satisfies ScreenOptions;

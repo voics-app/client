@@ -1,7 +1,11 @@
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import type { RoleColorMode } from '@discordy/core/domain/appearance';
 import type { SpoilerDisplay } from '@discordy/core/domain/prefsTypes';
-import { ChoiceRow, Hint, SectionLabel, SettingsPage, SwitchRow } from './rows';
+import { getPush } from '../notifications/push';
+import { statusLabel } from '../notifications/push/pushModel';
+import { usePushPrefs, usePushStatus } from '../notifications/push/pushStore';
+import { TextButton } from '../ui/controls';
+import { ChoiceRow, Hint, SectionLabel, SettingRow, SettingsPage, SwitchRow } from './rows';
 
 const ROLE_COLORS: { value: RoleColorMode; label: string }[] = [
   { value: 'name', label: 'In the name' },
@@ -31,13 +35,39 @@ export function AccessibilityPage({ highlight }: { highlight: string | null }) {
   );
 }
 
-/** Notifications: what raises an in-app banner. Push notifications arrive with the native build. */
+/** Notifications: what raises an in-app banner, and push notifications for when the app is closed (a development or store build; Expo Go cannot receive them). */
 export function NotificationsPage({ highlight }: { highlight: string | null }) {
   const prefs = usePrefsStore();
+  const push = usePushPrefs();
+  const status = usePushStatus((s) => s.status);
+  const available = status !== 'unavailable';
   return (
     <SettingsPage highlight={highlight}>
-      <SwitchRow title="Only mentions" description="Banners only for mentions and direct messages, whatever a server's own setting says." value={prefs.notifyOnlyMentions} onChange={(v) => prefs.set('notifyOnlyMentions', v)} />
-      <Hint>Set a server or channel to All messages, Only mentions or Nothing, or mute it, from its menu in the server list. Do not disturb in Profile silences banners. Push notifications for when the app is closed come with the native build.</Hint>
+      <SectionLabel>Push notifications</SectionLabel>
+      <SettingRow title="Push notifications" description={statusLabel(status)}>
+        {status === 'granted' || !available ? null : <TextButton label={status === 'denied' ? 'Open Settings' : 'Turn on'} onPress={() => void getPush().enable()} />}
+      </SettingRow>
+      <SwitchRow
+        title="Show message previews"
+        description="Show the text of a message in the notification. Messages in private chats never show text, whatever this says."
+        value={push.previews}
+        disabled={!available}
+        onChange={(v) => {
+          push.setPreviews(v);
+          void getPush().refresh();
+        }}
+      />
+      <SectionLabel>In the app</SectionLabel>
+      <SwitchRow
+        title="Only mentions"
+        description="Banners and pushes only for mentions and direct messages on this device, whatever a server's own setting says."
+        value={prefs.notifyOnlyMentions}
+        onChange={(v) => {
+          prefs.set('notifyOnlyMentions', v);
+          void getPush().refresh();
+        }}
+      />
+      <Hint>Set a server or channel to All messages, Only mentions or Nothing, or mute it, from its menu in the server list. Do not disturb in Profile silences banners. Push notifications follow the same server, channel and mute settings, and you only get one while the app is closed or not connected.</Hint>
     </SettingsPage>
   );
 }
