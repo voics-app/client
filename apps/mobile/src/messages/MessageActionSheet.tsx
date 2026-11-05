@@ -13,6 +13,7 @@ export interface MessageActionSheetProps {
   onReply(): void;
   onEdit(): void;
   onDelete(): void;
+  onMoreReactions(): void;
   onCopyText(): void;
   onSelectText(): void;
   onClose(): void;
@@ -21,7 +22,7 @@ export interface MessageActionSheetProps {
 const QUICK = quickReactions([]);
 
 /** Bottom sheet with only the actions the user may take on one message. */
-export function MessageActionSheet({ actions: current, onReact, onReply, onEdit, onDelete, onCopyText, onSelectText, onClose }: MessageActionSheetProps) {
+export function MessageActionSheet({ actions: current, onReact, onMoreReactions, onReply, onEdit, onDelete, onCopyText, onSelectText, onClose }: MessageActionSheetProps) {
   const actions = useLastValue(current);
   return (
     <BottomSheet visible={current !== null} onClose={onClose} label="Message actions">
@@ -34,6 +35,9 @@ export function MessageActionSheet({ actions: current, onReact, onReply, onEdit,
                   <Text style={styles.emojiText}>{e.name}</Text>
                 </Pressable>
               ))}
+              <Pressable accessibilityRole="button" accessibilityLabel="More reactions" onPress={onMoreReactions} style={styles.emoji}>
+                <Ionicons name="happy-outline" size={28} color={theme.muted} />
+              </Pressable>
             </View>
           )}
           {actions.reply && <Option icon="arrow-undo-outline" label="Reply" onPress={onReply} />}

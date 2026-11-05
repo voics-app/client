@@ -1,4 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +24,8 @@ import type { OutgoingFile } from './outgoingFile';
 import { Composer, type ComposerMode } from './Composer';
 import { MessageActionSheet } from './MessageActionSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { EmojiPicker } from '../emoji/EmojiPicker';
+import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
@@ -54,6 +58,8 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
+  const [reactingTo, setReactingTo] = useState<string | null>(null);
+  const [reactors, setReactors] = useState<ReactionTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -183,11 +189,14 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         if (guildId) router.push(`/servers/${guildId}/${id}`);
       },
       onJumpToMessage: jumpTo,
+      canReact: access?.canReact ?? false,
+      onMoreReactions: setReactingTo,
+      onWhoReacted: (messageId, emoji) => setReactors({ channelId, messageId, emoji }),
       onWave: (id) => {
         if (channel) void service.send(channel, { content: '\u{1F44B}', replyTo: id });
       },
     }),
-    [guildId, access, findUser, jumpTo, channel, service],
+    [guildId, channelId, access, findUser, jumpTo, channel, service],
   );
 
   const blockedReason = !access ? null : !access.standard ? PRIVATE_NOTICE : !access.canSend ? NO_SEND_NOTICE : null;
@@ -261,7 +270,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-          <Composer mode={mode} blockedReason={blockedReason} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
         <MessageActionSheet
@@ -283,6 +292,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             if (selected) confirmDelete(selected);
             close();
           }}
+          onMoreReactions={() => {
+            setReactingTo(selected?.id ?? null);
+            close();
+          }}
           onCopyText={() => {
             if (selected) void Clipboard.setStringAsync(selected.content).catch(fail);
             close();
@@ -292,6 +305,20 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             close();
           }}
         />
+        <EmojiPicker
+          visible={reactingTo !== null}
+          guildId={guildId}
+          onClose={() => setReactingTo(null)}
+          onPick={(emoji) => {
+            const target = reactingTo ? timeline?.byId[reactingTo] : undefined;
+            if (target) {
+              usePrefsStore.getState().recordReaction(emoji);
+              toggleReaction(target, quickApiForm(emoji));
+            }
+            setReactingTo(null);
+          }}
+        />
+        <ReactionUsersSheet target={reactors} onClose={() => setReactors(null)} />
         <SelectTextSheet message={selecting} onClose={() => setSelecting(null)} />
       </KeyboardAvoidingView>
     </ChatContext.Provider>

@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { reactionKey, type ChatMessage } from '@discordy/core/application/stores/messageStore';
 import type { User } from '@discordy/core/contracts/rest';
 import { replyPreviewText } from '@discordy/core/domain/chatDisplay';
 import { formatMessageTime } from '@discordy/core/domain/messageTime';
 import { isSystemType } from '@discordy/core/domain/systemMessage';
+import { BRAND } from '../brand';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
 import { AttachmentList } from './attachments/AttachmentList';
@@ -33,7 +34,7 @@ export interface MessageRowProps {
 
 function MessageRowView({ message, replied, showHeader, onLongPress, onToggleReaction, onPressAuthor, onRetry, onDiscard }: MessageRowProps) {
   const showReactions = usePrefsStore((s) => s.showReactions);
-  const { guildId, onJumpToMessage } = useChatContext();
+  const { guildId, onJumpToMessage, canReact, onMoreReactions, onWhoReacted } = useChatContext();
   const roleColor = useRoleColor(guildId, message.author.id);
   if (isSystemType(message.type)) {
     const target = message.mentions?.[0];
@@ -89,14 +90,20 @@ function MessageRowView({ message, replied, showHeader, onLongPress, onToggleRea
                   accessibilityRole="button"
                   accessibilityLabel={`${r.emoji.name ?? '?'} ${r.count}${r.me ? ', you reacted' : ''}`}
                   onPress={() => onToggleReaction(message, emoji)}
+                  onLongPress={() => onWhoReacted(message.id, emoji)}
+                  delayLongPress={300}
                   style={[styles.chip, r.me && styles.chipMine]}
                 >
-                  <Text style={styles.chipText}>
-                    {r.emoji.name} {r.count}
-                  </Text>
+                  {r.emoji.id ? <Image source={{ uri: `${BRAND.cdnUrl}/emojis/${r.emoji.id}.${r.emoji.animated ? 'gif' : 'png'}` }} style={styles.chipEmoji} /> : <Text style={styles.chipText}>{r.emoji.name}</Text>}
+                  <Text style={styles.chipText}>{r.count}</Text>
                 </Pressable>
               );
             })}
+            {canReact && (
+              <Pressable accessibilityRole="button" accessibilityLabel="Add reaction" onPress={() => onMoreReactions(message.id)} style={styles.chip}>
+                <Ionicons name="happy-outline" size={16} color={theme.muted} />
+              </Pressable>
+            )}
           </View>
         )}
         {message.localState === 'failed' && (
@@ -131,7 +138,8 @@ const styles = StyleSheet.create({
   time: { color: theme.muted, fontSize: 12 },
   edited: { color: theme.muted, fontSize: 12 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  chip: { backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: theme.surface },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 28, backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 8, borderWidth: 1, borderColor: theme.surface },
+  chipEmoji: { width: 16, height: 16 },
   chipMine: { borderColor: theme.accent },
   chipText: { color: theme.text, fontSize: 13 },
   failed: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' },

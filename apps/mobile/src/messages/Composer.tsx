@@ -1,8 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
+import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
 import { theme } from '../theme';
+import { EmojiPicker } from '../emoji/EmojiPicker';
+import { emojiText, insertAt } from '../emoji/emojiPickerModel';
 import { AttachMenu } from './AttachMenu';
 import { addFiles } from './attachmentPicker';
 import type { OutgoingFile } from './outgoingFile';
@@ -18,15 +22,20 @@ export interface ComposerProps {
   placeholder: string;
   /** Whether the + button offers photos, the camera and files (ATTACH_FILES, standard delivery). */
   canAttach: boolean;
+  /** The server whose custom emoji the picker offers. */
+  guildId?: string | undefined;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   useEffect(() => {
     setText(mode.kind === 'edit' ? mode.content : '');
     if (mode.kind === 'edit') setFiles([]);
@@ -46,6 +55,13 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, onSubmit
     const { files: next, problems } = addFiles(files, picked);
     setFiles(next);
     if (problems.length > 0) Alert.alert('Some files were not added', problems.join(' '));
+  };
+  const insertEmoji = (emoji: QuickEmoji) => {
+    const at = insertAt(text, selection, emojiText(emoji));
+    setText(at.text);
+    setForcedSelection({ start: at.cursor, end: at.cursor });
+    usePrefsStore.getState().recordReaction(emoji);
+    setEmojiOpen(false);
   };
   const submit = () => {
     if (!canSubmit) return;
@@ -71,13 +87,17 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, onSubmit
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
-        <TextInput accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
+        <TextInput accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline selection={forcedSelection} onSelectionChange={(e) => { setSelection(e.nativeEvent.selection); setForcedSelection(undefined); }} onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Add emoji" hitSlop={6} onPress={() => setEmojiOpen(true)} style={styles.plus}>
+          <Ionicons name="happy-outline" size={24} color={theme.muted} />
+        </Pressable>
         {canSubmit && (
           <Pressable accessibilityRole="button" accessibilityLabel={mode.kind === 'edit' ? 'Save edit' : 'Send'} onPress={submit} style={styles.send}>
             <Ionicons name={mode.kind === 'edit' ? 'checkmark' : 'arrow-up'} size={20} color={theme.accentText} />
           </Pressable>
         )}
       </View>
+      <EmojiPicker visible={emojiOpen} guildId={guildId} onClose={() => setEmojiOpen(false)} onPick={insertEmoji} />
       <AttachMenu visible={attachOpen} onClose={() => setAttachOpen(false)} onPicked={pick} />
       {showCounter(remaining) && <Text style={[styles.counter, remaining < 0 && styles.over]}>{remaining}</Text>}
     </View>

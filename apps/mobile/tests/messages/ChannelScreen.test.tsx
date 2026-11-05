@@ -19,6 +19,7 @@ const mockApi = {
   deleteMessage: jest.fn(async (_c: string, _id: string): Promise<void> => undefined),
   addReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
   removeReaction: jest.fn(async (_c: string, _id: string, _e: string): Promise<void> => undefined),
+  reactionUsers: jest.fn(async (_c: string, _id: string, _e: string): Promise<{ id: string; username: string }[]> => []),
 };
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(async () => true) }));
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
@@ -222,6 +223,45 @@ describe('channel screen', () => {
     await fireEvent.press(chip);
     await waitFor(() => expect(mockApi.removeReaction).toHaveBeenCalledWith('general', snow(2), '👍'));
     expect(screen.queryByLabelText('👍 1, you reacted')).toBeNull();
+  });
+
+  it('adds a reaction from the emoji picker, found by search', async () => {
+    await open();
+    await fireEvent(await screen.findByText('message 2'), 'longPress');
+    await fireEvent.press(screen.getByLabelText('More reactions'));
+    await fireEvent.changeText(await screen.findByLabelText('Search emoji'), 'fire');
+    await fireEvent.press(await screen.findByLabelText('🔥'));
+    await waitFor(() => expect(mockApi.addReaction).toHaveBeenCalledWith('general', snow(2), '🔥'));
+  });
+
+  it('adds a reaction with the + chip under a message', async () => {
+    await open();
+    await act(async () => useMessageStore.getState().reactionAdd('general', snow(2), { id: null, name: '👍' }, false));
+    await fireEvent.press(await screen.findByLabelText('Add reaction'));
+    await fireEvent.press(await screen.findByLabelText('😂'));
+    await waitFor(() => expect(mockApi.addReaction).toHaveBeenCalledWith('general', snow(2), '😂'));
+  });
+
+  it('lists who reacted when a chip is long pressed', async () => {
+    mockApi.reactionUsers.mockResolvedValueOnce([{ id: 'u2', username: 'pat' }, { id: 'u9', username: 'sam' }]);
+    await open();
+    await act(async () => useMessageStore.getState().reactionAdd('general', snow(2), { id: null, name: '👍' }, false));
+    await fireEvent(await screen.findByLabelText('👍 1'), 'longPress');
+    expect(await screen.findByText('pat')).toBeTruthy();
+    expect(screen.getByText('sam')).toBeTruthy();
+    expect(mockApi.reactionUsers).toHaveBeenCalledWith('general', snow(2), '👍');
+  });
+
+  it('inserts an emoji from the composer picker into the message', async () => {
+    await open();
+    await screen.findByText('message 1');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi ');
+    await fireEvent(screen.getByLabelText('Message'), 'selectionChange', { nativeEvent: { selection: { start: 3, end: 3 } } });
+    await fireEvent.press(screen.getByLabelText('Add emoji'));
+    await fireEvent.changeText(await screen.findByLabelText('Search emoji'), 'tada');
+    await fireEvent.press(await screen.findByLabelText('🎉'));
+    await waitFor(() => expect(screen.getByLabelText('Message').props.value).toContain('🎉'));
+    expect(screen.getByLabelText('Message').props.value.startsWith('hi ')).toBe(true);
   });
 
   it('tells the user when a reaction is refused', async () => {
