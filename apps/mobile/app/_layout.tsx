@@ -59,6 +59,10 @@ export default function RootLayout() {
             <Stack.Screen name="servers/[guildId]/settings/members" options={{ title: 'Members', ...pushed }} />
             <Stack.Screen name="servers/[guildId]/settings/invites" options={{ title: 'Invites', ...pushed }} />
             <Stack.Screen name="servers/[guildId]/settings/channels" options={{ title: 'Channels', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/emoji" options={{ title: 'Emoji', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/bans" options={{ title: 'Bans', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/audit" options={{ title: 'Audit log', ...pushed }} />
+            <Stack.Screen name="servers/[guildId]/settings/channel/[channelId]" options={{ title: 'Channel', ...pushed }} />
             <Stack.Screen name="notifications" options={{ title: 'Notifications', animation: 'slide_from_right' }} />
             <Stack.Screen name="settings/index" options={{ title: 'Settings', ...pushed }} />
             <Stack.Screen name="settings/[page]" options={{ title: 'Settings', ...pushed }} />

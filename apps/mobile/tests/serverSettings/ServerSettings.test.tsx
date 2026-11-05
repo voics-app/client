@@ -166,12 +166,13 @@ describe('server settings', () => {
       await fireEvent.press(await screen.findByLabelText('Moderate Pat'));
       await fireEvent.press(await screen.findByLabelText('Ban'));
       expect(await screen.findByText('They are removed and cannot rejoin until unbanned.')).toBeTruthy();
+      expect(mockApi.ban).not.toHaveBeenCalled();
       await fireEvent.press(screen.getAllByLabelText('Ban')[0]!);
-      await waitFor(() => expect(mockApi.ban).toHaveBeenCalledWith('g1', 'u2'));
+      await waitFor(() => expect(mockApi.ban).toHaveBeenCalledWith('g1', 'u2', undefined, {}));
     });
 
     it('shows a member with no moderation rights as a plain row', async () => {
-      seedServer(Permission.MANAGE_ROLES);
+      seedServer(Permission.MANAGE_GUILD);
       await openSettings('Members');
       expect(await screen.findByText(/^pat · joined /)).toBeTruthy();
       expect(screen.queryByLabelText('Moderate Pat')).toBeNull();
@@ -330,8 +331,8 @@ describe('server settings', () => {
       await openSettings('Channels');
       await fireEvent.press(await screen.findByLabelText('Edit general'));
       await fireEvent.changeText(await screen.findByLabelText('Channel name'), 'Main Chat');
-      await fireEvent.press(screen.getByLabelText('Save name'));
-      await waitFor(() => expect(mockApi.updateChannel).toHaveBeenCalledWith('general', { name: 'main-chat' }));
+      await fireEvent.press(screen.getByLabelText('Save changes'));
+      await waitFor(() => expect(mockApi.updateChannel).toHaveBeenCalledWith('general', expect.objectContaining({ name: 'main-chat' })));
       await waitFor(() => expect(useGuildStore.getState().channels['general']?.name).toBe('main-chat'));
     });
 
@@ -340,9 +341,8 @@ describe('server settings', () => {
       await openSettings('Channels');
       await fireEvent.press(await screen.findByLabelText('Edit ideas'));
       await fireEvent.press(await screen.findByLabelText('Delete channel'));
-      expect(await screen.findByText('Messages in this channel will be lost for everyone.')).toBeTruthy();
       expect(mockApi.deleteChannel).not.toHaveBeenCalled();
-      await fireEvent.press(screen.getAllByLabelText('Delete channel')[0]!);
+      confirmAlert('Delete channel');
       await waitFor(() => expect(mockApi.deleteChannel).toHaveBeenCalledWith('ideas'));
       await waitFor(() => expect(useGuildStore.getState().channels['ideas']).toBeUndefined());
     });

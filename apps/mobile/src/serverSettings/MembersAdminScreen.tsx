@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { Avatar } from '../profile/Avatar';
-import { getRuntime } from '../runtime';
 import { useGuildPermissions } from '../servers/useGuildPermissions';
 import { theme } from '../theme';
-import { attempt } from '../ui/attempt';
 import { ListRow } from '../ui/ListRow';
-import { Sheet, SheetConfirm, SheetOption } from '../ui/Sheet';
+import { MemberActionSheet } from './MemberActionSheet';
 import { moderationRows, type ModerationRow } from './memberAdminModel';
 import { PageGuard } from './PageGuard';
 
@@ -19,24 +17,8 @@ function Body({ guildId }: { guildId: string }) {
   const perms = useGuildPermissions(guildId);
   const [query, setQuery] = useState('');
   const [target, setTarget] = useState<ModerationRow | null>(null);
-  const [pending, setPending] = useState<'Kick' | 'Ban' | null>(null);
-  const rows = useMemo(() => (guild && me ? moderationRows(guild, perms, members, me, query) : []), [guild, perms, members, me, query]);
-
-  const close = () => {
-    setTarget(null);
-    setPending(null);
-  };
-
-  const remove = async (row: ModerationRow, verb: 'Kick' | 'Ban') => {
-    close();
-    const api = getRuntime().api;
-    const done = await attempt(async () => {
-      if (verb === 'Ban') await api.ban(guildId, row.member.user.id);
-      else await api.kickMember(guildId, row.member.user.id);
-      return true;
-    }, `Could not ${verb.toLowerCase()}`);
-    if (done) useGuildStore.getState().removeMember(guildId, row.member.user.id);
-  };
+  const [timedOutOnly, setTimedOutOnly] = useState(false);
+  const rows = useMemo(() => (guild && me ? moderationRows(guild, perms, members, me, query, timedOutOnly) : []), [guild, perms, members, me, query, timedOutOnly]);
 
   return (
     <View style={styles.screen}>
@@ -50,6 +32,10 @@ function Body({ guildId }: { guildId: string }) {
         autoCorrect={false}
         style={styles.search}
       />
+      <View style={styles.filters}>
+        <Switch accessibilityLabel="Timed out only" value={timedOutOnly} onValueChange={setTimedOutOnly} trackColor={{ true: theme.accent }} />
+        <Text style={styles.filterText}>Timed out only</Text>
+      </View>
       <FlatList
         data={rows}
         keyExtractor={(row) => row.member.user.id}
@@ -59,31 +45,16 @@ function Body({ guildId }: { guildId: string }) {
             title={item.name}
             subtitle={item.subtitle}
             left={<Avatar user={item.member.user} size={36} />}
-            {...(item.rights.kick || item.rights.ban ? { onPress: () => setTarget(item), accessibilityLabel: `Moderate ${item.name}` } : {})}
+            {...(item.rights.any ? { onPress: () => setTarget(item), accessibilityLabel: `Moderate ${item.name}` } : {})}
           />
         )}
       />
-      <Sheet visible={target !== null} title={pending && target ? `${pending} ${target.name}?` : target?.name} closeLabel="Close member actions" onClose={close}>
-        {target && pending ? (
-          <SheetConfirm
-            body={pending === 'Ban' ? 'They are removed and cannot rejoin until unbanned.' : 'They can rejoin with a new invite.'}
-            confirmLabel={pending}
-            onConfirm={() => void remove(target, pending)}
-            onCancel={close}
-          />
-        ) : (
-          <>
-            {target?.rights.kick && <SheetOption label="Kick" danger onPress={() => setPending('Kick')} />}
-            {target?.rights.ban && <SheetOption label="Ban" danger onPress={() => setPending('Ban')} />}
-            <SheetOption label="Cancel" onPress={close} />
-          </>
-        )}
-      </Sheet>
+      <MemberActionSheet guildId={guildId} member={target?.member ?? null} onClose={() => setTarget(null)} />
     </View>
   );
 }
 
-/** Server settings > Members: search the members, and kick or ban the ones you outrank, each after a confirmation. */
+/** Server settings > Members: search the members and open the actions you may take on one (roles, nickname, timeout, kick, ban). */
 export function MembersAdminScreen({ guildId }: { guildId: string }) {
   return (
     <PageGuard guildId={guildId} page="members" title="Members">
@@ -94,5 +65,7 @@ export function MembersAdminScreen({ guildId }: { guildId: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.background },
+  filters: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
+  filterText: { color: theme.muted, fontSize: 14 },
   search: { margin: 12, paddingHorizontal: 12, height: 40, borderRadius: 10, backgroundColor: theme.raised, color: theme.text, fontSize: 15 },
 });

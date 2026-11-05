@@ -10,9 +10,16 @@ export const MAX_ROWS = 200;
 export interface ModerationRights {
   kick: boolean;
   ban: boolean;
+  /** Add and remove roles: Manage Roles, and only roles below your highest. */
+  roles: boolean;
+  timeout: boolean;
+  /** Change the nickname: your own with Change Nickname, someone else's with Manage Nicknames. */
+  nickname: boolean;
+  /** At least one of the above, so the member sheet has something to offer. */
+  any: boolean;
 }
 
-/** What the user may do to one member: the same permission and role-hierarchy rules as the desktop member menu (never yourself, never the owner, only people below your highest role). */
+/** What the user may do to one member: the same permission and role-hierarchy rules as the desktop member menu (never the owner, only people below your highest role; your own nickname). */
 export function moderationRights(guild: GuildMeta, perms: bigint, me: GuildMember | undefined, meId: string, target: GuildMember): ModerationRights {
   const caps = memberCapabilities({
     perms,
@@ -22,7 +29,8 @@ export function moderationRights(guild: GuildMeta, perms: bigint, me: GuildMembe
     target: { userId: target.user.id, roleIds: target.roles },
     inVoice: false,
   });
-  return { kick: caps.canKick, ban: caps.canBan };
+  const rights = { kick: caps.canKick, ban: caps.canBan, roles: caps.canManageRoles, timeout: caps.canTimeout, nickname: caps.canEditNickname };
+  return { ...rights, any: Object.values(rights).some(Boolean) };
 }
 
 export interface ModerationRow {
@@ -33,9 +41,9 @@ export interface ModerationRow {
 }
 
 /** The searchable member list of the Members page, each row with what the user may do to that person. */
-export function moderationRows(guild: GuildMeta, perms: bigint, members: Record<string, GuildMember> | undefined, meId: string, query: string): ModerationRow[] {
+export function moderationRows(guild: GuildMeta, perms: bigint, members: Record<string, GuildMember> | undefined, meId: string, query: string, timedOutOnly = false): ModerationRow[] {
   const me = members?.[meId];
-  return filterMembers(Object.values(members ?? {}), { ...DEFAULT_MEMBER_FILTER, query }, memberName)
+  return filterMembers(Object.values(members ?? {}), { ...DEFAULT_MEMBER_FILTER, query, timedOutOnly }, memberName)
     .slice(0, MAX_ROWS)
     .map((member) => ({
       member,

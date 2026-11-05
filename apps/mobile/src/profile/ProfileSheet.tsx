@@ -1,10 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useGuildPermissions } from '../servers/useGuildPermissions';
+import { moderationRights } from '../serverSettings/memberAdminModel';
+import { MemberActionSheet } from '../serverSettings/MemberActionSheet';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { User } from '@discordy/core/contracts/rest';
+import type { GuildMember, User } from '@discordy/core/contracts/rest';
 import { statusLine } from '@discordy/core/domain/memberList';
 import { openConversation } from '../dms/dmActions';
 import { acceptRequest, addFriend, blockUser, removeRelationship } from '../friends/friendActions';
@@ -39,6 +42,9 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
   const me = useSessionStore((s) => s.user?.id);
   const [fetched, setFetched] = useState<Fetched | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [managing, setManaging] = useState<GuildMember | null>(null);
+  const perms = useGuildPermissions(guildId ?? '');
+  const myMember = useGuildStore((s) => (guildId && me ? s.members[guildId]?.[me] : undefined));
 
   useEffect(() => {
     if (!user) return;
@@ -71,8 +77,11 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
   const line = statusLine(activities)?.text;
   const banner = user?.accent_color ? `#${user.accent_color.toString(16).padStart(6, '0')}` : theme.raised;
   const name = view?.name ?? '';
+  // Roles, nickname, timeout, kick and ban by the same rules as the member list in server settings; shown only when at least one applies.
+  const manage = guild && member && me && moderationRights(guild, perms, myMember, me, member).any ? member : null;
 
   return (
+    <>
     <Sheet visible={shown !== null} label="profile" closeLabel="Close profile" onClose={close}>
       {user && view && actions && confirmBlock && (
         <SheetConfirm
@@ -102,6 +111,15 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
             {actions.friend === 'remove' && <Button label="Remove friend" onPress={() => void removeRelationship(user.id, 'Could not remove the friend')} />}
             {actions.block === 'block' && <Button label="Block" tone="danger" onPress={() => setConfirmBlock(true)} />}
             {actions.block === 'unblock' && <Button label="Unblock" onPress={() => void removeRelationship(user.id, 'Could not unblock')} />}
+            {manage && (
+              <Button
+                label={manage.user.id === me ? 'Edit server profile' : 'Manage member'}
+                onPress={() => {
+                  setManaging(manage);
+                  close();
+                }}
+              />
+            )}
           </View>
           <View style={styles.fields}>
           {view.bio !== '' && <ProfileField label="About me">{view.bio}</ProfileField>}
@@ -115,6 +133,8 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
         </View>
       )}
     </Sheet>
+    {guildId && <MemberActionSheet guildId={guildId} member={managing} onClose={() => setManaging(null)} />}
+    </>
   );
 }
 
