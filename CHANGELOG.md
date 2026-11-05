@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- New messages in a DM or group show that conversation's avatar above the servers in the sidebar, with the number of new messages, on desktop and mobile.
 ### Fixed
 
 - You stay signed in: an expired access token on the gateway now refreshes the session instead of deleting the login, and a failed refresh while offline keeps it too.
