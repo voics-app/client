@@ -16,6 +16,12 @@ describe('app.config', () => {
     expect(plist.UIBackgroundModes).toEqual(['audio']);
   });
 
+  it('adds the push notification entitlement and tells the app which APNs host its tokens belong to', () => {
+    const names = (config.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+    expect(names).toContain('expo-notifications');
+    expect(['sandbox', 'production']).toContain(config.extra?.pushEnvironment);
+  });
+
   it('adds the development client and the WebRTC plugin', () => {
     const names = (config.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
     expect(names).toEqual(expect.arrayContaining(['expo-dev-client', '@config-plugins/react-native-webrtc']));

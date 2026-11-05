@@ -43,6 +43,18 @@ jest.mock('expo-haptics', () => ({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require('react-native').Dimensions.set({ window: { width: 390, height: 844, scale: 3, fontScale: 1 }, screen: { width: 390, height: 844, scale: 3, fontScale: 1 } });
 
+// expo-notifications needs the native module; the push code reaches it only through a native build, and tests stand in a quiet one.
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  getDevicePushTokenAsync: jest.fn(async () => ({ type: 'ios', data: '' })),
+  addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponse: jest.fn(() => null),
+  setNotificationHandler: jest.fn(),
+  setBadgeCountAsync: jest.fn(async () => true),
+}));
+
 // The keyboard, gesture and animation libraries are native; their own Jest stand-ins let the screens render and animate under Jest.
 /* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
