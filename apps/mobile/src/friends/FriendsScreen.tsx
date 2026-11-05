@@ -68,17 +68,23 @@ export function FriendsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabs}>
-        {FRIEND_TABS.map((t) => {
-          const count = t.id === 'add' ? 0 : list.counts[t.id];
-          const text = count > 0 ? `${t.label} ${count}` : t.label;
-          return (
-            <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={text} accessibilityState={{ selected: tab === t.id }} onPress={() => setTab(t.id)} style={[styles.tab, tab === t.id && styles.tabOn]}>
-              <Text style={[styles.tabText, tab === t.id && styles.tabTextOn]}>{text}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.tabBar}>
+        {/* The list tabs scroll when the screen is narrow; Add friend stays pinned at the right edge so it is never pushed off. */}
+        <ScrollView testID="friend-tabs" horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabs}>
+          {FRIEND_TABS.filter((t) => t.id !== 'add').map((t) => {
+            const count = t.id === 'add' ? 0 : list.counts[t.id];
+            const text = count > 0 ? `${t.label} ${count}` : t.label;
+            return (
+              <Pressable key={t.id} accessibilityRole="tab" accessibilityLabel={text} accessibilityState={{ selected: tab === t.id }} onPress={() => setTab(t.id)} style={[styles.tab, tab === t.id && styles.tabOn]}>
+                <Text style={[styles.tabText, tab === t.id && styles.tabTextOn]}>{text}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        <Pressable accessibilityRole="tab" accessibilityLabel="Add friend" accessibilityState={{ selected: tab === 'add' }} onPress={() => setTab('add')} style={[styles.addTab, tab === 'add' && styles.tabOn]}>
+          <Ionicons name="person-add-outline" size={20} color={tab === 'add' ? theme.text : theme.muted} />
+        </Pressable>
+      </View>
       {tab === 'add' ? (
         <AddFriendForm />
       ) : (
@@ -111,8 +117,10 @@ export function FriendsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.background },
-  tabBar: { flexGrow: 0, borderBottomWidth: 1, borderBottomColor: theme.hairline },
+  tabBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.hairline, paddingRight: 12 },
+  tabScroll: { flex: 1 },
   tabs: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  addTab: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.raised, alignItems: 'center', justifyContent: 'center' },
   tab: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: theme.raised, alignItems: 'center', justifyContent: 'center' },
   tabOn: { backgroundColor: theme.accentSoft, borderWidth: 1, borderColor: theme.accent },
   tabText: { color: theme.muted, fontSize: 14, fontWeight: '600' },
