@@ -24,7 +24,8 @@ export async function runSearch(service: SearchService, target: SearchTarget, ta
     const groups = pages
       .flatMap((p) => p.groups)
       .filter((g) => g.length > 0 && !seen.has(hitOf(g).id) && seen.add(hitOf(g).id))
-      .sort((a, b) => (sort === 'oldest' ? compareSnowflakes(hitOf(a).id, hitOf(b).id) : compareSnowflakes(hitOf(b).id, hitOf(a).id)));
+      // Most relevant keeps the order the server ranked them in; the other two sort by time.
+      .sort((a, b) => (sort === 'relevant' ? 0 : sort === 'oldest' ? compareSnowflakes(hitOf(a).id, hitOf(b).id) : compareSnowflakes(hitOf(b).id, hitOf(a).id)));
     return {
       kind: 'ready',
       groups,

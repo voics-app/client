@@ -10,6 +10,7 @@ import { watchForeground } from '../src/runtime/foreground';
 import { stackScreenOptions } from '../src/navigation/stackOptions';
 import { theme } from '../src/theme';
 import { InAppBanner } from '../src/notifications/InAppBanner';
+import { InviteLinkSheet } from '../src/invites/InviteLinkSheet';
 import { IncomingCall } from '../src/voice/IncomingCall';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
@@ -48,6 +49,8 @@ export default function RootLayout() {
             <Stack.Screen name="pins/[channelId]" options={{ title: 'Pinned messages', ...pushed }} />
             <Stack.Screen name="threads/[channelId]" options={{ title: 'Threads', ...pushed }} />
             <Stack.Screen name="search/[channelId]" options={{ title: 'Search', ...pushed }} />
+            <Stack.Screen name="groups/[channelId]" options={{ title: 'Group settings', ...pushed }} />
+            <Stack.Screen name="discover" options={{ title: 'Discover', ...pushed }} />
             <Stack.Screen name="friends" options={{ title: 'Friends', ...pushed }} />
             <Stack.Screen name="dms/[channelId]" options={chat} />
             <Stack.Screen name="servers/[guildId]/[channelId]" options={chat} />
@@ -72,6 +75,7 @@ export default function RootLayout() {
       )}
       {signedIn && <IncomingCall />}
       {signedIn && <InAppBanner />}
+      {signedIn && <InviteLinkSheet />}
     </>
   );
 }

@@ -13,6 +13,7 @@ import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
 import { AttachmentList } from './attachments/AttachmentList';
 import { useChatContext } from './chatContext';
+import { InviteCards } from '../invites/InviteCards';
 import { MarkdownText } from './markdown/MarkdownText';
 import { SwipeToReply } from './SwipeToReply';
 import { SystemRow } from './SystemRow';
@@ -87,6 +88,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
           </View>
         )}
         <MarkdownText source={message.content} trailing={message.edited_timestamp ? <Text style={styles.edited}> (edited)</Text> : null} />
+        {message.content !== '' && <InviteCards content={message.content} />}
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
           <View style={styles.reactions}>

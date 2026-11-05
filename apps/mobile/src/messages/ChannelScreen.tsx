@@ -13,7 +13,7 @@ import { useMessageStore, type ChatMessage } from '@discordy/core/application/st
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { RelationshipType, type User } from '@discordy/core/contracts/rest';
+import { ChannelType, RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { firstUnreadMessageId, unreadBar } from '@discordy/core/domain/unread';
 import { buildRows, showJumpToLatest, type ChatRow } from './chatRows';
@@ -391,6 +391,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           onOpenMembers={() => guildId && router.push(`/servers/${guildId}/members`)}
           onOpenThreads={guildId && !thread ? () => router.push(`/threads/${channelId}`) : undefined}
           onOpenProfile={setProfileUser}
+          onOpenGroupSettings={!guildId && channel?.type === ChannelType.GROUP_DM ? () => router.push(`/groups/${channelId}`) : undefined}
         />
         <ChannelMenu visible={menuOpen} guildId={guildId} channelId={channelId} onSearch={() => router.push(`/search/${channelId}`)} onClose={() => setMenuOpen(false)} onMarkRead={() => {
             useReadNavStore.getState().dismissBar(channelId);

@@ -3,11 +3,14 @@ import { Alert } from 'react-native';
 import { useTrustedDomainStore } from '@discordy/core/application/stores/composerStores';
 import { hostOf, isTrustedLink } from '@discordy/core/domain/linkTrust';
 import { BRAND } from '../../brand';
+import { openInviteLink } from '../../invites/inviteLinkStore';
 
 const WEB_URL = /^https?:\/\//i;
 
-/** Opens a web link in the in-app browser sheet; anything that is not http or https is ignored. */
+/** Opens a web link in the in-app browser sheet (invite links to this instance open the join sheet); anything that is not http or https is ignored. */
 export function openLink(url: string): void {
+  // An invite link to this instance opens in the app's own join sheet, not in the browser.
+  if (openInviteLink(url)) return;
   if (WEB_URL.test(url)) void WebBrowser.openBrowserAsync(url);
 }
 
