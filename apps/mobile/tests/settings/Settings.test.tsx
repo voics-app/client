@@ -252,6 +252,7 @@ describe('settings', () => {
     it('chooses a theme and accent, and says they apply from the next start', async () => {
       await open('/settings/appearance');
       expect(screen.queryByText(/next time Voics starts/)).toBeNull();
+      expect(screen.getAllByText('Takes effect after you restart Voics.')).toHaveLength(2);
       await fireEvent.press(await screen.findByLabelText('Light'));
       expect(usePrefsStore.getState().theme).toBe('light');
       expect(await screen.findByText(/next time Voics starts/)).toBeTruthy();

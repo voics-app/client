@@ -1,32 +1,32 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUiStore, type View as ViewState } from '@discordy/core/application/stores/uiStore';
-import { metrics, theme } from '../theme';
-import { VoiceBar } from '../voice/VoiceBar';
-import { ChannelColumn } from './ChannelColumn';
-import { DmColumn } from './DmColumn';
-import { ServerRail } from './ServerRail';
-import { UserPanel } from './UserPanel';
+import { type View as ViewState } from '@discordy/core/application/stores/uiStore';
+import { theme } from '../theme';
+import { Sidebar } from './Sidebar';
+import { useWideLayout } from './layoutModel';
 import { useSelectView } from './useSelectView';
 
-/** Desktop's Shell, without the stage: the server rail and the column of the selected server (or the DM list), with the user panel at its foot. Chats open full screen over it. */
+/** Desktop's Shell, without the stage: the server rail and the column of the selected server (or the DM list), with the user panel at its foot. Chats open full screen over it. On a tablet the sidebar is always on screen beside the stack (see WideShell), so this route only asks for a chat. */
 export function MainScreen({ select }: { select?: ViewState }) {
   useSelectView(select);
-  const view = useUiStore((s) => s.view);
+  const wide = useWideLayout();
   const insets = useSafeAreaInsets();
+  if (wide) {
+    return (
+      <View testID="chat-placeholder" style={styles.placeholder}>
+        <Text style={styles.placeholderText}>Pick a channel or conversation to start.</Text>
+      </View>
+    );
+  }
   return (
     <View testID="main-screen" style={[styles.shell, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }]}>
-      <ServerRail />
-      <View style={[styles.column, { paddingBottom: insets.bottom }]}>
-        {view.kind === 'guild' ? <ChannelColumn guildId={view.guildId} /> : <DmColumn />}
-        <VoiceBar />
-        <UserPanel />
-      </View>
+      <Sidebar bottomInset={insets.bottom} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: theme.background },
-  column: { flex: 1, backgroundColor: theme.surface, borderTopLeftRadius: metrics.columnRadius },
+  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background, padding: 24 },
+  placeholderText: { color: theme.subtle, fontSize: 15, textAlign: 'center' },
 });

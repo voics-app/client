@@ -3,6 +3,13 @@ import {
   buildCommandData,
   buildComponentData,
   buildModalSubmitData,
+  buttonTone,
+  modalInitialValues,
+  modalInputs,
+  modalReady,
+  safeComponentUrl,
+  selectLimits,
+  toggleSelected,
   flattenCommands,
   searchEntries,
   slashQuery,
@@ -148,5 +155,43 @@ describe('component and modal payloads', () => {
         { type: 1, components: [{ type: 4, custom_id: 'bio', value: 'x' }] },
       ],
     });
+  });
+});
+
+describe('modal helpers', () => {
+  const inputs = modalInputs([
+    { type: 1, components: [{ type: 4, custom_id: 'name', value: 'Ada' }] },
+    { type: 1, components: [{ type: 4, custom_id: 'why', required: false }, { type: 2, custom_id: 'ignored' }] },
+  ]);
+  it('finds the text inputs inside action rows only', () => {
+    expect(inputs.map((i) => i.custom_id)).toEqual(['name', 'why']);
+  });
+  it('starts each input with its pre-filled value', () => {
+    expect(modalInitialValues(inputs)).toEqual({ name: 'Ada', why: '' });
+  });
+  it('is ready when every required input has text; optional ones may stay empty', () => {
+    expect(modalReady(inputs, { name: 'Ada', why: '' })).toBe(true);
+    expect(modalReady(inputs, { name: '  ', why: 'x' })).toBe(false);
+  });
+});
+
+describe('select and button helpers', () => {
+  it('defaults a select to one of one', () => {
+    expect(selectLimits({})).toEqual({ min: 1, max: 1 });
+    expect(selectLimits({ min_values: 0, max_values: 3 })).toEqual({ min: 0, max: 3 });
+  });
+  it('toggles options without passing the maximum', () => {
+    expect(toggleSelected(['a'], 'b', 2)).toEqual(['a', 'b']);
+    expect(toggleSelected(['a', 'b'], 'c', 2)).toEqual(['a', 'b']);
+    expect(toggleSelected(['a', 'b'], 'a', 2)).toEqual(['b']);
+  });
+  it('names button styles and opens only web addresses', () => {
+    expect(buttonTone(undefined)).toBe('primary');
+    expect(buttonTone(4)).toBe('danger');
+    expect(buttonTone(5)).toBe('link');
+    expect(buttonTone(99)).toBe('secondary');
+    expect(safeComponentUrl('https://example.com/x')).toBe('https://example.com/x');
+    expect(safeComponentUrl('javascript:alert(1)')).toBeNull();
+    expect(safeComponentUrl(undefined)).toBeNull();
   });
 });

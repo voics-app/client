@@ -2,8 +2,9 @@ import { Command, X } from '@phosphor-icons/react';
 import { useMemo, type KeyboardEvent } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
+import { entityChoices } from '@discordy/core/domain/entityChoices';
 import { validateValues, type OptionValues, type SlashEntry } from '@discordy/core/domain/slashCommand';
-import { ChannelType, CommandOptionType as OptionType, type ApplicationCommandOption, type Channel } from '@discordy/core/contracts/rest';
+import { CommandOptionType as OptionType, type ApplicationCommandOption, type Channel } from '@discordy/core/contracts/rest';
 import { displayName } from '../../shared/hooks/useNames';
 import { Button } from '../../shared/ui/Button';
 import { Input, Select, Switch } from '../../shared/ui/Form';
@@ -22,32 +23,24 @@ export function EntityPicker({ option, value, channel, onChange }: EntityPickerP
   const channels = useGuildStore((s) => s.channels);
   const roles = useGuildStore((s) => (guildId ? s.guilds[guildId]?.roles : undefined));
 
-  const users = useMemo(() => {
-    const list = guildId ? Object.values(members ?? {}).map((m) => ({ id: m.user.id, name: displayName(m.user, m.nick) })) : (channel.recipients ?? []).map((u) => ({ id: u.id, name: displayName(u) }));
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [guildId, members, channel.recipients]);
-  const guildChannels = useMemo(
-    () =>
-      Object.values(channels)
-        .filter((c) => c.guild_id === guildId && c.type !== ChannelType.GUILD_CATEGORY && (!option.channel_types?.length || option.channel_types.includes(c.type)))
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
-    [channels, guildId, option.channel_types],
-  );
-  const guildRoles = useMemo(() => (roles ?? []).filter((r) => r.id !== guildId).sort((a, b) => b.position - a.position), [roles, guildId]);
+  const choices = useMemo(() => {
+    const users = guildId ? Object.values(members ?? {}).map((m) => ({ id: m.user.id, name: displayName(m.user, m.nick) })) : (channel.recipients ?? []).map((u) => ({ id: u.id, name: displayName(u) }));
+    return entityChoices(option.type, { guildId, users, channels: Object.values(channels), roles: roles ?? [], channelTypes: option.channel_types });
+  }, [option.type, option.channel_types, guildId, members, channel.recipients, channels, roles]);
+  const optionOf = (c: { id: string; label: string }) => <option key={c.id} value={c.id}>{c.label}</option>;
+  const memberChoices = choices.filter((c) => c.group === 'Members');
+  const roleChoices = choices.filter((c) => c.group === 'Roles');
 
-  const userOptions = users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>);
-  const roleOptions = guildRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>);
   return (
     <Select value={value} aria-label={option.name} onChange={(e) => onChange(e.target.value)}>
       <option value="">{option.required ? 'Choose…' : 'None'}</option>
-      {option.type === OptionType.USER && userOptions}
-      {option.type === OptionType.ROLE && roleOptions}
-      {option.type === OptionType.CHANNEL && guildChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
-      {option.type === OptionType.MENTIONABLE && (
+      {option.type === OptionType.MENTIONABLE ? (
         <>
-          <optgroup label="Members">{userOptions}</optgroup>
-          {guildRoles.length > 0 && <optgroup label="Roles">{roleOptions}</optgroup>}
+          <optgroup label="Members">{memberChoices.map(optionOf)}</optgroup>
+          {roleChoices.length > 0 && <optgroup label="Roles">{roleChoices.map(optionOf)}</optgroup>}
         </>
+      ) : (
+        choices.map(optionOf)
       )}
     </Select>
   );

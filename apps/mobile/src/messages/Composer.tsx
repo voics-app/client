@@ -6,6 +6,11 @@ import { useDraftStore } from '@discordy/core/application/stores/composerStores'
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
+import type { Channel } from '@discordy/core/contracts/rest';
+import type { SlashEntry } from '@discordy/core/domain/slashCommand';
+import { CommandSheet } from '../commands/CommandSheet';
+import { SlashSuggestions } from '../commands/SlashSuggestions';
+import { useSlashCommands } from '../commands/useSlashCommands';
 import { theme } from '../theme';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { emojiText, insertAt } from '../emoji/emojiPickerModel';
@@ -28,16 +33,19 @@ export interface ComposerProps {
   guildId?: string | undefined;
   /** The chat whose unsent text is kept as a draft (core `useDraftStore`, standard delivery only); without it nothing is kept. */
   draftKey?: string | undefined;
+  /** The chat whose application commands `/` offers; absent where commands are not allowed (no permission, private delivery). */
+  slashChannel?: Channel | undefined;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [command, setCommand] = useState<SlashEntry | null>(null);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   useEffect(() => {
@@ -60,6 +68,8 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
     },
     [draftKey],
   );
+
+  const slash = useSlashCommands(slashChannel, text, mode.kind === 'compose');
 
   if (blockedReason) {
     return (
@@ -102,6 +112,17 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
           </Pressable>
         </View>
       )}
+      {slash.query !== null && (
+        <SlashSuggestions
+          entries={slash.entries}
+          query={slash.query}
+          appName={slash.appName}
+          onPick={(entry) => {
+            setText('');
+            setCommand(entry);
+          }}
+        />
+      )}
       {files.length > 0 && <PendingFiles files={files} onRemove={(i) => setFiles((current) => current.filter((_, at) => at !== i))} />}
       <View style={[styles.field, multiline ? styles.fieldGrown : styles.fieldSingle]}>
         {mode.kind === 'compose' && canAttach && (
@@ -119,6 +140,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
           </Pressable>
         )}
       </View>
+      {slashChannel && <CommandSheet entry={command} channel={slashChannel} onClose={() => setCommand(null)} />}
       <EmojiPicker visible={emojiOpen} guildId={guildId} onClose={() => setEmojiOpen(false)} onPick={insertEmoji} />
       <AttachMenu visible={attachOpen} onClose={() => setAttachOpen(false)} onPicked={pick} />
       {showCounter(remaining) && <Text style={[styles.counter, remaining < 0 && styles.over]}>{remaining}</Text>}

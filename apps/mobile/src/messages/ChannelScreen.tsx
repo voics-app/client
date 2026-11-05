@@ -18,6 +18,7 @@ import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { firstUnreadMessageId, unreadBar } from '@discordy/core/domain/unread';
 import { buildRows, showJumpToLatest, type ChatRow } from './chatRows';
 import { JumpToLatest, NewDivider, UnreadBar } from './UnreadMarkers';
+import { ThinkingRows } from '../commands/ThinkingRows';
 import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
@@ -295,6 +296,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             onStartReached={() => void service.loadNewer(channelId).catch(fail)}
             onStartReachedThreshold={0.5}
             keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={<ThinkingRows channelId={channelId} />}
             ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
             renderItem={({ item }) =>
               item.kind === 'new' ? (
@@ -328,7 +330,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           </View>
         )}
         <View style={[styles.dock, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />

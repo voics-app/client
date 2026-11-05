@@ -9,6 +9,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { GuildFolder } from '@discordy/core/contracts/rest';
 import { folderLabel } from '@discordy/core/domain/railLayout';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
+import { openGuild } from '../navigation/openChat';
 import { AddServerSheet } from '../servers/AddServerSheet';
 import { RailMenu, type RailTarget } from './RailMenu';
 import { metrics, theme } from '../theme';
@@ -67,7 +68,6 @@ function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile,
 function GuildItem({ guildId, active, onEdit }: { guildId: string; active: boolean; onEdit(target: RailTarget): void }) {
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const { unread, mentions } = useActivity([guildId]);
-  const navigate = useUiStore((s) => s.navigate);
   if (!guild) return null;
   return (
     <RailItem
@@ -75,7 +75,7 @@ function GuildItem({ guildId, active, onEdit }: { guildId: string; active: boole
       active={active}
       unread={unread && !active}
       mentions={mentions}
-      onPress={() => navigate({ kind: 'guild', guildId, channelId: null })}
+      onPress={() => openGuild(guildId)}
       onLongPress={() => onEdit({ kind: 'guild', id: guildId })}
       tile={(selected) => <ServerIcon guild={guild} active={selected} />}
     />

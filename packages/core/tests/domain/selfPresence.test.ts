@@ -7,7 +7,11 @@ import {
   expiryFor,
   isExpired,
   nextAutoIdle,
+  customStatusLine,
   selfPresencePayload,
+  shownStatus,
+  statusLabel,
+  STATUS_CHOICES,
 } from '@discordy/core/domain/selfPresence';
 
 const base = { idleSeconds: 0, locked: false, timeoutMinutes: 10, manual: undefined } as const;
@@ -76,5 +80,31 @@ describe('buildCustomStatus', () => {
 
   it('caps the text at 128 characters', () => {
     expect(buildCustomStatus('x'.repeat(200))?.text).toHaveLength(128);
+  });
+});
+
+describe('status shown on your own avatar', () => {
+  it('prefers what the gateway reports, so automatic idle shows', () => {
+    expect(shownStatus('idle', 'online')).toBe('idle');
+  });
+  it('falls back to the chosen status while offline or unknown', () => {
+    expect(shownStatus('offline', 'dnd')).toBe('dnd');
+    expect(shownStatus(undefined, 'invisible')).toBe('invisible');
+    expect(shownStatus(undefined, undefined)).toBe('online');
+  });
+  it('names every choice', () => {
+    expect(STATUS_CHOICES.map((s) => statusLabel(s.id))).toEqual(['Online', 'Idle', 'Do not disturb', 'Invisible']);
+  });
+});
+
+describe('customStatusLine', () => {
+  const now = Date.parse('2026-11-05T12:00:00Z');
+  it('joins the emoji and text', () => {
+    expect(customStatusLine({ text: 'Lunch', emoji_id: null, emoji_name: 'ramen', expires_at: null }, now)).toBe('ramen Lunch');
+  });
+  it('leaves a custom emoji out and drops an expired status', () => {
+    expect(customStatusLine({ text: 'Hi', emoji_id: '1', emoji_name: 'wave', expires_at: null }, now)).toBe('Hi');
+    expect(customStatusLine({ text: 'Hi', emoji_id: null, emoji_name: null, expires_at: '2026-11-05T11:00:00Z' }, now)).toBe('');
+    expect(customStatusLine(null, now)).toBe('');
   });
 });

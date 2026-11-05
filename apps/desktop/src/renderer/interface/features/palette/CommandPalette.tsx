@@ -9,8 +9,7 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { isUnread } from '@discordy/core/domain/unread';
-import { MODE_LABELS, rankItems, recentChannelIds, type SwitcherItem } from '@discordy/core/domain/quickSwitcher';
-import { ChannelType } from '@discordy/core/contracts/rest';
+import { channelSwitcherItem, isSwitchable, MODE_LABELS, rankItems, recentChannelIds, type SwitcherItem } from '@discordy/core/domain/quickSwitcher';
 import { isVoiceChannel, openChannel, openGuild } from '../../app/navigation';
 import { openVoiceChannel, toggleDeafen, toggleMute } from '../../app/voiceActions';
 import { displayName } from '../../shared/hooks/useNames';
@@ -66,24 +65,21 @@ export function CommandPalette() {
     const guildItems: Item[] = Object.values(guilds).map((g) => ({ id: `g-${g.id}`, kind: 'guild', group: 'Servers', label: g.name, icon: <House size={18} />, run: () => openGuild(g.id) }));
     const recents = recentChannelIds(history.entries);
     const channelItems: Item[] = Object.values(channels)
-      .filter((c) => c.type !== ChannelType.GUILD_CATEGORY && c.type !== ChannelType.GUILD_FORUM)
+      .filter(isSwitchable)
       .map((c): Item => {
         const dm = !c.guild_id;
-        const label = dm ? (c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || 'DM') : (c.name ?? '');
-        const guildName = c.guild_id ? guilds[c.guild_id]?.name : undefined;
         const voice = isVoiceChannel(c);
         const read = reads[c.id];
-        const recent = recents.indexOf(c.id);
-        return {
-          id: `c-${c.id}`,
-          kind: dm ? 'dm' : voice ? 'voice' : 'text',
-          group: dm ? 'Direct messages' : 'Channels',
-          label: dm ? label : `${voice ? '' : '#'}${label}`,
-          hint: guildName,
-          guildId: c.guild_id ?? undefined,
+        const item = channelSwitcherItem(c, {
+          name: dm ? (c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || 'DM') : (c.name ?? ''),
+          guildName: c.guild_id ? guilds[c.guild_id]?.name : undefined,
           unread: !isChannelMutedDeep(notif[scopeKey(c.guild_id)], c, Date.now()) && isUnread(c.last_message_id, read?.lastReadId),
           mentions: read?.mentionCount ?? 0,
-          recent: recent >= 0 ? recent : undefined,
+          recent: recents.indexOf(c.id),
+        });
+        return {
+          ...item,
+          group: dm ? 'Direct messages' : 'Channels',
           icon: dm ? <At size={18} /> : voice ? <SpeakerHigh size={18} /> : <Hash size={18} />,
           run: () => (voice ? void openVoiceChannel(c.guild_id ?? null, c.id) : openChannel(c.id)),
         };

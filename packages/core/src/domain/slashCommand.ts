@@ -139,3 +139,50 @@ export function buildModalSubmitData(customId: string, fields: Record<string, st
     components: Object.entries(fields).map(([id, value]) => ({ type: 1, components: [{ type: 4, custom_id: id, value }] })),
   };
 }
+
+/** The text inputs of a modal, found inside its action rows. */
+export function modalInputs(components: MessageComponent[]): MessageComponent[] {
+  return components.flatMap((c) => (c.type === 1 ? modalInputs(c.components ?? []) : c.type === 4 ? [c] : []));
+}
+
+/** What each input starts with: its own pre-filled value, else empty. */
+export function modalInitialValues(inputs: readonly MessageComponent[]): Record<string, string> {
+  return Object.fromEntries(inputs.map((i) => [i.custom_id ?? '', i.value ?? '']));
+}
+
+/** A modal can be submitted once every required input (required unless it says otherwise) has text. */
+export function modalReady(inputs: readonly MessageComponent[], values: Record<string, string>): boolean {
+  return inputs.every((i) => !(i.required ?? true) || (values[i.custom_id ?? ''] ?? '').trim() !== '');
+}
+
+export interface SelectLimits {
+  min: number;
+  max: number;
+}
+
+/** How many options a select menu needs and allows picked; one of one by default. */
+export function selectLimits(component: Pick<MessageComponent, 'min_values' | 'max_values'>): SelectLimits {
+  return { min: component.min_values ?? 1, max: component.max_values ?? 1 };
+}
+
+/** Toggles one option of a multi-select, never beyond the maximum. */
+export function toggleSelected(picked: readonly string[], value: string, max: number): string[] {
+  if (picked.includes(value)) return picked.filter((v) => v !== value);
+  return picked.length < max ? [...picked, value] : [...picked];
+}
+
+export type ButtonTone = 'primary' | 'secondary' | 'success' | 'danger' | 'link';
+const BUTTON_TONES: Record<number, ButtonTone> = { 1: 'primary', 2: 'secondary', 3: 'success', 4: 'danger', 5: 'link' };
+
+/** Style number of a button (1 primary, 2 secondary, 3 success, 4 danger, 5 link) as a name. */
+export const buttonTone = (style: number | undefined): ButtonTone => BUTTON_TONES[style ?? 1] ?? 'secondary';
+
+/** A link button opens only http and https addresses. */
+export function safeComponentUrl(url: string | undefined): string | null {
+  try {
+    const u = new URL(url ?? '');
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}

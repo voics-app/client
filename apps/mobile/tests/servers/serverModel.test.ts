@@ -1,7 +1,7 @@
 import type { GuildMeta } from '@discordy/core/application/stores/guildStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
-import { channelSections, serverRows } from '../../src/servers/serverModel';
+import { channelSections, channelsInSection, serverRows } from '../../src/servers/serverModel';
 
 const ME = 'u1';
 const EVERYONE = { id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(Permission.VIEW_CHANNEL), managed: false, mentionable: false };
@@ -90,5 +90,37 @@ describe('channelSections', () => {
   it('ignores channels of other servers', () => {
     const sections = channelSections(input([channel('x', ChannelType.GUILD_TEXT, { guild_id: 'other' })]));
     expect(sections).toEqual([]);
+  });
+});
+
+describe('channelsInSection', () => {
+  const text = channel('text', ChannelType.GUILD_TEXT, { last_message_id: '5' });
+  const quiet = channel('quiet', ChannelType.GUILD_TEXT, { last_message_id: '5' });
+  const voice = channel('voice', ChannelType.GUILD_VOICE);
+  const empty = channel('empty', ChannelType.GUILD_VOICE);
+  const all = [text, quiet, voice, empty];
+  const base = {
+    collapsed: true,
+    activeId: null,
+    reads: { text: { lastReadId: '5', mentionCount: 0 }, quiet: { lastReadId: '5', mentionCount: 0 } },
+    settings: undefined,
+    voiceStates: {},
+    now: 0,
+  };
+  const inVoice = { g1: { u2: { user_id: 'u2', channel_id: 'voice', guild_id: 'g1' } } } as never;
+
+  it('lists every channel while expanded', () => {
+    expect(channelsInSection(all, { ...base, collapsed: false }).map((c) => c.id)).toEqual(['text', 'quiet', 'voice', 'empty']);
+  });
+  it('hides everything quiet while collapsed', () => {
+    expect(channelsInSection(all, base)).toEqual([]);
+  });
+  it('keeps a voice channel with people in it, and only that one', () => {
+    expect(channelsInSection(all, { ...base, voiceStates: inVoice }).map((c) => c.id)).toEqual(['voice']);
+  });
+  it('keeps the open channel, mentions and unread text channels', () => {
+    expect(channelsInSection(all, { ...base, activeId: 'quiet' }).map((c) => c.id)).toEqual(['quiet']);
+    expect(channelsInSection(all, { ...base, reads: { ...base.reads, text: { lastReadId: '5', mentionCount: 2 } } }).map((c) => c.id)).toEqual(['text']);
+    expect(channelsInSection(all, { ...base, reads: { ...base.reads, quiet: { lastReadId: '1', mentionCount: 0 } } }).map((c) => c.id)).toEqual(['quiet']);
   });
 });

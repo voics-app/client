@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { BIO_MAX_LENGTH } from '@discordy/core/domain/profile';
-import { activeCustomStatus, CUSTOM_STATUS_MAX, EXPIRY_CHOICES, expiryFor, type ExpiryChoice, type ManualStatus } from '@discordy/core/domain/selfPresence';
+import { customStatusLine, STATUS_CHOICES, type ManualStatus } from '@discordy/core/domain/selfPresence';
 import { Avatar } from '../profile/Avatar';
 import { getRuntime } from '../runtime';
 import { SWATCHES } from '../serverSettings/roleModel';
@@ -11,16 +11,10 @@ import { iconUpload } from '../serverSettings/overviewModel';
 import { theme } from '../theme';
 import { attempt } from '../ui/attempt';
 import { Button, Choices, Field } from '../ui/controls';
-import { setCustomStatus, setStatus } from './presence';
+import { CustomStatusForm } from './CustomStatusForm';
+import { setStatus } from './presence';
 import { DISPLAY_NAME_MAX, draftOf, profilePatch, shownColor, type ProfileDraft } from './profileEditModel';
 import { SectionLabel, SettingRow, SettingsPage } from './rows';
-
-const STATUSES: { value: ManualStatus; label: string }[] = [
-  { value: 'online', label: 'Online' },
-  { value: 'idle', label: 'Idle' },
-  { value: 'dnd', label: 'Do not disturb' },
-  { value: 'invisible', label: 'Invisible' },
-];
 
 /** Desktop's Profile page (display name, About me, colour, avatar) plus the banner, and the status pickers desktop keeps in its user panel. */
 export function ProfilePage({ highlight }: { highlight: string | null }) {
@@ -30,9 +24,6 @@ export function ProfilePage({ highlight }: { highlight: string | null }) {
   const [draft, setDraft] = useState<ProfileDraft>(() => draftOf(user ?? { global_name: null }));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const active = activeCustomStatus(storedCustom, Date.now());
-  const [statusText, setStatusText] = useState(active?.text ?? '');
-  const [expiry, setExpiry] = useState<ExpiryChoice>('never');
   if (!user) return null;
 
   const patch = profilePatch(user, draft);
@@ -100,17 +91,10 @@ export function ProfilePage({ highlight }: { highlight: string | null }) {
 
       <SectionLabel>Status</SectionLabel>
       <View style={styles.fields}>
-        <Choices label="Status" options={STATUSES} value={status as ManualStatus} onChange={(value) => void setStatus(value)} />
+        <Choices label="Status" options={STATUS_CHOICES.map((s) => ({ value: s.id, label: s.label }))} value={status as ManualStatus} onChange={(value) => void setStatus(value)} />
       </View>
-      <SettingRow title="Custom status" description={active ? [active.emoji_id ? '' : active.emoji_name, active.text].filter(Boolean).join(' ') : 'Say what you are up to.'} stacked>
-        <View>
-          <Field label="Custom status" value={statusText} maxLength={CUSTOM_STATUS_MAX} autoCapitalize="sentences" onChangeText={setStatusText} />
-          <Choices<ExpiryChoice> label="Clear after" options={EXPIRY_CHOICES.map((c) => ({ value: c.id, label: c.label }))} value={expiry} onChange={setExpiry} />
-          <View style={styles.save}>
-            <Button label="Save status" tone="primary" onPress={() => void setCustomStatus(statusText, expiryFor(expiry, new Date()))} />
-            {active && <Button label="Clear status" onPress={() => { setStatusText(''); void setCustomStatus('', null); }} />}
-          </View>
-        </View>
+      <SettingRow title="Custom status" description={customStatusLine(storedCustom, Date.now()) || 'Say what you are up to.'} stacked>
+        <CustomStatusForm />
       </SettingRow>
     </SettingsPage>
   );

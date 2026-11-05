@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { openChat } from '../navigation/openChat';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
@@ -29,7 +30,7 @@ function DmItem({ row, lastMessageId, active, onMenu }: { row: DmRow; lastMessag
       accessibilityRole="button"
       accessibilityLabel={`Open ${row.title}`}
       accessibilityState={{ selected: active }}
-      onPress={() => router.push(`/dms/${row.id}`)}
+      onPress={() => openChat({ channelId: row.id })}
       onLongPress={() => onMenu(row)}
       delayLongPress={300}
       style={[styles.row, active && styles.rowActive, muted && styles.muted]}

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { openChat } from './openChat';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 
 export interface MessageTarget {
@@ -11,5 +11,5 @@ export interface MessageTarget {
 /** Opens a chat and scrolls to one message in it (an inbox entry, a banner, a pin, a search hit). The chat loads the surrounding window when the message is not in memory. */
 export function openMessage({ guildId, channelId, messageId }: MessageTarget): void {
   useReadNavStore.getState().requestJump(channelId, messageId);
-  router.push(guildId ? `/servers/${guildId}/${channelId}` : `/dms/${channelId}`);
+  openChat({ guildId, channelId });
 }

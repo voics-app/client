@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { openChat } from '../navigation/openChat';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -28,7 +28,7 @@ export function ChannelRow({ channel, guildId, active, canMoveMembers }: { chann
         accessibilityRole="button"
         accessibilityLabel={view.label}
         accessibilityState={{ selected: active }}
-        onPress={() => router.push(`/servers/${guildId}/${channel.id}`)}
+        onPress={() => openChat({ guildId, channelId: channel.id })}
         style={[styles.row, active && styles.rowActive, flags.muted && styles.muted]}
       >
         {unread && <View testID="channel-unread" style={styles.unreadDot} />}
