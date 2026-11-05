@@ -137,10 +137,11 @@ export function createRuntime(info: AppInfo): Runtime {
   });
   gateway.onOp((op, data) => privacy.handleGatewayOp(op, data));
   gateway.onState((state) => useSessionStore.getState().setGateway(state));
-  gateway.onFatal(() => void manager?.sessionExpired());
+  gateway.onFatal((code) => void manager?.gatewayClosed(code));
 
   const sessionRuntime: SessionRuntime = {
     api,
+    renewSession: () => http.renewSession(),
     connect: () => gateway.connect(),
     disconnect: () => gateway.disconnect(),
     setTokens: (pair) => {
