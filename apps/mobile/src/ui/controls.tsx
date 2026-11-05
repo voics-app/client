@@ -1,11 +1,14 @@
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { theme } from '../theme';
+import { CHROME_FONT_CAP, HIT, radius, space, theme, type } from '../theme';
+import { PressableScale } from './PressableScale';
 
 export type ButtonTone = 'primary' | 'plain' | 'danger';
 
 export interface ButtonProps {
   label: string;
+  /** `large` is the 48 pt full-width button of sheets and forms; the default is 44 pt. */
+  size?: 'regular' | 'large';
   onPress(): void;
   tone?: ButtonTone;
   busy?: boolean;
@@ -14,18 +17,18 @@ export interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-export function Button({ label, onPress, tone = 'plain', busy = false, disabled = false, accessibilityLabel }: ButtonProps) {
+export function Button({ label, onPress, tone = 'plain', size = 'regular', busy = false, disabled = false, accessibilityLabel }: ButtonProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, styles[tone], (disabled || busy) && styles.off, pressed && styles.down]}
+      style={({ pressed }) => [styles.button, size === 'large' && styles.large, styles[tone], (disabled || busy) && styles.off, pressed && styles.down]}
     >
-      {busy ? <ActivityIndicator color={theme.text} /> : <Text style={[styles.buttonText, tone === 'primary' && styles.primaryText, tone === 'danger' && styles.dangerText]}>{label}</Text>}
-    </Pressable>
+      {busy ? <ActivityIndicator color={tone === 'primary' ? theme.accentText : theme.text} /> : <Text maxFontSizeMultiplier={CHROME_FONT_CAP} style={[styles.buttonText, tone === 'primary' && styles.primaryText, tone === 'danger' && styles.dangerText]}>{label}</Text>}
+    </PressableScale>
   );
 }
 
@@ -53,11 +56,27 @@ export function Choices<T extends string | number>({ label, options, value, onCh
 }
 
 /** A labelled single-line or multi-line text input. */
-export function Field({ label, ...input }: { label: string } & ComponentProps<typeof TextInput>) {
+export function Field({ label, onFocus, onBlur, ...input }: { label: string } & ComponentProps<typeof TextInput>) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} placeholderTextColor={theme.subtle} autoCapitalize="none" autoCorrect={false} {...input} style={[styles.input, input.multiline && styles.multiline]} />
+      <TextInput
+        accessibilityLabel={label}
+        placeholderTextColor={theme.subtle}
+        autoCapitalize="none"
+        autoCorrect={false}
+        {...input}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
+        style={[styles.input, focused && styles.focused, input.multiline && styles.multiline]}
+      />
     </View>
   );
 }
@@ -81,24 +100,26 @@ export function Notice({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  button: { minHeight: 44, paddingHorizontal: 16, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: HIT, paddingHorizontal: space[4], borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
+  large: { minHeight: 48, borderRadius: 12 },
   primary: { backgroundColor: theme.accent },
   plain: { backgroundColor: theme.raised },
   danger: { backgroundColor: theme.raised, borderWidth: 1, borderColor: theme.danger },
   off: { opacity: 0.5 },
   down: { opacity: 0.8 },
-  buttonText: { color: theme.text, fontSize: 15, fontWeight: '600' },
+  buttonText: { color: theme.text, fontSize: type.body, fontWeight: '600' },
   primaryText: { color: theme.accentText },
   dangerText: { color: theme.danger },
   textButton: { color: theme.accent, fontSize: 15, fontWeight: '600', paddingVertical: 4 },
   field: { marginBottom: 14 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, backgroundColor: theme.raised },
+  chip: { minHeight: 36, paddingHorizontal: space[3], justifyContent: 'center', borderRadius: radius.full, backgroundColor: theme.raised },
   chipOn: { backgroundColor: theme.accentSoft, borderWidth: 1, borderColor: theme.accent },
   chipText: { color: theme.muted, fontSize: 14 },
   chipTextOn: { color: theme.text },
   label: { color: theme.muted, fontSize: 12, fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
-  input: { minHeight: 44, borderRadius: 10, paddingHorizontal: 12, color: theme.text, backgroundColor: theme.raised, fontSize: 16 },
+  input: { minHeight: HIT, borderRadius: radius.control, paddingHorizontal: space[3], color: theme.text, backgroundColor: theme.raised, fontSize: 16, borderWidth: 1, borderColor: theme.hairline },
+  focused: { borderColor: theme.accent },
   multiline: { minHeight: 80, paddingTop: 10, textAlignVertical: 'top' },
   section: { color: theme.subtle, fontSize: 11, fontWeight: '600', letterSpacing: 0.66, textTransform: 'uppercase', marginTop: 20, marginBottom: 8 },
   notice: { color: theme.muted, textAlign: 'center', padding: 32, fontSize: 15 },

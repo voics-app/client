@@ -13,7 +13,7 @@ import { Permission } from '@discordy/core/contracts/permissions';
 import { hasPermission } from '@discordy/core/domain/permissions';
 import { channelSections, channelsInSection } from '../servers/serverModel';
 import { useGuildPermissions } from '../servers/useGuildPermissions';
-import { theme } from '../theme';
+import { CHROME_FONT_CAP, theme } from '../theme';
 import { ChannelRow } from './ChannelRow';
 import { ColumnHeader } from './ColumnHeader';
 import { ServerMenu } from './ServerMenu';
@@ -57,7 +57,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
               style={styles.category}
             >
               <Ionicons name={section.id && collapsed[section.id] ? 'chevron-forward' : 'chevron-down'} size={12} color={theme.subtle} />
-              <Text style={styles.categoryText}>{section.title.toUpperCase()}</Text>
+              <Text maxFontSizeMultiplier={CHROME_FONT_CAP} style={styles.categoryText}>{section.title.toUpperCase()}</Text>
             </Pressable>
           )
         }
@@ -70,7 +70,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
 const styles = StyleSheet.create({
   list: { flex: 1 },
   content: { paddingHorizontal: 8, paddingBottom: 16 },
-  category: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 22, marginTop: 14, paddingHorizontal: 4 },
+  category: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, marginTop: 8, paddingHorizontal: 6 },
   categoryText: { color: theme.subtle, fontSize: 11, fontWeight: '600', letterSpacing: 0.66 },
   empty: { color: theme.subtle, fontSize: 13, padding: 16 },
 });

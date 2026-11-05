@@ -5,7 +5,7 @@ import { quickApiForm } from '@discordy/core/domain/quickReactions';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
 import { KeyboardChatScrollView, KeyboardGestureArea, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSharedValue } from 'react-native-reanimated';
 import { errorMessage } from '@discordy/core/application/errorMessage';
@@ -24,6 +24,8 @@ import { ChatContext, type ChatContextValue } from './chatContext';
 import { ChatHeaderActions, ChatHeaderTitle } from './ChatHeader';
 import { composerPlaceholder } from './composerPlaceholder';
 import type { OutgoingFile } from './outgoingFile';
+import { EmptyState } from '../ui/EmptyState';
+import { MessageSkeletons } from '../ui/Skeleton';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
@@ -293,7 +295,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
                 <Text style={styles.retry}>Try again</Text>
               </Pressable>
             ) : (
-              <ActivityIndicator color={theme.muted} />
+              <MessageSkeletons />
             )}
           </View>
         ) : (
@@ -316,7 +318,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             onStartReachedThreshold={0.5}
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={<ThinkingRows channelId={channelId} />}
-            ListEmptyComponent={<Text style={styles.notice}>No messages yet. Say hello.</Text>}
+            ListEmptyComponent={<EmptyState icon="chatbubbles-outline" title="No messages yet" body="Say hello." />}
             renderItem={({ item }) =>
               item.kind === 'new' ? (
                 <NewDivider />

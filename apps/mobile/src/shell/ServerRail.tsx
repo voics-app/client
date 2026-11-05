@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -14,6 +14,7 @@ import { AddServerSheet } from '../servers/AddServerSheet';
 import { RailMenu, type RailTarget } from './RailMenu';
 import { metrics, theme } from '../theme';
 import { Badge } from './Badge';
+import { PressableScale } from '../ui/PressableScale';
 import { ServerIcon } from './ServerIcon';
 import { dmMentionTotal, guildActivity, initialsOf, type Activity } from './railModel';
 
@@ -46,7 +47,7 @@ function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile,
   return (
     <View style={styles.item}>
       {active ? <View testID="rail-pill" style={styles.pill} /> : unread && <View testID="rail-pip" style={styles.pip} />}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ selected: active, ...(expanded === undefined ? {} : { expanded }) }}
@@ -55,7 +56,7 @@ function RailItem({ label, active, unread, mentions, onPress, onLongPress, tile,
         style={({ pressed }) => [styles.tile, active && styles.tileActive, pressed && styles.tilePressed]}
       >
         {tile(active)}
-      </Pressable>
+      </PressableScale>
       {mentions > 0 && (
         <View style={styles.badge}>
           <Badge value={mentions} ring />

@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { openChat } from '../navigation/openChat';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useVoiceStore, usersInChannel } from '@discordy/core/application/stores/voiceStore';
 import type { Channel } from '@discordy/core/contracts/rest';
 import { scopeKey } from '@discordy/core/domain/notificationSettings';
 import { channelRowView } from '../servers/channelRowModel';
-import { metrics, theme } from '../theme';
+import { CHROME_FONT_CAP, metrics, radius, theme, type } from '../theme';
+import { PressableScale } from '../ui/PressableScale';
 import { OccupantList } from '../voice/OccupantList';
 import { Badge } from './Badge';
 import { channelFlags } from './railModel';
@@ -24,16 +25,17 @@ export function ChannelRow({ channel, guildId, active, canMoveMembers }: { chann
   const tint = on ? theme.text : theme.subtle;
   return (
     <View>
-      <Pressable
+      <PressableScale
+        scale={false}
         accessibilityRole="button"
         accessibilityLabel={view.label}
         accessibilityState={{ selected: active }}
         onPress={() => openChat({ guildId, channelId: channel.id })}
-        style={[styles.row, active && styles.rowActive, flags.muted && styles.muted]}
+        style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && !active && styles.rowPressed, flags.muted && styles.muted]}
       >
         {unread && <View testID="channel-unread" style={styles.unreadDot} />}
         {view.glyph ? <Ionicons name={view.glyph} size={18} color={tint} /> : <Text style={[styles.hash, on && styles.nameOn]}>#</Text>}
-        <Text numberOfLines={1} style={[styles.name, on && styles.nameOn, unread && styles.nameUnread]}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={CHROME_FONT_CAP} style={[styles.name, on && styles.nameOn, unread && styles.nameUnread]}>
           {channel.name}
         </Text>
         {view.private && <Ionicons name="lock-closed" size={12} color={theme.subtle} accessibilityLabel="Private channel" />}
@@ -42,19 +44,20 @@ export function ChannelRow({ channel, guildId, active, canMoveMembers }: { chann
         {view.p2p && <Ionicons name="link" size={13} color={theme.accent} accessibilityLabel="Peer-to-peer" />}
         {view.capacity && <Text style={[styles.capacity, view.capacity.full && styles.full]}>{view.capacity.label}</Text>}
         <Badge value={flags.mentions} />
-      </Pressable>
+      </PressableScale>
       {view.voice && <OccupantList channel={channel} compact />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, height: metrics.channelRowHeight, marginVertical: 1, paddingHorizontal: 8, borderRadius: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, height: metrics.channelRowHeight, marginVertical: 1, paddingHorizontal: 10, borderRadius: radius.control },
+  rowPressed: { backgroundColor: theme.hover },
   rowActive: { backgroundColor: theme.accentSoft },
   muted: { opacity: 0.55 },
-  unreadDot: { position: 'absolute', left: -8, top: 12, width: 4, height: 8, borderTopRightRadius: 4, borderBottomRightRadius: 4, backgroundColor: theme.text },
-  hash: { color: theme.subtle, fontSize: 18, width: 18, textAlign: 'center' },
-  name: { flex: 1, color: theme.subtle, fontSize: 15 },
+  unreadDot: { position: 'absolute', left: -8, top: 18, width: 4, height: 8, borderTopRightRadius: 4, borderBottomRightRadius: 4, backgroundColor: theme.text },
+  hash: { color: theme.subtle, fontSize: 20, width: 18, textAlign: 'center' },
+  name: { flex: 1, color: theme.subtle, fontSize: type.title },
   nameOn: { color: theme.text },
   nameUnread: { fontWeight: '600' },
   nsfw: { color: theme.danger, fontSize: 10, fontWeight: '700' },
