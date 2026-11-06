@@ -24,8 +24,8 @@ const config: ExpoConfig = {
     bundleIdentifier: brand.appId,
     supportsTablet: false,
     infoPlist: {
-      // End-to-end encryption goes beyond what iOS provides, so the app declares it. See docs runbooks/app-store-privacy.md.
-      ITSAppUsesNonExemptEncryption: true,
+      // Standard algorithms outside iOS: no Apple documents outside France, where the app is not offered. True needs an Apple code. See docs runbooks/app-store-privacy.md.
+      ITSAppUsesNonExemptEncryption: false,
       NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSCameraUsageDescription: CAMERA_USAGE,
       // audio keeps a voice call running (audio in and out) when the app is in the background or the screen is locked. voip lets PushKit wake the app for
