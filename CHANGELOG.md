@@ -11,6 +11,7 @@
 - New messages in a DM or group show that conversation's avatar above the servers in the sidebar, with the number of new messages, on desktop and mobile.
 ### Fixed
 
+- The server sidebar keeps your saved order between sessions (client#294). Servers that arrive after the first load no longer take their arrival order, and a partial first load no longer drops saved places or folders; servers without a saved place sort oldest first. Desktop and mobile.
 - You stay signed in: an expired access token on the gateway now refreshes the session instead of deleting the login, and a failed refresh while offline keeps it too.
 
 - Mobile app: parity polish (client#280). The magnifier in the column header opens a quick switcher over channels, conversations, servers and screens (prefixes @ # ! *, recent and unread first). Typing / in a chat lists slash commands; a command opens a sheet for its options, and bots' buttons, select menus and forms work in messages. Tablets (iPad, `supportsTablet` on) keep the rail and channel list beside the chat. The user panel shows the presence dot on your avatar and opens a status sheet (status, custom status, Edit profile, Settings). A collapsed category keeps the open channel, mentions, unread text channels and occupied voice channels visible, as on desktop. Appearance says that a theme or accent change needs a restart. Stickers are not built (desktop has none either); polls and voice messages wait for an owner decision.

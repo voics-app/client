@@ -34,9 +34,14 @@ export function normalizeRail(rail: GuildFolder[], guildIds: string[]): GuildFol
   return out;
 }
 
-/** Layout from the legacy flat `guild_positions` list. */
-export function railFromPositions(positions: string[], guildIds: string[]): GuildFolder[] {
-  return normalizeRail(positions.map(single), guildIds);
+/** A newly chosen layout over the loaded servers, plus the saved places of servers not loaded yet, so a partial session start never erases them. */
+export function mergeSavedRail(next: GuildFolder[], previousSaved: GuildFolder[], loadedIds: string[]): GuildFolder[] {
+  const loaded = new Set(loadedIds);
+  const placed = new Set(flatten(next));
+  const pending = previousSaved
+    .map((e) => ({ ...e, guild_ids: e.guild_ids.filter((id) => !loaded.has(id) && !placed.has(id)) }))
+    .filter((e) => e.guild_ids.length > 0);
+  return [...next, ...pending];
 }
 
 function without(rail: GuildFolder[], guildId: string): GuildFolder[] {

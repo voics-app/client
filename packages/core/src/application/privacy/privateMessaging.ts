@@ -43,11 +43,13 @@ export class PrivateMessaging {
   readonly attachments: AttachmentService;
   readonly retention: PrivateRetention;
   private sweeper: ReturnType<typeof setInterval> | undefined;
+  /** The bridge exists on every desktop build; the store behind it only opens once the identity is initialised. */
+  private storeOpen = false;
 
   constructor(private readonly deps: PrivateMessagingDeps) {
     const now = deps.now ?? Date.now;
     const devices = new DeviceDirectory(deps.api, now);
-    const history = new LocalHistory(() => deps.crypto, now);
+    const history = new LocalHistory(() => (this.storeOpen ? deps.crypto : undefined), now);
     this.retention = new PrivateRetention(history, now);
     this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes });
     this.ephemeral = new EphemeralService({
@@ -79,8 +81,11 @@ export class PrivateMessaging {
   }
 
   /** Step 1 (before registering the device): opens the encrypted store and returns the identity public key (base64). */
-  initialiseIdentity(): Promise<string> {
-    return this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? `${brand().displayName} desktop`);
+  async initialiseIdentity(): Promise<string> {
+    this.storeOpen = false;
+    const identityKey = await this.ephemeral.initialiseIdentity(this.deps.deviceLabel ?? `${brand().displayName} desktop`);
+    this.storeOpen = true;
+    return identityKey;
   }
 
   /** Step 2 (after READY): publishes key packages when needed. Failures never block the rest of the app. */
