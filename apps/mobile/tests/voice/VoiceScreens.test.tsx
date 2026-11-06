@@ -8,6 +8,7 @@ import { useRelationshipStore } from '@discordy/core/application/stores/peopleSt
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
+import { useCallKitStore } from '../../src/voice/callkit/callKitStore';
 import { ChannelType, type Channel, type GuildFull, type User, type VoiceState } from '@discordy/core/contracts/rest';
 
 const mockController = { join: jest.fn(async () => undefined), leave: jest.fn(async () => undefined), toggleMute: jest.fn(), toggleDeaf: jest.fn(), toggleVideo: jest.fn(async () => undefined), switchCamera: jest.fn() };
@@ -114,6 +115,17 @@ describe('voice screens', () => {
     await fireEvent.press(screen.getByLabelText('Leave voice'));
     expect(mockController.leave).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByLabelText('Leave voice')).toBeNull());
+  });
+
+  it('closes itself when the call ends without the Leave button, for example a hang-up from the lock screen', async () => {
+    seedGuild();
+    useVoiceStore.getState().setCall({ status: 'connected', channelId: 'lounge', guildId: 'g1' });
+    await renderRouter('./app', { initialUrl: '/servers/g1' });
+    await openLounge();
+    expect(await screen.findByText('Voice connected')).toBeTruthy();
+    await act(async () => useVoiceStore.getState().resetCall());
+    await waitFor(() => expect(screen.queryByText('Voice connected')).toBeNull());
+    expect(await screen.findByLabelText('Join voice')).toBeTruthy();
   });
 
   it('has mute, deafen and an audio route switch', async () => {
@@ -302,6 +314,17 @@ describe('voice screens', () => {
       await fireEvent.press(await screen.findByLabelText('Accept call'));
       await waitFor(() => expect(mockController.join).toHaveBeenCalledWith({ guildId: null, channelId: '1000' }));
       expect(useCallStore.getState().calls['1000']?.ringing).toEqual([]);
+    });
+
+    it('stays hidden while CallKit shows the call in the system UI, and comes back when CallKit does not', async () => {
+      ring();
+      useCallKitStore.getState().setShown(['1000']);
+      await renderRouter('./app', { initialUrl: '/dms' });
+      await screen.findByLabelText('Open Pat');
+      await act(async () => undefined);
+      expect(screen.queryByText('Incoming voice call')).toBeNull();
+      await act(async () => useCallKitStore.getState().setShown([]));
+      expect(await screen.findByText('Incoming voice call')).toBeTruthy();
     });
 
     it('does not ring in Expo Go, where there is nothing to answer with', async () => {
