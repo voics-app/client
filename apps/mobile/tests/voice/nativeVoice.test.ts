@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- each case loads the module fresh, under its own mocks */
 import type * as NativeVoiceModule from '../../src/voice/nativeVoice';
-import { createNativeVoice, loadNativeVoice, MICROPHONE_DENIED, type InCallManagerModule, type NativeAudioStream, type WebRtcModule } from '../../src/voice/nativeVoice';
+import { CAMERA_DENIED, createNativeVoice, loadNativeVoice, MICROPHONE_DENIED, type InCallManagerModule, type NativeAudioStream, type WebRtcModule } from '../../src/voice/nativeVoice';
 
 function fakeModules(getUserMedia: WebRtcModule['mediaDevices']['getUserMedia']) {
   const created: { config: object }[] = [];
@@ -115,5 +115,29 @@ describe('createNativeVoice cryptor', () => {
     const cryptor = createNativeVoice(withCryptor, inCall).createCryptor();
     expect(cryptor).not.toBeNull();
     expect(cryptor?.gated).toBe(true);
+  });
+});
+
+describe('createNativeVoice camera', () => {
+  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn() };
+  const stream = { getVideoTracks: () => [track], getTracks: () => [track], toURL: () => 'url' };
+
+  it('opens a video-only camera of the facing asked for, at 720p30 ideal', async () => {
+    const getUserMedia = jest.fn(async () => stream as never);
+    const { webrtc, inCall } = fakeModules(getUserMedia);
+    const voice = createNativeVoice(webrtc, inCall);
+    expect(await voice.openCamera('front')).toBe(stream);
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: 'user' } });
+    await voice.openCamera('back');
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: expect.objectContaining({ facingMode: 'environment' }) });
+  });
+
+  it('says how to turn the camera on when access is refused or there is no track', async () => {
+    const refused = fakeModules(async () => {
+      throw new Error('NotAllowedError');
+    });
+    await expect(createNativeVoice(refused.webrtc, refused.inCall).openCamera('front')).rejects.toThrow(CAMERA_DENIED);
+    const empty = fakeModules(async () => ({ getVideoTracks: () => [], getTracks: () => [], toURL: () => '' }) as never);
+    await expect(createNativeVoice(empty.webrtc, empty.inCall).openCamera('front')).rejects.toThrow(CAMERA_DENIED);
   });
 });

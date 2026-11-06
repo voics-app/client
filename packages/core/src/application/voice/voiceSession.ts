@@ -190,6 +190,8 @@ export class VoiceSession implements VoiceSessionPort {
     this.pc?.close();
     this.pc = null;
     this.audioTransceiver = this.cameraTransceiver = this.screenTransceiver = null;
+    // The senders these tracks were on are gone. A platform puts its camera and screen back through setCameraTrack and setScreenTrack once the new connection is up, which keeps them on the protected path.
+    this.cameraTrack = this.screenTrack = null;
     this.plans = [];
     this.transceivers.clear();
     this.parsedOffer = null;

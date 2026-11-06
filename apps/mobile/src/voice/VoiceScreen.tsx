@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
-import { useEffect, useSyncExternalStore } from 'react';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
-import { joinVoice, leaveVoice, toggleDeafen, toggleMute, voiceAvailable } from './voiceActions';
+import { joinVoice, leaveVoice, switchCamera, toggleCamera, toggleDeafen, toggleMute, voiceAvailable } from './voiceActions';
+import type { CameraFacing, NativeVideoStream } from './nativeVoice';
+import { buildTiles, stageView } from './stageModel';
+import { VoiceStage } from './VoiceStage';
 import { VOICE_UNAVAILABLE } from './VoiceChannelScreen';
 import { callHeadline, type ParticipantRow } from './voiceModel';
 import { getRuntime } from '../runtime';
@@ -33,16 +36,17 @@ function Participant({ row }: { row: ParticipantRow }) {
   );
 }
 
-function ControlButton({ icon, label, onPress, on, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress(): void; on?: boolean; danger?: boolean }) {
+function ControlButton({ icon, label, onPress, on, danger, disabled }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress(): void; on?: boolean; danger?: boolean; disabled?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ selected: on }}
+      accessibilityState={{ selected: on, disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.control, on && styles.controlOn, danger && styles.controlDanger, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.control, on && styles.controlOn, danger && styles.controlDanger, disabled && styles.controlOff, pressed && styles.pressed]}
     >
-      <Ionicons name={icon} size={26} color={danger ? theme.accentText : on ? theme.background : theme.text} />
+      <Ionicons name={icon} size={24} color={danger ? theme.accentText : on ? theme.background : theme.text} />
     </Pressable>
   );
 }
@@ -55,13 +59,29 @@ function useRoute() {
   return { current, toggle: () => route?.toggle() };
 }
 
-/** The call screen of a voice channel or DM call: who is here, who is speaking, and mute, deafen, speaker and leave. It joins when it opens. */
+/** Which camera is sending, from the voice stack; the front camera is the default. */
+function useFacing(): CameraFacing {
+  const controller = getRuntime().voice?.controller;
+  const subscribe = controller?.subscribeFacing ?? (() => () => undefined);
+  return useSyncExternalStore(subscribe, () => controller?.facing ?? 'front');
+}
+
+/** The call screen of a voice channel or DM call: who is here and who is speaking, their video, and mute, camera, deafen, speaker and leave. It joins when it opens. */
 export function VoiceScreen({ channelId }: { channelId: string }) {
   const info = useCallInfo(channelId);
   const call = useVoiceStore((s) => s.call);
   const selfMute = useVoiceStore((s) => s.selfMute);
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
+  const selfVideo = useVoiceStore((s) => s.selfVideo);
+  const remote = useVoiceStore((s) => s.remoteStreams);
+  const localCamera = useVoiceStore((s) => s.localCamera);
+  const screenSsrcs = useVoiceStore((s) => s.screenSsrcs);
+  const watching = useVoiceStore((s) => s.watching);
+  const focused = useVoiceStore((s) => s.focusedStream);
+  const facing = useFacing();
   const route = useRoute();
+  const { video } = useLocalSearchParams<{ video?: string }>();
+  const videoRequested = useRef(video === '1');
   const insets = useSafeAreaInsets();
   const available = voiceAvailable();
 
@@ -70,6 +90,19 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
     // Joining once per opened channel; a later guild change of the same channel id cannot happen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, available]);
+
+  const connectedHere = call.channelId === channelId && call.status === 'connected';
+  // A video call from a conversation turns the camera on once, as soon as the call is up.
+  useEffect(() => {
+    if (!connectedHere || !videoRequested.current) return;
+    videoRequested.current = false;
+    void toggleCamera();
+  }, [connectedHere]);
+
+  const view = useMemo(
+    () => stageView(buildTiles({ rows: info.participants, remote, localCamera: localCamera as NativeVideoStream | null, screenKeys: Object.keys(screenSsrcs), watching }), focused),
+    [info.participants, remote, localCamera, screenSsrcs, watching, focused],
+  );
 
   const leave = () => {
     void leaveVoice();
@@ -93,15 +126,21 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
       <Text accessibilityRole="header" style={styles.headline}>
         {headline}
       </Text>
-      <FlatList
-        data={info.participants}
-        keyExtractor={(row) => row.userId}
-        renderItem={({ item }) => <Participant row={item} />}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Nobody is here yet.</Text>}
-      />
+      {view.mode === 'list' ? (
+        <FlatList
+          data={info.participants}
+          keyExtractor={(row) => row.userId}
+          renderItem={({ item }) => <Participant row={item} />}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<Text style={styles.empty}>Nobody is here yet.</Text>}
+        />
+      ) : (
+        <VoiceStage view={view} facing={facing} onFocus={(key) => useVoiceStore.getState().focus(key)} />
+      )}
       <View style={styles.controls}>
         <ControlButton icon={selfMute ? 'mic-off' : 'mic'} label={selfMute ? 'Unmute' : 'Mute'} on={selfMute} onPress={toggleMute} />
+        <ControlButton icon={selfVideo ? 'videocam' : 'videocam-off'} label={selfVideo ? 'Turn camera off' : 'Turn camera on'} on={selfVideo} disabled={!connectedHere} onPress={() => void toggleCamera()} />
+        {selfVideo && <ControlButton icon="camera-reverse" label={facing === 'front' ? 'Switch to back camera' : 'Switch to front camera'} onPress={switchCamera} />}
         <ControlButton icon={selfDeaf ? 'volume-mute' : 'headset'} label={selfDeaf ? 'Undeafen' : 'Deafen'} on={selfDeaf} onPress={toggleDeafen} />
         <ControlButton
           icon={route.current === 'speaker' ? 'volume-high' : 'ear-outline'}
@@ -124,9 +163,10 @@ const styles = StyleSheet.create({
   personText: { flex: 1 },
   personName: { color: theme.text, fontSize: 16, fontWeight: '600' },
   empty: { color: theme.subtle, textAlign: 'center', padding: 32 },
-  controls: { flexDirection: 'row', justifyContent: 'center', gap: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.hairline },
-  control: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.raised },
+  controls: { flexDirection: 'row', justifyContent: 'space-evenly', paddingHorizontal: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.hairline },
+  control: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.raised },
   controlOn: { backgroundColor: theme.text },
+  controlOff: { opacity: 0.4 },
   controlDanger: { backgroundColor: theme.danger },
   pressed: { opacity: 0.7 },
   notice: { color: theme.muted, fontSize: 15, textAlign: 'center', padding: 32 },

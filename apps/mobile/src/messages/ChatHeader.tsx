@@ -9,8 +9,6 @@ import { openCallScreen, voiceAvailable } from '../voice/voiceActions';
 
 export const CALLS_NOTICE = "Calls aren't in this test version yet.";
 
-export const VIDEO_NOTICE = 'Video calls come in a later test version. Voice calls work.';
-
 const showCallsNotice = () => Alert.alert('Calls', CALLS_NOTICE);
 
 /** The header title: `# name` in a server, the person's avatar and name in a direct message. With `onPress` it is a button (channel details, or the profile in a 1:1 DM). */
@@ -56,8 +54,7 @@ export function ChatHeaderActions({ onProfile, calls, trailing, onMenu }: ChatHe
   // Expo Go has no native WebRTC and keeps the notice; a development build starts the voice call.
   const call = (video: boolean) => {
     if (!voiceAvailable() || !channelId) showCallsNotice();
-    else if (video) Alert.alert('Video call', VIDEO_NOTICE);
-    else openCallScreen(channelId);
+    else openCallScreen(channelId, { video });
   };
   return (
     <View style={styles.actions}>

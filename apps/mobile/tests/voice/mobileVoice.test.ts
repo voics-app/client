@@ -6,7 +6,8 @@ import type { SessionStatus } from '@discordy/core/application/ports/voice';
 import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import { DaveSession } from '@discordy/core/application/voice/daveSession';
 import { createMobileVoice } from '../../src/voice/mobileVoice';
-import type { NativeAudioStream, NativeAudioTrack, NativeVoice } from '../../src/voice/nativeVoice';
+import { AppState } from 'react-native';
+import { CAMERA_DENIED, type NativeAudioStream, type NativeAudioTrack, type NativeVideoStream, type NativeVoice } from '../../src/voice/nativeVoice';
 
 /** Stands in for the core VoiceSession: the protocol itself is tested in core; here only how the phone wires it. */
 const mockSessions: MockSession[] = [];
@@ -42,6 +43,11 @@ class MockSession {
   }
   async setMicTrack(track: MediaTrackLike | null) {
     this.mic = track;
+  }
+  /** What the camera sender was given, in order: a track, or null for a stop. */
+  camera: { track: MediaTrackLike | null; constraints: unknown }[] = [];
+  async setCameraTrack(track: MediaTrackLike | null, constraints?: unknown) {
+    this.camera.push({ track, constraints });
   }
   setSinkWants() {}
   async collectStats() {
@@ -90,6 +96,11 @@ function audioTrack(): NativeAudioTrack & { volume: number | null } {
   return t;
 }
 
+function cameraStream() {
+  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn() };
+  return { track, getTracks: () => [track], getVideoTracks: () => [track], toURL: () => 'stream-url' };
+}
+
 const fakeCrypto = {} as CryptoBridge;
 const identityKeysOf = async () => ['key'];
 
@@ -98,6 +109,8 @@ function setup(withCrypto = true) {
   const route = { start: jest.fn(), stop: jest.fn(), setSpeaker: jest.fn() };
   const peers: unknown[] = [];
   const cryptor = { dispose: jest.fn() };
+  const camera = cameraStream();
+  const openCamera = jest.fn(async (_facing: string) => camera as unknown as NativeVideoStream);
   const native: NativeVoice = {
     createPeerConnection: (iceServers) => {
       const pc = { iceServers };
@@ -107,6 +120,7 @@ function setup(withCrypto = true) {
     createStream: (track) => ({ getTracks: () => [track], getVideoTracks: () => [] }),
     openMicrophone: async () => local,
     createCryptor: () => cryptor as never,
+    openCamera,
     route,
   };
   const gateway = { send: jest.fn() };
@@ -118,7 +132,7 @@ function setup(withCrypto = true) {
     crypto: withCrypto ? fakeCrypto : null,
     identityKeysOf,
   });
-  return { voice, gateway, local, route, peers, cryptor };
+  return { voice, gateway, local, route, peers, cryptor, camera, openCamera };
 }
 
 const serverUpdate = { token: 'tok', guild_id: 'g1', channel_id: 'v1', endpoint: 'rtc.test', region: 'eu' };
@@ -128,7 +142,7 @@ describe('mobile voice', () => {
   beforeEach(() => {
     mockSessions.length = 0;
     useVoiceStore.getState().resetCall();
-    useVoiceStore.setState({ selfMute: false, selfDeaf: false, speaking: {} });
+    useVoiceStore.setState({ selfMute: false, selfDeaf: false, speaking: {}, localCamera: null, selfVideo: false });
     useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
   });
 
@@ -258,6 +272,7 @@ describe('mobile voice', () => {
           throw new Error('Microphone access is off.');
         },
         createCryptor: () => null,
+        openCamera: async () => cameraStream(),
         route,
       },
       socketFactory: jest.fn(),
@@ -269,5 +284,156 @@ describe('mobile voice', () => {
     expect(useVoiceStore.getState().call).toMatchObject({ status: 'failed', error: 'Microphone access is off.' });
     expect(route.stop).toHaveBeenCalled();
     refused.dispose();
+  });
+});
+
+describe('mobile video', () => {
+  beforeEach(() => {
+    mockSessions.length = 0;
+    useVoiceStore.getState().resetCall();
+    useVoiceStore.setState({ selfMute: false, selfDeaf: false, speaking: {} });
+    useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
+  });
+
+  async function inCall(withCrypto = true) {
+    const stack = setup(withCrypto);
+    await stack.voice.controller.join({ guildId: 'g1', channelId: 'v1' });
+    stack.voice.controller.onVoiceServerUpdate(serverUpdate);
+    mockSessions[0]!.emitStatus('connected');
+    return stack;
+  }
+
+  it('uses VP8 and a cryptor for the video of an encrypted call', async () => {
+    const { voice } = await inCall();
+    expect(mockSessions[0]!.options.preferredVideoCodec).toBe('VP8');
+    expect(mockSessions[0]!.options.cryptor).toBeDefined();
+    voice.dispose();
+  });
+
+  it('turns the camera on: front camera, handed to the session at 720p30 (where it is protected before it sends), shown to everyone', async () => {
+    const { voice, gateway, camera, openCamera } = await inCall();
+    await voice.controller.setVideo(true);
+    expect(openCamera).toHaveBeenCalledWith('front');
+    expect(mockSessions[0]!.camera).toEqual([{ track: camera.track, constraints: expect.objectContaining({ width: 1280, height: 720, frameRate: 30 }) }]);
+    expect(useVoiceStore.getState()).toMatchObject({ selfVideo: true, localCamera: camera });
+    expect(lastState(gateway)).toMatchObject({ self_video: true });
+    voice.dispose();
+  });
+
+  it('never gives the camera to the peer connection by any other path than the session', async () => {
+    const { voice, peers } = await inCall();
+    await voice.controller.setVideo(true);
+    expect(peers).toEqual([]);
+    voice.dispose();
+  });
+
+  it('opens the camera once for a double tap', async () => {
+    const { voice, openCamera } = await inCall();
+    await Promise.all([voice.controller.setVideo(true), voice.controller.setVideo(true)]);
+    expect(openCamera).toHaveBeenCalledTimes(1);
+    expect(mockSessions[0]!.camera).toHaveLength(1);
+    voice.dispose();
+  });
+
+  it('says so and sends nothing when camera access is off, and works again afterwards', async () => {
+    const { voice, openCamera, gateway } = await inCall();
+    openCamera.mockRejectedValueOnce(new Error(CAMERA_DENIED));
+    await expect(voice.controller.setVideo(true)).rejects.toThrow(CAMERA_DENIED);
+    expect(mockSessions[0]!.camera).toEqual([]);
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    expect(lastState(gateway)).toMatchObject({ self_video: false });
+    await voice.controller.setVideo(true);
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
+    voice.dispose();
+  });
+
+  it('stops the capture when the session refuses the track', async () => {
+    const { voice, camera } = await inCall();
+    mockSessions[0]!.setCameraTrack = async () => {
+      throw new Error('could not protect');
+    };
+    await expect(voice.controller.setVideo(true)).rejects.toThrow('could not protect');
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    voice.dispose();
+  });
+
+  it('switches between the front and the back camera on the same track, without touching the sender', async () => {
+    const { voice, camera } = await inCall();
+    expect(voice.controller.facing).toBe('front');
+    voice.controller.switchCamera();
+    expect(camera.track._switchCamera).not.toHaveBeenCalled();
+    await voice.controller.setVideo(true);
+    const changes = jest.fn();
+    voice.controller.subscribeFacing(changes);
+    voice.controller.switchCamera();
+    expect(camera.track._switchCamera).toHaveBeenCalledTimes(1);
+    expect(voice.controller.facing).toBe('back');
+    expect(changes).toHaveBeenCalledTimes(1);
+    voice.controller.switchCamera();
+    expect(voice.controller.facing).toBe('front');
+    expect(mockSessions[0]!.camera).toHaveLength(1);
+    voice.dispose();
+  });
+
+  it('turns the camera off: the sender lets go first, then the capture stops, and everyone is told', async () => {
+    const { voice, camera, gateway } = await inCall();
+    await voice.controller.setVideo(true);
+    await voice.controller.setVideo(false);
+    expect(mockSessions[0]!.camera.at(-1)).toEqual({ track: null, constraints: undefined });
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(useVoiceStore.getState()).toMatchObject({ selfVideo: false, localCamera: null });
+    expect(lastState(gateway)).toMatchObject({ self_video: false });
+    voice.dispose();
+  });
+
+  it('turns the camera off when you leave', async () => {
+    const { voice, camera } = await inCall();
+    await voice.controller.setVideo(true);
+    await voice.controller.leave();
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(mockSessions[0]!.camera.at(-1)?.track).toBeNull();
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    voice.dispose();
+  });
+
+  it('stops the capture when the call fails, so the camera light goes out', async () => {
+    const { voice, camera } = await inCall();
+    await voice.controller.setVideo(true);
+    useVoiceStore.getState().resetCall();
+    useVoiceStore.getState().setCall({ status: 'failed', error: 'gone' });
+    expect(camera.track.stop).toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('puts the camera back on a new connection through the session, as a new camera sender', async () => {
+    const { voice, camera } = await inCall();
+    await voice.controller.setVideo(true);
+    expect(mockSessions[0]!.camera).toHaveLength(1);
+    mockSessions[0]!.emitStatus('reconnecting');
+    mockSessions[0]!.emitStatus('connected');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockSessions[0]!.camera).toHaveLength(2);
+    expect(mockSessions[0]!.camera[1]!.track).toBe(camera.track);
+    voice.dispose();
+  });
+
+  it('turns the camera off when the app goes to the background, but not for a permission prompt (inactive)', async () => {
+    let handler: ((state: string) => void) | undefined;
+    const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(((_event: string, listener: (state: string) => void) => {
+      handler = listener;
+      return { remove: jest.fn() };
+    }) as never);
+    const { voice, camera } = await inCall();
+    await voice.controller.setVideo(true);
+    handler?.('inactive');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
+    handler?.('background');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    expect(camera.track.stop).toHaveBeenCalled();
+    voice.dispose();
+    spy.mockRestore();
   });
 });
