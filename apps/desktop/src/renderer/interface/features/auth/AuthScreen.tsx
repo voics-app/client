@@ -1,6 +1,7 @@
 import { ArrowRight, GlobeHemisphereWest, LockKey, Plugs, ShieldCheck } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useAuthLinkStore } from '@discordy/core/application/stores/authLinkStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { authErrorDisplay } from '@discordy/core/domain/authErrors';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
@@ -56,6 +57,29 @@ export function AuthScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showConnection, setShowConnection] = useState(false);
   const fatal = useSessionStore((s) => s.fatalError);
+  const waiting = useAuthLinkStore((s) => s.link);
+
+  // A reset-password or verify-email link from an email: open the form with the token filled in, or verify it now.
+  useEffect(() => {
+    if (!waiting) return;
+    const link = useAuthLinkStore.getState().take();
+    if (!link) return;
+    setError(null);
+    if (link.kind === 'reset-password') {
+      setResetToken(link.token);
+      setNotice('Choose a new password.');
+      setMode('reset');
+      return;
+    }
+    setNotice('Verifying your email address...');
+    getRuntime()
+      .api.verifyEmail(link.token)
+      .then(() => setNotice('Email verified. Sign in to continue.'))
+      .catch((err: unknown) => {
+        setNotice(null);
+        setError(errorMessage(err));
+      });
+  }, [waiting]);
 
   const canSubmit = ticket
     ? Boolean(code.trim())

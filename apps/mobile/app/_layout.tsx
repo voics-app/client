@@ -48,6 +48,9 @@ export default function RootLayout() {
       ) : (
         <Shell wide={wide && signedIn}>
           <Stack screenOptions={stackScreenOptions}>
+            {/* Reachable from an email link whether or not someone is signed in. */}
+            <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+            <Stack.Screen name="verify-email" options={{ headerShown: false }} />
             <Stack.Protected guard={!signedIn}>
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             </Stack.Protected>
