@@ -573,6 +573,18 @@ export interface Device {
   identity_key_b64: string;
 }
 
+/** `POST /users/@me/devices/push`: the push token of the calling session. */
+export interface PushTokenBody {
+  platform: 'apns' | 'fcm';
+  token: string;
+  /** The APNs host the token was issued for; development builds use the sandbox. */
+  environment: 'production' | 'sandbox';
+  /** Whether pushes of standard messages may show a text preview. */
+  previews: boolean;
+  /** The device-only "only mentions" preference: this token gets pushes for mentions and direct messages only. */
+  only_mentions: boolean;
+}
+
 /** A login session of the current user (`GET /users/@me/sessions`). */
 export interface AuthSession {
   id: string;

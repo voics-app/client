@@ -71,7 +71,7 @@ describe('loadNativeVoice', () => {
     const load = jest.fn(() => {
       throw new Error('native module touched');
     });
-    jest.doMock('react-native-webrtc', load);
+    jest.doMock('@livekit/react-native-webrtc', load);
     jest.doMock('react-native-incall-manager', load);
     const { loadNativeVoice: loadInGo } = require('../../src/voice/nativeVoice') as typeof NativeVoiceModule;
     expect(loadInGo()).toBeNull();
@@ -81,7 +81,7 @@ describe('loadNativeVoice', () => {
   it('builds the voice stack in a development build', () => {
     jest.resetModules();
     jest.doMock('expo-constants', () => ({ __esModule: true, default: { executionEnvironment: 'bare' }, ExecutionEnvironment: { StoreClient: 'storeClient' } }));
-    jest.doMock('react-native-webrtc', () => ({ RTCPeerConnection: class {}, MediaStream: class {}, mediaDevices: { getUserMedia: jest.fn() } }));
+    jest.doMock('@livekit/react-native-webrtc', () => ({ RTCPeerConnection: class {}, MediaStream: class {}, mediaDevices: { getUserMedia: jest.fn() } }));
     jest.doMock('react-native-incall-manager', () => ({ __esModule: true, default: { start: jest.fn(), stop: jest.fn(), setForceSpeakerphoneOn: jest.fn() } }));
     const { loadNativeVoice: loadInBuild } = require('../../src/voice/nativeVoice') as typeof NativeVoiceModule;
     expect(loadInBuild()).not.toBeNull();
@@ -90,7 +90,7 @@ describe('loadNativeVoice', () => {
   it('returns null rather than crashing when a native module is missing from the build', () => {
     jest.resetModules();
     jest.doMock('expo-constants', () => ({ __esModule: true, default: { executionEnvironment: 'bare' }, ExecutionEnvironment: { StoreClient: 'storeClient' } }));
-    jest.doMock('react-native-webrtc', () => {
+    jest.doMock('@livekit/react-native-webrtc', () => {
       throw new Error('Native module WebRTCModule not found');
     });
     const { loadNativeVoice: loadBroken } = require('../../src/voice/nativeVoice') as typeof NativeVoiceModule;
@@ -99,5 +99,21 @@ describe('loadNativeVoice', () => {
 
   it('is exported for the runtime', () => {
     expect(typeof loadNativeVoice).toBe('function');
+  });
+});
+
+describe('createNativeVoice cryptor', () => {
+  it('builds a frame cryptor when the module has the frame cryptor classes, and none otherwise', () => {
+    const { webrtc, inCall } = fakeModules(async () => ({}) as NativeAudioStream);
+    expect(createNativeVoice(webrtc, inCall).createCryptor()).toBeNull();
+    const withCryptor: WebRtcModule = {
+      ...webrtc,
+      RTCFrameCryptorFactory: {} as never,
+      RTCFrameCryptorAlgorithm: { kAesGcm: 0 },
+      RTCKeyDerivationAlgorithm: { HKDF: 1 },
+    };
+    const cryptor = createNativeVoice(withCryptor, inCall).createCryptor();
+    expect(cryptor).not.toBeNull();
+    expect(cryptor?.gated).toBe(true);
   });
 });

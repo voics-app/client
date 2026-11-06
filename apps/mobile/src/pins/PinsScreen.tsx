@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -14,6 +14,7 @@ import { getRuntime } from '../runtime';
 import { theme } from '../theme';
 import { attempt, confirmDestructive } from '../ui/attempt';
 import { Notice } from '../ui/controls';
+import { RowSkeletons } from '../ui/Skeleton';
 import { mayUnpin } from './pinsModel';
 
 /** Desktop's Pins panel: the channel's pinned messages with Jump (back to the chat, scrolled to the message) and Unpin for those who may. */
@@ -66,9 +67,7 @@ export function PinsScreen({ channelId }: { channelId: string }) {
             <Text style={styles.retryText}>{`${error} Try again`}</Text>
           </Pressable>
         ) : pins === null ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={theme.muted} />
-          </View>
+          <RowSkeletons avatar={false} />
         ) : (
           <FlatList
             data={pins}

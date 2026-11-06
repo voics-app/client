@@ -6,6 +6,7 @@ import { nativeSocketFactory } from '../adapters/socket';
 import { uploadWithProgress } from '../adapters/xhrUpload';
 import { BRAND } from '../brand';
 import { loadNativePrivacy } from '../privacy/nativePrivacy';
+import { loadNativePush } from '../notifications/push/nativePush';
 import { createMobileVoice } from '../voice/mobileVoice';
 import { loadNativeVoice } from '../voice/nativeVoice';
 import { createRuntime, type MobileRuntime } from './createRuntime';
@@ -30,10 +31,11 @@ export function getRuntime(): MobileRuntime {
     socketFactory: nativeSocketFactory,
     progressUpload: uploadWithProgress,
     cdnUrl: BRAND.cdnUrl,
+    ...(loadNativePush() ? { removePushToken: () => getRuntime().api.removePushToken() } : {}),
     createPrivacy: loadNativePrivacy,
-    createVoice: ({ gateway, iceServers }) => {
+    createVoice: ({ gateway, iceServers, crypto, identityKeysOf }) => {
       const native = loadNativeVoice();
-      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers }) : null;
+      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers, crypto, identityKeysOf }) : null;
     },
   });
   return current;

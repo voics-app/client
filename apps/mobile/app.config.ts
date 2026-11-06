@@ -4,6 +4,11 @@ import brand from '../desktop/brand.json';
 const MICROPHONE_USAGE = `Voics uses the microphone so other people can hear you in voice channels and calls.`;
 const CAMERA_USAGE = `Voics uses the camera to send your video in calls.`;
 
+// Which APNs host this build's device tokens belong to. A development build (EAS profile `development`, or a local `expo run:ios`) is signed for the
+// sandbox; preview and store builds use production. The app reports it with its token, and the notifier tries the other host once if a token is
+// refused (an ad-hoc build can carry either kind), so a wrong guess here costs a retry, not a lost push.
+const pushEnvironment: 'sandbox' | 'production' = ['preview', 'production'].includes(process.env.EAS_BUILD_PROFILE ?? '') ? 'production' : 'sandbox';
+
 // Name, URL scheme and bundle id come from brand.json, like desktop.
 const config: ExpoConfig = {
   name: brand.displayName,
@@ -37,13 +42,15 @@ const config: ExpoConfig = {
     'expo-sqlite',
     ['expo-image-picker', { photosPermission: `${brand.displayName} reads a photo or video only when you choose one, for example to attach it to a message or as a server icon.`, cameraPermission: `${brand.displayName} uses the camera only when you take a photo or video to send.` }],
     'expo-video',
+    // Adds the aps-environment entitlement for remote push. Expo Go ignores plugins.
+    ['expo-notifications', { mode: pushEnvironment === 'sandbox' ? 'development' : 'production' }],
     'expo-audio',
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
   ],
   experiments: { typedRoutes: true },
-  extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
+  extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
 };
 
 export default config;

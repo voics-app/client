@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Calls with end-to-end encryption work on the iPhone (client#297). Desktop and phone now share one media frame format (DAVE protocol version 2, the LiveKit cryptor layout) and the old format is gone: the voice server announces version 2 only, and an app that sees another version leaves the call with a clear message. This release must ship together with the voice server change and the new mobile build, because desktops on the old format and the new frames cannot decrypt each other. Mobile: the WebRTC package is now `@livekit/react-native-webrtc` 150.1.0, the DAVE session runs on the Rust engine, the native frame cryptor is attached and confirmed before any media can flow, remote tracks stay muted until protected, and the Privacy page has the Encrypt all my calls switch. H.264 video is refused in encrypted calls. Internal: `DaveSession` moved into core, with `EpochKeyBook` and `domain/frameFormat.ts` (the new layout; the frame key label is now `voics-voice-frame-key`).
+- New messages in a DM or group show that conversation's avatar above the servers in the sidebar, with the number of new messages, on desktop and mobile.
 ### Fixed
 
 - You stay signed in: an expired access token on the gateway now refreshes the session instead of deleting the login, and a failed refresh while offline keeps it too.

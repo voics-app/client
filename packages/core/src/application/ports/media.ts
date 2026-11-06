@@ -10,6 +10,8 @@ export type MediaKind = 'audio' | 'video';
 export interface MediaTrackLike {
   readonly kind: string;
   contentHint?: string;
+  /** react-native-webrtc plays remote tracks on its own; the session mutes one until it is protected. */
+  enabled?: boolean;
   stop(): void;
 }
 
@@ -21,6 +23,7 @@ export interface MediaStreamLike {
 export interface RtpEncodingLike {
   maxBitrate?: number;
   maxFramerate?: number;
+  active?: boolean;
 }
 
 export interface RtpParametersLike {

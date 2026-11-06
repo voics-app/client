@@ -248,13 +248,15 @@ describe('VoiceSession protocol', () => {
 });
 
 describe('VoiceSession end-to-end encryption honesty', () => {
-  const cryptor = (supported: boolean) => ({
+  const dave = () => ({ start: vi.fn(async () => undefined), stop: vi.fn(), handleOp: vi.fn(async () => undefined), participantLeft: vi.fn(async () => undefined) }) as never;
+
+  const cryptor = (supported: boolean, gated = false) => ({
     supported,
-    attachSender: vi.fn(),
-    attachReceiver: vi.fn(),
-    setEpoch: vi.fn(),
-    activate: vi.fn(),
-    setPassthrough: vi.fn(),
+    gated,
+    attachSender: vi.fn(async (_sender: unknown, _kind: string, _codec: string, _userId: string): Promise<void> => undefined),
+    attachReceiver: vi.fn(async (): Promise<void> => undefined),
+    setEpoch: vi.fn(async () => undefined),
+    activate: vi.fn(async () => undefined),
     bypass: vi.fn(),
     clear: vi.fn(),
     dispose: vi.fn(),
@@ -265,7 +267,7 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     const closed: { fatal: boolean; reason: string }[] = [];
     session.onClosed((c) => closed.push(c));
     const socket = await connectToReady(session);
-    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 1 } }) });
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
     await vi.advanceTimersByTimeAsync(5);
     expect(closed[0]?.fatal).toBe(true);
     expect(FakePeerConnection.latest().remoteDescriptions).toHaveLength(0);
@@ -276,14 +278,53 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     const closed: unknown[] = [];
     session.onClosed((c) => closed.push(c));
     const socket = await connectToReady(session);
-    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 1 } }) });
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
     await vi.advanceTimersByTimeAsync(5);
     expect(closed).toHaveLength(1);
   });
 
+  it.each([1, 3])('refuses a call that announces end-to-end encryption version %i, with a clear reason and no media', async (version) => {
+    const c = cryptor(true);
+    const session = makeSession({ cryptor: c, createDave: dave });
+    const closed: { fatal: boolean; reason: string }[] = [];
+    session.onClosed((info) => closed.push(info));
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: version } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(closed).toHaveLength(1);
+    expect(closed[0]?.reason).toContain(`version ${version}`);
+    expect(closed[0]?.reason).toContain('only supports version 2');
+    expect(FakePeerConnection.latest().remoteDescriptions).toHaveLength(0);
+    expect(c.attachSender).not.toHaveBeenCalled();
+  });
+
+  it('refuses an E2EE call that negotiated H264 video instead of sending it without the clear header rules', async () => {
+    const session = makeSession({ cryptor: cryptor(true) });
+    const closed: { reason: string }[] = [];
+    session.onClosed((info) => closed.push(info));
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ video_codec: 'H264', e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(closed[0]?.reason).toContain('H264');
+    expect(FakePeerConnection.latest().remoteDescriptions).toHaveLength(0);
+  });
+
+  it('leaves the call and applies no answer when a sender cannot be protected', async () => {
+    const c = cryptor(true);
+    c.attachSender.mockRejectedValue(new Error('frame cryptor creation failed'));
+    const session = makeSession({ cryptor: c, createDave: dave });
+    const closed: { reason: string }[] = [];
+    session.onClosed((info) => closed.push(info));
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(closed[0]?.reason).toContain('frame cryptor creation failed');
+    expect(FakePeerConnection.latest().remoteDescriptions).toHaveLength(0);
+  });
+
   it('pipes clear media through every sender when the call is not E2EE', async () => {
     const c = cryptor(true);
-    const session = makeSession({ cryptor: c });
+    const session = makeSession({ cryptor: c, createDave: dave });
     const socket = await connectToReady(session);
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
     await vi.advanceTimersByTimeAsync(5);
@@ -305,10 +346,10 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     const flags: boolean[] = [];
     session.onE2ee((a) => flags.push(a));
     const socket = await connectToReady(session);
-    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 1 } }) });
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
     await vi.advanceTimersByTimeAsync(5);
     expect(c.attachSender).toHaveBeenCalledTimes(3);
-    expect(dave.start).toHaveBeenCalledWith(1);
+    expect(dave.start).toHaveBeenCalledWith(2);
     expect(flags).toEqual([]);
     socket.receive({ op: VoiceOp.DAVE_EXECUTE_TRANSITION, d: { transition_id: 1 } });
     await vi.advanceTimersByTimeAsync(5);
@@ -327,5 +368,111 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
     await vi.advanceTimersByTimeAsync(5);
     expect(flags).toEqual([]);
+  });
+
+  describe('with a gated cryptor (react-native-webrtc: clear frames until the cryptor is enabled)', () => {
+    const micTrack = { kind: 'audio' } as unknown as MediaTrackLike;
+
+    function trace(log: string[], pc: FakePeerConnection, c: ReturnType<typeof cryptor>) {
+      const real = pc.setRemoteDescription.bind(pc);
+      pc.setRemoteDescription = (d) => {
+        log.push('answer applied');
+        return real(d);
+      };
+      for (const t of pc.transceivers) {
+        const name = t.mid === '0' ? 'audio' : t.mid === '1' ? 'camera' : 'screen';
+        const replace = t.sender.replaceTrack.bind(t.sender);
+        t.sender.replaceTrack = (track) => {
+          log.push(`${name}: track set`);
+          return replace(track);
+        };
+        const set = t.sender.setParameters.bind(t.sender);
+        t.sender.setParameters = (params) => {
+          log.push(`${name}: active=${String(params.encodings[0]?.active)}`);
+          return set(params);
+        };
+      }
+      c.attachSender.mockImplementation(async (_sender, kind) => {
+        log.push(`${kind}: cryptor enabled`);
+      });
+    }
+
+    it('enables the sender cryptor of the microphone before the answer, so no frame can leave in clear', async () => {
+      const c = cryptor(true, true);
+      const session = makeSession({ cryptor: c, createDave: dave });
+      await session.setMicTrack(micTrack);
+      const log: string[] = [];
+      const socket = await connectToReady(session);
+      trace(log, FakePeerConnection.latest(), c);
+      socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(log).toEqual(['audio: cryptor enabled', 'answer applied']);
+      expect(c.attachSender).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not attach to senders without a track, and protects one before its first track can be sent', async () => {
+      const c = cryptor(true, true);
+      const session = makeSession({ cryptor: c, createDave: dave });
+      const socket = await connectToReady(session);
+      const log: string[] = [];
+      trace(log, FakePeerConnection.latest(), c);
+      socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(c.attachSender).not.toHaveBeenCalled();
+      log.length = 0;
+
+      await session.setMicTrack(micTrack);
+      expect(log).toEqual(['audio: active=false', 'audio: track set', 'audio: cryptor enabled', 'audio: active=true']);
+      log.length = 0;
+      await session.setMicTrack({ kind: 'audio' } as unknown as MediaTrackLike);
+      expect(log).toEqual(['audio: track set']);
+    });
+
+    it('leaves the call and keeps the sender paused when the cryptor cannot be enabled for a late track', async () => {
+      const c = cryptor(true, true);
+      const session = makeSession({ cryptor: c, createDave: dave });
+      const closed: { reason: string }[] = [];
+      session.onClosed((info) => closed.push(info));
+      const socket = await connectToReady(session);
+      socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      c.attachSender.mockRejectedValue(new Error('enable failed'));
+      await session.setMicTrack(micTrack);
+      const sender = FakePeerConnection.latest().transceivers[0]!.sender;
+      expect(sender.params.encodings[0]).toMatchObject({ active: false });
+      expect(closed[0]?.reason).toContain('enable failed');
+    });
+
+    it('mutes a remote track until its receiver is confirmed protected, and never plays it if protecting fails', async () => {
+      const c = cryptor(true, true);
+      let release: () => void = () => undefined;
+      c.attachReceiver.mockImplementation(() => new Promise<void>((resolve) => (release = resolve)));
+      const session = makeSession({ cryptor: c, createDave: dave });
+      const audio: unknown[] = [];
+      session.onRemoteAudio((_user, stream) => audio.push(stream));
+      const socket = await connectToReady(session);
+      socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      const pc = FakePeerConnection.latest();
+      socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 1234, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+      await vi.advanceTimersByTimeAsync(10);
+      const track = { kind: 'audio', enabled: true };
+      const transceiver = pc.transceivers.find((t) => t.mid === '3')!;
+      pc.ontrack?.({ transceiver, receiver: transceiver.receiver, track, streams: [{ id: 's' }] });
+      expect(track.enabled).toBe(false);
+      expect(audio).toEqual([]);
+      release();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(audio).toEqual([{ id: 's' }]);
+
+      c.attachReceiver.mockRejectedValue(new Error('no receiver cryptor'));
+      const closed: { reason: string }[] = [];
+      session.onClosed((info) => closed.push(info));
+      const other = { kind: 'audio', enabled: true };
+      pc.ontrack?.({ transceiver, receiver: transceiver.receiver, track: other, streams: [{ id: 's2' }] });
+      await vi.advanceTimersByTimeAsync(1);
+      expect(audio).not.toContainEqual({ id: 's2' });
+      expect(closed[0]?.reason).toContain('no receiver cryptor');
+    });
   });
 });

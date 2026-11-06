@@ -1,5 +1,5 @@
 /**
- * Peer connections for the P2P service, from react-native-webrtc. The library's RTCPeerConnection and
+ * Peer connections for the P2P service, from @livekit/react-native-webrtc. The library's RTCPeerConnection and
  * RTCDataChannel already have the shape of `PeerConnectionLike` and `DataChannelLike` (event attributes,
  * `candidate: null` when gathering ends, ArrayBuffer binary messages), so this is a typed seam, not a wrapper:
  * the cast is the one place that states that equivalence.

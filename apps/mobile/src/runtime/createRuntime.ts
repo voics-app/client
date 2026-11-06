@@ -10,6 +10,7 @@ import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair 
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 import { errorMessage } from '@discordy/core/application/errorMessage';
+import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClient';
@@ -34,13 +35,21 @@ export interface RuntimeConfig {
   /** Uploads attachments with progress; without it they use a plain PUT and report no progress. */
   progressUpload?: ProgressUpload;
   /** Builds the voice stack; returns null where native WebRTC is not available (Expo Go). */
-  createVoice?: (deps: { gateway: GatewayClient; iceServers: () => IceServer[] }) => MobileVoice | null;
+  createVoice?: (deps: {
+    gateway: GatewayClient;
+    iceServers: () => IceServer[];
+    /** The MLS engine of end-to-end encrypted calls; null where the crypto module does not exist. */
+    crypto: CryptoBridge | null;
+    identityKeysOf(userId: string): Promise<string[]>;
+  }) => MobileVoice | null;
   /** The native crypto and peer connections for Ephemeral and P2P; null where they do not exist (Expo Go). */
   createPrivacy?: () => NativePrivacy | null;
   /** Downloads an encrypted attachment from the CDN; defaults to a plain credential-free fetch. */
   fetchBytes?: (url: string) => Promise<Uint8Array>;
   /** Public CDN origin, for private attachment links. */
   cdnUrl?: string;
+  /** Removes this session's push token; runs before the logout request, while the session still works. Absent where push does not exist. */
+  removePushToken?: () => Promise<void>;
 }
 
 export interface MobileRuntime {
@@ -95,8 +104,14 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
   });
 
   const turn = new TurnCredentials(() => gateway.renewSession());
-  const voice = config.createVoice?.({ gateway, iceServers: () => turn.iceServers() }) ?? null;
   const nativePrivacy = config.createPrivacy?.() ?? null;
+  const voice =
+    config.createVoice?.({
+      gateway,
+      iceServers: () => turn.iceServers(),
+      crypto: nativePrivacy?.crypto ?? null,
+      identityKeysOf: async (userId) => (await api.listUserDevices(userId)).map((device) => device.identity_key_b64),
+    }) ?? null;
   let identityUserId = '';
   const privacy = nativePrivacy
     ? new PrivateMessaging({
@@ -115,7 +130,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
         onIncoming: (message) => registerIncoming(message, offerBanner),
       })
     : null;
-  // Push notifications arrive with the native build; until then new messages raise the in-app banner.
+  // New messages in the open app raise the in-app banner; pushes for a closed app come from the notifier (notifications/push).
   // Theme, accent, text size, reduced motion and the other synced preferences follow the account, as on desktop.
   const prefsSync = new PrefsSync({
     updateSettings: (patch) => api.updateSettings(patch),
@@ -159,6 +174,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     vault: config.vault,
     runtime: sessionRuntime,
     deviceName: config.deviceName,
+    ...(config.removePushToken ? { beforeLogout: config.removePushToken } : {}),
     onChange: (signedIn) => {
       if (!signedIn) {
         // Nothing of this account stays on the phone: the saved messages go with the session.

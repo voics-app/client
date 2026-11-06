@@ -50,3 +50,18 @@ describe('DiscordyApi server templates', () => {
     expect(request).toHaveBeenLastCalledWith('DELETE', '/guilds/7/templates/abc', expect.anything());
   });
 });
+
+describe('DiscordyApi push token', () => {
+  it('registers the token of the session with POST /users/@me/devices/push', async () => {
+    const { http, request } = fakeHttp();
+    const body = { platform: 'apns', token: 'ab12', environment: 'sandbox', previews: false, only_mentions: true } as const;
+    await new DiscordyApi(http).registerPushToken(body);
+    expect(request).toHaveBeenCalledWith('POST', '/users/@me/devices/push', { body, reason: undefined });
+  });
+
+  it('removes it with DELETE /users/@me/devices/push', async () => {
+    const { http, request } = fakeHttp();
+    await new DiscordyApi(http).removePushToken();
+    expect(request).toHaveBeenCalledWith('DELETE', '/users/@me/devices/push', { reason: undefined });
+  });
+});

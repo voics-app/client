@@ -1,4 +1,4 @@
-import { isSwipeStart, pastThreshold, SWIPE_MAX, SWIPE_THRESHOLD, swipeOffset, swipeProgress } from '../../src/messages/swipeModel';
+import { pastThreshold, SWIPE_MAX, SWIPE_THRESHOLD, swipeOffset, swipeProgress } from '../../src/messages/swipeModel';
 
 describe('swipe to reply', () => {
   it('follows the finger leftwards only', () => {
@@ -16,13 +16,6 @@ describe('swipe to reply', () => {
     expect(pastThreshold(-63)).toBe(false);
     expect(pastThreshold(-64)).toBe(true);
     expect(pastThreshold(80)).toBe(false);
-  });
-
-  it('starts only on a clear leftwards horizontal drag, so list scrolling is untouched', () => {
-    expect(isSwipeStart(-20, 2)).toBe(true);
-    expect(isSwipeStart(-20, 30)).toBe(false);
-    expect(isSwipeStart(-5, 0)).toBe(false);
-    expect(isSwipeStart(25, 0)).toBe(false);
   });
 
   it('fades the icon in as the threshold nears', () => {

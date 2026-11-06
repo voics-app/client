@@ -104,7 +104,7 @@ describe('app shell', () => {
     expect(selected('Direct messages')).toBe(false);
     expect(screen.getAllByTestId('rail-pill')).toHaveLength(1);
     await fireEvent.press(screen.getByLabelText('Direct messages'));
-    expect(await screen.findByText('No conversations yet.')).toBeTruthy();
+    expect(await screen.findByText('No conversations yet')).toBeTruthy();
     expect(screen.queryByText('general')).toBeNull();
   });
 

@@ -99,7 +99,7 @@ describe('loadNativePrivacy', () => {
     });
     const result = load('storeClient', () => {
       jest.doMock('expo', touched);
-      jest.doMock('react-native-webrtc', touched);
+      jest.doMock('@livekit/react-native-webrtc', touched);
     });
     expect(result).toBeNull();
     expect(touched).not.toHaveBeenCalled();
@@ -108,7 +108,7 @@ describe('loadNativePrivacy', () => {
   it('builds the stack in a development build when the crypto module is linked', () => {
     const result = load('bare', () => {
       jest.doMock('expo', () => ({ requireOptionalNativeModule: () => fakeNative() }));
-      jest.doMock('react-native-webrtc', () => ({ RTCPeerConnection: class {} }));
+      jest.doMock('@livekit/react-native-webrtc', () => ({ RTCPeerConnection: class {} }));
     });
     expect(result).not.toBeNull();
   });
@@ -124,7 +124,7 @@ describe('loadNativePrivacy', () => {
   it('still offers encrypted chats when only the calling module is missing', () => {
     const result = load('bare', () => {
       jest.doMock('expo', () => ({ requireOptionalNativeModule: () => fakeNative() }));
-      jest.doMock('react-native-webrtc', () => {
+      jest.doMock('@livekit/react-native-webrtc', () => {
         throw new Error('Native module WebRTCModule not found');
       });
     });

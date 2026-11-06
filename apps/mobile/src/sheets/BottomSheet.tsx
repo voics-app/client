@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Animated, Dimensions, Easing, Keyboard, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Dimensions, Keyboard, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming, Extrapolation } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { BACKDROP_OPACITY, CLOSE_MS, OPEN_MS, shouldDismiss } from './sheetMotion';
@@ -20,79 +24,76 @@ export interface BottomSheetProps {
 const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 
 /**
- * One bottom sheet for the whole app. The dim backdrop fades in on its own while only the sheet slides up, so an open keyboard never shows
- * a black layer riding along. A text field in the sheet lifts it above the keyboard. Tap outside or drag the handle down to dismiss; the keyboard closes first.
+ * One bottom sheet for the whole app. The dim backdrop fades on its own while only the sheet slides, so an open keyboard never shows a black
+ * layer riding along. Dragging the handle (or the header area) follows the finger on the UI thread and a flick or a long drag dismisses it;
+ * a text field in the sheet lifts it with the keyboard frame by frame. Tap outside to dismiss; the keyboard closes first.
  */
 export function BottomSheet({ visible, onClose, label, closeLabel, children, tall }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const screen = Dimensions.get('window').height;
   const [mounted, setMounted] = useState(visible);
-  const [sheetHeight, setSheetHeight] = useState(screen);
-  const y = useRef(new Animated.Value(screen)).current;
-  const laidOut = useRef(false);
+  const y = useSharedValue(screen);
+  const sheetHeight = useSharedValue(screen);
+  const laidOut = useSharedValue(false);
+  const keyboard = useReanimatedKeyboardAnimation();
 
-  const animateTo = useCallback(
-    (to: number, ms: number, done?: () => void) => {
-      Animated.timing(y, { toValue: to, duration: reduceMotion ? 0 : ms, easing: EASE_OUT, useNativeDriver: true }).start(({ finished }) => finished && done?.());
-    },
-    [y, reduceMotion],
-  );
+  const unmount = useCallback(() => setMounted(false), []);
+  const duration = useCallback((ms: number) => (reduceMotion ? 0 : ms), [reduceMotion]);
 
   useEffect(() => {
     if (visible) {
       Keyboard.dismiss();
-      y.setValue(screen);
-      laidOut.current = false;
+      y.value = screen;
+      laidOut.value = false;
       setMounted(true);
     } else if (mounted) {
-      animateTo(screen, CLOSE_MS, () => setMounted(false));
+      y.value = withTiming(screen, { duration: duration(CLOSE_MS), easing: EASE_OUT }, (finished) => finished && scheduleOnRN(unmount));
     }
     // `mounted` and `screen` only seed the transition; the effect must run on visibility changes alone.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 4,
-        onPanResponderMove: (_, g) => y.setValue(Math.max(0, g.dy)),
-        onPanResponderRelease: (_, g) => {
-          if (shouldDismiss(g.dy, g.vy)) onClose();
-          else animateTo(0, CLOSE_MS);
-        },
-        onPanResponderTerminate: () => animateTo(0, CLOSE_MS),
-      }),
-    [y, onClose, animateTo],
-  );
+  const pan = Gesture.Pan()
+    .activeOffsetY([-6, 6])
+    .onUpdate((e) => {
+      y.value = Math.max(0, e.translationY);
+    })
+    .onEnd((e) => {
+      if (shouldDismiss(e.translationY, e.velocityY / 1000)) scheduleOnRN(onClose);
+      else y.value = withTiming(0, { duration: duration(CLOSE_MS), easing: EASE_OUT });
+    });
+
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value + keyboard.height.value }] }));
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [0, sheetHeight.value], [BACKDROP_OPACITY, 0], Extrapolation.CLAMP) }));
 
   if (!mounted) return null;
-  const backdrop = y.interpolate({ inputRange: [0, sheetHeight], outputRange: [BACKDROP_OPACITY, 0], extrapolate: 'clamp' });
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined} pointerEvents="box-none">
-        <Animated.View testID="sheet-backdrop" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdrop }]} />
+      <GestureHandlerRootView style={styles.root} pointerEvents="box-none">
+        <Animated.View testID="sheet-backdrop" style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]} />
         <Pressable accessibilityRole="button" accessibilityLabel={closeLabel ?? `Close ${label}`} style={StyleSheet.absoluteFill} onPress={onClose} />
         <Animated.View
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
           accessibilityLabel={label}
           onLayout={(e) => {
-            setSheetHeight(e.nativeEvent.layout.height);
-            if (!laidOut.current) {
-              laidOut.current = true;
-              animateTo(0, OPEN_MS);
+            sheetHeight.value = e.nativeEvent.layout.height;
+            if (!laidOut.value) {
+              laidOut.value = true;
+              y.value = withTiming(0, { duration: duration(OPEN_MS), easing: EASE_OUT });
             }
           }}
-          style={[styles.sheet, tall && styles.tall, { paddingBottom: Math.max(insets.bottom, 12), transform: [{ translateY: y }] }]}
+          style={[styles.sheet, tall && styles.tall, { paddingBottom: Math.max(insets.bottom, 12) }, sheetStyle]}
         >
-          <View {...pan.panHandlers} style={styles.handleArea} accessibilityLabel="Drag down to close">
-            <View style={styles.handle} />
-          </View>
+          <GestureDetector gesture={pan}>
+            <View style={styles.handleArea} accessibilityLabel="Drag down to close">
+              <View style={styles.handle} />
+            </View>
+          </GestureDetector>
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -102,6 +103,6 @@ const styles = StyleSheet.create({
   backdrop: { backgroundColor: '#000000' },
   sheet: { backgroundColor: theme.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '88%', borderTopWidth: 1, borderColor: theme.hairline },
   tall: { height: '88%' },
-  handleArea: { height: 28, alignItems: 'center', justifyContent: 'center' },
+  handleArea: { height: 32, alignItems: 'center', justifyContent: 'center' },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: theme.hairlineStrong },
 });
