@@ -14,7 +14,7 @@ import { Badge } from './Badge';
 import { channelFlags } from './railModel';
 
 /** One channel in the column: `#`, speaker, megaphone or forum icon, name, lock and capacity marks, mention badge, and for voice channels the people inside. */
-export function ChannelRow({ channel, guildId, active, canMoveMembers }: { channel: Channel; guildId: string; active: boolean; canMoveMembers: boolean }) {
+export function ChannelRow({ channel, guildId, active, canMoveMembers, onMenu }: { channel: Channel; guildId: string; active: boolean; canMoveMembers: boolean; onMenu?: (channel: Channel) => void }) {
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const occupants = useVoiceStore((s) => usersInChannel(s.states, channel.guild_id, channel.id).length);
@@ -31,6 +31,7 @@ export function ChannelRow({ channel, guildId, active, canMoveMembers }: { chann
         accessibilityLabel={view.label}
         accessibilityState={{ selected: active }}
         onPress={() => openChat({ guildId, channelId: channel.id })}
+        {...(onMenu ? { onLongPress: () => onMenu(channel), delayLongPress: 350 } : {})}
         style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && !active && styles.rowPressed, flags.muted && styles.muted]}
       >
         {unread && <View testID="channel-unread" style={styles.unreadDot} />}

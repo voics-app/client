@@ -14,6 +14,7 @@ import { effectiveDeliveryMode, validateModeForChannel, validateModeForDevice } 
 import type { EphemeralService } from './ephemeralService';
 import type { LocalHistory } from './localHistory';
 import type { P2PService } from './p2pService';
+import type { PrivateRetention } from './retention';
 import { PrivateDeliveryError, generateLocalId, type SendInput } from './types';
 
 export const HISTORY_PAGE_SIZE = 50;
@@ -28,8 +29,9 @@ export class UploadCancelled extends Error {
 
 export interface MessageSenderDeps {
   api: ApiPort;
-  ephemeral: Pick<EphemeralService, 'send'>;
-  p2p: Pick<P2PService, 'send'>;
+  ephemeral: Pick<EphemeralService, 'send' | 'deleteForEveryone' | 'announceTimer'>;
+  p2p: Pick<P2PService, 'send' | 'deleteForEveryone' | 'announceTimer'>;
+  retention: Pick<PrivateRetention, 'setTimer'>;
   history: LocalHistory;
   now: () => number;
 }
@@ -79,10 +81,22 @@ export class MessageSender {
     useMessageStore.getState().patch(channel.id, messageId, updated);
   }
 
+  /** Standard chats delete on the server. Private chats delete for everyone with a control message to the other devices. */
   async remove(channel: Channel, messageId: string): Promise<void> {
-    this.requireStandard(channel, 'deleted');
+    const mode = this.resolveMode(channel);
+    if (mode === 'ephemeral') return this.deps.ephemeral.deleteForEveryone(channel, messageId);
+    if (mode === 'p2p') return this.deps.p2p.deleteForEveryone(channel, messageId);
     await this.deps.api.deleteMessage(channel.id, messageId);
     useMessageStore.getState().remove(channel.id, messageId);
+  }
+
+  /** Per-chat disappearing-message timer of a private chat; `null` turns it off. The other devices are told in the background. */
+  async setDisappearTimer(channel: Channel, ttlMs: number | null): Promise<void> {
+    const mode = this.resolveMode(channel);
+    if (mode === 'standard') throw new PrivateDeliveryError('unsupported', 'Disappearing messages are only available in Ephemeral and P2P chats.');
+    await this.deps.retention.setTimer(channel.id, ttlMs);
+    const announce = mode === 'ephemeral' ? this.deps.ephemeral.announceTimer(channel, ttlMs) : this.deps.p2p.announceTimer(channel, ttlMs);
+    void announce.catch(() => undefined);
   }
 
   /** Per-chat switch. `null` clears the override. Guild channels change the channel's own mode. */

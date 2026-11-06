@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { DELIVERY_MODES, MODE_COPY, validateModeForChannel, validateModeForDevice } from '@discordy/core/domain/deliveryMode';
+import { usePrivacyStore } from '@discordy/core/application/stores/privacyStore';
+import { DISAPPEAR_NOTE, DISAPPEAR_OPTIONS } from '@discordy/core/domain/disappearing';
 import { Permission } from '@discordy/core/contracts/permissions';
 import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
@@ -31,6 +33,7 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
   const deviceRegistered = useSessionStore((s) => Boolean(s.deviceId));
   const perms = useGuildPermissions(channel.guild_id);
   const canChange = !channel.guild_id || can(perms, Permission.MANAGE_CHANNELS);
+  const timer = usePrivacyStore((s) => s.timers[channel.id] ?? null);
   const scope = { isGuild: Boolean(channel.guild_id), memberCount: memberCountOf(channel) };
 
   useEffect(() => {
@@ -54,6 +57,9 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
     setBusy(null);
     setOpen(false);
   };
+
+  const changeTimer = (value: string) =>
+    void attempt(() => getRuntime().privacy.sender.setDisappearTimer(channel, value === '' ? null : Number(value)), 'Could not change the timer');
 
   return (
     <span ref={triggerRef} className="mode-switcher">
@@ -91,6 +97,19 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
                 );
               })}
             </ul>
+            {mode !== 'standard' && (
+              <div className="mode-timer">
+                <label htmlFor={`disappear-${channel.id}`}>Disappearing messages</label>
+                <select id={`disappear-${channel.id}`} value={timer ?? ''} onChange={(e) => changeTimer(e.target.value)}>
+                  {DISAPPEAR_OPTIONS.map((o) => (
+                    <option key={o.label} value={o.ttlMs ?? ''}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mode-popover-foot">{DISAPPEAR_NOTE}</p>
+              </div>
+            )}
             {!channel.guild_id && (
               <p className="mode-popover-foot">
                 Account default for new chats: <strong>{MODE_COPY[defaultMode].label}</strong>. Change it in Settings → Privacy.

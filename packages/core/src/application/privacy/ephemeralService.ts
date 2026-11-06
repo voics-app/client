@@ -19,6 +19,8 @@ import { participantsOf } from './deviceDirectory';
 import { removeStaleDevices, type Membership } from './groupRemoval';
 import type { AttachmentService } from './attachmentService';
 import type { LocalHistory } from './localHistory';
+import { decodeControl, encodeControl, type PrivateControl } from './control';
+import { PrivateRetention } from './retention';
 import {
   PrivateDeliveryError,
   buildPrivateMessage,
@@ -26,6 +28,7 @@ import {
   encodePayload,
   encryptionUnavailable,
   generateLocalId,
+  ttlField,
   type PrivatePayload,
   type SelfIdentity,
   type SendInput,
@@ -43,6 +46,8 @@ export interface EphemeralDeps {
   devices: DeviceDirectory;
   history: LocalHistory;
   attachments: Pick<AttachmentService, 'prepareCdn'>;
+  /** Shared with the P2P service; created from `history` when omitted. */
+  retention?: PrivateRetention;
   getSelf: () => SelfIdentity;
   now: () => number;
   /** A decrypted incoming message was shown: feeds unread/mention counters and notifications. */
@@ -64,7 +69,11 @@ export class EphemeralService {
   /** Messages sent in a group before any peer has spoken in it; re-sent if that group is replaced (split brain). */
   private readonly unconfirmed = new Map<string, { id: string; plaintextB64: string }[]>();
 
-  constructor(private readonly deps: EphemeralDeps) {}
+  private readonly retention: PrivateRetention;
+
+  constructor(private readonly deps: EphemeralDeps) {
+    this.retention = deps.retention ?? new PrivateRetention(deps.history, deps.now);
+  }
 
   /** Opens the encrypted store and returns this device's identity public key (base64). */
   async initialiseIdentity(deviceLabel: string): Promise<string> {
@@ -88,6 +97,23 @@ export class EphemeralService {
   /** Encrypts and relays a message to every other device in the channel's MLS group. */
   send(channel: Channel, input: SendInput): Promise<ChatMessage> {
     return this.enqueue(() => this.sendNow(channel, input));
+  }
+
+  /** Deletes your own message for everyone in the chat: relays a control message, then removes it here. */
+  deleteForEveryone(channel: Channel, messageId: string): Promise<void> {
+    return this.enqueue(async () => {
+      const message = useMessageStore.getState().timelines[channel.id]?.byId[messageId];
+      if (message && message.author.id !== this.deps.getSelf().userId) {
+        throw new PrivateDeliveryError('unsupported', 'Only the author can delete a message for everyone.');
+      }
+      await this.sendControl(channel, { kind: 'delete', messageId });
+      await this.retention.removeMessage(channel.id, messageId);
+    });
+  }
+
+  /** Tells the other devices of the chat which disappearing-message timer is on; the local timer is set by the caller. */
+  announceTimer(channel: Channel, ttlMs: number | null): Promise<void> {
+    return this.enqueue(() => this.sendControl(channel, { kind: 'timer', ttlMs }));
   }
 
   /** Handles one E2EE_ENVELOPE addressed to this device (gateway→client carries only our entry). */
@@ -154,6 +180,7 @@ export class EphemeralService {
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
       files: attached.map((a) => a.private),
+      ...ttlField(this.retention.ttlOf(channelId)),
     };
     const plaintextB64 = encodePayload(payload);
     const { ciphertextB64, epoch } = await crypto.encrypt(channelId, plaintextB64);
@@ -161,11 +188,23 @@ export class EphemeralService {
     privacyDebug('ephemeral send: encrypted, relaying', { epoch });
     this.relay(channelId, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
 
-    const message = buildPrivateMessage({ id, channel, author, payload, mode: 'ephemeral' });
+    const message = buildPrivateMessage({ id, channel, author, payload, mode: 'ephemeral', expiresAt: this.retention.expiryFor(payload.ttl_ms) });
     await this.deps.history.save(message);
     useMessageStore.getState().receive(message);
     usePrivacyStore.getState().setGroup(channelId, 'ready', epoch);
     return message;
+  }
+
+  private async sendControl(channel: Channel, control: PrivateControl): Promise<void> {
+    const crypto = await this.requireCrypto();
+    const membership = await this.ensureMembership(channel, crypto);
+    const recipients = this.recipientsOf(membership, this.deps.getSelf().deviceId);
+    if (recipients.length === 0) return;
+    const id = generateLocalId(this.deps.now());
+    const plaintextB64 = encodeControl(control);
+    const { ciphertextB64, epoch } = await crypto.encrypt(channel.id, plaintextB64);
+    this.unconfirmed.set(channel.id, [...(this.unconfirmed.get(channel.id) ?? []).slice(-19), { id, plaintextB64 }]);
+    this.relay(channel.id, id, 'application', epoch, recipients.map((r) => ({ ...r, ciphertext_b64: ciphertextB64 })));
   }
 
   private relay(channelId: string, messageId: string, contentType: E2EEContentType, epoch: number, recipients: E2EERecipient[]): void {
@@ -450,15 +489,21 @@ export class EphemeralService {
   private async acceptApplication(envelope: E2EEEnvelope, plaintextB64: string): Promise<boolean> {
     const self = this.deps.getSelf();
     const channelId = envelope.channel_id;
-    const payload = decodePayload(plaintextB64, { channelId, mode: 'ephemeral', messageId: envelope.message_id });
     // Includes our own user: another device of ours is a legitimate sender (multi-device mirroring).
     const senderUserId = await this.deps.devices.ownerOf(participantsOf(channelId, self.userId), envelope.sender_device_id);
     if (!senderUserId) return false;
+    const control = decodeControl(plaintextB64);
+    if (control) {
+      await this.applyControl(channelId, senderUserId, control);
+      return true;
+    }
+    const payload = decodePayload(plaintextB64, { channelId, mode: 'ephemeral', messageId: envelope.message_id });
+    if (await this.retention.wasDeleted(channelId, envelope.message_id, senderUserId)) return true;
 
     const channel = useGuildStore.getState().channels[channelId] ?? { id: channelId, guild_id: null };
     const author = this.userById(senderUserId, channelId);
     const existing = useMessageStore.getState().timelines[channelId]?.byId[envelope.message_id];
-    const message = buildPrivateMessage({ id: envelope.message_id, channel, author, payload, mode: 'ephemeral' });
+    const message = buildPrivateMessage({ id: envelope.message_id, channel, author, payload, mode: 'ephemeral', expiresAt: this.retention.expiryFor(payload.ttl_ms) });
     if (senderUserId !== self.userId || envelope.sender_device_id !== self.deviceId) this.unconfirmed.delete(channelId);
     await this.deps.history.save(message);
     if (!existing) {
@@ -467,6 +512,11 @@ export class EphemeralService {
       this.deps.onIncoming?.(message);
     }
     return true;
+  }
+
+  private async applyControl(channelId: string, senderUserId: string, control: PrivateControl): Promise<void> {
+    if (control.kind === 'delete') await this.retention.applyDelete(channelId, senderUserId, control.messageId);
+    else await this.retention.setTimer(channelId, control.ttlMs);
   }
 
   private touchChannel(channelId: string, messageId: string): void {
