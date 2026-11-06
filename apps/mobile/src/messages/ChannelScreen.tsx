@@ -43,6 +43,7 @@ import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
+import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
 import { ModeBadge } from '../privacy/ModeBadge';
 import { PeerStatusBar } from '../privacy/PeerStatusBar';
 import { SafetyNumberSheet } from '../privacy/SafetyNumberSheet';
@@ -216,7 +217,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   );
 
   const confirmDelete = (message: ChatMessage) =>
-    Alert.alert('Delete message?', 'This cannot be undone.', [
+    Alert.alert(access?.standard === false ? 'Delete for everyone?' : 'Delete message?', access?.standard === false ? DELETE_PRIVATE_NOTE : 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void service.remove(channelId, message.id).catch(fail) },
     ]);

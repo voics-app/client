@@ -31,12 +31,21 @@ const serverMessage = (over: Partial<Message> = {}): Message => ({
 function setup(channel: Channel = dm('standard')) {
   resetStores(channel);
   const api = fakeApi({});
-  const ephemeral = { send: vi.fn(async (_c: Channel, i: { content: string }) => serverMessage({ id: 'e1', content: i.content })) };
-  const p2p = { send: vi.fn(async (_c: Channel, i: { content: string }) => serverMessage({ id: 'p1', content: i.content })) };
+  const ephemeral = {
+    send: vi.fn(async (_c: Channel, i: { content: string }) => serverMessage({ id: 'e1', content: i.content })),
+    deleteForEveryone: vi.fn(async () => undefined),
+    announceTimer: vi.fn(async () => undefined),
+  };
+  const p2p = {
+    send: vi.fn(async (_c: Channel, i: { content: string }) => serverMessage({ id: 'p1', content: i.content })),
+    deleteForEveryone: vi.fn(async () => undefined),
+    announceTimer: vi.fn(async () => undefined),
+  };
+  const retention = { setTimer: vi.fn(async () => undefined) };
   const gateway = new FakeGateway();
   const { crypto, records } = fakeCrypto(gateway);
-  const sender = new MessageSender({ api: asApi(api), ephemeral, p2p, history: new LocalHistory(() => crypto), now: () => 1_800_000_000_000 });
-  return { sender, api, ephemeral, p2p, crypto, records };
+  const sender = new MessageSender({ api: asApi(api), ephemeral, p2p, history: new LocalHistory(() => crypto), retention, now: () => 1_800_000_000_000 });
+  return { sender, api, ephemeral, p2p, crypto, records, retention };
 }
 
 describe('MessageSender routing', () => {
@@ -113,12 +122,29 @@ describe('MessageSender routing', () => {
     expect(api.createAttachmentSlots).not.toHaveBeenCalled();
   });
 
-  it('refuses edit and delete in private chats', async () => {
+  it('refuses to edit in private chats', async () => {
     const { sender, api } = setup(dm('p2p'));
     await expect(sender.edit(dm('p2p'), '1', 'x')).rejects.toMatchObject({ reason: 'unsupported' });
-    await expect(sender.remove(dm('ephemeral'), '1')).rejects.toMatchObject({ reason: 'unsupported' });
     expect(api.editMessage).not.toHaveBeenCalled();
   });
+
+  it('deletes in private chats for everyone through the mode service, never the server', async () => {
+    const { sender, api, ephemeral, p2p } = setup(dm('ephemeral'));
+    await sender.remove(dm('ephemeral'), '1');
+    await sender.remove(dm('p2p'), '2');
+    expect(ephemeral.deleteForEveryone).toHaveBeenCalledWith(expect.anything(), '1');
+    expect(p2p.deleteForEveryone).toHaveBeenCalledWith(expect.anything(), '2');
+    expect(api.deleteMessage).not.toHaveBeenCalled();
+  });
+
+  it('sets the disappearing timer locally and tells the peers, but only in private chats', async () => {
+    const { sender, retention, ephemeral } = setup(dm('ephemeral'));
+    await sender.setDisappearTimer(dm('ephemeral'), 3_600_000);
+    expect(retention.setTimer).toHaveBeenCalledWith('500', 3_600_000);
+    expect(ephemeral.announceTimer).toHaveBeenCalledWith(expect.anything(), 3_600_000);
+    await expect(sender.setDisappearTimer(dm('standard'), 3_600_000)).rejects.toMatchObject({ reason: 'unsupported' });
+  });
+
 });
 
 describe('MessageSender mode switches', () => {
