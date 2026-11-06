@@ -1,5 +1,6 @@
-import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { threadNameFor } from '@discordy/core/domain/threads';
+import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
 import { useCallback, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -21,6 +22,7 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { selectionWithin, targetFromElement } from './contextTarget';
+import { displayName } from '../../shared/hooks/useNames';
 import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
 import { useEmojiPopover } from './EmojiPopover';
 
@@ -48,6 +50,7 @@ const ICONS: Record<string, ReactNode> = {
   addEmoji: <PlusCircle size={16} />,
   speak: <SpeakerHigh size={16} />,
   delete: <Trash size={16} />,
+  report: <Flag size={16} />,
   copyId: <Hash size={16} />,
 };
 
@@ -133,8 +136,8 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     openDialog({
       kind: 'confirm',
       title: 'Delete message',
-      body: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      body: standard ? 'This cannot be undone.' : DELETE_PRIVATE_NOTE,
+      confirmLabel: standard ? 'Delete' : 'Delete for everyone',
       danger: true,
       onConfirm: async () => {
         if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), 'Could not delete message');
@@ -169,6 +172,11 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'copyMessageLink': return void copyText(channelLink(guildId, message.channel_id, message.id), 'Message link copied');
       case 'speak': return speakText(message.content);
       case 'delete': return confirmRemove();
+      case 'report':
+        return openDialog({
+          kind: 'report',
+          target: { kind: 'message', channelId: message.channel_id, messageId: message.id, authorId: message.author.id, authorName: displayName(message.author), content: message.content, mode: message.deliveryMode ?? 'standard' },
+        });
       case 'openLink': return arg && openExternalUrl(arg);
       case 'copyLink': return arg && void copyText(arg, 'Link copied');
       case 'copyImage': return arg && void copyImage(arg);

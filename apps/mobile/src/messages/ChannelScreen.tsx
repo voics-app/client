@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { channelLink } from '@discordy/core/domain/channelMenuModel';
 import { quickApiForm } from '@discordy/core/domain/quickReactions';
+import type { ReportTarget } from '@discordy/core/domain/reportModel';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +31,7 @@ import { MembersEdgeSwipe } from './MembersEdgeSwipe';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
+import { ReportSheet } from '../report/ReportSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { blockUser } from '../friends/friendActions';
 import { confirmDestructive } from '../ui/attempt';
@@ -43,6 +45,7 @@ import { ReactionUsersSheet, type ReactionTarget } from './ReactionUsersSheet';
 import { SelectTextSheet } from './SelectTextSheet';
 import { dmTitle } from '../dms/dmModel';
 import { MembersButton } from '../members/MembersButton';
+import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
 import { ModeBadge } from '../privacy/ModeBadge';
 import { PeerStatusBar } from '../privacy/PeerStatusBar';
 import { SafetyNumberSheet } from '../privacy/SafetyNumberSheet';
@@ -85,6 +88,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   const [threadFrom, setThreadFrom] = useState<ChatMessage | null>(null);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [reactors, setReactors] = useState<ReactionTarget | null>(null);
@@ -216,7 +220,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   );
 
   const confirmDelete = (message: ChatMessage) =>
-    Alert.alert('Delete message?', 'This cannot be undone.', [
+    Alert.alert(access?.standard === false ? 'Delete for everyone?' : 'Delete message?', access?.standard === false ? DELETE_PRIVATE_NOTE : 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void service.remove(channelId, message.id).catch(fail) },
     ]);
@@ -360,6 +364,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         </View>
         </KeyboardStickyView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
+        <ReportSheet target={reporting} onClose={() => setReporting(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <SafetyNumberSheet peerId={safetyPeer} onClose={() => setSafetyPeer(null)} />
         <ProfileSheet user={profileUser} {...(guildId ? { guildId } : {})} onClose={() => setProfileUser(null)} />
@@ -416,6 +421,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onBlock={() => {
             if (selected) confirmBlock(selected.author);
+            close();
+          }}
+          onReport={() => {
+            if (selected && channel) setReporting({ kind: 'message', channelId, messageId: selected.id, authorId: selected.author.id, authorName: nameOf(selected.author), content: selected.content, mode: selected.deliveryMode ?? channel.delivery_mode ?? 'standard' });
             close();
           }}
         />

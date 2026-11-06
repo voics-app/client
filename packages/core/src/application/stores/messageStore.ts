@@ -9,6 +9,8 @@ export interface ChatMessage extends Message {
   localState?: LocalState;
   /** Delivery mode the message travelled over; private modes never touch server history. */
   deliveryMode?: DeliveryMode;
+  /** Epoch ms at which a disappearing private message is removed from this device. */
+  expiresAt?: number;
   error?: string;
 }
 

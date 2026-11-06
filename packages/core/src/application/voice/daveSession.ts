@@ -26,7 +26,7 @@ import type { FrameCryptorPort } from '../ports/voice';
 
 export type DaveCrypto = Pick<
   CryptoBridge,
-  'generateKeyPackages' | 'hasGroup' | 'createGroup' | 'addMembers' | 'removeMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
+  'generateKeyPackages' | 'hasGroup' | 'deleteGroup' | 'createGroup' | 'memberKeys' | 'addMembers' | 'removeMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
 >;
 
 export interface DaveOptions {
@@ -38,10 +38,17 @@ export interface DaveOptions {
   identityKeysOf?(userId: string): Promise<string[]>;
   /** Fallback for voice nodes older than 0.1.6 that send no `founder` flag: true when others were in the call at join. */
   hasPeers?(): boolean;
+  /** User ids of the other participants in the call right now (a departed one is already gone from it). */
+  members?(): string[];
+  /** Called each time a new epoch's keys became the active ones. */
+  onEpoch?(): void;
   send(op: number, d: unknown): void;
   onActive(active: boolean): void;
   onError(message: string): void;
 }
+
+/** Snowflake ids compare as numbers: by length, then digit by digit. */
+const userIdBefore = (a: string, b: string): boolean => (a.length !== b.length ? a.length < b.length : a < b);
 
 const fromB64 = (value: string): Uint8Array => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
 
@@ -49,6 +56,8 @@ const fromB64 = (value: string): Uint8Array => Uint8Array.from(atob(value), (c) 
 export class DaveSession {
   private groupId: string;
   private committer = false;
+  /** Who commits for the group: the founder, then whoever the last commit or welcome came from, then the successor elected when the committer leaves. */
+  private committerId: string | null = null;
   private queue: Promise<void> = Promise.resolve();
   private active = false;
   private transitionSeq = 0;
@@ -74,6 +83,7 @@ export class DaveSession {
   private async found(): Promise<void> {
     const epoch = await this.options.crypto.createGroup(this.groupId);
     this.committer = true;
+    this.committerId = this.options.userId;
     await this.installEpoch(epoch);
     await this.activate(epoch);
   }
@@ -84,7 +94,18 @@ export class DaveSession {
    * cannot decrypt frames sent after the transition. Non-committers rotate on ANNOUNCE_COMMIT.
    */
   participantLeft(userId: string): Promise<void> {
-    return this.guard(async () => {
+    // On the op queue: a member that rejoins at once sends its key package right behind its departure, and adding
+    // it while its old leaf is still in the group would be refused.
+    const run = this.queue.then(() => this.guard(async () => {
+      if (!this.committer && userId === this.committerId) {
+        try {
+          await this.electSuccessor(userId);
+        } catch (error) {
+          // The epoch and its keys are still good; only the handoff failed.
+          this.options.onError(error instanceof Error ? error.message : String(error));
+          return;
+        }
+      }
       if (!this.committer || !this.options.identityKeysOf) return;
       const keys = await this.options.identityKeysOf(userId);
       const removal = await this.options.crypto.removeMembers(this.groupId, keys);
@@ -93,7 +114,29 @@ export class DaveSession {
       await this.installEpoch(removal.epoch);
       this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, { transition_id: this.transitionSeq, commit: removal.commitB64 });
       await this.activate(removal.epoch);
-    });
+    }));
+    this.queue = run;
+    return run;
+  }
+
+  /**
+   * The committer left. Every remaining member runs the same rule over the same data and agrees without talking:
+   * of the participants present whose device is in the MLS group (this device included), the lowest user id commits
+   * from now on. Only that member then removes the leaver and answers key packages, so no two members commit for
+   * one epoch. A member that is not in the group yet (a joiner awaiting its welcome) cannot commit and is skipped.
+   */
+  private async electSuccessor(departed: string): Promise<void> {
+    const { crypto, identityKeysOf, members } = this.options;
+    if (!identityKeysOf || !members) return;
+    const inGroup = new Set(await crypto.memberKeys(this.groupId));
+    const eligible = [this.options.userId];
+    for (const id of members()) {
+      if (id === departed || id === this.options.userId) continue;
+      if ((await identityKeysOf(id)).some((key) => inGroup.has(key))) eligible.push(id);
+    }
+    const successor = eligible.reduce((lowest, id) => (userIdBefore(id, lowest) ? id : lowest));
+    this.committerId = successor;
+    this.committer = successor === this.options.userId;
   }
 
   stop(): void {
@@ -144,6 +187,7 @@ export class DaveSession {
   private async activate(epoch: number): Promise<void> {
     await this.options.cryptor.activate(epoch & 0xff);
     this.setActive(true);
+    this.options.onEpoch?.();
   }
 
   private async dispatch(op: number, d: Record<string, unknown>): Promise<void> {
@@ -151,15 +195,24 @@ export class DaveSession {
     switch (op) {
       case VoiceOp.DAVE_MLS_EXTERNAL_SENDER: {
         const founder = d.founder === undefined ? this.options.hasPeers?.() === false : d.founder === true;
-        if (founder && !(await crypto.hasGroup(this.groupId))) {
-          await this.found();
-        }
+        // The group id is the voice channel and the engine keeps groups on disk, so an earlier call left one behind.
+        // Its members are gone and it holds no keys for this call: a joiner must not apply the commit that adds it
+        // to that group, and a founder must not skip founding because it exists.
+        if (await crypto.hasGroup(this.groupId)) await crypto.deleteGroup(this.groupId);
+        if (founder) await this.found();
         return;
       }
       case VoiceOp.DAVE_MLS_KEY_PACKAGE: {
         if (!this.committer) return;
         const userId = String(d.user_id);
-        const result = await crypto.addMembers(this.groupId, [String(d.key_package_b64)]);
+        let result: Awaited<ReturnType<DaveCrypto['addMembers']>>;
+        try {
+          result = await crypto.addMembers(this.groupId, [String(d.key_package_b64)]);
+        } catch (error) {
+          // Nothing was committed: the current epoch and its keys stay valid for everyone already in the call.
+          this.options.onError(error instanceof Error ? error.message : String(error));
+          return;
+        }
         this.transitionSeq += 1;
         await this.installEpoch(result.epoch);
         send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, {
@@ -180,6 +233,7 @@ export class DaveSession {
         if (!(await crypto.hasGroup(this.groupId))) return;
         const result = await crypto.processIncoming(this.groupId, String(d.commit ?? d.commit_b64));
         if (result.kind !== 'commit' || result.epoch === undefined) throw new Error('announced commit could not be applied');
+        this.committerId = d.user_id === undefined ? this.committerId : String(d.user_id);
         await this.installEpoch(result.epoch);
         await this.activate(result.epoch);
         return;
@@ -187,6 +241,7 @@ export class DaveSession {
       case VoiceOp.DAVE_MLS_WELCOME: {
         const joined = await crypto.joinFromWelcome(String(d.welcome ?? d.welcome_b64));
         this.groupId = joined.groupId;
+        this.committerId = d.user_id === undefined ? null : String(d.user_id);
         await this.installEpoch(joined.epoch);
         await this.activate(joined.epoch);
         return;

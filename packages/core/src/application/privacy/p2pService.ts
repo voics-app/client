@@ -22,6 +22,9 @@ import { AttachmentError } from './attachmentCipher';
 import type { AttachmentService, OutgoingP2PFile } from './attachmentService';
 import type { DeviceDirectory } from './deviceDirectory';
 import type { LocalHistory } from './localHistory';
+import { controlFrame, parseControl, type PrivateControl } from './control';
+import { PrivateRetention } from './retention';
+import { parseTtl } from '../../domain/disappearing';
 import {
   PrivateDeliveryError,
   buildPrivateMessage,
@@ -29,6 +32,7 @@ import {
   generateLocalId,
   utf8ToB64,
   validFiles,
+  ttlField,
   type PrivatePayload,
   type SelfIdentity,
   type SendInput,
@@ -72,6 +76,8 @@ export interface P2PDeps {
   devices: DeviceDirectory;
   history: LocalHistory;
   attachments: Pick<AttachmentService, 'prepareP2P' | 'accept'>;
+  /** Shared with the Ephemeral service; created from `history` when omitted. */
+  retention?: PrivateRetention;
   getSelf: () => SelfIdentity;
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   now: () => number;
@@ -112,6 +118,16 @@ export const FILE_CHUNK_BYTES = 16 * 1024;
 /** Stop queueing above this many buffered bytes and resume once the channel drains below the low mark. */
 export const BUFFER_HIGH_BYTES = 1024 * 1024;
 export const BUFFER_LOW_BYTES = 256 * 1024;
+const PENDING_KEY = 'p2p-pending-deletes';
+const PENDING_LIMIT = 500;
+
+interface PendingDelete {
+  messageId: string;
+  channelId: string;
+  userId: string;
+  deviceId: string;
+}
+
 const linkKey = (channelId: string, deviceId: string) => `${channelId}:${deviceId}`;
 
 function allFingerprints(sdp: string): string[] {
@@ -131,7 +147,11 @@ export class P2PService {
   private readonly links = new Map<string, Link>();
   private readonly streams = new Set<Promise<void>>();
 
-  constructor(private readonly deps: P2PDeps) {}
+  private readonly retention: PrivateRetention;
+
+  constructor(private readonly deps: P2PDeps) {
+    this.retention = deps.retention ?? new PrivateRetention(deps.history, deps.now);
+  }
 
   /** Sends to every connected peer device of the channel, connecting first when needed. */
   async send(channel: Channel, input: SendInput): Promise<ChatMessage> {
@@ -176,15 +196,73 @@ export class P2PService {
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
       files: outgoing.map((f) => f.attachment.private),
+      ...ttlField(this.retention.ttlOf(channel.id)),
     };
     const wire = JSON.stringify({ t: 'msg', id, ...payload });
     for (const link of open) link.channel?.send(wire);
 
-    const message = buildPrivateMessage({ id, channel, author, payload, mode: 'p2p' });
+    const message = buildPrivateMessage({ id, channel, author, payload, mode: 'p2p', expiresAt: this.retention.expiryFor(payload.ttl_ms) });
     await this.deps.history.save(message);
     useMessageStore.getState().receive(message);
     if (outgoing.length > 0) this.track(this.streamFiles(open, outgoing));
     return message;
+  }
+
+  /**
+   * Deletes your own message for everyone: removed here at once, sent to every device of the peer that can be
+   * reached now, and kept as a pending deletion for the others, which get it the next time they connect.
+   */
+  async deleteForEveryone(channel: Channel, messageId: string): Promise<void> {
+    const message = useMessageStore.getState().timelines[channel.id]?.byId[messageId];
+    if (message && message.author.id !== this.deps.getSelf().userId) {
+      throw new PrivateDeliveryError('unsupported', 'Only the author can delete a message for everyone.');
+    }
+    await this.retention.removeMessage(channel.id, messageId);
+    const peers = await this.peerDevices(channel);
+    const reached = await this.sendToPeers(channel.id, peers, { kind: 'delete', messageId });
+    const missed = peers.filter((p) => !reached.has(p.deviceId)).map((p) => ({ messageId, channelId: channel.id, userId: p.userId, deviceId: p.deviceId }));
+    if (missed.length > 0) await this.savePending([...(await this.loadPending()), ...missed]);
+  }
+
+  /** Tells the connected peer devices which disappearing-message timer is on; peers that are offline learn it from the next message. */
+  async announceTimer(channel: Channel, ttlMs: number | null): Promise<void> {
+    await this.sendToPeers(channel.id, await this.peerDevices(channel), { kind: 'timer', ttlMs });
+  }
+
+  /** Tries once to deliver deletions that could not be sent when they were made. */
+  async flushPending(): Promise<void> {
+    for (const entry of await this.loadPending()) {
+      await this.ensureLink(entry.channelId, entry.userId, entry.deviceId).catch(() => undefined);
+    }
+  }
+
+  /** Dials the given devices together and sends one control frame to each that answers; returns the device ids reached. */
+  private async sendToPeers(channelId: string, peers: { userId: string; deviceId: string }[], control: PrivateControl): Promise<Set<string>> {
+    const settled = await Promise.allSettled(peers.map((p) => this.ensureLink(channelId, p.userId, p.deviceId)));
+    const reached = new Set<string>();
+    settled.forEach((result, i) => {
+      if (result.status !== 'fulfilled' || result.value.channel?.readyState !== 'open') return;
+      result.value.channel.send(JSON.stringify({ t: 'ctl', ...controlFrame(control) }));
+      reached.add(peers[i]!.deviceId);
+    });
+    return reached;
+  }
+
+  private async loadPending(): Promise<PendingDelete[]> {
+    return (await this.deps.history.getState<PendingDelete[]>(PENDING_KEY)) ?? [];
+  }
+
+  private savePending(entries: PendingDelete[]): Promise<void> {
+    return this.deps.history.putState(PENDING_KEY, entries.slice(-PENDING_LIMIT));
+  }
+
+  /** The link to a device just opened: send it the deletions it missed. */
+  private async deliverPending(link: Link): Promise<void> {
+    const all = await this.loadPending();
+    const mine = all.filter((e) => e.channelId === link.channelId && e.deviceId === link.peerDeviceId);
+    if (mine.length === 0 || link.channel?.readyState !== 'open') return;
+    for (const entry of mine) link.channel.send(JSON.stringify({ t: 'ctl', ...controlFrame({ kind: 'delete', messageId: entry.messageId }) }));
+    await this.savePending(all.filter((e) => !mine.includes(e)));
   }
 
   /** Relays signalling frames (op 22). */
@@ -403,6 +481,7 @@ export class P2PService {
     channel.onopen = () => {
       usePrivacyStore.getState().setP2P(link.channelId, 'open', true);
       link.resolveOpen();
+      void this.deliverPending(link).catch(() => undefined);
     };
     channel.binaryType = 'arraybuffer';
     channel.onclose = () => this.closeLink(link.key, 'peer_offline');
@@ -420,6 +499,7 @@ export class P2PService {
       if (parsed.t === 'file' && typeof parsed.id === 'string') this.onFileStart(link, parsed.id, parsed.size);
       else if (parsed.t === 'file-end' && typeof parsed.id === 'string') await this.onFileEnd(link, parsed.id);
       else if (parsed.t === 'msg') await this.onMessage(link, parsed);
+      else if (parsed.t === 'ctl') await this.onControl(link, parseControl(parsed));
     } catch {
       // Malformed frames from a peer are ignored.
     }
@@ -435,11 +515,13 @@ export class P2PService {
       timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date(this.deps.now()).toISOString(),
       reply_to: parsed.reply_to ?? null,
       files,
+      ttl_ms: parseTtl(parsed.ttl_ms) ?? undefined,
     };
     const channel = useGuildStore.getState().channels[link.channelId] ?? { id: link.channelId, guild_id: null };
     // The author is the verified link peer, never a field the peer supplies.
-    const message = buildPrivateMessage({ id: parsed.id, channel, author: this.peerUser(link), payload, mode: 'p2p' });
+    const message = buildPrivateMessage({ id: parsed.id, channel, author: this.peerUser(link), payload, mode: 'p2p', expiresAt: this.retention.expiryFor(payload.ttl_ms) });
     if (useMessageStore.getState().timelines[link.channelId]?.byId[message.id]) return;
+    if (await this.retention.wasDeleted(link.channelId, message.id, link.peerUserId)) return;
     // Register synchronously: the peer file frames may follow before the awaits below finish.
     for (const ref of files) {
       link.expected.set(ref.id, ref);
@@ -450,6 +532,13 @@ export class P2PService {
     const known = useGuildStore.getState().channels[link.channelId];
     if (known) useGuildStore.getState().upsertChannel({ ...known, last_message_id: message.id });
     this.deps.onIncoming?.(message);
+  }
+
+  /** The link peer is authenticated by its identity signature, so it is the author of anything it deletes. */
+  private async onControl(link: Link, control: PrivateControl | null): Promise<void> {
+    if (!control) return;
+    if (control.kind === 'delete') await this.retention.applyDelete(link.channelId, link.peerUserId, control.messageId);
+    else await this.retention.setTimer(link.channelId, control.ttlMs);
   }
 
   private onFileStart(link: Link, id: string, size: unknown): void {

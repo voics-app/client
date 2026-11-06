@@ -94,4 +94,8 @@ export interface MediaGroupHooks {
   onActive(active: boolean): void;
   onError(message: string): void;
   hasPeers(): boolean;
+  /** User ids of the other participants in the call right now. */
+  members(): string[];
+  /** A new epoch's keys became the active ones. */
+  onEpoch(): void;
 }

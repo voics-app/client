@@ -573,6 +573,13 @@ export interface Device {
   identity_key_b64: string;
 }
 
+/** `POST /users/@me/devices/voip`: the PushKit (VoIP) token of the calling session. */
+export interface VoipTokenBody {
+  token: string;
+  /** The APNs host the token was issued for; development builds use the sandbox. */
+  environment: 'production' | 'sandbox';
+}
+
 /** `POST /users/@me/devices/push`: the push token of the calling session. */
 export interface PushTokenBody {
   platform: 'apns' | 'fcm';

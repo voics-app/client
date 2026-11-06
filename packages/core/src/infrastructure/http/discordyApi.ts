@@ -1,5 +1,6 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
+import type { CreateReportBody } from '../../domain/reportModel';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -17,6 +18,7 @@ import type {
   DeliveryMode,
   AuthSession,
   PushTokenBody,
+  VoipTokenBody,
   Device,
   Emoji,
   Guild,
@@ -127,9 +129,17 @@ export class DiscordyApi implements ApiPort {
   registerPushToken(body: PushTokenBody) {
     return this.post<void>('/users/@me/devices/push', body);
   }
-  /** Removes the push token of this session. Removing one that is not there is fine. */
+  /** Removes the push token of this session, and its VoIP token with it. Removing one that is not there is fine. */
   removePushToken() {
     return this.del<void>('/users/@me/devices/push');
+  }
+  /** Stores the PushKit (VoIP) token of this session, which rings the phone for a call while the app is closed. Independent of the notification token. */
+  registerVoipToken(body: VoipTokenBody) {
+    return this.post<void>('/users/@me/devices/voip', body);
+  }
+  /** Removes the VoIP token of this session only. */
+  removeVoipToken() {
+    return this.del<void>('/users/@me/devices/voip');
   }
 
   listSessions() {
@@ -197,6 +207,9 @@ export class DiscordyApi implements ApiPort {
   }
   deleteRelationship(userId: string) {
     return this.del<void>(`/users/@me/relationships/${userId}`);
+  }
+  createReport(body: CreateReportBody) {
+    return this.post<void>('/reports', body);
   }
 
   createGuild(body: { name: string; icon?: string | null }) {

@@ -18,6 +18,21 @@ export interface NativeAudioStream extends MediaStreamLike {
   getAudioTracks(): NativeAudioTrack[];
 }
 
+export interface NativeVideoTrack extends MediaTrackLike {
+  enabled: boolean;
+  /** @livekit/react-native-webrtc: flips between the front and the back camera on the same track, so the sender keeps its track and its cryptor. */
+  _switchCamera(): void;
+}
+
+/** A camera stream: toURL() is what a native video view renders. */
+export interface NativeVideoStream extends MediaStreamLike {
+  getVideoTracks(): NativeVideoTrack[];
+  toURL(): string;
+}
+
+/** Which camera: the one facing you, or the one on the back. */
+export type CameraFacing = 'front' | 'back';
+
 /** Routes call audio to the loudspeaker or the earpiece. */
 export interface AudioRouteDriver {
   start(): void;
@@ -29,6 +44,8 @@ export interface NativeVoice {
   createPeerConnection(iceServers: IceServer[]): MediaPeerConnection;
   createStream(track: MediaTrackLike): MediaStreamLike;
   openMicrophone(): Promise<NativeAudioTrack>;
+  /** Opens the camera (the iOS permission prompt appears on first use). Rejects with CAMERA_DENIED when access is off. */
+  openCamera(facing: CameraFacing): Promise<NativeVideoStream>;
   /** A frame cryptor for one end-to-end encrypted call; null when this build has none (then E2EE calls are refused). */
   createCryptor(): MobileFrameCryptor | null;
   route: AudioRouteDriver;
@@ -36,10 +53,15 @@ export interface NativeVoice {
 
 export const MICROPHONE_DENIED = 'Microphone access is off. Turn it on for Voics in the iOS Settings app.';
 
+export const CAMERA_DENIED = 'Camera access is off. Turn it on for Voics in the iOS Settings app.';
+
+/** 720p at 30 frames a second: sharp enough for a phone screen and kind to the battery and the data plan. The sender caps the bitrate (core's 720p30 preset). */
+const CAMERA_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+
 export interface WebRtcModule extends Partial<FrameCryptorModule> {
   RTCPeerConnection: new (config: object) => unknown;
   MediaStream: new (tracks: unknown[]) => unknown;
-  mediaDevices: { getUserMedia(constraints: object): Promise<NativeAudioStream> };
+  mediaDevices: { getUserMedia(constraints: object): Promise<NativeAudioStream | NativeVideoStream> };
 }
 
 export interface InCallManagerModule {
@@ -60,13 +82,26 @@ export function createNativeVoice(webrtc: WebRtcModule, inCall: InCallManagerMod
     openMicrophone: async () => {
       let stream: NativeAudioStream;
       try {
-        stream = await webrtc.mediaDevices.getUserMedia({ audio: true, video: false });
+        stream = (await webrtc.mediaDevices.getUserMedia({ audio: true, video: false })) as NativeAudioStream;
       } catch {
         throw new Error(MICROPHONE_DENIED);
       }
       const track = stream.getAudioTracks()[0];
       if (!track) throw new Error(MICROPHONE_DENIED);
       return track;
+    },
+    openCamera: async (facing) => {
+      let stream: NativeVideoStream;
+      try {
+        stream = (await webrtc.mediaDevices.getUserMedia({
+          audio: false,
+          video: { ...CAMERA_CONSTRAINTS, facingMode: facing === 'front' ? 'user' : 'environment' },
+        })) as NativeVideoStream;
+      } catch {
+        throw new Error(CAMERA_DENIED);
+      }
+      if (!stream.getVideoTracks()[0]) throw new Error(CAMERA_DENIED);
+      return stream;
     },
     route: {
       start: () => inCall.start({ media: 'audio', auto: false }),

@@ -99,7 +99,7 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false });
+    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false });
   });
 
   it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {
@@ -112,6 +112,12 @@ describe('messageActions', () => {
   it('offers no pin in private channels', () => {
     const priv = access(BASIC | Permission.MANAGE_MESSAGES, { delivery_mode: 'ephemeral' });
     expect(messageActions(msg('other'), priv, 'me')).toMatchObject({ pin: false, unpin: false });
+  });
+
+  it('offers Delete on your own private messages only', () => {
+    const priv = access(BASIC | Permission.MANAGE_MESSAGES, { delivery_mode: 'ephemeral' });
+    expect(messageActions(msg('me'), priv, 'me').delete).toBe(true);
+    expect(messageActions(msg('other'), priv, 'me').delete).toBe(false);
   });
 
   it('offers Copy Text only on messages that have text', () => {
@@ -145,5 +151,14 @@ describe('forwarding', () => {
     expect(messageActions(msg('x', { type: 7 }), access(BASIC), 'me').forward).toBe(false);
     expect(messageActions(msg('x', { type: 0 }), { ...access(BASIC), standard: false }, 'me').forward).toBe(false);
     expect(messageActions({ ...msg('x', { type: 0 }), localState: 'sending' } as never, access(BASIC), 'me').forward).toBe(false);
+  });
+});
+
+describe('reporting the message', () => {
+  it('is offered on other people\'s messages in every delivery mode, not on your own or unsent ones', () => {
+    expect(messageActions(msg('x'), access(BASIC), 'me').report).toBe(true);
+    expect(messageActions(msg('x'), access(BASIC, { delivery_mode: 'p2p' }), 'me').report).toBe(true);
+    expect(messageActions(msg('me'), access(BASIC), 'me').report).toBe(false);
+    expect(messageActions({ ...msg('x'), localState: 'sending' }, access(BASIC), 'me').report).toBe(false);
   });
 });

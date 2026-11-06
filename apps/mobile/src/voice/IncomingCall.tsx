@@ -9,11 +9,13 @@ import { callerOf, ringingCallFor } from '@discordy/core/domain/calls';
 import { dmTitle } from '../dms/dmModel';
 import { Avatar } from '../profile/Avatar';
 import { metrics, theme } from '../theme';
+import { useCallKitStore } from './callkit/callKitStore';
 import { acceptCall, declineCall, voiceAvailable } from './voiceActions';
 
 /**
- * A DM or group call that is ringing for you: the caller, Accept and Decline. It appears over every screen while the app is open
- * (a ring while the app is closed needs CallKit and PushKit, which come later). Without native voice there is nothing to answer with, so it stays hidden.
+ * A DM or group call that is ringing for you: the caller, Accept and Decline. It appears over every screen while the app is open. When CallKit shows the
+ * call in the system UI (a development or store build on iPhone) that is the ring and this card stays hidden; it is the fallback in Expo Go and when the system
+ * refuses the call. Without native voice there is nothing to answer with, so it stays hidden.
  */
 export function IncomingCall() {
   const me = useSessionStore((s) => s.user?.id);
@@ -21,10 +23,11 @@ export function IncomingCall() {
   const channels = useGuildStore((s) => s.channels);
   const relationships = useRelationshipStore((s) => s.byUser);
   const insets = useSafeAreaInsets();
+  const shownBySystem = useCallKitStore((s) => s.shown);
   if (!me || !voiceAvailable()) return null;
   const call = ringingCallFor(calls, me);
   const channel = call ? channels[call.channelId] : undefined;
-  if (!call) return null;
+  if (!call || shownBySystem.includes(call.channelId)) return null;
 
   const callerId = callerOf(call, me);
   const caller = channel?.recipients?.find((u) => u.id === callerId) ?? channel?.recipients?.[0];

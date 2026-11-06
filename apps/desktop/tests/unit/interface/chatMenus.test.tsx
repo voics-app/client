@@ -339,3 +339,23 @@ describe('forwarded messages', () => {
     expect(item.title).toMatch(/end-to-end/i);
   });
 });
+
+describe('Report Message', () => {
+  it('opens the report dialog for another person\'s message', () => {
+    seed();
+    renderMessage(message({ deliveryMode: 'ephemeral' } as never));
+    fireEvent.contextMenu(root());
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Report Message' }));
+    expect(useUiStore.getState().dialog).toMatchObject({
+      kind: 'report',
+      target: { kind: 'message', channelId: 'c1', messageId: 'm1', authorId: 'bob', authorName: 'bob', mode: 'ephemeral', content: 'hello https://example.test world' },
+    });
+  });
+
+  it('is not offered on your own messages', () => {
+    seed({ me: 'bob' });
+    renderMessage();
+    fireEvent.contextMenu(root());
+    expect(screen.queryByRole('menuitem', { name: 'Report Message' })).toBeNull();
+  });
+});

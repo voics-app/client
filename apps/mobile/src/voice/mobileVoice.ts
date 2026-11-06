@@ -3,11 +3,12 @@ import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { DaveSession } from '@discordy/core/application/voice/daveSession';
-import { VoiceCallController } from '@discordy/core/application/voice/voiceCallController';
 import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
+import { AppState } from 'react-native';
 import { AudioRoute } from './audioRoute';
+import { MobileCallController } from './mobileCallController';
 import { MobileMic } from './mobileMic';
 import { MobileMixer } from './mobileMixer';
 import type { NativeVoice } from './nativeVoice';
@@ -24,7 +25,7 @@ export interface MobileVoiceDeps {
 }
 
 export interface MobileVoice {
-  controller: VoiceCallController;
+  controller: MobileCallController;
   route: AudioRoute;
   /** Stops listening to the call state; for tests and runtime teardown. */
   dispose(): void;
@@ -33,8 +34,15 @@ export interface MobileVoice {
 export function createMobileVoice({ gateway, native, socketFactory, iceServers, crypto, identityKeysOf }: MobileVoiceDeps): MobileVoice {
   const mic = new MobileMic(() => native.openMicrophone());
   const route = new AudioRoute(native.route);
-  const controller = new VoiceCallController({
+  const controller = new MobileCallController({
     gateway,
+    openCamera: (facing) => native.openCamera(facing),
+    onBackground: (listener) => {
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'background') listener();
+      });
+      return () => subscription.remove();
+    },
     mic,
     mixer: new MobileMixer(),
     createSession: (params) => {

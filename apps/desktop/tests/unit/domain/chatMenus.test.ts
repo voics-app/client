@@ -27,7 +27,7 @@ const msg = { kind: 'message' } as const;
 
 describe('message menu', () => {
   it('offers the Discord entries a plain member gets on someone else message', () => {
-    expect(idsOf(buildMessageMenu(ctx(), msg))).toEqual(['addReaction', 'react', 'react', 'react', 'react', 'reactMore', 'reply', 'copyText', 'markUnread', 'copyMessageLink', 'forwardSoon', 'reportSoon', 'speak', 'copyId']);
+    expect(idsOf(buildMessageMenu(ctx(), msg))).toEqual(['addReaction', 'react', 'react', 'react', 'react', 'reactMore', 'reply', 'copyText', 'markUnread', 'copyMessageLink', 'forwardSoon', 'report', 'speak', 'copyId']);
   });
 
   it('hides Forward (unsupported), Create Thread and Pin without permission, and Edit on others messages', () => {
