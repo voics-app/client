@@ -15,19 +15,17 @@ const config: ExpoConfig = {
   slug: 'voics',
   scheme: brand.protocolScheme,
   owner: 'oussamaelhajoui',
-  version: '0.0.1',
+  version: '1.0.0',
   orientation: 'portrait',
   icon: '../desktop/build/icon.png',
   userInterfaceStyle: 'dark',
   backgroundColor: '#0c0d12',
   ios: {
     bundleIdentifier: brand.appId,
-    supportsTablet: true,
-    // iPad stays in portrait like the phone (the app is portrait only), which Apple accepts only for an app that opts out of Split View and Slide Over.
-    requireFullScreen: true,
+    supportsTablet: false,
     infoPlist: {
-      // The owner's answer to Apple: standard encryption only. See docs runbooks/app-store-privacy.md.
-      ITSAppUsesNonExemptEncryption: false,
+      // End-to-end encryption goes beyond what iOS provides, so the app declares it. See docs runbooks/app-store-privacy.md.
+      ITSAppUsesNonExemptEncryption: true,
       NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSCameraUsageDescription: CAMERA_USAGE,
       // audio keeps a voice call running (audio in and out) when the app is in the background or the screen is locked. voip lets PushKit wake the app for
