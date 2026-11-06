@@ -55,7 +55,7 @@ describe('link trust', () => {
   });
 
   it('trusts built-in hosts and their subdomains', () => {
-    expect(isTrustedLink('https://discordy.voics.nl/x')).toBe(true);
+    expect(isTrustedLink('https://voics.nl/x')).toBe(true);
     expect(isTrustedLink('https://api.voics.nl')).toBe(true);
   });
 

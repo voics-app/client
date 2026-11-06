@@ -3,7 +3,7 @@
   "version": "0.4.2",
   "private": true,
   "description": "Desktop client (see brand.json)",
-  "homepage": "https://discordy.voics.nl",
+  "homepage": "https://voics.nl",
   "license": "UNLICENSED",
   "main": "./out/main/index.js",
   "scripts": {

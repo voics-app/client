@@ -74,7 +74,7 @@ describe('MarkdownView', () => {
   });
 
   it('opens trusted domains directly', () => {
-    render(<MarkdownView source="[home](https://discordy.voics.nl/x)" />);
+    render(<MarkdownView source="[home](https://voics.nl/x)" />);
     fireEvent.click(screen.getByText('home'));
     expect(open).toHaveBeenCalledTimes(1);
   });

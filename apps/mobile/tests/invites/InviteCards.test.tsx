@@ -14,9 +14,9 @@ const mockApi = {
   invite: jest.fn(async (_code: string): Promise<Invite> => invite()),
   acceptInvite: jest.fn(async (_code: string) => ({ guild: { id: 'g9' } })),
 };
-jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ api: mockApi, apiUrl: 'https://discordy-api.voics.nl' }) }));
+jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ api: mockApi, apiUrl: 'https://api.voics.nl' }) }));
 
-const LINK = 'https://discordy.voics.nl/invite/abc123';
+const LINK = 'https://voics.nl/invite/abc123';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -71,12 +71,12 @@ describe('invite cards', () => {
 
 describe('opening invite links inside the app', () => {
   it('recognises the web invite page and the deep link, and nothing else', () => {
-    expect(openInviteLink(LINK, 'https://discordy-api.voics.nl')).toBe(true);
+    expect(openInviteLink(LINK, 'https://api.voics.nl')).toBe(true);
     expect(useInviteLinkStore.getState().code).toBe('abc123');
-    expect(openInviteLink('voics://invite/zzz99', 'https://discordy-api.voics.nl')).toBe(true);
+    expect(openInviteLink('voics://invite/zzz99', 'https://api.voics.nl')).toBe(true);
     expect(useInviteLinkStore.getState().code).toBe('zzz99');
-    expect(openInviteLink('https://example.com/invite/abc123', 'https://discordy-api.voics.nl')).toBe(false);
-    expect(openInviteLink('https://discordy.voics.nl/about', 'https://discordy-api.voics.nl')).toBe(false);
+    expect(openInviteLink('https://example.com/invite/abc123', 'https://api.voics.nl')).toBe(false);
+    expect(openInviteLink('https://voics.nl/about', 'https://api.voics.nl')).toBe(false);
   });
 
   it('sends a tapped invite link to the join sheet instead of the browser', () => {

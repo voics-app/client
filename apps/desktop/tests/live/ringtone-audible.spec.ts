@@ -2,7 +2,7 @@
 // produce audible output energy at the speakers while the ring is up, and both while his window is
 // not focused. The probe taps what is routed to AudioDestinationNode, not just AudioContext.state.
 // Not part of CI; runs against gitops/local on :18000 by default. Against another stack (e.g. production):
-//   LIVE_BASE=https://discordy-api.voics.nl LIVE_GATEWAY=wss://discordy-gateway.voics.nl LIVE_CDN=https://discordy-cdn.voics.nl \n//   LIVE_CALLER=<email> LIVE_CALLEE=<email> LIVE_CALLEE_NAME=<username> LIVE_PASSWORD=<password> pnpm exec playwright test -c tests/live/playwright.live.config.ts ringtone-audible
+//   LIVE_BASE=https://api.voics.nl LIVE_GATEWAY=wss://gateway.voics.nl LIVE_CDN=https://cdn.voics.nl \n//   LIVE_CALLER=<email> LIVE_CALLEE=<email> LIVE_CALLEE_NAME=<username> LIVE_PASSWORD=<password> pnpm exec playwright test -c tests/live/playwright.live.config.ts ringtone-audible
 // The two accounts must be friends with an existing DM channel.
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';

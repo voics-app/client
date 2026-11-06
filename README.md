@@ -71,7 +71,7 @@ Edit `apps/desktop/brand.json` (displayName, productName, shortName, appId, prot
 | `DISCORDY_API_URL` | profile | REST base URL |
 | `DISCORDY_GATEWAY_URL` | profile | Gateway WebSocket base URL |
 | `DISCORDY_CDN_URL` | profile | Attachments and avatars |
-| `UPDATE_FEED_URL` | `https://discordy-updates.voics.nl` | electron-updater feed |
+| `UPDATE_FEED_URL` | `https://updates.voics.nl` | electron-updater feed |
 | `DISCORDY_USER_DATA_DIR` | OS default | Override the user data directory (tests, a second client) |
 | `RENDERER_PORT` | `5173` | Dev server port for `pnpm dev` (run a second client) |
 

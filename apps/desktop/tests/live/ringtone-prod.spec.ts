@@ -1,14 +1,14 @@
 // Production ringtone check (client#126): two throwaway accounts on production, A calls B in a DM, and B must
 // produce audible output energy while the incoming call rings: once with B's window unfocused, once minimized.
 // The probe taps everything routed to AudioDestinationNode. Cleanup schedules both accounts for deletion.
-// Run: LIVE_BASE=https://discordy-api.voics.nl pnpm exec playwright test -c tests/live/playwright.live.config.ts ringtone-prod
+// Run: LIVE_BASE=https://api.voics.nl pnpm exec playwright test -c tests/live/playwright.live.config.ts ringtone-prod
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const API = process.env.LIVE_BASE ?? 'https://discordy-api.voics.nl';
-const PROD = API === 'https://discordy-api.voics.nl';
+const API = process.env.LIVE_BASE ?? 'https://api.voics.nl';
+const PROD = API === 'https://api.voics.nl';
 const PASSWORD = 'E2e-Ring-Test-2026!';
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e3)}`;
 
