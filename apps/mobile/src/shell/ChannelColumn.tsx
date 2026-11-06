@@ -17,6 +17,12 @@ import { CHROME_FONT_CAP, theme } from '../theme';
 import { ChannelRow } from './ChannelRow';
 import { ColumnHeader } from './ColumnHeader';
 import { ServerMenu } from './ServerMenu';
+import { ChannelMenu } from '../messages/ChannelMenu';
+import { ChannelEditSheet } from '../serverSettings/ChannelEditSheet';
+import { markChannelRead } from '@discordy/core/application/guildCommands';
+import { getRuntime } from '../runtime';
+import { channelManageEntries } from '../messages/channelManageModel';
+import type { Channel } from '@discordy/core/contracts/rest';
 
 /** Desktop's ChannelSidebar for one server: its name (opens the server menu), then channels of every kind by category (collapsible), with the open channel, unread and muted states and who is in each voice channel. */
 export function ChannelColumn({ guildId }: { guildId: string }) {
@@ -29,8 +35,11 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
   const reads = useReadStateStore((s) => s.byChannel);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const voiceStates = useVoiceStore((s) => s.states);
-  const canMoveMembers = hasPermission(useGuildPermissions(guildId), Permission.MOVE_MEMBERS);
+  const perms = useGuildPermissions(guildId);
+  const canMoveMembers = hasPermission(perms, Permission.MOVE_MEMBERS);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuChannel, setMenuChannel] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Channel | null>(null);
 
   const sections = useMemo(
     () => (guild && userId ? channelSections({ guild, channels, members, userId }) : []),
@@ -41,6 +50,8 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
     <>
       <ColumnHeader title={guild?.name ?? ''} onPressTitle={guild ? () => setMenuOpen(true) : undefined} />
       <ServerMenu guildId={guildId} visible={menuOpen} onClose={() => setMenuOpen(false)} />
+      {menuChannel && <ChannelMenu visible guildId={guildId} channelId={menuChannel} onClose={() => setMenuChannel(null)} onMarkRead={() => markChannelRead(getRuntime().api, menuChannel)} />}
+      <ChannelEditSheet key={editingCategory?.id ?? 'none'} channel={editingCategory} onClose={() => setEditingCategory(null)} />
       <SectionList
         style={styles.list}
         contentContainerStyle={styles.content}
@@ -54,6 +65,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
               accessibilityLabel={`${section.title} category`}
               accessibilityState={{ expanded: !(section.id && collapsed[section.id]) }}
               onPress={() => section.id && usePrefsStore.getState().toggleMap('collapsedCategories', section.id)}
+              {...(section.id && channelManageEntries(channels[section.id], perms).edit ? { onLongPress: () => setEditingCategory(channels[section.id!]!), delayLongPress: 350 } : {})}
               style={styles.category}
             >
               <Ionicons name={section.id && collapsed[section.id] ? 'chevron-forward' : 'chevron-down'} size={12} color={theme.subtle} />
@@ -61,7 +73,7 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
             </Pressable>
           )
         }
-        renderItem={({ item }) => <ChannelRow channel={item} guildId={guildId} active={item.id === activeChannelId} canMoveMembers={canMoveMembers} />}
+        renderItem={({ item }) => <ChannelRow channel={item} guildId={guildId} active={item.id === activeChannelId} canMoveMembers={canMoveMembers} onMenu={(c) => setMenuChannel(c.id)} />}
       />
     </>
   );
