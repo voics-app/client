@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
+import { Alert, Linking } from 'react-native';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { errorMessage } from '@discordy/core/application/errorMessage';
 import { getRuntime } from '../runtime';
+import { CAMERA_DENIED } from './nativeVoice';
 
 /** False in Expo Go, where the native WebRTC module does not exist. */
 export function voiceAvailable(): boolean {
@@ -31,9 +34,26 @@ export function toggleDeafen(): void {
   getRuntime().voice?.controller.toggleDeaf();
 }
 
-/** Opens the call screen for a voice channel or a conversation; the screen joins on its own. */
-export function openCallScreen(channelId: string): void {
-  router.push(`/voice/${channelId}`);
+/** Turns your camera on or off. When access is off it says so and offers the Settings app, where the permission lives. */
+export async function toggleCamera(): Promise<void> {
+  try {
+    await getRuntime().voice?.controller.toggleVideo();
+  } catch (error) {
+    const message = errorMessage(error);
+    if (message === CAMERA_DENIED) {
+      Alert.alert('Camera is off', message, [{ text: 'Not now', style: 'cancel' }, { text: 'Open Settings', onPress: () => void Linking.openSettings() }]);
+    } else Alert.alert('Camera', message);
+  }
+}
+
+/** Flips between the front and the back camera. */
+export function switchCamera(): void {
+  getRuntime().voice?.controller.switchCamera();
+}
+
+/** Opens the call screen for a voice channel or a conversation; the screen joins on its own. With `video` the camera turns on once the call is connected. */
+export function openCallScreen(channelId: string, options: { video?: boolean } = {}): void {
+  router.push(options.video ? `/voice/${channelId}?video=1` : `/voice/${channelId}`);
 }
 
 /** Answers a ringing DM call: stops the ring on this device and joins. */

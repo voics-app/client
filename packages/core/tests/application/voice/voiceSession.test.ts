@@ -428,6 +428,35 @@ describe('VoiceSession end-to-end encryption honesty', () => {
       expect(log).toEqual(['audio: track set']);
     });
 
+    it('protects a camera put back after a reconnect like a new one, and does not attach to its new empty sender before', async () => {
+      const c = cryptor(true, true);
+      const session = makeSession({ cryptor: c, createDave: dave });
+      const first = await connectToReady(session);
+      first.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      await session.setCameraTrack({ kind: 'video' } as MediaTrackLike);
+      expect(c.attachSender).toHaveBeenCalledTimes(1);
+      c.attachSender.mockClear();
+
+      first.serverClose(1006);
+      await vi.advanceTimersByTimeAsync(2000);
+      const second = FakeSocket.latest();
+      second.open();
+      second.receive({ op: VoiceOp.READY, d: ready });
+      await vi.advanceTimersByTimeAsync(5);
+      const log: string[] = [];
+      trace(log, FakePeerConnection.latest(), c);
+      second.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(c.attachSender).not.toHaveBeenCalled();
+      expect(log).toEqual(['answer applied']);
+      log.length = 0;
+
+      await session.setCameraTrack({ kind: 'video' } as MediaTrackLike);
+      // The last entry is the quality preset applied to the now protected sender.
+      expect(log).toEqual(['camera: active=false', 'camera: track set', 'video: cryptor enabled', 'camera: active=true', 'camera: active=true']);
+    });
+
     it('leaves the call and keeps the sender paused when the cryptor cannot be enabled for a late track', async () => {
       const c = cryptor(true, true);
       const session = makeSession({ cryptor: c, createDave: dave });
