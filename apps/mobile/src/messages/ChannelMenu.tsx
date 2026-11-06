@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { muteScope, setLevel } from '@discordy/core/application/notificationActions';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -13,9 +14,10 @@ import { getRuntime } from '../runtime';
 import { useGuildPermissions } from '../servers/useGuildPermissions';
 import { theme } from '../theme';
 import { attempt } from '../ui/attempt';
-import { Sheet, SheetOption } from '../ui/Sheet';
+import { Sheet, SheetConfirm, SheetOption } from '../ui/Sheet';
+import { channelManageEntries } from './channelManageModel';
 
-type Step = 'menu' | 'mute' | 'notifications' | 'invite';
+type Step = 'menu' | 'mute' | 'notifications' | 'invite' | 'delete';
 
 const icon = (name: keyof typeof Ionicons.glyphMap, color: string = theme.text) => <Ionicons name={name} size={20} color={color} />;
 
@@ -25,15 +27,17 @@ export interface ChannelMenuProps {
   channelId: string;
   onClose(): void;
   onMarkRead(): void;
-  onSearch(): void;
+  /** Omitted where there is no search to open (the channel list). */
+  onSearch?: () => void;
 }
 
-/** The chat header's menu: Mark as read, Mute or Unmute, Notification settings and (in a server, with the permission) Invite people. */
+/** The channel menu, from the chat header or a long press in the channel list: Mark as read, Mute or Unmute, Notification settings and, in a server with the permission, Invite people, Edit channel and Delete channel. */
 export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead, onSearch }: ChannelMenuProps) {
   const [step, setStep] = useState<Step>('menu');
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const channels = useGuildStore((s) => s.channels);
   const perms = useGuildPermissions(guildId ?? '');
+  const manage = channelManageEntries(channels[channelId], perms);
   const muted = isChannelMuted(settings, channelId, Date.now());
   const level = channelOverride(settings, channelId)?.message_notifications ?? null;
   const canInvite = guildId !== undefined && hasPermission(perms, Permission.CREATE_INSTANT_INVITE) && inviteChannelId(channels, guildId) !== null;
@@ -51,19 +55,30 @@ export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead, 
     void attempt(() => setLevel(getRuntime().api, guildId ?? null, channelId, value), 'Could not change notifications');
   };
 
-  const title = step === 'mute' ? 'Mute channel' : step === 'notifications' ? 'Notification settings' : step === 'invite' ? 'Invite people' : undefined;
+  const remove = async () => {
+    close();
+    const done = await attempt(async () => {
+      await getRuntime().api.deleteChannel(channelId);
+      return true;
+    }, 'Could not delete channel');
+    if (done) useGuildStore.getState().removeChannel(channelId);
+  };
+
+  const title = step === 'delete' ? `Delete #${channels[channelId]?.name ?? 'channel'}?` : step === 'mute' ? 'Mute channel' : step === 'notifications' ? 'Notification settings' : step === 'invite' ? 'Invite people' : undefined;
   return (
     <Sheet visible={visible} {...(title ? { title } : {})} closeLabel="Close channel menu" onClose={close}>
       {step === 'menu' && (
         <>
-          <SheetOption
-            label="Search"
-            icon={icon('search-outline')}
-            onPress={() => {
-              close();
-              onSearch();
-            }}
-          />
+          {onSearch && (
+            <SheetOption
+              label="Search"
+              icon={icon('search-outline')}
+              onPress={() => {
+                close();
+                onSearch();
+              }}
+            />
+          )}
           <SheetOption
             label="Mark as read"
             icon={icon('checkmark-done-outline')}
@@ -75,6 +90,17 @@ export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead, 
           {muted ? <SheetOption label="Unmute channel" icon={icon('notifications-outline')} onPress={() => mute(undefined)} /> : <SheetOption label="Mute channel" icon={icon('notifications-off-outline')} onPress={() => setStep('mute')} />}
           <SheetOption label="Notification settings" icon={icon('options-outline')} onPress={() => setStep('notifications')} />
           {canInvite && <SheetOption label="Invite people" icon={icon('person-add-outline')} onPress={() => setStep('invite')} />}
+          {manage.edit && (
+            <SheetOption
+              label="Edit channel"
+              icon={icon('create-outline')}
+              onPress={() => {
+                close();
+                router.push(`/servers/${manage.guildId}/settings/channel/${channelId}`);
+              }}
+            />
+          )}
+          {manage.delete && <SheetOption label="Delete channel" danger icon={icon('trash-outline', theme.danger)} onPress={() => setStep('delete')} />}
         </>
       )}
       {step === 'mute' && MUTE_DURATIONS.map((d) => <SheetOption key={d.id} label={d.label} onPress={() => mute(d.seconds)} />)}
@@ -86,6 +112,7 @@ export function ChannelMenu({ visible, guildId, channelId, onClose, onMarkRead, 
           ))}
         </>
       )}
+      {step === 'delete' && <SheetConfirm body="Messages in this channel will be lost for everyone." confirmLabel="Delete channel" onConfirm={() => void remove()} onCancel={() => setStep('menu')} />}
       {step === 'invite' && guildId && <InviteContent guildId={guildId} />}
     </Sheet>
   );
