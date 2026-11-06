@@ -11,8 +11,8 @@ describe('resolveConnection', () => {
 
   it('defaults to production endpoints', () => {
     expect(resolveConnection({}, null)).toEqual(PROFILES.production);
-    expect(PROFILES.production.apiUrl).toBe('https://discordy-api.voics.nl');
-    expect(PROFILES.production.gatewayUrl).toBe('wss://discordy-gateway.voics.nl');
+    expect(PROFILES.production.apiUrl).toBe('https://api.voics.nl');
+    expect(PROFILES.production.gatewayUrl).toBe('wss://gateway.voics.nl');
   });
 
   it('DISCORDY_PROFILE=local resolves to the local profile', () => {
@@ -42,7 +42,7 @@ describe('resolveConnection', () => {
 describe('resolveUpdateFeed', () => {
   it('defaults to the update host', () => {
     expect(resolveUpdateFeed({})).toBe(DEFAULT_UPDATE_FEED_URL);
-    expect(DEFAULT_UPDATE_FEED_URL).toBe('https://discordy-updates.voics.nl');
+    expect(DEFAULT_UPDATE_FEED_URL).toBe('https://updates.voics.nl');
   });
 
   it('honours UPDATE_FEED_URL', () => {

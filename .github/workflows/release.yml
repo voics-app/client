@@ -1,5 +1,5 @@
 # Builds the desktop installer and publishes it to the update feed
-# (https://discordy-updates.voics.nl), which is also where the website's Download button points.
+# (https://updates.voics.nl), which is also where the website's Download button points.
 #
 #   push to main (= a git-flow release)  -> publish; merge of release/X.Y.Z or hotfix/X.Y.Z = exactly X.Y.Z,
 #                                           otherwise package.json when newer than the feed, else feed patch + 1
@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FEED: https://discordy-updates.voics.nl
+  FEED: https://updates.voics.nl
 
 jobs:
   windows:

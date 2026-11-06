@@ -1,6 +1,6 @@
 // Production smoke test: drives the real desktop client (production defaults, no DISCORDY_* URL overrides)
 // against the live Voics production stack with two throwaway accounts. Not part of CI.
-// Run: LIVE_BASE=https://discordy-api.voics.nl pnpm exec playwright test -c tests/live/playwright.live.config.ts prod-smoke
+// Run: LIVE_BASE=https://api.voics.nl pnpm exec playwright test -c tests/live/playwright.live.config.ts prod-smoke
 // Results are printed as a checklist and written to $PROD_SMOKE_OUT (default: prod-smoke-results.json).
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -8,11 +8,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assertNativeCryptoBuilt } from "./matrix-helpers";
 
-const API = process.env.LIVE_BASE ?? "https://discordy-api.voics.nl";
-const PROD = API === "https://discordy-api.voics.nl";
-const CDN_HOST = PROD ? "discordy-cdn.voics.nl" : new URL(API).host;
-const SITE = process.env.LIVE_SITE ?? "https://discordy.voics.nl";
-const UPDATES = process.env.LIVE_UPDATES ?? "https://discordy-updates.voics.nl";
+const API = process.env.LIVE_BASE ?? "https://api.voics.nl";
+const PROD = API === "https://api.voics.nl";
+const CDN_HOST = PROD ? "cdn.voics.nl" : new URL(API).host;
+const SITE = process.env.LIVE_SITE ?? "https://voics.nl";
+const UPDATES = process.env.LIVE_UPDATES ?? "https://updates.voics.nl";
 const PASSWORD = "E2e-Smoke-Test-2026!";
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e3)}`;
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC", "base64");
@@ -157,7 +157,7 @@ test("production smoke", async () => {
       return seen.join(" ");
     });
     await step("1 gateway websocket connected (READY)", async () => {
-      if (![...A.urls].some((u) => u.startsWith("wss://discordy-gateway.voics.nl") || (!PROD && u.startsWith("ws")))) throw new Error(`no gateway ws origin in ${[...A.urls].join(",")}`);
+      if (![...A.urls].some((u) => u.startsWith("wss://gateway.voics.nl") || (!PROD && u.startsWith("ws")))) throw new Error(`no gateway ws origin in ${[...A.urls].join(",")}`);
     });
     await step("1 logout, wrong password shows a clear error, login again", async () => {
       await openSettingsTab(A.page, "My account");

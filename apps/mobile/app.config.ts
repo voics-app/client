@@ -15,18 +15,16 @@ const config: ExpoConfig = {
   slug: 'voics',
   scheme: brand.protocolScheme,
   owner: 'oussamaelhajoui',
-  version: '0.0.1',
+  version: '1.0.0',
   orientation: 'portrait',
   icon: '../desktop/build/icon.png',
   userInterfaceStyle: 'dark',
   backgroundColor: '#0c0d12',
   ios: {
     bundleIdentifier: brand.appId,
-    supportsTablet: true,
-    // iPad stays in portrait like the phone (the app is portrait only), which Apple accepts only for an app that opts out of Split View and Slide Over.
-    requireFullScreen: true,
+    supportsTablet: false,
     infoPlist: {
-      // The owner's answer to Apple: standard encryption only. See docs runbooks/app-store-privacy.md.
+      // Standard algorithms outside iOS: no Apple documents outside France, where the app is not offered. True needs an Apple code. See docs runbooks/app-store-privacy.md.
       ITSAppUsesNonExemptEncryption: false,
       NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSCameraUsageDescription: CAMERA_USAGE,
