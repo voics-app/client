@@ -28,8 +28,10 @@ const config: ExpoConfig = {
     infoPlist: {
       NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSCameraUsageDescription: CAMERA_USAGE,
-      // Keeps a voice call running (audio in and out) when the app is in the background or the screen is locked.
-      UIBackgroundModes: ['audio'],
+      // audio keeps a voice call running (audio in and out) when the app is in the background or the screen is locked. voip lets PushKit wake the app for
+      // an incoming call, which it must report to CallKit at once (modules/voics-callkit). No App ID capability belongs to either; the APNs key that sends the
+      // alert pushes also sends VoIP pushes (topic <bundle id>.voip).
+      UIBackgroundModes: ['audio', 'voip'],
     },
   },
   android: {

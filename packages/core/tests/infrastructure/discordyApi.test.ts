@@ -64,4 +64,13 @@ describe('DiscordyApi push token', () => {
     await new DiscordyApi(http).removePushToken();
     expect(request).toHaveBeenCalledWith('DELETE', '/users/@me/devices/push', { reason: undefined });
   });
+
+  it('registers the VoIP token with POST /users/@me/devices/voip and removes it with DELETE', async () => {
+    const { http, request } = fakeHttp();
+    const body = { token: 'cd34', environment: 'sandbox' } as const;
+    await new DiscordyApi(http).registerVoipToken(body);
+    expect(request).toHaveBeenLastCalledWith('POST', '/users/@me/devices/voip', { body, reason: undefined });
+    await new DiscordyApi(http).removeVoipToken();
+    expect(request).toHaveBeenLastCalledWith('DELETE', '/users/@me/devices/voip', { reason: undefined });
+  });
 });

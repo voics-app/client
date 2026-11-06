@@ -9,11 +9,12 @@ describe('app.config', () => {
     expect(config.android?.package).toBe(brand.appId);
   });
 
-  it('asks for the microphone and camera, and keeps a call alive in the background', () => {
+  it('asks for the microphone and camera, and keeps a call alive in the background and lets a VoIP push wake the app', () => {
     const plist = config.ios?.infoPlist ?? {};
     expect(plist.NSMicrophoneUsageDescription).toMatch(/microphone/);
     expect(plist.NSCameraUsageDescription).toMatch(/camera/);
-    expect(plist.UIBackgroundModes).toEqual(['audio']);
+    // voip is what lets a PushKit push wake the app for an incoming call (modules/voics-callkit).
+    expect(plist.UIBackgroundModes).toEqual(['audio', 'voip']);
   });
 
   it('adds the push notification entitlement and tells the app which APNs host its tokens belong to', () => {

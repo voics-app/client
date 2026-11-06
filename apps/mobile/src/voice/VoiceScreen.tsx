@@ -59,6 +59,13 @@ function useRoute() {
   return { current, toggle: () => route?.toggle() };
 }
 
+const IN_CALL = new Set(['requesting', 'connecting', 'connected', 'reconnecting']);
+
+/** The call state belongs to this screen's channel and is running. */
+function callIsHere(status: string, callChannel: string | null, channelId: string): boolean {
+  return IN_CALL.has(status) && callChannel === channelId;
+}
+
 /** Which camera is sending, from the voice stack; the front camera is the default. */
 function useFacing(): CameraFacing {
   const controller = getRuntime().voice?.controller;
@@ -104,7 +111,19 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
     [info.participants, remote, localCamera, screenSsrcs, watching, focused],
   );
 
+  // A call that ends without the Leave button (hung up from the lock screen, the server disconnected you) closes this screen too.
+  const wasInCall = useRef(false);
+  const inCallHere = callIsHere(call.status, call.channelId, channelId);
+  useEffect(() => {
+    if (inCallHere) wasInCall.current = true;
+    else if (wasInCall.current && call.status === 'idle') {
+      wasInCall.current = false;
+      router.back();
+    }
+  }, [inCallHere, call.status]);
+
   const leave = () => {
+    wasInCall.current = false;
     void leaveVoice();
     router.back();
   };

@@ -17,6 +17,7 @@ import { InteractionModal } from '../src/commands/InteractionModal';
 import { InviteLinkSheet } from '../src/invites/InviteLinkSheet';
 import { WideShell } from '../src/shell/WideShell';
 import { useWideLayout } from '../src/shell/layoutModel';
+import { CallKitHost } from '../src/voice/callkit/CallKitHost';
 import { IncomingCall } from '../src/voice/IncomingCall';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
@@ -85,6 +86,7 @@ export default function RootLayout() {
       )}
       {signedIn && <IncomingCall />}
       <PushNotifications />
+      <CallKitHost />
       {signedIn && <InAppBanner />}
       {signedIn && <InviteLinkSheet />}
       {signedIn && <InteractionModal />}
