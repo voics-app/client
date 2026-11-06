@@ -29,6 +29,11 @@ export function PrivacyPage({ highlight }: { highlight: string | null }) {
       useSessionStore.getState().setSettings(await getRuntime().api.updateSettings({ default_delivery_mode: mode }));
     }, 'Could not update default');
 
+  const setCallsEncrypted = (enabled: boolean) =>
+    void attempt(async () => {
+      useSessionStore.getState().setSettings(await getRuntime().api.updateSettings({ e2ee_calls_default: enabled }));
+    }, 'Could not update call encryption');
+
   const clearOverride = (channelId: string) =>
     void attempt(async () => {
       await getRuntime().api.setChannelDeliveryOverride(channelId, null);
@@ -71,7 +76,7 @@ export function PrivacyPage({ highlight }: { highlight: string | null }) {
       <Hint>{ENCRYPTION_UNAVAILABLE}</Hint>
 
       <SectionLabel>Calls</SectionLabel>
-      <SwitchRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted." value={settings.e2ee_calls_default === true} disabled onChange={() => undefined} />
+      <SwitchRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted." value={settings.e2ee_calls_default === true} onChange={setCallsEncrypted} />
 
       <SectionLabel>Per-chat overrides</SectionLabel>
       {overrides.length === 0 && <Hint>No chats override your default. Change a chat's mode from its composer on desktop.</Hint>}

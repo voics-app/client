@@ -1,56 +1,104 @@
 import { describe, expect, it } from 'vitest';
-import { FrameKeyring, decryptFrame, deriveSenderKey, encryptFrame, importEpochBase, readGeneration } from '@renderer/workers/frameCrypto';
+import { FrameKeyring, IvSource, decryptFrame, encryptFrame, importFrameKey, readKeyIndex } from '@renderer/workers/frameCrypto';
 
-const secret = new Uint8Array(32).map((_, i) => i + 1);
+const hex = (value: string): Uint8Array => Uint8Array.from(value.match(/../g)!.map((byte) => parseInt(byte, 16)));
+const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
-describe('frame crypto', () => {
-  it('round-trips audio frames and hides the payload', async () => {
-    const base = await importEpochBase(secret);
-    const key = await deriveSenderKey(base, '42', 3);
-    const plain = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
-    const sealed = await encryptFrame(key, 1, 3, 'audio', 'opus', plain);
-    expect(sealed.length).toBeGreaterThan(plain.length + 16);
-    expect(readGeneration(sealed, 'audio', 'opus')).toBe(3);
-    expect(Array.from((await decryptFrame(key, 'audio', 'opus', sealed))!)).toEqual(Array.from(plain));
+/**
+ * Reference vectors computed independently with node:crypto from the steps of LiveKit's libwebrtc cryptor
+ * (api/crypto/frame_crypto_transformer.cc, m150): key = HKDF-SHA256(material, salt "voics-frame-key", 128 zero bytes)
+ * -> 16 bytes, AES-128-GCM with the clear header as AAD, frame = header | ciphertext | tag | IV | 12 | key index.
+ * The iPhone's native cryptor produces and accepts exactly these bytes.
+ */
+const MATERIAL = hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20');
+const IV = hex('a0a1a2a3a4a5a6a7a8a9aaab');
+const OPUS = hex('030a11181f262d343b424950575e656c737a8188');
+const OPUS_SEALED = hex('03d7abec4de2699dd042a567eb91a560384691d8415cdf6d8870fdff567de1a7d1f17e85a0a1a2a3a4a5a6a7a8a9aaab0c05');
+const VP8_KEY = hex('10060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92');
+const VP8_SEALED = hex('10060b10151a1f24292eee82c9108308f8bd5b8c52d6a0b47535bf98ddfaf4328a0bb99675efc4e40ade40554a3fa0a1a2a3a4a5a6a7a8a9aaab0c05');
+
+describe('frame crypto against the LiveKit reference vectors', () => {
+  it('seals an Opus frame to exactly the bytes of the reference (1 clear byte, IV and key index in the trailer)', async () => {
+    const key = await importFrameKey(MATERIAL);
+    expect(toHex(await encryptFrame(key, IV, 5, 'audio', 'opus', OPUS))).toBe(toHex(OPUS_SEALED));
   });
 
-  it('keeps the VP8 clear prefix and authenticates it', async () => {
-    const base = await importEpochBase(secret);
-    const key = await deriveSenderKey(base, '42', 1);
-    const frame = new Uint8Array(40).map((_, i) => (i === 0 ? 0x00 : i)); // key frame: 10 byte prefix
-    const sealed = await encryptFrame(key, 7, 1, 'video', 'VP8', frame);
-    expect(Array.from(sealed.slice(0, 10))).toEqual(Array.from(frame.slice(0, 10)));
-    expect(Array.from((await decryptFrame(key, 'video', 'VP8', sealed))!)).toEqual(Array.from(frame));
-    sealed[2] = (sealed[2] ?? 0) ^ 0xff;
-    await expect(decryptFrame(key, 'video', 'VP8', sealed)).rejects.toThrow();
+  it('seals a VP8 key frame to exactly the bytes of the reference (10 clear bytes)', async () => {
+    const key = await importFrameKey(MATERIAL);
+    expect(toHex(await encryptFrame(key, IV, 5, 'video', 'VP8', VP8_KEY))).toBe(toHex(VP8_SEALED));
   });
 
-  it('rejects another sender key and another generation', async () => {
-    const base = await importEpochBase(secret);
-    const alice = await deriveSenderKey(base, 'alice', 1);
-    const bob = await deriveSenderKey(base, 'bob', 1);
-    const sealed = await encryptFrame(alice, 1, 1, 'audio', 'opus', new Uint8Array([9, 9, 9]));
-    await expect(decryptFrame(bob, 'audio', 'opus', sealed)).rejects.toThrow();
-    const next = await deriveSenderKey(base, 'alice', 2);
-    await expect(decryptFrame(next, 'audio', 'opus', sealed)).rejects.toThrow();
+  it('opens frames made by the native cryptor (the reference bytes) and returns the original frame', async () => {
+    const key = await importFrameKey(MATERIAL);
+    expect(toHex((await decryptFrame(key, 'audio', 'opus', OPUS_SEALED))!)).toBe(toHex(OPUS));
+    expect(toHex((await decryptFrame(key, 'video', 'VP8', VP8_SEALED))!)).toBe(toHex(VP8_KEY));
+    expect(readKeyIndex(OPUS_SEALED, 'audio', 'opus')).toBe(5);
   });
 
-  it('returns null for unprotected frames', async () => {
-    const base = await importEpochBase(secret);
-    const key = await deriveSenderKey(base, 'a', 0);
-    expect(await decryptFrame(key, 'audio', 'opus', new Uint8Array(40))).toBeNull();
-    expect(readGeneration(new Uint8Array(40), 'audio', 'opus')).toBeNull();
+  it('rejects a frame with a flipped bit, a tampered clear header, or another sender key', async () => {
+    const key = await importFrameKey(MATERIAL);
+    const flipped = OPUS_SEALED.slice();
+    flipped[10] = (flipped[10] ?? 0) ^ 1;
+    await expect(decryptFrame(key, 'audio', 'opus', flipped)).rejects.toThrow();
+    const header = OPUS_SEALED.slice();
+    header[0] = 0x04;
+    await expect(decryptFrame(key, 'audio', 'opus', header)).rejects.toThrow();
+    const other = await importFrameKey(new Uint8Array(32).fill(9));
+    await expect(decryptFrame(other, 'audio', 'opus', OPUS_SEALED)).rejects.toThrow();
   });
 
-  it('keyring derives per sender, caches, and tracks epochs', async () => {
+  it('treats anything without a valid trailer as not protected, including the retired counter format', async () => {
+    const key = await importFrameKey(MATERIAL);
+    expect(await decryptFrame(key, 'audio', 'opus', new Uint8Array(60))).toBeNull();
+    const retired = new Uint8Array(60);
+    retired.set([0, 0, 0, 7, 3, 8, 0xfa, 0xfa], 52);
+    expect(await decryptFrame(key, 'audio', 'opus', retired)).toBeNull();
+    expect(readKeyIndex(retired, 'audio', 'opus')).toBeNull();
+  });
+
+  it('refuses H264 frames rather than guess its clear header', async () => {
+    const key = await importFrameKey(MATERIAL);
+    await expect(encryptFrame(key, IV, 1, 'video', 'H264', new Uint8Array(40))).rejects.toThrow(/H264/);
+  });
+});
+
+describe('IV source', () => {
+  it('never repeats an IV within a stream and refuses to wrap', () => {
+    const ivs = new IvSource((bytes) => bytes.fill(7));
+    const seen = new Set<string>();
+    for (let i = 0; i < 1000; i += 1) seen.add(toHex(ivs.next()));
+    expect(seen.size).toBe(1000);
+    const exhausted = new IvSource((bytes) => bytes.fill(7));
+    (exhausted as unknown as { counter: number }).counter = 0xffffffff;
+    expect(() => exhausted.next()).toThrow(/exhausted/);
+  });
+
+  it('starts each stream with a fresh random prefix, so streams under one key do not share IVs', () => {
+    const a = new IvSource();
+    const b = new IvSource();
+    expect(toHex(a.next().slice(0, 8))).not.toBe(toHex(b.next().slice(0, 8)));
+  });
+
+  it('round-trips a frame sealed with a stream IV', async () => {
+    const key = await importFrameKey(MATERIAL);
+    const sealed = await encryptFrame(key, new IvSource().next(), 3, 'audio', 'opus', OPUS);
+    expect(toHex((await decryptFrame(key, 'audio', 'opus', sealed))!)).toBe(toHex(OPUS));
+  });
+});
+
+describe('FrameKeyring', () => {
+  it('keeps keys per sender and key index and stays silent until activated', async () => {
     const ring = new FrameKeyring();
-    expect(ring.senderKey('a', 1)).toBeNull();
-    ring.setEpoch(1, await importEpochBase(secret));
-    expect(ring.hasGeneration(1)).toBe(true);
-    const first = ring.senderKey('a', 1);
-    expect(ring.senderKey('a', 1)).toBe(first);
+    const key = await importFrameKey(MATERIAL);
+    expect(ring.sendKeyIndex).toBeNull();
+    ring.setKey('a', 5, key);
+    expect(ring.key('a', 5)).toBe(key);
+    expect(ring.key('a', 6)).toBeNull();
+    expect(ring.key('b', 5)).toBeNull();
+    ring.activate(5);
+    expect(ring.sendKeyIndex).toBe(5);
     ring.clear();
-    expect(ring.hasGeneration(1)).toBe(false);
-    expect(ring.sendGeneration).toBeNull();
+    expect(ring.key('a', 5)).toBeNull();
+    expect(ring.sendKeyIndex).toBeNull();
   });
 });

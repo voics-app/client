@@ -1,6 +1,8 @@
 /** Composition of the mobile voice stack: the core call controller with the phone's microphone, mixer and WebRTC. */
+import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { DaveSession } from '@discordy/core/application/voice/daveSession';
 import { VoiceCallController } from '@discordy/core/application/voice/voiceCallController';
 import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import type { IceServer } from '@discordy/core/domain/turn';
@@ -15,6 +17,10 @@ export interface MobileVoiceDeps {
   native: NativeVoice;
   socketFactory: SocketFactory;
   iceServers: () => IceServer[];
+  /** The MLS engine that keys end-to-end encrypted calls; without it such calls are refused. */
+  crypto: CryptoBridge | null;
+  /** Identity public keys of every device of a user, to remove a departed participant from the media group. */
+  identityKeysOf(userId: string): Promise<string[]>;
 }
 
 export interface MobileVoice {
@@ -24,7 +30,7 @@ export interface MobileVoice {
   dispose(): void;
 }
 
-export function createMobileVoice({ gateway, native, socketFactory, iceServers }: MobileVoiceDeps): MobileVoice {
+export function createMobileVoice({ gateway, native, socketFactory, iceServers, crypto, identityKeysOf }: MobileVoiceDeps): MobileVoice {
   const mic = new MobileMic(() => native.openMicrophone());
   const route = new AudioRoute(native.route);
   const controller = new VoiceCallController({
@@ -32,6 +38,8 @@ export function createMobileVoice({ gateway, native, socketFactory, iceServers }
     mic,
     mixer: new MobileMixer(),
     createSession: (params) => {
+      // One cryptor per call. Without the crypto engine there is none, and an end-to-end encrypted call is refused with a clear error.
+      const cryptor = crypto ? native.createCryptor() : null;
       const session = new VoiceSession({
         endpoint: params.endpoint,
         region: params.region,
@@ -42,6 +50,18 @@ export function createMobileVoice({ gateway, native, socketFactory, iceServers }
         socketFactory,
         createPeerConnection: () => native.createPeerConnection(iceServers()),
         createStream: (track) => native.createStream(track),
+        // VP8 is on every iPhone and the encrypted frame format covers it; H264 is not covered.
+        preferredVideoCodec: 'VP8',
+        ...(cryptor && crypto
+          ? {
+              cryptor,
+              createDave: (send, hooks) =>
+                new DaveSession({ groupId: `voice:${params.serverId}`, userId: params.userId, crypto, cryptor, identityKeysOf, send, ...hooks }),
+            }
+          : {}),
+      });
+      session.onStatus((status) => {
+        if (status === 'closed') cryptor?.dispose();
       });
       session.onLocalLevel((level) => mic.feedLevel(level));
       return session;

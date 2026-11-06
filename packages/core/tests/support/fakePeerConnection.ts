@@ -9,7 +9,7 @@ export interface FakeTransceiver {
 
 export class FakeSender {
   track: { kind: string } | null = null;
-  params: { encodings: { maxBitrate?: number; maxFramerate?: number }[] } = { encodings: [{}] };
+  params: { encodings: { maxBitrate?: number; maxFramerate?: number; active?: boolean }[] } = { encodings: [{}] };
   transform: unknown = null;
   constructor(public readonly kind: string) {}
   replaceTrack(track: unknown): Promise<void> {

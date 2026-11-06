@@ -33,9 +33,9 @@ export function getRuntime(): MobileRuntime {
     cdnUrl: BRAND.cdnUrl,
     ...(loadNativePush() ? { removePushToken: () => getRuntime().api.removePushToken() } : {}),
     createPrivacy: loadNativePrivacy,
-    createVoice: ({ gateway, iceServers }) => {
+    createVoice: ({ gateway, iceServers, crypto, identityKeysOf }) => {
       const native = loadNativeVoice();
-      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers }) : null;
+      return native ? createMobileVoice({ gateway, native, socketFactory: nativeSocketFactory, iceServers, crypto, identityKeysOf }) : null;
     },
   });
   return current;

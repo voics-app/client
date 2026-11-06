@@ -23,6 +23,7 @@ import {
   type VoiceReady,
 } from '../../contracts/voice';
 import { reconnectDelay } from '../../domain/backoff';
+import { E2EE_PROTOCOL_VERSION, isE2eeVideoCodec } from '../../domain/frameFormat';
 import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '../../domain/sdp';
 import { presetConstraints, type CaptureConstraints } from '../../domain/videoPresets';
 import type {
@@ -35,6 +36,7 @@ import type {
   TransceiverLike,
 } from '../ports/media';
 import type { FrameCryptorPort, MediaGroupHooks, MediaGroupSession, ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '../ports/voice';
+import { errorMessage as errorText } from '../errorMessage';
 import { useVoiceStore, type CallQuality, type MediaHandle } from '../stores/voiceStore';
 import { Listeners } from '../../infrastructure/net/emitter';
 import { SOCKET_OPEN, type SocketFactory, type SocketLike } from '../../infrastructure/net/socket';
@@ -87,6 +89,10 @@ export class VoiceSession implements VoiceSessionPort {
   private cameraTransceiver: TransceiverLike | null = null;
   private screenTransceiver: TransceiverLike | null = null;
   private micTrack: MediaTrackLike | null = null;
+  private cameraTrack: MediaTrackLike | null = null;
+  private screenTrack: MediaTrackLike | null = null;
+  /** Senders whose frames are protected by an attached cryptor; a call that needs E2EE sends nothing else. */
+  private readonly protectedSenders = new WeakSet<object>();
   private plans: SectionPlan[] = [];
   private readonly sources = new Map<string, RemoteSource>();
   private readonly transceivers = new Map<string, TransceiverLike>();
@@ -350,13 +356,20 @@ export class VoiceSession implements VoiceSessionPort {
     const pc = this.pc;
     if (!pc || !this.parsedOffer || !this.offerSdp) return;
     const required = description.e2ee !== null;
-    if (required && !this.options.cryptor?.supported) {
-      this.fail('This call is end-to-end encrypted but this device cannot protect media frames.');
+    const refusal = required ? this.e2eeRefusal(description) : null;
+    if (refusal) {
+      this.fail(refusal);
       return;
     }
     this.description = description;
-    if (required && this.options.cryptor) this.attachSenderTransforms(description);
-    else this.bypassSenders();
+    if (required && this.options.cryptor) {
+      try {
+        await this.protectSenders(description);
+      } catch (error) {
+        this.fail(`Could not protect the media this device sends: ${errorText(error)}`);
+        return;
+      }
+    } else this.bypassSenders();
     await this.applyAnswer(this.offerSdp, this.parsedOffer, description);
     if (required) this.beginDave(description);
     if (this.sources.size > 0) this.scheduleRenegotiation();
@@ -374,13 +387,69 @@ export class VoiceSession implements VoiceSessionPort {
     return this.description?.video_codec ?? 'VP9';
   }
 
-  private attachSenderTransforms(description: SessionDescription): void {
+  /** Why this client must not join an E2EE call, or null. Nothing is sent or played in clear instead. */
+  private e2eeRefusal(description: SessionDescription): string | null {
+    const cryptor = this.options.cryptor;
+    if (!cryptor?.supported) return 'This call is end-to-end encrypted but this device cannot protect media frames.';
+    const version = description.e2ee?.protocol_version;
+    if (version !== E2EE_PROTOCOL_VERSION) {
+      return `This call uses end-to-end encryption version ${String(version)}, but this app only supports version ${E2EE_PROTOCOL_VERSION}. Update the app.`;
+    }
+    if (description.video_codec && !isE2eeVideoCodec(description.video_codec)) {
+      return `This call negotiated ${description.video_codec} video, which cannot be end-to-end encrypted.`;
+    }
+    return null;
+  }
+
+  /**
+   * Attaches a cryptor to every local sender before the answer is applied, which is before any media can
+   * flow. A gated cryptor (react-native-webrtc) needs a track on its sender and passes clear frames until it
+   * is enabled, so a sender without a track is skipped here and protected by `replaceProtected` before its first
+   * track is sent. `attachSender` resolves only once the sender is confirmed protected.
+   */
+  private async protectSenders(description: SessionDescription): Promise<void> {
     const cryptor = this.options.cryptor;
     if (!cryptor) return;
-    const codec = description.video_codec;
-    if (this.audioTransceiver) cryptor.attachSender(this.audioTransceiver.sender, 'audio', 'opus', this.options.userId);
-    if (this.cameraTransceiver) cryptor.attachSender(this.cameraTransceiver.sender, 'video', codec, this.options.userId);
-    if (this.screenTransceiver) cryptor.attachSender(this.screenTransceiver.sender, 'video', codec, this.options.userId);
+    const codec = description.video_codec ?? 'VP9';
+    const senders: [TransceiverLike | null, 'audio' | 'video', string, boolean][] = [
+      [this.audioTransceiver, 'audio', 'opus', this.micTrack !== null],
+      [this.cameraTransceiver, 'video', codec, this.cameraTrack !== null],
+      [this.screenTransceiver, 'video', codec, this.screenTrack !== null],
+    ];
+    for (const [transceiver, kind, senderCodec, hasTrack] of senders) {
+      if (!transceiver || (cryptor.gated && !hasTrack)) continue;
+      await cryptor.attachSender(transceiver.sender, kind, senderCodec, this.options.userId);
+      this.protectedSenders.add(transceiver.sender);
+    }
+  }
+
+  /**
+   * Puts a track on a sender. In an E2EE call whose cryptor is gated, the first track of a sender is sent only
+   * after the cryptor is attached and enabled: the sender is paused, gets the track, is protected, and only then
+   * resumes. A failure at any step leaves the call, and the sender stays paused.
+   */
+  private async replaceProtected(transceiver: TransceiverLike, track: MediaTrackLike | null, kind: 'audio' | 'video'): Promise<void> {
+    const sender = transceiver.sender;
+    const cryptor = this.options.cryptor;
+    if (!track || !this.description?.e2ee || !cryptor?.gated || this.protectedSenders.has(sender)) {
+      await sender.replaceTrack(track);
+      return;
+    }
+    try {
+      await this.setSenderActive(sender, false);
+      await sender.replaceTrack(track);
+      await cryptor.attachSender(sender, kind, kind === 'audio' ? 'opus' : this.codecName(), this.options.userId);
+      this.protectedSenders.add(sender);
+      await this.setSenderActive(sender, true);
+    } catch (error) {
+      this.fail(`Could not protect the media this device sends: ${errorText(error)}`);
+    }
+  }
+
+  private async setSenderActive(sender: RtpSenderLike, active: boolean): Promise<void> {
+    const params = sender.getParameters();
+    const encodings = (params.encodings && params.encodings.length > 0 ? params.encodings : [{}]) as RtpEncodingLike[];
+    await sender.setParameters({ ...params, encodings: encodings.map((encoding) => ({ ...encoding, active })) });
   }
 
   private bypassSenders(): void {
@@ -486,11 +555,35 @@ export class VoiceSession implements VoiceSessionPort {
     if (!plan || plan.role !== 'remote') return;
     const { source } = plan;
     const stream = event.streams[0] ?? this.options.createStream(event.track);
-    if (this.description?.e2ee) {
-      this.options.cryptor?.attachReceiver(event.receiver, kindOf(source.source), source.source === 'audio' ? 'opus' : this.codecName(), source.userId);
-    } else {
-      this.options.cryptor?.bypass(event.receiver);
+    const cryptor = this.options.cryptor;
+    if (!this.description?.e2ee) {
+      cryptor?.bypass(event.receiver);
+      this.deliver(source, stream);
+      return;
     }
+    if (!cryptor) {
+      this.fail('End-to-end encryption was announced but is not available in this client.');
+      return;
+    }
+    const pc = this.pc;
+    const attached = cryptor.attachReceiver(event.receiver, kindOf(source.source), source.source === 'audio' ? 'opus' : this.codecName(), source.userId);
+    const refuse = (error: unknown) => this.fail(`Could not protect the media this device receives: ${errorText(error)}`);
+    if (!cryptor.gated) {
+      this.deliver(source, stream);
+      attached.catch(refuse);
+      return;
+    }
+    // A gated cryptor passes clear frames until enabled, and the platform plays a remote track by itself: mute it until the receiver is confirmed protected.
+    event.track.enabled = false;
+    void attached.then(() => {
+      if (this.pc !== pc) return;
+      // Audio is switched on by the mixer when it receives the stream (it also applies deafen).
+      if (source.source !== 'audio') event.track.enabled = true;
+      this.deliver(source, stream);
+    }, refuse);
+  }
+
+  private deliver(source: RemoteSource, stream: MediaStreamLike): void {
     if (source.source === 'audio') this.remoteAudio.emit(source.userId, stream);
     else useVoiceStore.getState().setRemoteStream({ userId: source.userId, kind: source.source, stream: stream as MediaHandle });
   }
@@ -542,22 +635,24 @@ export class VoiceSession implements VoiceSessionPort {
 
   async setMicTrack(track: MediaTrackLike | null): Promise<void> {
     this.micTrack = track;
-    await this.audioTransceiver?.sender.replaceTrack(track);
+    if (this.audioTransceiver) await this.replaceProtected(this.audioTransceiver, track, 'audio');
   }
 
   async setCameraTrack(track: MediaTrackLike | null, constraints?: CaptureConstraints): Promise<void> {
     const sender = this.cameraTransceiver?.sender;
-    if (!sender) return;
-    await sender.replaceTrack(track);
+    if (!this.cameraTransceiver || !sender) return;
+    this.cameraTrack = track;
+    await this.replaceProtected(this.cameraTransceiver, track, 'video');
     if (track) await this.applySenderParameters(sender, constraints ?? presetConstraints('720p30'));
     await this.announceVideo();
   }
 
   async setScreenTrack(track: MediaTrackLike | null, options?: ScreenTrackOptions): Promise<void> {
     const sender = this.screenTransceiver?.sender;
-    if (!sender) return;
+    if (!this.screenTransceiver || !sender) return;
+    this.screenTrack = track;
     if (track && options) track.contentHint = options.contentHint;
-    await sender.replaceTrack(track);
+    await this.replaceProtected(this.screenTransceiver, track, 'video');
     if (track && options) await this.applySenderParameters(sender, options.constraints);
     await this.announceVideo();
   }

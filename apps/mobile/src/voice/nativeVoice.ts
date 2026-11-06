@@ -1,15 +1,16 @@
 /**
- * The one place that loads the native voice modules (react-native-webrtc and react-native-incall-manager).
+ * The one place that loads the native voice modules (@livekit/react-native-webrtc and react-native-incall-manager).
  * They are required lazily and only in a native build: Expo Go has neither, and importing them there would
  * crash the whole app at startup.
  */
 import type { IceServer } from '@discordy/core/domain/turn';
 import type { MediaPeerConnection, MediaStreamLike, MediaTrackLike } from '@discordy/core/application/ports/media';
 import { isNativeBuild } from '../native/isNativeBuild';
+import { MobileFrameCryptor, type FrameCryptorModule } from './mobileFrameCryptor';
 
 export interface NativeAudioTrack extends MediaTrackLike {
   enabled: boolean;
-  /** react-native-webrtc: gain in the range 0 to 10, 1 by default. */
+  /** @livekit/react-native-webrtc: gain in the range 0 to 10, 1 by default. */
   _setVolume?(volume: number): void;
 }
 
@@ -28,12 +29,14 @@ export interface NativeVoice {
   createPeerConnection(iceServers: IceServer[]): MediaPeerConnection;
   createStream(track: MediaTrackLike): MediaStreamLike;
   openMicrophone(): Promise<NativeAudioTrack>;
+  /** A frame cryptor for one end-to-end encrypted call; null when this build has none (then E2EE calls are refused). */
+  createCryptor(): MobileFrameCryptor | null;
   route: AudioRouteDriver;
 }
 
 export const MICROPHONE_DENIED = 'Microphone access is off. Turn it on for Voics in the iOS Settings app.';
 
-export interface WebRtcModule {
+export interface WebRtcModule extends Partial<FrameCryptorModule> {
   RTCPeerConnection: new (config: object) => unknown;
   MediaStream: new (tracks: unknown[]) => unknown;
   mediaDevices: { getUserMedia(constraints: object): Promise<NativeAudioStream> };
@@ -50,6 +53,10 @@ export function createNativeVoice(webrtc: WebRtcModule, inCall: InCallManagerMod
   return {
     createPeerConnection: (iceServers) => new webrtc.RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers }) as MediaPeerConnection,
     createStream: (track) => new webrtc.MediaStream([track]) as MediaStreamLike,
+    createCryptor: () =>
+      webrtc.RTCFrameCryptorFactory && webrtc.RTCFrameCryptorAlgorithm && webrtc.RTCKeyDerivationAlgorithm
+        ? new MobileFrameCryptor(webrtc as FrameCryptorModule)
+        : null,
     openMicrophone: async () => {
       let stream: NativeAudioStream;
       try {
@@ -74,7 +81,7 @@ export function loadNativeVoice(): NativeVoice | null {
   if (!isNativeBuild) return null;
   try {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const webrtc = require('react-native-webrtc') as WebRtcModule;
+    const webrtc = require('@livekit/react-native-webrtc') as WebRtcModule;
     const inCall = (require('react-native-incall-manager') as { default: InCallManagerModule }).default;
     /* eslint-enable @typescript-eslint/no-require-imports */
     return createNativeVoice(webrtc, inCall);

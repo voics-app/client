@@ -2,9 +2,11 @@
  * Dedicated worker that protects/unprotects encoded media frames. It is driven
  * by RTCRtpScriptTransform (`onrtctransform`) or, on older Chromium, by encoded
  * streams posted from the main thread. Frames that cannot be protected or
- * authenticated are dropped, never forwarded in clear while a key is required.
+ * authenticated are dropped, never forwarded in clear: a frame without a valid
+ * protection trailer, a frame whose key is unknown, and a frame that fails
+ * authentication all disappear, and a sender with no active key sends nothing.
  */
-import { FrameKeyring, decryptFrame, encryptFrame, readGeneration, type MediaKind } from './frameCrypto';
+import { FrameKeyring, IvSource, decryptFrame, encryptFrame, readKeyIndex, type MediaKind } from './frameCrypto';
 
 export interface TransformOptions {
   operation: 'encrypt' | 'decrypt';
@@ -15,9 +17,8 @@ export interface TransformOptions {
 }
 
 export type WorkerMessage =
-  | { type: 'epoch'; generation: number; base: CryptoKey }
+  | { type: 'key'; userId: string; keyIndex: number; key: CryptoKey }
   | { type: 'activate'; generation: number }
-  | { type: 'passthrough'; value: boolean }
   | { type: 'clear' }
   | { type: 'streams'; options: TransformOptions; readable: ReadableStream; writable: WritableStream };
 
@@ -42,33 +43,29 @@ const keyring = new FrameKeyring();
 const toBuffer = (bytes: Uint8Array): ArrayBuffer => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
 function pipeline(options: TransformOptions): TransformStream<EncodedFrame, EncodedFrame> {
-  let counter = 0;
+  const ivs = new IvSource();
   return new TransformStream<EncodedFrame, EncodedFrame>({
     async transform(frame, controller) {
       const data = new Uint8Array(frame.data);
       try {
         if (options.operation === 'encrypt') {
-          const generation = keyring.sendGeneration;
-          const key = generation === null ? null : keyring.senderKey(options.userId, generation);
-          if (generation === null || !key) return;
-          counter = (counter + 1) >>> 0;
-          frame.data = toBuffer(await encryptFrame(await key, counter, generation, options.kind, options.codec, data));
+          const keyIndex = keyring.sendKeyIndex;
+          const key = keyIndex === null ? null : keyring.key(options.userId, keyIndex);
+          if (keyIndex === null || !key) return;
+          frame.data = toBuffer(await encryptFrame(key, ivs.next(), keyIndex, options.kind, options.codec, data));
           controller.enqueue(frame);
           return;
         }
-        const generation = readGeneration(data, options.kind, options.codec);
-        if (generation === null) {
-          if (keyring.passthrough) controller.enqueue(frame);
-          return;
-        }
-        const key = keyring.senderKey(options.userId, generation);
+        const keyIndex = readKeyIndex(data, options.kind, options.codec);
+        if (keyIndex === null) return;
+        const key = keyring.key(options.userId, keyIndex);
         if (!key) return;
-        const plain = await decryptFrame(await key, options.kind, options.codec, data);
+        const plain = await decryptFrame(key, options.kind, options.codec, data);
         if (!plain) return;
         frame.data = toBuffer(plain);
         controller.enqueue(frame);
       } catch {
-        // Authentication failure or key not ready: drop the frame.
+        // Authentication failure, unsupported codec or exhausted IVs: drop the frame.
       }
     },
   });
@@ -83,14 +80,11 @@ scope.onrtctransform = (event) => attach(event.transformer.options, event.transf
 scope.onmessage = (event) => {
   const message = event.data;
   switch (message.type) {
-    case 'epoch':
-      keyring.setEpoch(message.generation, message.base);
+    case 'key':
+      keyring.setKey(message.userId, message.keyIndex, message.key);
       break;
     case 'activate':
-      keyring.sendGeneration = message.generation & 0xff;
-      break;
-    case 'passthrough':
-      keyring.passthrough = message.value;
+      keyring.activate(message.generation);
       break;
     case 'clear':
       keyring.clear();

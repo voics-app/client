@@ -1,8 +1,8 @@
 /**
  * DAVE-style media E2EE control plane (voice ops 21-31). Group membership runs
- * on the native MLS engine; keys for the frame worker come from the MLS
- * exporter secret of the current epoch. The session never reports `active`
- * until an epoch key is installed in the worker AND activated by
+ * on the native MLS engine; the key material of every sender comes from the MLS
+ * exporter secret of the current epoch (one label per sender and key index). The session never reports `active`
+ * until an epoch key is installed in the cryptor AND activated by
  * EXECUTE_TRANSITION (or by founding the group), so the UI cannot claim
  * encryption that is not happening.
  *
@@ -15,14 +15,14 @@
  *   29 MLS_ANNOUNCE_COMMIT <- { transition_id, commit }
  *   30 MLS_WELCOME       <- { transition_id, welcome }
  *   21/22 PREPARE/EXECUTE_TRANSITION: never sent by the voice node (it relays 21 verbatim, which would
- *        ping-pong an ack), so epochs are activated as soon as their key is installed.
+ *        ping-pong an ack), so epochs are activated as soon as their key is installed. Clear frames are never
+ *        accepted during a transition, so 21 is ignored.
  *   31 MLS_INVALID_COMMIT<- { transition_id }
  */
-import { VoiceOp } from '@discordy/core/contracts/voice';
-import type { CryptoBridge } from '@shared/ipc';
-import type { FrameCryptorPort } from './frameCryptor';
-
-export const FRAME_KEY_LABEL = 'discordy-voice-frame-key-v1';
+import { VoiceOp } from '../../contracts/voice';
+import { FRAME_KEY_MATERIAL_BYTES, frameKeyLabel } from '../../domain/frameFormat';
+import type { CryptoBridge } from '../ports/crypto';
+import type { FrameCryptorPort } from '../ports/voice';
 
 export type DaveCrypto = Pick<
   CryptoBridge,
@@ -44,6 +44,7 @@ export interface DaveOptions {
 }
 
 const fromB64 = (value: string): Uint8Array => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+
 
 export class DaveSession {
   private groupId: string;
@@ -74,7 +75,7 @@ export class DaveSession {
     const epoch = await this.options.crypto.createGroup(this.groupId);
     this.committer = true;
     await this.installEpoch(epoch);
-    this.activate(epoch);
+    await this.activate(epoch);
   }
 
   /**
@@ -91,7 +92,7 @@ export class DaveSession {
       this.transitionSeq += 1;
       await this.installEpoch(removal.epoch);
       this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, { transition_id: this.transitionSeq, commit: removal.commitB64 });
-      this.activate(removal.epoch);
+      await this.activate(removal.epoch);
     });
   }
 
@@ -133,14 +134,15 @@ export class DaveSession {
 
   /** Derives and installs keys for an epoch without activating them for sending. */
   private async installEpoch(epoch: number): Promise<void> {
-    const secret = await this.options.crypto.exportSecret(this.groupId, FRAME_KEY_LABEL, 32);
-    await this.options.cryptor.setEpoch(epoch & 0xff, fromB64(secret));
+    const groupId = this.groupId;
+    await this.options.cryptor.setEpoch(epoch & 0xff, async (userId, keyIndex) =>
+      fromB64(await this.options.crypto.exportSecret(groupId, frameKeyLabel(userId, keyIndex), FRAME_KEY_MATERIAL_BYTES)),
+    );
     this.epoch = epoch;
   }
 
-  private activate(epoch: number): void {
-    this.options.cryptor.activate(epoch & 0xff);
-    this.options.cryptor.setPassthrough(false);
+  private async activate(epoch: number): Promise<void> {
+    await this.options.cryptor.activate(epoch & 0xff);
     this.setActive(true);
   }
 
@@ -166,7 +168,7 @@ export class DaveSession {
           welcome: result.welcomeB64,
           recipient_ids: [userId],
         });
-        this.activate(result.epoch);
+        await this.activate(result.epoch);
         return;
       }
       case VoiceOp.DAVE_MLS_PROPOSALS: {
@@ -179,29 +181,22 @@ export class DaveSession {
         const result = await crypto.processIncoming(this.groupId, String(d.commit ?? d.commit_b64));
         if (result.kind !== 'commit' || result.epoch === undefined) throw new Error('announced commit could not be applied');
         await this.installEpoch(result.epoch);
-        this.activate(result.epoch);
+        await this.activate(result.epoch);
         return;
       }
       case VoiceOp.DAVE_MLS_WELCOME: {
         const joined = await crypto.joinFromWelcome(String(d.welcome ?? d.welcome_b64));
         this.groupId = joined.groupId;
         await this.installEpoch(joined.epoch);
-        this.activate(joined.epoch);
-        return;
-      }
-      case VoiceOp.DAVE_PREPARE_TRANSITION: {
-        cryptor.setPassthrough(true);
+        await this.activate(joined.epoch);
         return;
       }
       case VoiceOp.DAVE_EXECUTE_TRANSITION: {
         const id = Number(d.transition_id);
         const epoch = this.pending.get(id);
         this.pending.delete(id);
-        if (epoch === undefined) {
-          cryptor.setPassthrough(false);
-          return;
-        }
-        this.activate(epoch);
+        if (epoch === undefined) return;
+        await this.activate(epoch);
         return;
       }
       case VoiceOp.DAVE_MLS_INVALID_COMMIT: {
