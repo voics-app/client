@@ -1,5 +1,6 @@
 import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { threadNameFor } from '@discordy/core/domain/threads';
+import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
 import { useCallback, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -135,8 +136,8 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     openDialog({
       kind: 'confirm',
       title: 'Delete message',
-      body: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      body: standard ? 'This cannot be undone.' : DELETE_PRIVATE_NOTE,
+      confirmLabel: standard ? 'Delete' : 'Delete for everyone',
       danger: true,
       onConfirm: async () => {
         if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), 'Could not delete message');

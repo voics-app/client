@@ -11,6 +11,7 @@ import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';
 import { LocalHistory } from './localHistory';
 import { MessageSender } from './messageSender';
+import { PrivateRetention } from './retention';
 import { P2PService, type PeerConnectionConfig, type PeerConnectionLike } from './p2pService';
 import type { SelfIdentity } from './types';
 import { brand } from '../../domain/brandConfig';
@@ -33,16 +34,21 @@ export interface PrivateMessagingDeps {
   onIncoming?: (message: ChatMessage) => void;
 }
 
+const SWEEP_INTERVAL_MS = 15_000;
+
 export class PrivateMessaging {
   readonly sender: MessageSender;
   readonly ephemeral: EphemeralService;
   readonly p2p: P2PService;
   readonly attachments: AttachmentService;
+  readonly retention: PrivateRetention;
+  private sweeper: ReturnType<typeof setInterval> | undefined;
 
   constructor(private readonly deps: PrivateMessagingDeps) {
     const now = deps.now ?? Date.now;
     const devices = new DeviceDirectory(deps.api, now);
-    const history = new LocalHistory(() => deps.crypto);
+    const history = new LocalHistory(() => deps.crypto, now);
+    this.retention = new PrivateRetention(history, now);
     this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes });
     this.ephemeral = new EphemeralService({
       gateway: deps.gateway,
@@ -51,6 +57,7 @@ export class PrivateMessaging {
       devices,
       history,
       attachments: this.attachments,
+      retention: this.retention,
       getSelf: deps.getSelf,
       now,
       onIncoming: deps.onIncoming,
@@ -61,13 +68,14 @@ export class PrivateMessaging {
       devices,
       history,
       attachments: this.attachments,
+      retention: this.retention,
       getSelf: deps.getSelf,
       createPeerConnection: deps.createPeerConnection,
       now,
       iceServers: deps.iceServers,
       onIncoming: deps.onIncoming,
     });
-    this.sender = new MessageSender({ api: deps.api, ephemeral: this.ephemeral, p2p: this.p2p, history, now });
+    this.sender = new MessageSender({ api: deps.api, ephemeral: this.ephemeral, p2p: this.p2p, history, retention: this.retention, now });
   }
 
   /** Step 1 (before registering the device): opens the encrypted store and returns the identity public key (base64). */
@@ -78,9 +86,15 @@ export class PrivateMessaging {
   /** Step 2 (after READY): publishes key packages when needed. Failures never block the rest of the app. */
   async start(): Promise<void> {
     await this.ephemeral.start();
+    await this.retention.load();
+    await this.retention.sweep();
+    this.sweeper ??= setInterval(() => void this.retention.sweep().catch(() => undefined), SWEEP_INTERVAL_MS);
+    void this.p2p.flushPending().catch(() => undefined);
   }
 
   stop(): void {
+    clearInterval(this.sweeper);
+    this.sweeper = undefined;
     this.ephemeral.stop();
     this.p2p.stop();
   }

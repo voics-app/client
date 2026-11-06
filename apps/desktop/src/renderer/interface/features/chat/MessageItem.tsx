@@ -1,4 +1,4 @@
-import { ArrowClockwise, BellSlash, ChatTeardropText, Eye, LockKey, Plugs, WarningCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, BellSlash, ChatTeardropText, Eye, LockKey, Timer, Plugs, WarningCircle } from '@phosphor-icons/react';
 import { isMentioned, isSilent } from '@discordy/core/domain/notificationPolicy';
 import { memo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -267,6 +267,9 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
                 <Tooltip label="Delivered directly peer-to-peer. Stored only on your devices."><span className="message-mode mode-p2p" tabIndex={0}><Plugs size={12} weight="fill" /></span></Tooltip>
               )}
               <HeaderTime iso={message.timestamp} />
+              {message.expiresAt !== undefined && (
+                <Tooltip label={`Disappears ${new Date(message.expiresAt).toLocaleString()}`}><span className="message-mode" tabIndex={0}><Timer size={12} /></span></Tooltip>
+              )}
             </header>
           )}
           {editing ? (

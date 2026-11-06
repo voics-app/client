@@ -2,6 +2,7 @@
 import type { Channel, DeliveryMode, User } from '../../contracts/rest';
 import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '../../domain/privateAttachment';
 import { decodeUtf8, encodeUtf8 } from '../../domain/utf8';
+import { parseTtl } from '../../domain/disappearing';
 import { snowflakeFromTimestamp } from '../../domain/snowflake';
 import type { ChatMessage } from '../stores/messageStore';
 
@@ -34,6 +35,8 @@ export interface PrivatePayload {
   reply_to?: string | null;
   /** Encrypted-file refs (key, nonce, hash, name, mime, size); only ever inside the encrypted envelope. */
   files?: PrivateFileRef[];
+  /** Disappearing-message timer the sender had on; the receiver removes the message that long after it arrives. */
+  ttl_ms?: number;
 }
 
 export type PrivateDeliveryFailure =
@@ -84,6 +87,7 @@ export function decodePayload(b64: string, bind?: { channelId: string; mode: Pri
     timestamp: p.timestamp,
     reply_to: p.reply_to ?? null,
     files: bind ? validFiles(p.files, bind) : [],
+    ttl_ms: parseTtl(p.ttl_ms) ?? undefined,
   };
 }
 
@@ -113,10 +117,12 @@ export interface BuildMessageInput {
   author: User;
   payload: PrivatePayload;
   mode: Exclude<DeliveryMode, 'standard'>;
+  /** When the message disappears from this device (epoch ms); omitted for chats without a timer. */
+  expiresAt?: number;
 }
 
 export function buildPrivateMessage(input: BuildMessageInput): ChatMessage {
-  const { id, channel, author, payload, mode } = input;
+  const { id, channel, author, payload, mode, expiresAt } = input;
   return {
     id,
     channel_id: channel.id,
@@ -135,6 +141,7 @@ export function buildPrivateMessage(input: BuildMessageInput): ChatMessage {
     nonce: payload.nonce,
     message_reference: payload.reply_to ? { message_id: payload.reply_to, channel_id: channel.id } : undefined,
     deliveryMode: mode,
+    ...(expiresAt ? { expiresAt } : {}),
   };
 }
 
@@ -143,4 +150,9 @@ export function encryptionUnavailable(reason?: string): PrivateDeliveryError {
     'encryption_unavailable',
     `End-to-end encryption is unavailable on this device${reason ? `: ${reason}` : ''}. Message not sent.`,
   );
+}
+
+/** The optional `ttl_ms` field of an outgoing payload. */
+export function ttlField(ttlMs: number | undefined): { ttl_ms?: number } {
+  return ttlMs ? { ttl_ms: ttlMs } : {};
 }

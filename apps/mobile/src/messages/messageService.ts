@@ -34,7 +34,7 @@ const readFromDevice: ReadBlob = async (file) => {
 };
 
 /** The Ephemeral and P2P side of the sender; absent in Expo Go, where those chats cannot be opened. */
-export type PrivateChat = Pick<MessageSender, 'resolveMode' | 'send' | 'loadHistory'>;
+export type PrivateChat = Pick<MessageSender, 'resolveMode' | 'send' | 'loadHistory' | 'remove'>;
 
 export class MessageService {
   private readonly paging = new Set<string>();
@@ -251,7 +251,10 @@ export class MessageService {
     useMessageStore.getState().patch(channelId, messageId, updated);
   }
 
+  /** Standard chats delete on the server; Ephemeral and P2P chats delete for everyone through a control message to the other devices. */
   async remove(channelId: string, messageId: string): Promise<void> {
+    const privateChannel = this.privateChannel(channelId);
+    if (privateChannel) return this.privateChat!.remove(privateChannel, messageId);
     await this.api.deleteMessage(channelId, messageId);
     useMessageStore.getState().remove(channelId, messageId);
   }
