@@ -39,7 +39,7 @@ export interface ReportDraft {
   includeContent: boolean;
 }
 
-export const emptyReportDraft = (): ReportDraft => ({ category: null, note: '', includeContent: true });
+export const emptyReportDraft = (): ReportDraft => ({ category: null, note: '', includeContent: false });
 
 /** The JSON body of `POST /reports`. */
 export interface CreateReportBody {

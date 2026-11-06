@@ -40,22 +40,22 @@ describe('ReportDialog', () => {
     expect(useUiStore.getState().dialog).toBeNull();
   });
 
-  it('says an ephemeral chat has no server copy and lets the person withhold the text', async () => {
+  it('says an ephemeral chat has no server copy and keeps the text unless the person chooses to send it', async () => {
     createReport.mockResolvedValue(undefined);
     render(<ReportDialog target={message('ephemeral')} />);
     expect(screen.getByText(/ephemeral chat.*keeps no copy/)).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /Hate speech/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Send the text/ }));
     fireEvent.click(send());
     await waitFor(() => expect(createReport).toHaveBeenCalled());
     expect(createReport.mock.calls[0]![0]).toEqual({ target: 'message', channel_id: 'c1', message_id: 'm1', category: 'hate_speech', author_id: 'u2' });
   });
 
-  it('sends the text of a p2p message by default', async () => {
+  it('sends the text of a p2p message when the person ticks the box', async () => {
     createReport.mockResolvedValue(undefined);
     render(<ReportDialog target={message('p2p')} />);
     expect(screen.getByText(/peer-to-peer chat/)).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /Violence/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Send the text/ }));
     fireEvent.click(send());
     await waitFor(() => expect(createReport).toHaveBeenCalled());
     expect(createReport.mock.calls[0]![0]).toMatchObject({ author_id: 'u2', content: 'what she wrote' });

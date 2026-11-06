@@ -47,21 +47,21 @@ describe('ReportSheet', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('says an ephemeral chat has no server copy and lets the person withhold the text', async () => {
+  it('says an ephemeral chat has no server copy and keeps the text unless the person chooses to send it', async () => {
     mockCreateReport.mockResolvedValue(undefined);
     await render(sheet(message('ephemeral')));
     expect(screen.getByText(/ephemeral chat.*keeps no copy/)).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Hate speech'));
-    await fireEvent.press(screen.getByLabelText('Send the text of this message with the report'));
     await fireEvent.press(send());
     await waitFor(() => expect(mockCreateReport).toHaveBeenCalled());
     expect(mockCreateReport.mock.calls[0][0]).toEqual({ target: 'message', channel_id: 'c1', message_id: 'm1', category: 'hate_speech', author_id: 'u2' });
   });
 
-  it('sends the text of a p2p message by default', async () => {
+  it('sends the text of a p2p message when the person ticks the box', async () => {
     mockCreateReport.mockResolvedValue(undefined);
     await render(sheet(message('p2p')));
     await fireEvent.press(screen.getByLabelText('Violence or threats'));
+    await fireEvent.press(screen.getByLabelText('Send the text of this message with the report'));
     await fireEvent.press(send());
     await waitFor(() => expect(mockCreateReport).toHaveBeenCalled());
     expect(mockCreateReport.mock.calls[0][0]).toMatchObject({ author_id: 'u2', content: 'what she wrote' });

@@ -67,7 +67,7 @@ describe('report body', () => {
   });
 
   it('caps the submitted text', () => {
-    const body = buildReportBody(message({ mode: 'p2p', content: 'y'.repeat(REPORT_CONTENT_MAX + 50) }), draft());
+    const body = buildReportBody(message({ mode: 'p2p', content: 'y'.repeat(REPORT_CONTENT_MAX + 50) }), draft({ includeContent: true }));
     expect(body.content).toHaveLength(REPORT_CONTENT_MAX);
   });
 
