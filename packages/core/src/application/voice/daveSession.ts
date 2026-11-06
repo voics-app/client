@@ -26,7 +26,7 @@ import type { FrameCryptorPort } from '../ports/voice';
 
 export type DaveCrypto = Pick<
   CryptoBridge,
-  'generateKeyPackages' | 'hasGroup' | 'createGroup' | 'addMembers' | 'removeMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
+  'generateKeyPackages' | 'hasGroup' | 'deleteGroup' | 'createGroup' | 'addMembers' | 'removeMembers' | 'joinFromWelcome' | 'processIncoming' | 'exportSecret'
 >;
 
 export interface DaveOptions {
@@ -84,7 +84,9 @@ export class DaveSession {
    * cannot decrypt frames sent after the transition. Non-committers rotate on ANNOUNCE_COMMIT.
    */
   participantLeft(userId: string): Promise<void> {
-    return this.guard(async () => {
+    // On the op queue: a member that rejoins at once sends its key package right behind its departure, and adding
+    // it while its old leaf is still in the group would be refused.
+    const run = this.queue.then(() => this.guard(async () => {
       if (!this.committer || !this.options.identityKeysOf) return;
       const keys = await this.options.identityKeysOf(userId);
       const removal = await this.options.crypto.removeMembers(this.groupId, keys);
@@ -93,7 +95,9 @@ export class DaveSession {
       await this.installEpoch(removal.epoch);
       this.options.send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, { transition_id: this.transitionSeq, commit: removal.commitB64 });
       await this.activate(removal.epoch);
-    });
+    }));
+    this.queue = run;
+    return run;
   }
 
   stop(): void {
@@ -151,15 +155,24 @@ export class DaveSession {
     switch (op) {
       case VoiceOp.DAVE_MLS_EXTERNAL_SENDER: {
         const founder = d.founder === undefined ? this.options.hasPeers?.() === false : d.founder === true;
-        if (founder && !(await crypto.hasGroup(this.groupId))) {
-          await this.found();
-        }
+        // The group id is the voice channel and the engine keeps groups on disk, so an earlier call left one behind.
+        // Its members are gone and it holds no keys for this call: a joiner must not apply the commit that adds it
+        // to that group, and a founder must not skip founding because it exists.
+        if (await crypto.hasGroup(this.groupId)) await crypto.deleteGroup(this.groupId);
+        if (founder) await this.found();
         return;
       }
       case VoiceOp.DAVE_MLS_KEY_PACKAGE: {
         if (!this.committer) return;
         const userId = String(d.user_id);
-        const result = await crypto.addMembers(this.groupId, [String(d.key_package_b64)]);
+        let result: Awaited<ReturnType<DaveCrypto['addMembers']>>;
+        try {
+          result = await crypto.addMembers(this.groupId, [String(d.key_package_b64)]);
+        } catch (error) {
+          // Nothing was committed: the current epoch and its keys stay valid for everyone already in the call.
+          this.options.onError(error instanceof Error ? error.message : String(error));
+          return;
+        }
         this.transitionSeq += 1;
         await this.installEpoch(result.epoch);
         send(VoiceOp.DAVE_MLS_COMMIT_WELCOME, {

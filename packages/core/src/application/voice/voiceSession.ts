@@ -485,6 +485,7 @@ export class VoiceSession implements VoiceSessionPort {
     if (this.e2eeActive === active) return;
     this.e2eeActive = active;
     this.e2ee.emit(active);
+    if (active && this.sources.size > 0) this.scheduleRenegotiation();
   }
 
   // ---- remote sources --------------------------------------------------
@@ -599,13 +600,23 @@ export class VoiceSession implements VoiceSessionPort {
     }, this.options.renegotiationDelayMs ?? 40);
   }
 
+  /**
+   * In an E2EE call remote video is subscribed only once this device holds its frame keys. The SFU sends a joiner a
+   * keyframe as soon as the transport is up, usually before the welcome that carries the keys has arrived; a receiver
+   * that exists by then drops that keyframe (no key) and has nothing to decode until the next one, which nobody
+   * requests. A receiver created afterwards starts mid-stream, finds no keyframe and asks for one itself.
+   */
+  private mayReceive(source: RemoteSource): boolean {
+    return source.source === 'audio' || !this.description?.e2ee || this.e2eeActive;
+  }
+
   private async renegotiate(): Promise<void> {
     const pc = this.pc;
     const description = this.description;
     if (!pc || !description) return;
     for (const source of this.sources.values()) {
       const key = this.sourceKey(source.userId, source.source);
-      if (source.active && !this.transceivers.has(key)) {
+      if (source.active && !this.transceivers.has(key) && this.mayReceive(source)) {
         this.transceivers.set(key, pc.addTransceiver(kindOf(source.source), { direction: 'recvonly' }));
       }
     }
