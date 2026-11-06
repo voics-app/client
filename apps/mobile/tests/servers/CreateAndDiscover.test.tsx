@@ -58,7 +58,7 @@ describe('create a server', () => {
 
   it('previews a pasted template link before naming the server', async () => {
     await openAdd('Create my own server');
-    await fireEvent.changeText(await screen.findByLabelText('Have a template link?'), 'https://discordy.voics.nl/template/abc-123');
+    await fireEvent.changeText(await screen.findByLabelText('Have a template link?'), 'https://voics.nl/template/abc-123');
     await fireEvent.press(screen.getByLabelText('Preview template'));
     await waitFor(() => expect(mockApi.guildTemplate).toHaveBeenCalledWith('abc-123'));
     expect(await screen.findByText('Customize your Linked server')).toBeTruthy();

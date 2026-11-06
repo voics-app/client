@@ -6,7 +6,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const API = 'https://discordy-api.voics.nl';
+const API = 'https://api.voics.nl';
 const PASSWORD = 'E2e-Visual-Test-2026!';
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e3)}`;
 const OUT = process.env.SHOTS ?? tmpdir();

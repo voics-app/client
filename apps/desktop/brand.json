@@ -6,10 +6,10 @@
   "protocolScheme": "voics",
   "description": "Voics desktop client",
   "publisher": "Voics <noreply@voics.nl>",
-  "updateFeedHost": "https://discordy-updates.voics.nl",
+  "updateFeedHost": "https://updates.voics.nl",
   "baseDomain": "voics.nl",
-  "landingUrl": "https://discordy.voics.nl",
-  "apiUrl": "https://discordy-api.voics.nl",
-  "gatewayUrl": "wss://discordy-gateway.voics.nl",
-  "cdnUrl": "https://discordy-cdn.voics.nl"
+  "landingUrl": "https://voics.nl",
+  "apiUrl": "https://api.voics.nl",
+  "gatewayUrl": "wss://gateway.voics.nl",
+  "cdnUrl": "https://cdn.voics.nl"
 }
