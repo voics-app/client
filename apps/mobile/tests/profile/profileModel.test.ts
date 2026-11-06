@@ -56,7 +56,7 @@ describe('profileActions', () => {
   const rel = (type: RelationshipType): Relationship => ({ id: '2', type, user });
 
   it('offers nothing for yourself', () => {
-    expect(profileActions(true, false, undefined)).toEqual({ message: false, friend: null, block: null });
+    expect(profileActions(true, false, undefined)).toEqual({ message: false, friend: null, block: null, report: false });
   });
 
   it.each([
@@ -65,11 +65,11 @@ describe('profileActions', () => {
     [RelationshipType.OUTGOING, 'sent'],
     [RelationshipType.INCOMING, 'accept'],
   ])('a relationship of %s offers the friend action %s and Block', (type, friend) => {
-    expect(profileActions(false, false, type === undefined ? undefined : rel(type))).toEqual({ message: true, friend, block: 'block' });
+    expect(profileActions(false, false, type === undefined ? undefined : rel(type))).toEqual({ message: true, friend, block: 'block', report: true });
   });
 
   it('offers only Unblock for someone you blocked, and no friending for a bot', () => {
-    expect(profileActions(false, false, rel(RelationshipType.BLOCKED))).toEqual({ message: false, friend: null, block: 'unblock' });
-    expect(profileActions(false, true, undefined)).toEqual({ message: true, friend: null, block: 'block' });
+    expect(profileActions(false, false, rel(RelationshipType.BLOCKED))).toEqual({ message: false, friend: null, block: 'unblock', report: true });
+    expect(profileActions(false, true, undefined)).toEqual({ message: true, friend: null, block: 'block', report: true });
   });
 });

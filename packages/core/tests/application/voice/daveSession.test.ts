@@ -12,11 +12,12 @@ function setup(supported = true, hasPeers = true) {
   const errors: string[] = [];
   const crypto = {
     generateKeyPackages: vi.fn(async () => ['kp1']),
-    hasGroup: vi.fn(async () => false),
-    createGroup: vi.fn(async () => 1),
+    hasGroup: vi.fn(async (_group: string) => false),
+    deleteGroup: vi.fn(async (_group: string) => true),
+    createGroup: vi.fn(async (_group: string) => 1),
     addMembers: vi.fn(async () => ({ commitB64: 'c', welcomeB64: 'w', epoch: 2 })),
     joinFromWelcome: vi.fn(async () => ({ groupId: 'voice:g', epoch: 5 })),
-    processIncoming: vi.fn(async () => ({ kind: 'commit' as const, epoch: 3 })),
+    processIncoming: vi.fn(async (_group: string, _message: string) => ({ kind: 'commit' as const, epoch: 3 })),
     exportSecret: vi.fn(async () => b64([1, 2, 3, 4])),
     removeMembers: vi.fn(async (_group: string, _keys: string[]) => ({ commitB64: 'rc', epoch: 4 }) as { commitB64: string; epoch: number } | null),
   };
@@ -169,5 +170,78 @@ describe('DaveSession participant removal', () => {
     const { dave, crypto } = setup();
     await dave.participantLeft('leaver');
     expect(crypto.removeMembers).not.toHaveBeenCalled();
+  });
+});
+
+describe('DaveSession with the media group a previous call left on this device', () => {
+  /** The MLS engine persists groups, and the group id is the voice channel, so every earlier call in it leaves one behind. */
+  function withPersistedGroup(hasPeers = true) {
+    const ctx = setup(true, hasPeers);
+    const groups = new Set(['voice:g']);
+    ctx.crypto.hasGroup.mockImplementation(async (id: string) => groups.has(id));
+    ctx.crypto.deleteGroup.mockImplementation(async (id: string) => groups.delete(id));
+    ctx.crypto.createGroup.mockImplementation(async (id: string) => {
+      groups.add(id);
+      return 0;
+    });
+    ctx.crypto.processIncoming.mockImplementation(async (id: string, _message: string) => {
+      if (groups.has(id)) throw new Error('commit is for another epoch than the stale group');
+      throw new Error('unknown MLS group');
+    });
+    return ctx;
+  }
+
+  it('a rejoining member drops its stale group, so the commit that adds it is not applied to it and its welcome keys survive', async () => {
+    const { dave, cryptor, crypto, errors, active } = withPersistedGroup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: false });
+    await dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { transition_id: 1, commit: 'cm' });
+    await dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { transition_id: 1, welcome: 'w' });
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('voice:g');
+    expect(errors).toEqual([]);
+    expect(cryptor.clear).not.toHaveBeenCalled();
+    expect(active).toEqual([true]);
+  });
+
+  it('a founder starts a new group instead of trusting the one left by the last call, which has other members and no keys installed', async () => {
+    const { dave, crypto, cryptor, active } = withPersistedGroup(false);
+    await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    expect(crypto.deleteGroup).toHaveBeenCalledWith('voice:g');
+    expect(crypto.createGroup).toHaveBeenCalledWith('voice:g');
+    expect(cryptor.activate).toHaveBeenCalled();
+    expect(active).toEqual([true]);
+    await dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: 'u2', key_package_b64: 'kp2' });
+    expect(crypto.addMembers).toHaveBeenCalled();
+  });
+});
+
+describe('DaveSession ordering and failures of a rejoin', () => {
+  it('handles the departure of a member before the key package of its rejoin, however slow the device lookup is', async () => {
+    const { dave, crypto } = setup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    const order: string[] = [];
+    crypto.removeMembers.mockImplementation(async () => {
+      order.push('remove');
+      return { commitB64: 'rc', epoch: 4 };
+    });
+    crypto.addMembers.mockImplementation(async () => {
+      order.push('add');
+      return { commitB64: 'c', welcomeB64: 'w', epoch: 5 };
+    });
+    const slowKeys = (dave as unknown as { options: { identityKeysOf: () => Promise<string[]> } }).options;
+    slowKeys.identityKeysOf = () => new Promise((resolve) => setTimeout(() => resolve(['k']), 20));
+    void dave.participantLeft('u2');
+    await dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: 'u2', key_package_b64: 'kp2' });
+    expect(order).toEqual(['remove', 'add']);
+  });
+
+  it('keeps the established keys when a key package cannot be added, instead of silencing the sender for everyone', async () => {
+    const { dave, crypto, cryptor, active, errors } = setup();
+    await dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    crypto.addMembers.mockRejectedValueOnce(new Error('no new members to add'));
+    await dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: 'u2', key_package_b64: 'kp2' });
+    expect(errors).toEqual(['no new members to add']);
+    expect(cryptor.clear).not.toHaveBeenCalled();
+    expect(dave.isActive).toBe(true);
+    expect(active).toEqual([true]);
   });
 });

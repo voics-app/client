@@ -370,6 +370,33 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     expect(flags).toEqual([]);
   });
 
+  it('subscribes to remote video only once the frame keys are active, so the keyframe the SFU sends a joiner is not dropped for lack of a key', async () => {
+    let hooks: { onActive(a: boolean): void } | null = null;
+    const session = makeSession({
+      cryptor: cryptor(true),
+      createDave: (_send, h) => {
+        hooks = h;
+        return dave();
+      },
+    });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    const pc = FakePeerConnection.latest();
+
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 1234, video_ssrc: 2345, rtx_ssrc: 2346, streams: [] } });
+    await vi.advanceTimersByTimeAsync(10);
+    // Audio does not wait for a keyframe; the camera does.
+    expect(pc.remoteDescriptions[1]).toContain('a=ssrc:1234 cname:u2');
+    expect(pc.remoteDescriptions[1]).not.toContain('a=ssrc:2345');
+    expect(pc.transceivers.filter((t) => t.kind === 'video')).toHaveLength(2);
+
+    hooks!.onActive(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(pc.remoteDescriptions.at(-1)).toContain('a=ssrc:2345 cname:u2');
+    expect(pc.transceivers.filter((t) => t.kind === 'video')).toHaveLength(3);
+  });
+
   describe('with a gated cryptor (react-native-webrtc: clear frames until the cryptor is enabled)', () => {
     const micTrack = { kind: 'audio' } as unknown as MediaTrackLike;
 

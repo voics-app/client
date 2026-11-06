@@ -72,7 +72,7 @@ describe('userMenuGroups: visibility', () => {
   it('owner/admin (all permissions) sees every moderation item for a lower member in voice', () => {
     const ids = flat(base(caps(ALL_PERMISSIONS, [], ['low'], { actor: OWNER })));
     const all: UserMenuItemId[] = [
-      'profile', 'mention', 'message', 'call', 'note', 'friend', 'block', 'localMute', 'volume',
+      'profile', 'mention', 'message', 'call', 'note', 'friend', 'block', 'report', 'localMute', 'volume',
       'nickname', 'roles', 'timeout', 'purgeMessages', 'kick', 'ban', 'serverMute', 'serverDeafen', 'moveTo', 'disconnect', 'copyId',
     ];
     for (const id of all) expect(ids).toContain(id);
@@ -135,14 +135,20 @@ describe('userMenuGroups: visibility', () => {
 
   it('no guild context (DM list, friends list): no moderation, no nickname', () => {
     const ids = flat(base(caps(ALL_PERMISSIONS, [], [], { actor: OWNER }), { inGuild: false, inVoice: false }));
-    expect(ids).toEqual(['profile', 'mention', 'message', 'call', 'note', 'friend', 'block', 'copyId']);
+    expect(ids).toEqual(['profile', 'mention', 'message', 'call', 'note', 'friend', 'block', 'report', 'copyId']);
   });
 
-  it('mention only when a text channel is open; bots cannot be called, friended or blocked', () => {
+  it('mention only when a text channel is open; bots cannot be called, friended or blocked but can be reported', () => {
     const c = caps(0n, [], []);
     expect(flat(base(c, { canMention: false }))).not.toContain('mention');
     const bot = flat(base(c, { isBot: true }));
     for (const id of ['call', 'friend', 'block'] as const) expect(bot).not.toContain(id);
+    expect(bot).toContain('report');
+  });
+
+  it('you cannot report yourself, and a blocked user can still be reported', () => {
+    expect(flat(base(caps(0n, [], [], { actor: 'me', target: 'me' })))).not.toContain('report');
+    expect(flat(base(caps(0n, [], []), { relationship: RelationshipType.BLOCKED }))).toContain('report');
   });
 
   it('blocked users cannot be called and cannot be friended', () => {
