@@ -6,7 +6,7 @@ import { frameKeyLabel } from '@discordy/core/domain/frameFormat';
 
 const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
-function setup(supported = true, hasPeers = true) {
+function setup(supported = true, hasPeers = true, extra: Partial<ConstructorParameters<typeof DaveSession>[0]> = {}) {
   const sent: { op: number; d: unknown }[] = [];
   const active: boolean[] = [];
   const errors: string[] = [];
@@ -19,6 +19,7 @@ function setup(supported = true, hasPeers = true) {
     joinFromWelcome: vi.fn(async () => ({ groupId: 'voice:g', epoch: 5 })),
     processIncoming: vi.fn(async (_group: string, _message: string) => ({ kind: 'commit' as const, epoch: 3 })),
     exportSecret: vi.fn(async () => b64([1, 2, 3, 4])),
+    memberKeys: vi.fn(async (_group: string) => ['key-of-me'] as string[]),
     removeMembers: vi.fn(async (_group: string, _keys: string[]) => ({ commitB64: 'rc', epoch: 4 }) as { commitB64: string; epoch: number } | null),
   };
   const cryptor = {
@@ -42,6 +43,7 @@ function setup(supported = true, hasPeers = true) {
     send: (op, d) => sent.push({ op, d }),
     onActive: (a) => active.push(a),
     onError: (m) => errors.push(m),
+    ...extra,
   });
   return { dave, crypto, cryptor, sent, active, errors };
 }
@@ -243,5 +245,67 @@ describe('DaveSession ordering and failures of a rejoin', () => {
     expect(cryptor.clear).not.toHaveBeenCalled();
     expect(dave.isActive).toBe(true);
     expect(active).toEqual([true]);
+  });
+});
+
+describe('DaveSession committer handoff', () => {
+  const keys: Record<string, string[]> = { '10': ['k10'], '20': ['k20'], '30': ['k30'], '40': ['k40'], '100': ['k100'] };
+
+  /** `userId` joined by the welcome of committer 10; the others present are `members`; `inGroup` are the identity keys of the MLS roster. */
+  async function member(userId: string, members: string[], inGroup: string[]) {
+    const ctx = setup(true, true, { userId, members: () => members, identityKeysOf: async (id) => keys[id] ?? [] });
+    ctx.crypto.memberKeys.mockResolvedValue(inGroup);
+    await ctx.dave.handleOp(VoiceOp.DAVE_MLS_WELCOME, { user_id: '10', transition_id: 1, welcome: 'w' });
+    return ctx;
+  }
+
+  it('makes the lowest user id in the MLS roster the committer when the committer leaves, and only that member', async () => {
+    const lowest = await member('20', ['30'], ['k10', 'k20', 'k30']);
+    const other = await member('30', ['20'], ['k10', 'k20', 'k30']);
+    await Promise.all([lowest.dave.participantLeft('10'), other.dave.participantLeft('10')]);
+    expect(lowest.crypto.removeMembers).toHaveBeenCalledWith('voice:g', ['k10']);
+    expect(lowest.sent.at(-1)?.op).toBe(VoiceOp.DAVE_MLS_COMMIT_WELCOME);
+    expect(other.crypto.removeMembers).not.toHaveBeenCalled();
+    // A rejoiner's key package now reaches exactly one committer.
+    for (const ctx of [lowest, other]) await ctx.dave.handleOp(VoiceOp.DAVE_MLS_KEY_PACKAGE, { user_id: '10', key_package_b64: 'kp' });
+    expect(lowest.crypto.addMembers).toHaveBeenCalledTimes(1);
+    expect(other.crypto.addMembers).not.toHaveBeenCalled();
+  });
+
+  it('skips a participant that is present but not yet in the group, and compares ids as numbers', async () => {
+    const ctx = await member('30', ['20', '100'], ['k10', 'k30', 'k100']);
+    await ctx.dave.participantLeft('10');
+    // 20 has no leaf in the group and 100 is a larger number than 30: this member is the lowest eligible.
+    expect(ctx.crypto.removeMembers).toHaveBeenCalled();
+  });
+
+  it('does not take over when a member other than the committer leaves', async () => {
+    const ctx = await member('20', ['30'], ['k10', 'k20', 'k30']);
+    await ctx.dave.participantLeft('30');
+    expect(ctx.crypto.removeMembers).not.toHaveBeenCalled();
+  });
+
+  it('follows the member whose commit it receives as the committer', async () => {
+    const ctx = await member('30', ['20'], ['k10', 'k20', 'k30']);
+    ctx.crypto.hasGroup.mockResolvedValue(true);
+    await ctx.dave.handleOp(VoiceOp.DAVE_MLS_ANNOUNCE_COMMIT, { user_id: '20', transition_id: 2, commit: 'cm' });
+    await ctx.dave.participantLeft('20');
+    expect(ctx.crypto.removeMembers).toHaveBeenCalled();
+  });
+
+  it('keeps its keys when the election itself fails', async () => {
+    const ctx = await member('20', ['30'], ['k10', 'k20']);
+    ctx.crypto.memberKeys.mockRejectedValueOnce(new Error('store locked'));
+    await ctx.dave.participantLeft('10');
+    expect(ctx.errors).toEqual(['store locked']);
+    expect(ctx.cryptor.clear).not.toHaveBeenCalled();
+    expect(ctx.dave.isActive).toBe(true);
+  });
+
+  it('reports each activated epoch so viewers can ask for keyframes', async () => {
+    const onEpoch = vi.fn();
+    const ctx = setup(true, true, { onEpoch });
+    await ctx.dave.handleOp(VoiceOp.DAVE_MLS_EXTERNAL_SENDER, { founder: true });
+    expect(onEpoch).toHaveBeenCalledTimes(1);
   });
 });

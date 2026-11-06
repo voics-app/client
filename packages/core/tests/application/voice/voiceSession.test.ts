@@ -397,6 +397,46 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     expect(pc.transceivers.filter((t) => t.kind === 'video')).toHaveLength(3);
   });
 
+  it('asks for a fresh keyframe of every watched video after an epoch rotates, by switching it off and on again at the SFU', async () => {
+    let hooks: { onActive(a: boolean): void; onEpoch(): void; members(): string[] } | null = null;
+    const session = makeSession({
+      cryptor: cryptor(true),
+      keyframeDelayMs: 50,
+      createDave: (_send, h) => {
+        hooks = h as never;
+        return dave();
+      },
+    });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.CLIENTS_CONNECT, d: { user_ids: ['u2', 'u3'] } });
+    socket.receive({ op: VoiceOp.CLIENT_DISCONNECT, d: { user_id: 'u3' } });
+    expect(hooks!.members()).toEqual(['u2']);
+    hooks!.onActive(true);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 1234, video_ssrc: 2345, rtx_ssrc: 2346, streams: [{ type: 'video', rid: '100', quality: 100, ssrc: 2345, rtx_ssrc: 2346, active: true }, { type: 'screen', rid: 'screen', quality: 100, ssrc: 3456, rtx_ssrc: 3457, active: true }] } });
+    await vi.advanceTimersByTimeAsync(10);
+    session.setSinkWants({ '3456': 100 });
+    const wants = () => socket.sent.filter((f) => f.op === VoiceOp.MEDIA_SINK_WANTS).map((f) => f.d);
+    expect(wants()).toHaveLength(1);
+
+    hooks!.onEpoch();
+    hooks!.onEpoch();
+    await vi.advanceTimersByTimeAsync(60);
+    expect(wants().slice(1)).toEqual([{ '2345': 0, '3456': 0 }, { '3456': 100 }]);
+  });
+
+  it('asks for no keyframe when nothing is watched', async () => {
+    let hooks: { onEpoch(): void } | null = null;
+    const session = makeSession({ cryptor: cryptor(true), keyframeDelayMs: 1, createDave: (_s, h) => ((hooks = h as never), dave()) });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    hooks!.onEpoch();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(socket.sent.filter((f) => f.op === VoiceOp.MEDIA_SINK_WANTS)).toHaveLength(0);
+  });
+
   describe('with a gated cryptor (react-native-webrtc: clear frames until the cryptor is enabled)', () => {
     const micTrack = { kind: 'audio' } as unknown as MediaTrackLike;
 

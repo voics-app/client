@@ -60,6 +60,7 @@ export interface VoiceSessionOptions {
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
+  keyframeDelayMs?: number;
   random?: () => number;
 }
 
@@ -101,6 +102,10 @@ export class VoiceSession implements VoiceSessionPort {
   private dave: MediaGroupSession | null = null;
   private e2eeActive = false;
   private peersSeen = false;
+  /** Other users in the call now: CLIENTS_CONNECT adds, CLIENT_DISCONNECT removes. */
+  private readonly roster = new Set<string>();
+  private wants: MediaSinkWants = {};
+  private keyframeTimer: ReturnType<typeof setTimeout> | null = null;
   private earlyDave: { op: number; d: unknown }[] = [];
   private lastSpeakingFlags = 0;
   private retiredCount = 0;
@@ -178,7 +183,8 @@ export class VoiceSession implements VoiceSessionPort {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.statsTimer) clearInterval(this.statsTimer);
     if (this.renegotiateTimer) clearTimeout(this.renegotiateTimer);
-    this.heartbeat = this.reconnectTimer = this.statsTimer = this.renegotiateTimer = null;
+    if (this.keyframeTimer) clearTimeout(this.keyframeTimer);
+    this.heartbeat = this.reconnectTimer = this.statsTimer = this.renegotiateTimer = this.keyframeTimer = null;
     this.dave?.stop();
     this.dave = null;
     this.setE2ee(false);
@@ -189,6 +195,7 @@ export class VoiceSession implements VoiceSessionPort {
     for (const source of this.sources.values()) this.dropRemote(source);
     this.pc?.close();
     this.pc = null;
+    this.roster.clear();
     this.audioTransceiver = this.cameraTransceiver = this.screenTransceiver = null;
     // The senders these tracks were on are gone. A platform puts its camera and screen back through setCameraTrack and setScreenTrack once the new connection is up, which keeps them on the protected path.
     this.cameraTrack = this.screenTrack = null;
@@ -260,6 +267,7 @@ export class VoiceSession implements VoiceSessionPort {
         this.onStreamViewers(frame.d as StreamViewers);
         return;
       case VoiceOp.CLIENTS_CONNECT:
+        for (const id of (frame.d as ClientsConnect).user_ids ?? []) if (id !== this.options.userId) this.roster.add(id);
         if ((frame.d as ClientsConnect).user_ids?.length) this.peersSeen = true;
         return;
       case VoiceOp.CLIENT_DISCONNECT:
@@ -467,6 +475,8 @@ export class VoiceSession implements VoiceSessionPort {
     }
     this.dave = this.options.createDave((op, d) => this.sendFrame(op, d), {
       hasPeers: () => this.peersSeen,
+      members: () => [...this.roster],
+      onEpoch: () => this.scheduleKeyframes(),
       onActive: (active) => this.setE2ee(active),
       onError: (message) => {
         this.setE2ee(false);
@@ -534,6 +544,7 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private onClientDisconnect({ user_id }: ClientDisconnect): void {
+    this.roster.delete(user_id);
     void this.dave?.participantLeft(user_id);
     for (const source of ['audio', 'camera', 'screen'] as const) this.upsertSource(user_id, source, 0, 0);
     const store = useVoiceStore.getState();
@@ -721,7 +732,36 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   setSinkWants(wants: MediaSinkWants): void {
+    this.wants = wants;
     this.sendFrame(VoiceOp.MEDIA_SINK_WANTS, wants);
+  }
+
+  /**
+   * After an epoch rotates, frames already sent were under the old key and the viewers' decoders may have lost
+   * a reference, so every video needs a fresh keyframe, encrypted under the new key. A client has no RTCP PLI API
+   * (and the phone no transform API), but the SFU requests a keyframe from the publisher whenever a subscriber
+   * starts wanting a video again. So each watched video is switched off and straight back on with MEDIA_SINK_WANTS.
+   * Bursts of epochs (several members joining) are coalesced.
+   */
+  private scheduleKeyframes(): void {
+    if (this.keyframeTimer) clearTimeout(this.keyframeTimer);
+    this.keyframeTimer = setTimeout(() => {
+      this.keyframeTimer = null;
+      this.refreshKeyframes();
+    }, this.options.keyframeDelayMs ?? 300);
+  }
+
+  private refreshKeyframes(): void {
+    const videos = [...this.sources.values()].filter((s) => s.active && s.source !== 'audio' && this.mayReceive(s));
+    if (videos.length === 0) return;
+    const off: MediaSinkWants = { ...this.wants };
+    for (const video of videos) {
+      // A screen share nobody opted into stays off.
+      if (video.source === 'screen' && !((this.wants[String(video.ssrc)] ?? 0) > 0)) continue;
+      off[String(video.ssrc)] = 0;
+    }
+    this.sendFrame(VoiceOp.MEDIA_SINK_WANTS, off);
+    this.sendFrame(VoiceOp.MEDIA_SINK_WANTS, this.wants);
   }
 
   // ---- stats -----------------------------------------------------------
