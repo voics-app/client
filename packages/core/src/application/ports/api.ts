@@ -1,5 +1,6 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
 import type { SearchParams } from '../../domain/messageSearch';
+import type { CreateReportBody } from '../../domain/reportModel';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -108,6 +109,8 @@ export interface ApiPort {
   sendFriendRequest(username: string): Promise<void>;
   putRelationship(userId: string, body?: { type?: number; username?: string }): Promise<void>;
   deleteRelationship(userId: string): Promise<void>;
+  /** Reports a message or a user to the moderators; resolves with no body whether or not the report is new. */
+  createReport(body: CreateReportBody): Promise<void>;
 
   createGuild(body: { name: string; icon?: string | null }): Promise<GuildFull>;
   builtinGuildTemplates(): Promise<GuildTemplate[]>;

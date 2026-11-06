@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { ALL_PERMISSIONS } from '@discordy/core/contracts/permissions';
 import type { GuildMember, Role, VoiceState } from '@discordy/core/contracts/rest';
@@ -90,6 +91,26 @@ describe('shared user menu on the voice channel list (left sidebar)', () => {
 });
 
 describe('shared user menu on a chat author', () => {
+  it('Report opens the report dialog for that person, and is not offered on yourself', () => {
+    seed('alice', []);
+    render(
+      <UserMenuTarget userId='bob' name='bob' guildId={G} user={user('bob')}>
+        <button type='button'>bob</button>
+      </UserMenuTarget>,
+    );
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'bob' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Report' }));
+    expect(useUiStore.getState().dialog).toEqual({ kind: 'report', target: { kind: 'user', userId: 'bob', userName: 'bob' } });
+    cleanup();
+    render(
+      <UserMenuTarget userId='alice' name='alice' guildId={G} user={user('alice')}>
+        <button type='button'>alice</button>
+      </UserMenuTarget>,
+    );
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'alice' }));
+    expect(labels()).not.toContain('Report');
+  });
+
   it('opens from the author name wrapper with the same items', () => {
     seed('alice', ['admin']);
     render(

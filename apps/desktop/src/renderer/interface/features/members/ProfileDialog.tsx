@@ -1,4 +1,4 @@
-import { Chat, Copy, Phone, Fingerprint, UserMinus, UserPlus, Prohibit } from '@phosphor-icons/react';
+import { Chat, Copy, Flag, Phone, Fingerprint, UserMinus, UserPlus, Prohibit } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -101,6 +101,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
   };
   const addFriend = () => user && void attempt(() => getRuntime().api.putRelationship(userId, user.username ? { username: user.username } : undefined), 'Could not send request');
   const block = () => void attempt(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), 'Could not block');
+  const report = () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: user ? displayName(user, member?.nick) : 'this user' } });
   const removeFriend = () => void attempt(() => getRuntime().api.deleteRelationship(userId), 'Could not update');
 
   return (
@@ -131,6 +132,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                   <Button icon={<UserPlus size={16} />} onClick={addFriend}>Add friend</Button>
                 )}
                 <Button variant="ghost" icon={<Prohibit size={16} />} onClick={relationship?.type === RelationshipType.BLOCKED ? removeFriend : block}>{relationship?.type === RelationshipType.BLOCKED ? 'Unblock' : 'Block'}</Button>
+                <Button variant="ghost" icon={<Flag size={16} />} onClick={report}>Report</Button>
               </div>
             )}
             {user.bio && (

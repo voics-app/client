@@ -55,13 +55,15 @@ export interface ProfileActions {
   message: boolean;
   friend: FriendAction | null;
   block: 'block' | 'unblock' | null;
+  /** Report the person to the moderators: anyone but yourself, blocked or not. */
+  report: boolean;
 }
 
 /** Which relationship buttons a profile offers, as desktop's profile dialog does: none for yourself, no friending bots. */
 export function profileActions(isMe: boolean, isBot: boolean, relationship: Relationship | undefined): ProfileActions {
-  if (isMe) return { message: false, friend: null, block: null };
+  if (isMe) return { message: false, friend: null, block: null, report: false };
   const type = relationship?.type;
   const blocked = type === RelationshipType.BLOCKED;
   const friend: FriendAction | null = isBot || blocked ? null : type === RelationshipType.FRIEND ? 'remove' : type === RelationshipType.OUTGOING ? 'sent' : type === RelationshipType.INCOMING ? 'accept' : 'add';
-  return { message: !blocked, friend, block: blocked ? 'unblock' : 'block' };
+  return { message: !blocked, friend, block: blocked ? 'unblock' : 'block', report: true };
 }
