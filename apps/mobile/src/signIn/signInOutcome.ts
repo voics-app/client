@@ -5,7 +5,8 @@ import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 /** The API's "two-factor required" answer; it carries the ticket for the second step. */
 export const MFA_REQUIRED = 60008;
 
-export const SIGN_IN_FIELDS = ['email', 'password', 'code'] as const;
+/** The fields of every form on the sign-in screen, as on desktop; any other error key goes to the banner. */
+export const SIGN_IN_FIELDS = ['email', 'password', 'username', 'code', 'token'] as const;
 
 export type SignInOutcome =
   | { kind: 'mfa'; ticket: string }

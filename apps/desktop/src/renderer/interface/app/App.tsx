@@ -18,6 +18,7 @@ import { useGlobalShortcuts } from './shortcuts';
 import { useAppearance } from './appearance';
 import { useWindowResizing } from '../shared/hooks/useWindowResizing';
 import { createRuntime, type Runtime } from './runtime';
+import { flushAuthLink, handleAuthRoute } from './authLinks';
 import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
 import { BRAND } from '@shared/brand';
@@ -60,13 +61,19 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const off = bridge?.app.onNavigate(handleRoute);
+    const open = (route: string) => {
+      if (!handleAuthRoute(route)) handleRoute(route);
+    };
+    const off = bridge?.app.onNavigate(open);
     // Pull any link that launched the app before this listener existed (cold start).
-    void bridge?.app.takePendingRoute().then((route) => route && handleRoute(route));
+    void bridge?.app.takePendingRoute().then((route) => route && open(route));
     return off;
   }, []);
   useEffect(() => {
-    if (status === 'ready') flushPendingRoute();
+    if (status === 'ready') {
+      flushAuthLink();
+      flushPendingRoute();
+    }
   }, [status]);
 
   if (failure) return <Boot message={failure} />;
