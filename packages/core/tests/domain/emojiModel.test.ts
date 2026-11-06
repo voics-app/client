@@ -58,13 +58,19 @@ describe('reaction menu', () => {
 
 describe('message menu placeholders', () => {
   const base = { isMine: false, standard: true, canReact: true, canManageMessages: false, canCreateThread: false, forwardSupported: false, canSpeak: false, hasText: true, pinned: false, selection: '', canAddEmoji: false, quick: [] };
-  it('shows disabled Forward and Report until their backends land', () => {
+  it('shows a disabled Forward until its backend lands', () => {
     const model = buildMessageMenu(base, { kind: 'message' });
     const items = model.filter((m) => m.kind === 'item');
     expect(items.find((m) => m.id === 'forwardSoon')?.disabled).toBe(true);
-    expect(items.find((m) => m.id === 'reportSoon')?.disabled).toBe(true);
+  });
+  it('offers Report Message on other people\'s messages in every delivery mode', () => {
+    for (const standard of [true, false]) {
+      const report = buildMessageMenu({ ...base, standard }, { kind: 'message' }).find((m) => m.kind === 'item' && m.id === 'report');
+      expect(report).toMatchObject({ label: 'Report Message', danger: true });
+      expect(report).not.toHaveProperty('disabled');
+    }
   });
   it('does not offer Report on own messages', () => {
-    expect(idsOf(buildMessageMenu({ ...base, isMine: true }, { kind: 'message' }))).not.toContain('reportSoon');
+    expect(idsOf(buildMessageMenu({ ...base, isMine: true }, { kind: 'message' }))).not.toContain('report');
   });
 });

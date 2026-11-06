@@ -1,6 +1,7 @@
 /** Navigation and transient UI state. */
 import { create } from 'zustand';
 import { canGo, emptyHistory, pushView, stepHistory, type NavHistory } from '../../domain/navHistory';
+import type { ReportTarget } from '../../domain/reportModel';
 import type { ChatMessage } from './messageStore';
 
 export type View =
@@ -53,6 +54,7 @@ export type Dialog =
   | { kind: 'prune'; guildId: string }
   | { kind: 'modView'; guildId: string; userId: string }
   | { kind: 'forward'; message: ChatMessage }
+  | { kind: 'report'; target: ReportTarget }
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 

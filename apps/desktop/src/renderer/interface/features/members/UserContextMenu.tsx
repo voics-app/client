@@ -277,6 +277,8 @@ export function UserContextMenu({
         return blocked
           ? item('Unblock', () => void relate(() => getRuntime().api.deleteRelationship(userId), 'Could not unblock'))
           : item('Block', () => void relate(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), 'Could not block'), true);
+      case 'report':
+        return item('Report', () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: name } }), true);
       case 'localMute':
         return item('Mute', toggleLocalMute, false, locallyMuted);
       case 'volume':

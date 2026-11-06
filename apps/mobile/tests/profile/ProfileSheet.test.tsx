@@ -20,6 +20,7 @@ const mockApi = {
   putRelationship: jest.fn(async (_id: string, _body?: object) => undefined),
   deleteRelationship: jest.fn(async (_id: string) => undefined),
   sendFriendRequest: jest.fn(async (_name: string) => undefined),
+  createReport: jest.fn(async (_body: object) => undefined),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -122,6 +123,16 @@ describe('full profile sheet', () => {
     await fireEvent.press(await screen.findByLabelText('Block'));
     await fireEvent.press((await screen.findAllByLabelText('Block')).at(-1)!);
     expect(mockApi.putRelationship).toHaveBeenCalledWith('u2', { type: RelationshipType.BLOCKED });
+  });
+
+  it('Report opens the report sheet for that person and sends the report', async () => {
+    mockApi.createReport.mockResolvedValue(undefined);
+    await openProfile(friend(RelationshipType.FRIEND));
+    await fireEvent.press(screen.getByLabelText('Report'));
+    expect(await screen.findByText('Report Pat')).toBeTruthy();
+    await fireEvent.press(await screen.findByLabelText('Spam'));
+    await fireEvent.press(screen.getByLabelText('Send report'));
+    await waitFor(() => expect(mockApi.createReport).toHaveBeenCalledWith({ target: 'user', user_id: 'u2', category: 'spam' }));
   });
 
   it('offers only Unblock for a blocked person, with no Message button', async () => {
