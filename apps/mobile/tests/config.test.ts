@@ -30,9 +30,8 @@ describe('app.config', () => {
 });
 
 describe('app.config tablets', () => {
-  it('runs natively on iPad, full screen because the app is portrait only', () => {
-    expect(config.ios?.supportsTablet).toBe(true);
-    expect(config.ios?.requireFullScreen).toBe(true);
+  it('stays iPhone only for the first release, in portrait', () => {
+    expect(config.ios?.supportsTablet).toBe(false);
     expect(config.orientation).toBe('portrait');
   });
 });
