@@ -7,70 +7,17 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { channelRowView } from '../servers/channelRowModel';
 import { channelSections } from '../servers/serverModel';
-import { getRuntime } from '../runtime';
 import { theme } from '../theme';
-import { attempt } from '../ui/attempt';
-import { Button, Field, Notice } from '../ui/controls';
+import { Button, Notice } from '../ui/controls';
 import { ListRow } from '../ui/ListRow';
 import { canStep, moveCategoryStep, moveChannelStep } from './channelOrderActions';
-import { Sheet, SheetConfirm, SheetOption } from '../ui/Sheet';
-import { normalizeChannelName } from './channelAdminModel';
+import { ChannelEditSheet } from './ChannelEditSheet';
 import { NewChannelSheet } from './NewChannelSheet';
 import { PageGuard } from './PageGuard';
 
 function ChannelGlyph({ channel }: { channel: Channel }) {
   const view = channelRowView(channel, 0, false);
   return view.glyph ? <Ionicons name={view.glyph} size={18} color={theme.subtle} /> : <Text style={styles.hash}>#</Text>;
-}
-
-/** Rename and delete for one channel, in a sheet; deleting asks first. Mount it with the channel's id as `key` so each channel starts fresh. */
-function ChannelEditSheet({ channel, onClose }: { channel: Channel | null; onClose(): void }) {
-  const [name, setName] = useState(channel?.name ?? '');
-  const [step, setStep] = useState<'edit' | 'delete'>('edit');
-  const [busy, setBusy] = useState(false);
-  const isCategory = channel?.type === ChannelType.GUILD_CATEGORY;
-  const clean = normalizeChannelName(name, isCategory);
-
-  const rename = async () => {
-    if (!channel) return;
-    setBusy(true);
-    const updated = await attempt(() => getRuntime().api.updateChannel(channel.id, { name: clean }), 'Could not rename channel');
-    setBusy(false);
-    if (updated) {
-      useGuildStore.getState().upsertChannel({ ...channel, ...updated, guild_id: channel.guild_id });
-      onClose();
-    }
-  };
-
-  const remove = async () => {
-    if (!channel) return;
-    onClose();
-    const done = await attempt(async () => {
-      await getRuntime().api.deleteChannel(channel.id);
-      return true;
-    }, 'Could not delete channel');
-    if (done) useGuildStore.getState().removeChannel(channel.id);
-  };
-
-  const label = channel ? (isCategory ? (channel.name ?? '') : `#${channel.name}`) : '';
-  return (
-    <Sheet visible={channel !== null} title={step === 'delete' ? `Delete ${label}?` : label} closeLabel="Close channel settings" onClose={onClose}>
-      {step === 'delete' ? (
-        <SheetConfirm
-          body={isCategory ? 'The category is removed. Its channels stay in the server.' : 'Messages in this channel will be lost for everyone.'}
-          confirmLabel={isCategory ? 'Delete category' : 'Delete channel'}
-          onConfirm={() => void remove()}
-          onCancel={() => setStep('edit')}
-        />
-      ) : (
-        <View style={styles.form}>
-          <Field label={isCategory ? 'Category name' : 'Channel name'} value={name} maxLength={100} onChangeText={setName} />
-          <Button tone="primary" label="Save name" busy={busy} disabled={clean === '' || clean === channel?.name} onPress={() => void rename()} />
-          <SheetOption label={isCategory ? 'Delete category' : 'Delete channel'} danger onPress={() => setStep('delete')} />
-        </View>
-      )}
-    </Sheet>
-  );
 }
 
 /** Move up and down buttons for one row while reordering; a button is disabled where the step would change nothing. */
@@ -150,5 +97,4 @@ const styles = StyleSheet.create({
   step: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   stepOff: { opacity: 0.3 },
   hash: { color: theme.subtle, fontSize: 18, width: 18, textAlign: 'center' },
-  form: { paddingHorizontal: 20, paddingBottom: 8 },
 });

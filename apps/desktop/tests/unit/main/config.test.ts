@@ -66,6 +66,18 @@ describe('routeFromDeepLink', () => {
     expect(routeFromDeepLink('voics://template/a/b')).toBeNull();
   });
 
+  it('maps the account email links and keeps the token well formed', () => {
+    const token = 'k3J9x_Qw-1Zp0aB7cD4eF6gH8iJ2lMnO';
+    expect(routeFromDeepLink(`voics://reset-password?token=${token}`)).toBe(`/reset-password/${token}`);
+    expect(routeFromDeepLink(`voics://verify-email?token=${token}`)).toBe(`/verify-email/${token}`);
+    expect(routeFromDeepLink('voics://reset-password')).toBeNull();
+    expect(routeFromDeepLink('voics://reset-password?token=')).toBeNull();
+    expect(routeFromDeepLink('voics://reset-password?token=short')).toBeNull();
+    expect(routeFromDeepLink('voics://verify-email?token=<script>alert(1)</script>')).toBeNull();
+    expect(routeFromDeepLink(`voics://verify-email/extra?token=${token}`)).toBeNull();
+    expect(routeFromDeepLink(`voics://reset-password?token=${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}${token}`)).toBeNull();
+  });
+
   it('ignores unknown or malicious links', () => {
     expect(routeFromDeepLink('https://evil.test')).toBeNull();
     expect(routeFromDeepLink('voics://settings/../../x')).toBeNull();

@@ -6,6 +6,8 @@ export const PROTOCOL = BRAND.protocolScheme;
 const ID = /^\d{1,20}$/;
 const INVITE = /^[A-Za-z0-9-]{2,32}$/;
 const TEMPLATE = /^[A-Za-z0-9-]{2,64}$/;
+/** Account email tokens: 24 random bytes in unpadded base64url. */
+const ACCOUNT_TOKEN = /^[A-Za-z0-9_-]{16,128}$/;
 
 export function routeFromDeepLink(link: string): string | null {
   let url: URL;
@@ -17,6 +19,10 @@ export function routeFromDeepLink(link: string): string | null {
   if (url.protocol !== `${PROTOCOL}:`) return null;
   const parts = [url.hostname, ...url.pathname.split('/')].filter(Boolean);
   const [kind, a, b, c] = parts;
+  if ((kind === 'reset-password' || kind === 'verify-email') && parts.length === 1) {
+    const token = url.searchParams.get('token');
+    return token && ACCOUNT_TOKEN.test(token) ? `/${kind}/${token}` : null;
+  }
   if (kind === 'invite' && a && INVITE.test(a) && parts.length === 2) return `/invite/${a}`;
   if (kind === 'template' && a && TEMPLATE.test(a) && parts.length === 2) return `/template/${a}`;
   if (kind === 'channels' && a && b && (a === '@me' || ID.test(a)) && ID.test(b)) {

@@ -5,7 +5,7 @@ import { SignInScreen } from '../../src/signIn/SignInScreen';
 import { MFA_REQUIRED } from '../../src/signIn/signInOutcome';
 
 async function setup(login = jest.fn(), loginMfa = jest.fn()) {
-  await render(<SignInScreen session={{ login, loginMfa }} />);
+  await render(<SignInScreen session={{ login, loginMfa, register: jest.fn() }} api={{ forgotPassword: jest.fn(), resetPassword: jest.fn() }} />);
   return { login, loginMfa };
 }
 
