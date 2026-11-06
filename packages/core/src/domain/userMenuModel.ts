@@ -11,6 +11,7 @@ export type UserMenuItemId =
   | "note"
   | "friend"
   | "block"
+  | "report"
   | "localMute"
   | "volume"
   | "nickname"
@@ -76,6 +77,7 @@ export function userMenuGroups(input: UserMenuInput): UserMenuItemId[][] {
     ...(!self ? (["note"] as const) : []),
     ...(friendAction(relationship, self, isBot) !== "none" ? (["friend"] as const) : []),
     ...(!self && !isBot ? (["block"] as const) : []),
+    ...(!self ? (["report"] as const) : []),
   ];
   const audio: UserMenuItemId[] = !self && inVoice && hasVoiceAudio ? ["localMute", "volume"] : [];
   const manage: UserMenuItemId[] = [

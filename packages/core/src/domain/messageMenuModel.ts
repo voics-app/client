@@ -81,7 +81,7 @@ function messageBlock(ctx: MessageMenuContext): MenuModel[] {
   out.push(item('markUnread', 'Mark Unread'));
   out.push(item('copyMessageLink', 'Copy Message Link'));
   if (ctx.standard && !ctx.forwardSupported) out.push(item('forwardSoon', 'Forward (coming soon)', { disabled: true }));
-  if (!ctx.isMine) out.push(item('reportSoon', 'Report Message (coming soon)', { disabled: true }));
+  if (!ctx.isMine) out.push(item('report', 'Report Message', { danger: true }));
   if (ctx.canSpeak && ctx.hasText) out.push(item('speak', 'Speak Message'));
   const apps = ctx.standard ? appsSubmenu(ctx.appCommands, 'message') : null;
   if (apps) out.push(sep(), apps);

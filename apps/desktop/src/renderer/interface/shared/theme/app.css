@@ -752,3 +752,12 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .dm-profile { display: flex; flex-direction: column; gap: 12px; } .dm-profile-head { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
 .overview-section { margin-top: 28px; display: grid; gap: 12px; } .overview-section h2 { font-size: var(--fs-body); font-weight: 650; margin: 0; }
 .wide-image { display: grid; gap: 8px; justify-items: start; } .wide-image-preview { position: relative; width: 320px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: var(--bg-2); } .wide-image-preview img { width: 100%; height: 100%; object-fit: cover; } .wide-image-preview > span { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2px; font-size: var(--fs-caption); font-weight: 650; background: oklch(0 0 0 / 0.55); color: white; opacity: 0; transition: opacity var(--dur-fast); } .wide-image-preview:hover > span, .wide-image-preview:focus-visible > span { opacity: 1; } .wide-image-preview.is-empty > span { opacity: 1; background: none; color: var(--text-2); }
+
+.report-categories { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
+.report-categories legend { font-weight: 600; padding: 0 0 6px; }
+.report-category { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border-radius: var(--radius-sm, 8px); cursor: pointer; }
+.report-category:hover { background: var(--bg-hover, rgba(255, 255, 255, 0.05)); }
+.report-category input { margin-top: 3px; }
+.report-category strong { display: block; font-weight: 600; }
+.report-category small { display: block; color: var(--fg-subtle); }
+.field-error { margin: 0; color: var(--danger, #d03b3b); font-size: var(--fs-small); }
