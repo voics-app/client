@@ -29,6 +29,7 @@ function setup() {
     resolveMode: jest.fn((channel: Channel) => channel.delivery_mode ?? 'standard'),
     loadHistory: jest.fn(async (_channel: Channel, _before?: string): Promise<void> => undefined),
     send: jest.fn(async (_channel: Channel, _input: { content: string; replyTo?: string | null }): Promise<unknown> => undefined),
+    remove: jest.fn(async (_channel: Channel, _messageId: string): Promise<void> => undefined),
   };
   return { api, privateChat, service: new MessageService(api as never, Date.now, undefined, messageCache, privateChat as PrivateChat) };
 }
@@ -98,6 +99,22 @@ describe('MessageService with private chats', () => {
     expect(privateChat.send).toHaveBeenCalledTimes(2);
     expect(api.sendMessage).not.toHaveBeenCalled();
     expect(timeline('c1').ids).toEqual([]);
+  });
+
+  it('deletes in a private chat for everyone and never asks the server', async () => {
+    const { api, privateChat, service } = setup();
+    await service.remove('c1', '2000000');
+    expect(privateChat.remove).toHaveBeenCalledWith(ephemeral, '2000000');
+    expect(api.deleteMessage).not.toHaveBeenCalled();
+  });
+
+  it('still deletes a standard message on the server', async () => {
+    const { api, privateChat, service } = setup();
+    useMessageStore.getState().setHistory('c2', [stored('1000002', 'c2')], { prepend: false, hasMoreBefore: false });
+    await service.remove('c2', '1000002');
+    expect(api.deleteMessage).toHaveBeenCalledWith('c2', '1000002');
+    expect(privateChat.remove).not.toHaveBeenCalled();
+    expect(timeline('c2').ids).toEqual([]);
   });
 
   it('sends a standard message to the server as before', async () => {

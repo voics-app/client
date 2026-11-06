@@ -172,6 +172,9 @@ button.mode-badge:active { transform: scale(0.96); }
 .mode-popover h3 { font-size: var(--fs-title); }
 .mode-popover-sub, .mode-popover-foot { font-size: var(--fs-meta); color: var(--fg-muted); margin: 4px 0 12px; }
 .mode-popover-foot { margin: 12px 0 0; }
+.mode-timer { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.mode-timer label { font-weight: 600; font-size: var(--fs-meta); }
+.mode-timer select { padding: 6px 8px; border-radius: 8px; background: var(--hover); color: inherit; border: 1px solid transparent; }
 .mode-popover ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .mode-option { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; text-align: left; box-shadow: inset 0 0 0 1px var(--hairline); transition: background var(--dur-fast), box-shadow var(--dur-fast); }
 .mode-option:hover:not(:disabled) { background: var(--hover); }

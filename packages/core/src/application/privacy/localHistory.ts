@@ -3,7 +3,10 @@ import type { CryptoBridge } from '../ports/crypto';
 import type { ChatMessage } from '../stores/messageStore';
 
 export class LocalHistory {
-  constructor(private readonly crypto: () => CryptoBridge | undefined) {}
+  constructor(
+    private readonly crypto: () => CryptoBridge | undefined,
+    private readonly now: () => number = Date.now,
+  ) {}
 
   async save(message: ChatMessage): Promise<void> {
     const crypto = this.crypto();
@@ -16,15 +19,28 @@ export class LocalHistory {
     });
   }
 
-  /** Oldest first. `beforeSortKey` is a millisecond timestamp. */
+  /** Removes the message from the encrypted store. */
+  async remove(channelId: string, messageId: string): Promise<void> {
+    await this.crypto()?.deleteMessage(channelId, messageId);
+  }
+
+  /**
+   * Oldest first. `beforeSortKey` is a millisecond timestamp. Messages whose disappearing timer has run out are
+   * deleted from the store here instead of being returned, so an expired message never reaches the screen.
+   */
   async list(channelId: string, beforeSortKey: number | null, limit: number): Promise<ChatMessage[]> {
     const crypto = this.crypto();
     if (!crypto) return [];
     try {
       const records = await crypto.listMessages(channelId, beforeSortKey, limit);
-      return records
-        .map((r) => JSON.parse(r.json) as ChatMessage)
-        .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+      const now = this.now();
+      const live: ChatMessage[] = [];
+      for (const record of records) {
+        const message = JSON.parse(record.json) as ChatMessage;
+        if (message.expiresAt !== undefined && message.expiresAt <= now) await crypto.deleteMessage(channelId, record.messageId).catch(() => undefined);
+        else live.push(message);
+      }
+      return live.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
     } catch {
       return [];
     }

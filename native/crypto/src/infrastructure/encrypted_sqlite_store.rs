@@ -85,6 +85,8 @@ impl EncryptedSqliteStore {
     }
 
     fn initialise(conn: Connection, cipher: PayloadCipher) -> Result<Self, CryptoError> {
+        // Deleted rows (disappearing and deleted messages) are overwritten with zeros instead of lingering in free pages.
+        conn.execute_batch("PRAGMA secure_delete = ON;").map_err(storage_err)?;
         conn.execute_batch(SCHEMA).map_err(storage_err)?;
         let canary: Option<Vec<u8>> = conn
             .query_row("SELECT canary FROM meta WHERE id = 1", [], |r| r.get(0))
@@ -309,6 +311,32 @@ mod tests {
         }
         let store = EncryptedSqliteStore::open(path_str, KEY).unwrap();
         assert!(store.load_identity().is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn deleted_message_is_wiped_from_the_database_file() {
+        let dir = temp_dir("wipe");
+        let path = dir.join("store.db");
+        let store = EncryptedSqliteStore::open(path.to_str().unwrap(), KEY).unwrap();
+        store
+            .put_message(&LocalMessage {
+                channel_id: "c".into(),
+                message_id: "1".into(),
+                sort_key: 1,
+                json: "{\"content\":\"meet at the old bridge\"}".into(),
+            })
+            .unwrap();
+        let sealed: Vec<u8> = store
+            .with_conn(|c| {
+                c.query_row("SELECT payload FROM messages WHERE message_id = '1'", [], |r| r.get(0))
+                    .map_err(storage_err)
+            })
+            .unwrap();
+        let contains = |haystack: &[u8]| haystack.windows(sealed.len()).any(|w| w == sealed.as_slice());
+        assert!(contains(&std::fs::read(&path).unwrap()));
+        store.delete_message("c", "1").unwrap();
+        assert!(!contains(&std::fs::read(&path).unwrap()));
         std::fs::remove_dir_all(&dir).ok();
     }
 

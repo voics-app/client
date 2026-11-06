@@ -114,6 +114,12 @@ describe('messageActions', () => {
     expect(messageActions(msg('other'), priv, 'me')).toMatchObject({ pin: false, unpin: false });
   });
 
+  it('offers Delete on your own private messages only', () => {
+    const priv = access(BASIC | Permission.MANAGE_MESSAGES, { delivery_mode: 'ephemeral' });
+    expect(messageActions(msg('me'), priv, 'me').delete).toBe(true);
+    expect(messageActions(msg('other'), priv, 'me').delete).toBe(false);
+  });
+
   it('offers Copy Text only on messages that have text', () => {
     expect(messageActions(msg('me'), mine, 'me').copyText).toBe(true);
     expect(messageActions(msg('me', { content: '  ' }), mine, 'me').copyText).toBe(false);
