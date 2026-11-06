@@ -8,6 +8,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { GuildMember, User } from '@discordy/core/contracts/rest';
+import type { ReportTarget } from '@discordy/core/domain/reportModel';
 import { statusLine } from '@discordy/core/domain/memberList';
 import { openConversation } from '../dms/dmActions';
 import { acceptRequest, addFriend, blockUser, removeRelationship } from '../friends/friendActions';
@@ -17,6 +18,7 @@ import { getRuntime } from '../runtime';
 import { theme } from '../theme';
 import { Button } from '../ui/controls';
 import { Sheet, SheetConfirm } from '../ui/Sheet';
+import { ReportSheet } from '../report/ReportSheet';
 import { MutualFriends, MutualServers, ProfileField, ProfileNote } from './ProfileSections';
 import { mutualServers, profileActions, profileView } from './profileModel';
 
@@ -43,6 +45,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
   const [fetched, setFetched] = useState<Fetched | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [managing, setManaging] = useState<GuildMember | null>(null);
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   const perms = useGuildPermissions(guildId ?? '');
   const myMember = useGuildStore((s) => (guildId && me ? s.members[guildId]?.[me] : undefined));
 
@@ -111,6 +114,16 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
             {actions.friend === 'remove' && <Button label="Remove friend" onPress={() => void removeRelationship(user.id, 'Could not remove the friend')} />}
             {actions.block === 'block' && <Button label="Block" tone="danger" onPress={() => setConfirmBlock(true)} />}
             {actions.block === 'unblock' && <Button label="Unblock" onPress={() => void removeRelationship(user.id, 'Could not unblock')} />}
+            {actions.report && (
+              <Button
+                label="Report"
+                tone="danger"
+                onPress={() => {
+                  setReporting({ kind: 'user', userId: user.id, userName: name });
+                  close();
+                }}
+              />
+            )}
             {manage && (
               <Button
                 label={manage.user.id === me ? 'Edit server profile' : 'Manage member'}
@@ -133,6 +146,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
         </View>
       )}
     </Sheet>
+    <ReportSheet target={reporting} onClose={() => setReporting(null)} />
     {guildId && <MemberActionSheet guildId={guildId} member={managing} onClose={() => setManaging(null)} />}
     </>
   );

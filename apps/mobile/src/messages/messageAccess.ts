@@ -76,9 +76,11 @@ export interface MessageActions {
   blockAuthor: boolean;
   /** Forward to another chat: only messages stored on the server (not system, ephemeral or private ones). */
   forward: boolean;
+  /** Report the message to the moderators: other people's messages, in every delivery mode (the report says what the server holds). */
+  report: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false };
+const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
 export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string, authorBlocked = false): MessageActions {
@@ -105,5 +107,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread'), blockAuthor: message.author.id !== userId && !message.author.bot && !authorBlocked, forward: access.standard && ids.has('forward') && canForward(message, 'standard') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread'), blockAuthor: message.author.id !== userId && !message.author.bot && !authorBlocked, forward: access.standard && ids.has('forward') && canForward(message, 'standard'), report: ids.has('report') };
 }

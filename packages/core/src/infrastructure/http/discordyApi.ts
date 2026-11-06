@@ -1,5 +1,6 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
+import type { CreateReportBody } from '../../domain/reportModel';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -206,6 +207,9 @@ export class DiscordyApi implements ApiPort {
   }
   deleteRelationship(userId: string) {
     return this.del<void>(`/users/@me/relationships/${userId}`);
+  }
+  createReport(body: CreateReportBody) {
+    return this.post<void>('/reports', body);
   }
 
   createGuild(body: { name: string; icon?: string | null }) {
