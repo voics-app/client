@@ -1,6 +1,6 @@
 /** Guilds, channels (guild, DM and thread), roles, members and emojis, fed by READY and guild events. */
 import { create } from 'zustand';
-import { flatten, moveGuildToIndex, normalizeRail, railFromPositions, single } from '../../domain/railLayout';
+import { flatten, mergeSavedRail, moveGuildToIndex, normalizeRail, single } from '../../domain/railLayout';
 import type { Channel, Emoji, Guild, GuildFolder, GuildFull, GuildMember, Role } from '../../contracts/rest';
 
 export type GuildMeta = Omit<GuildFull, 'channels' | 'members' | 'threads' | 'voice_states' | 'presences'>;
@@ -11,6 +11,8 @@ export interface GuildState {
   order: string[];
   /** Server rail layout: single servers and folders, in order (user settings `guild_folders`). */
   rail: GuildFolder[];
+  /** The user's saved layout, kept whole: it may name servers whose GUILD_CREATE has not arrived yet, so `rail` is always derived from it. */
+  savedRail: GuildFolder[];
   channels: Record<string, Channel>;
   members: Record<string, Record<string, GuildMember>>;
   hydrate(guilds: GuildFull[], privateChannels: Channel[], order?: string[], folders?: GuildFolder[]): void;
@@ -49,14 +51,17 @@ export const useGuildStore = create<GuildState>((set) => ({
   guilds: {},
   order: [],
   rail: [],
+  savedRail: [],
   channels: {},
   members: {},
   hydrate: (guilds, privateChannels, order, folders) =>
     set(() => {
       const ids = guilds.map((g) => g.id);
-      const rail = folders?.length ? normalizeRail(folders, ids) : railFromPositions(order ?? [], ids);
+      const savedRail = folders?.length ? folders : (order ?? []).map(single);
+      const rail = normalizeRail(savedRail, ids);
       return {
         guilds: Object.fromEntries(guilds.map((g) => [g.id, meta(g)])),
+        savedRail,
         rail,
         order: flatten(rail),
         channels: Object.assign({}, ...guilds.map(indexChannels), Object.fromEntries(privateChannels.map((c) => [c.id, c]))),
@@ -65,17 +70,22 @@ export const useGuildStore = create<GuildState>((set) => ({
     }),
   setRail: (rail) =>
     set((s) => {
-      const next = normalizeRail(rail, Object.keys(s.guilds));
-      return { rail: next, order: flatten(next) };
+      const savedRail = mergeSavedRail(rail, s.savedRail, Object.keys(s.guilds));
+      const next = normalizeRail(savedRail, Object.keys(s.guilds));
+      return { savedRail, rail: next, order: flatten(next) };
     }),
   upsertGuild: (guild) =>
-    set((s) => ({
-      guilds: { ...s.guilds, [guild.id]: meta(guild) },
-      rail: s.order.includes(guild.id) ? s.rail : [...s.rail, single(guild.id)],
-      order: s.order.includes(guild.id) ? s.order : [...s.order, guild.id],
-      channels: { ...s.channels, ...indexChannels(guild) },
-      members: { ...s.members, [guild.id]: { ...(s.members[guild.id] ?? {}), ...indexMembers(guild.members ?? []) } },
-    })),
+    set((s) => {
+      const guilds = { ...s.guilds, [guild.id]: meta(guild) };
+      const rail = normalizeRail(s.savedRail, Object.keys(guilds));
+      return {
+        guilds,
+        rail,
+        order: flatten(rail),
+        channels: { ...s.channels, ...indexChannels(guild) },
+        members: { ...s.members, [guild.id]: { ...(s.members[guild.id] ?? {}), ...indexMembers(guild.members ?? []) } },
+      };
+    }),
   patchGuild: (guild) =>
     set((s) => {
       const existing = s.guilds[guild.id];
@@ -86,7 +96,7 @@ export const useGuildStore = create<GuildState>((set) => ({
       const { [guildId]: _g, ...guilds } = s.guilds;
       const { [guildId]: _m, ...members } = s.members;
       const channels = Object.fromEntries(Object.entries(s.channels).filter(([, c]) => c.guild_id !== guildId));
-      const rail = normalizeRail(s.rail, Object.keys(guilds));
+      const rail = normalizeRail(s.savedRail, Object.keys(guilds));
       return { guilds, members, channels, rail, order: flatten(rail) };
     }),
   upsertChannel: (channel) => set((s) => ({ channels: { ...s.channels, [channel.id]: { ...s.channels[channel.id], ...channel } } })),
@@ -125,7 +135,7 @@ export const useGuildStore = create<GuildState>((set) => ({
   moveGuild: (guildId, toIndex) =>
     set((s) => {
       const rail = moveGuildToIndex(s.rail, guildId, toIndex);
-      return { rail, order: flatten(rail) };
+      return { rail, savedRail: mergeSavedRail(rail, s.savedRail, Object.keys(s.guilds)), order: flatten(rail) };
     }),
-  reset: () => set({ guilds: {}, order: [], rail: [], channels: {}, members: {} }),
+  reset: () => set({ guilds: {}, order: [], rail: [], savedRail: [], channels: {}, members: {} }),
 }));

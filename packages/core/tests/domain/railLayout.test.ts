@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDrop, dropOnto, flatten, moveGuildToIndex, normalizeRail, patchFolder, railFromPositions, single, ungroup } from '@discordy/core/domain/railLayout';
+import { applyDrop, dropOnto, flatten, moveGuildToIndex, normalizeRail, patchFolder, single, ungroup } from '@discordy/core/domain/railLayout';
 import type { GuildFolder } from '@discordy/core/contracts/rest';
 
 const folder = (id: number, ...ids: string[]): GuildFolder => ({ id, name: null, color: null, guild_ids: ids });
@@ -8,14 +8,14 @@ const ids = (rail: GuildFolder[]) => rail.map((e) => (e.id === null ? e.guild_id
 describe('railLayout', () => {
   it('puts servers without a saved place in a stable order, oldest first', () => {
     const expected = ['9', '10', '200'];
-    expect(flatten(railFromPositions([], ['200', '9', '10']))).toEqual(expected);
-    expect(flatten(railFromPositions([], ['10', '200', '9']))).toEqual(expected);
+    expect(flatten(normalizeRail([], ['200', '9', '10']))).toEqual(expected);
+    expect(flatten(normalizeRail([], ['10', '200', '9']))).toEqual(expected);
   });
 
-  const base = railFromPositions(['a', 'b', 'c', 'd'], ['a', 'b', 'c', 'd']);
+  const base = normalizeRail(['a', 'b', 'c', 'd'].map(single), ['a', 'b', 'c', 'd']);
 
   it('builds from legacy positions and appends unknown servers', () => {
-    expect(ids(railFromPositions(['c', 'x', 'a'], ['a', 'b', 'c']))).toEqual(['c', 'a', 'b']);
+    expect(ids(normalizeRail(['c', 'x', 'a'].map(single), ['a', 'b', 'c']))).toEqual(['c', 'a', 'b']);
   });
 
   it('normalises: drops unknown, duplicate and empty entries', () => {
