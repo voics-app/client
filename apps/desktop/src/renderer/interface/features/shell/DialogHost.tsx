@@ -22,6 +22,7 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { Field, Input, Segmented, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
 import { InteractionModal } from '../chat/InteractionModal';
+import { ReportDialog } from '../report/ReportDialog';
 import { ForwardDialog } from '../chat/ForwardDialog';
 import { ReactionUsersDialog } from '../chat/ReactionUsersDialog';
 import { BanDialog } from '../members/BanDialog';
@@ -397,6 +398,7 @@ function ActiveDialog() {
     case 'modView': return <ModViewDialog guildId={dialog.guildId} userId={dialog.userId} />;
     case 'confirm': return <ConfirmDialog dialog={dialog} />;
     case 'forward': return <ForwardDialog message={dialog.message} />;
+    case 'report': return <ReportDialog target={dialog.target} />;
     case 'reactionUsers': return <ReactionUsersDialog channelId={dialog.channelId} messageId={dialog.messageId} emoji={dialog.emoji} />;
   }
 }
