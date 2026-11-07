@@ -46,10 +46,16 @@ export function validateProfile(profile: ConnectionProfile): ConnectionProfile {
   };
 }
 
+/** A saved production profile only records the choice: its addresses come from this build, so they follow a move of the service. */
+function savedProfile(persisted: ConnectionProfile | null): ConnectionProfile {
+  if (!persisted || persisted.id === 'production') return PROFILES.production;
+  return persisted;
+}
+
 export function resolveConnection(env: Env, persisted: ConnectionProfile | null): ConnectionProfile {
   const named = env.DISCORDY_PROFILE;
   const base: ConnectionProfile =
-    named === 'local' || named === 'production' ? PROFILES[named] : (persisted ?? PROFILES.production);
+    named === 'local' || named === 'production' ? PROFILES[named] : savedProfile(persisted);
 
   const overrides = {
     apiUrl: env.DISCORDY_API_URL ? validUrl('DISCORDY_API_URL', env.DISCORDY_API_URL, ['http:', 'https:']) : undefined,
