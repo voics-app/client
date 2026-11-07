@@ -13,11 +13,18 @@ const PRESETS: Record<'production' | 'local', ConnectionProfile> = {
   local: { id: 'local', apiUrl: 'http://127.0.0.1:18000', gatewayUrl: 'ws://127.0.0.1:18000', cdnUrl: 'http://127.0.0.1:18000/cdn' },
 };
 
+const CUSTOM_EXAMPLE: ConnectionProfile = {
+  id: 'custom',
+  apiUrl: `https://custom-api.${BRAND.baseDomain}`,
+  gatewayUrl: `wss://custom-gateway.${BRAND.baseDomain}`,
+  cdnUrl: `https://custom-cdn.${BRAND.baseDomain}`,
+};
+
 /** Switches the API, gateway and CDN endpoints. The app reloads to rebuild clients against the new profile. */
 export function ConnectionPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const current = useSessionStore((s) => s.appInfo?.connection);
   const [id, setId] = useState<ConnectionProfileId>(current?.id ?? 'production');
-  const [custom, setCustom] = useState<ConnectionProfile>(current ?? PRESETS.production);
+  const [custom, setCustom] = useState<ConnectionProfile>(current?.id === 'custom' ? current : CUSTOM_EXAMPLE);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const profile: ConnectionProfile = id === 'custom' ? { ...custom, id: 'custom' } : PRESETS[id];
