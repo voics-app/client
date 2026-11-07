@@ -98,3 +98,15 @@ describe('DeepLinkInbox', () => {
     expect(sent).toEqual(['/invite/live']);
   });
 });
+
+describe('saved connection profiles', () => {
+  const stale = { apiUrl: 'https://old-api.example', gatewayUrl: 'wss://old-gateway.example', cdnUrl: 'https://old-cdn.example' };
+
+  it('uses the addresses of this build for a saved production profile', () => {
+    expect(resolveConnection({}, { id: 'production', ...stale })).toEqual(PROFILES.production);
+  });
+
+  it('keeps the addresses of a custom profile', () => {
+    expect(resolveConnection({}, { id: 'custom', ...stale })).toEqual({ id: 'custom', ...stale });
+  });
+});
