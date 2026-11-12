@@ -15,8 +15,8 @@ class VoicsConnection(private val context: Context, val channelId: String, name:
   var endedByApp = false
 
   init {
-    connectionProperties = PROPERTY_SELF_MANAGED
-    audioModeIsVoip = true
+    setConnectionProperties(PROPERTY_SELF_MANAGED)
+    setAudioModeIsVoip(true)
     setAddress(CallCoordinator.addressOf(channelId), TelecomManager.PRESENTATION_ALLOWED)
     setCallerDisplayName(name, TelecomManager.PRESENTATION_ALLOWED)
     if (ringing) setRinging() else setDialing()
