@@ -5,7 +5,7 @@
 #     -f email=... -f username=... -f password=... -f invite=...
 # `workflow_dispatch` only works once this file is on the default branch. Before that (or without the inputs), push a branch named
 # `sim-recording/<anything>`: the run then reads the same values from the repository variables REVIEW_APP_URL, REVIEW_BACKEND_URL, REVIEW_EMAIL,
-# REVIEW_USERNAME, REVIEW_INVITE, REVIEW_DEVICE and the secret REVIEW_PASSWORD (delete them after the run).
+# REVIEW_USERNAME, REVIEW_INVITE, REVIEW_DEVICE and REVIEW_PASSWORD (a throwaway test value) (delete them after the run).
 # The app must be an EAS `simulator` profile build (it never talks to production: the backend address is swapped in below).
 # Output: the artifact `voics-review-recording` (review.mp4, screenshots, Maestro logs).
 name: sim-recording
@@ -55,7 +55,7 @@ jobs:
       BACKEND_URL: ${{ inputs.backend_url || vars.REVIEW_BACKEND_URL }}
       REVIEW_EMAIL: ${{ inputs.email || vars.REVIEW_EMAIL }}
       REVIEW_USERNAME: ${{ inputs.username || vars.REVIEW_USERNAME }}
-      REVIEW_PASSWORD: ${{ inputs.password || secrets.REVIEW_PASSWORD }}
+      REVIEW_PASSWORD: ${{ inputs.password || vars.REVIEW_PASSWORD }}
       REVIEW_INVITE: ${{ inputs.invite || vars.REVIEW_INVITE }}
       DEVICE: ${{ inputs.device || vars.REVIEW_DEVICE || 'iPhone 17 Pro' }}
     steps:
