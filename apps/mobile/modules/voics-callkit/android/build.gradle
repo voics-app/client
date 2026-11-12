@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'nl.voics.callkit'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.voicscallkit"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // VoicsMessagingService extends expo-notifications' ExpoFirebaseMessagingService, so every non-call push keeps its normal handling.
+  implementation project(':expo-notifications')
+  // The version expo-notifications builds against.
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
+}

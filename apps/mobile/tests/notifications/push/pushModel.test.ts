@@ -47,6 +47,14 @@ describe('small rules', () => {
     expect(registrationOf('ab12', 'sandbox', false, true)).toEqual({ platform: 'apns', token: 'ab12', environment: 'sandbox', previews: false, only_mentions: true });
   });
 
+  it('builds the registration body of an Android phone: the FCM token, always production', () => {
+    expect(registrationOf('fcm-token', 'sandbox', true, false, 'fcm')).toEqual({ platform: 'fcm', token: 'fcm-token', environment: 'production', previews: true, only_mentions: false });
+  });
+
+  it('names the phone settings app in the denied label', () => {
+    expect(statusLabel('denied', 'Android Settings')).toBe('Off in Android Settings');
+  });
+
   it('keeps the badge a non-negative whole number', () => {
     expect([badgeOf(3), badgeOf(0), badgeOf(-2), badgeOf(2.9)]).toEqual([3, 0, 0, 2]);
   });
@@ -56,6 +64,6 @@ describe('small rules', () => {
   });
 
   it('describes every state on the settings page', () => {
-    expect((['granted', 'denied', 'undetermined', 'unavailable'] as const).map(statusLabel)).toEqual(['On', 'Off in iOS Settings', 'Not turned on yet', 'Not available in Expo Go']);
+    expect((['granted', 'denied', 'undetermined', 'unavailable'] as const).map((status) => statusLabel(status))).toEqual(['On', 'Off in iOS Settings', 'Not turned on yet', 'Not available in Expo Go']);
   });
 });

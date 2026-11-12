@@ -36,6 +36,9 @@ const config: ExpoConfig = {
   },
   android: {
     package: brand.appId,
+    // Firebase client config for FCM push and call rings. On EAS it is the file environment variable GOOGLE_SERVICES_JSON (a path to the file); locally and in Expo Go it
+    // is unset, the build still compiles and push stays off. The file is not committed (.gitignore).
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || undefined,
     adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#0c0d12' },
   },
   plugins: [
@@ -45,7 +48,8 @@ const config: ExpoConfig = {
     ['expo-image-picker', { photosPermission: `${brand.displayName} reads a photo or video only when you choose one, for example to attach it to a message or as a server icon.`, cameraPermission: `${brand.displayName} uses the camera only when you take a photo or video to send.` }],
     'expo-video',
     // Adds the aps-environment entitlement for remote push. Expo Go ignores plugins.
-    ['expo-notifications', { mode: pushEnvironment === 'sandbox' ? 'development' : 'production' }],
+    // On Android it also makes `messages` the channel of FCM notification messages that name none.
+    ['expo-notifications', { mode: pushEnvironment === 'sandbox' ? 'development' : 'production', defaultChannel: 'messages' }],
     'expo-audio',
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
