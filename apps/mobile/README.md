@@ -57,6 +57,10 @@ Native libraries (a development build is needed for a new build; Expo Go bundles
 - **Scales and primitives** (`src/theme.ts`, `src/ui/`): `type` (desktop's 11 to 30 ladder), `space` (4 to 64), `radius` (6, 10, 14, 20), `HIT` (44), `CHROME_FONT_CAP` (1.3: text in fixed-height rows and chips stops growing there, message text grows freely). `Txt` (variant, tone, weight, `chrome`, `caps`), `PressableScale` (0.97 scale, 150 ms), `Button` (44 pt, `size="large"` 48 pt), `Input` and `Field` (accent border on focus), `ListRow` (52 pt), `SectionHeader`, `EmptyState` (icon tile, headline, sentence, one action) and the `Skeleton`, `MessageSkeletons` and `RowSkeletons` loaders that replace spinners and "Loading..." lines. New screens use these instead of their own sizes.
 - **Jest.** Gesture-handler is mocked as chainable no-ops in `tests/setup.ts` and reanimated runs through its Jest resolver (`jest.config.js`), so gestures are tested through their pure models, not by simulated touches.
 
+## App Review recording
+
+`eas build --profile simulator` builds a simulator app that a GitHub Actions macOS run drives with Maestro and records for the App Store review reply, against a throwaway backend instead of production. See [e2e/review/README.md](e2e/review/README.md).
+
 ## Commands
 
 Run from the repo root (`pnpm install` first), or from `apps/mobile` without the `--filter`.

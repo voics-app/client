@@ -1,0 +1,7 @@
+# A visible pause so a human can follow the recording; the length comes from PAUSE_MS (default 1500).
+appId: nl.voics.app
+---
+- extendedWaitUntil:
+    visible: 'this text is never on screen'
+    timeout: ${PAUSE_MS || 1500}
+    optional: true

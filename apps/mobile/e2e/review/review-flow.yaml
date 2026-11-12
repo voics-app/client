@@ -1,0 +1,209 @@
+# The App Review walkthrough, in one continuous run: create an account, sign in, chat, join a voice channel,
+# report a message, block a user and delete the account. Run by .github/workflows/sim-recording.yml against a
+# throwaway test backend; see e2e/review/README.md. Needs -e EMAIL -e USERNAME -e PASSWORD -e INVITE.
+appId: nl.voics.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      microphone: allow
+      camera: allow
+      notifications: allow
+- extendedWaitUntil:
+    visible: 'New here? Create an account'
+    timeout: 90000
+- runFlow: pause.yaml
+
+# 1. Create a new account.
+- tapOn: 'New here? Create an account'
+- tapOn: 'Email'
+- runFlow:
+    file: stage-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
+- inputText: ${EMAIL}
+- tapOn: 'Username'
+- inputText: ${USERNAME}
+- tapOn: 'Password'
+- runFlow: pause.yaml
+- takeScreenshot: dbg-password-focused
+- pasteText
+- takeScreenshot: dbg-password-typed
+- runFlow: pause.yaml
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'Add a server'
+    timeout: 60000
+- takeScreenshot: 01-account-created
+- runFlow: pause.yaml
+
+# 2. Sign out and log in again with the new account.
+- tapOn: 'User settings'
+- tapOn: 'Log out'
+- tapOn:
+    text: 'Log out'
+    index: 1
+    optional: true
+- extendedWaitUntil:
+    visible: 'Sign in'
+    timeout: 30000
+- tapOn: 'Email'
+- runFlow:
+    file: stage-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
+- inputText: ${EMAIL}
+- tapOn: 'Password'
+- runFlow: pause.yaml
+- pasteText
+- runFlow: pause.yaml
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'Add a server'
+    timeout: 60000
+- takeScreenshot: 02-logged-in
+- runFlow: pause.yaml
+
+# 3. Join the demo server with an invite.
+- tapOn: 'Add a server'
+- tapOn: 'Join a server'
+- tapOn: 'Invite link or code'
+- inputText: ${INVITE}
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: 'Accept invite'
+    timeout: 30000
+- runFlow: pause.yaml
+- tapOn: 'Accept invite'
+- extendedWaitUntil:
+    visible: '.*general.*'
+    timeout: 30000
+- takeScreenshot: 03-server-joined
+- runFlow: pause.yaml
+
+# 4. Open the channel and send a message.
+- tapOn: '.*general.*'
+- extendedWaitUntil:
+    visible: 'Anyone up for a round of trivia tonight?'
+    timeout: 30000
+- runFlow:
+    when:
+      visible: 'Not now'
+    commands:
+      - tapOn: 'Not now'
+- tapOn: 'Message'
+- inputText: 'Hi everyone, I just joined. Trivia sounds great!'
+- runFlow: pause.yaml
+- tapOn: 'Send'
+- extendedWaitUntil:
+    visible: 'Hi everyone, I just joined. Trivia sounds great!'
+    timeout: 20000
+- hideKeyboard
+- takeScreenshot: 04-message-sent
+- runFlow: pause.yaml
+
+# 5. Report a message: long press, Report Message, pick a reason, send.
+- longPressOn: 'Anyone up for a round of trivia tonight?'
+- extendedWaitUntil:
+    visible: 'Report Message'
+    timeout: 10000
+- takeScreenshot: 05-message-actions
+- runFlow: pause.yaml
+- tapOn: 'Report Message'
+- extendedWaitUntil:
+    visible: 'Spam'
+    timeout: 10000
+- runFlow: pause.yaml
+- tapOn: 'Spam'
+- runFlow: pause.yaml
+- tapOn: 'Send report'
+- extendedWaitUntil:
+    visible: 'Report sent'
+    timeout: 20000
+- takeScreenshot: 06-report-sent
+- runFlow: pause.yaml
+- tapOn:
+    text: 'Close report'
+    optional: true
+- runFlow:
+    when:
+      visible: 'Report sent'
+    commands:
+      - tapOn: 'Close'
+
+# 6. Block the author of that message.
+- longPressOn: 'Anyone up for a round of trivia tonight?'
+- extendedWaitUntil:
+    visible: 'Block User'
+    timeout: 10000
+- runFlow: pause.yaml
+- tapOn: 'Block User'
+- extendedWaitUntil:
+    visible: 'Block .*\?'
+    timeout: 10000
+- takeScreenshot: 07-block-confirm
+- runFlow: pause.yaml
+- tapOn: 'Block'
+- runFlow: pause.yaml
+- takeScreenshot: 08-blocked
+
+# 7. Start a voice call: back to the channel list, open the voice channel and join.
+- back
+- extendedWaitUntil:
+    visible: '.*Voice.*|.*voice.*'
+    timeout: 20000
+- tapOn: '.*[Vv]oice.*'
+- extendedWaitUntil:
+    visible: 'Join voice'
+    timeout: 20000
+- takeScreenshot: 09-voice-channel
+- runFlow: pause.yaml
+- tapOn: 'Join voice'
+- extendedWaitUntil:
+    visible: 'Leave voice'
+    timeout: 30000
+- runFlow:
+    file: pause.yaml
+    env:
+      PAUSE_MS: 6000
+- takeScreenshot: 10-voice-call
+- tapOn: 'Leave voice'
+- runFlow: pause.yaml
+
+# 8. Delete the account: gear next to the name, My account, Delete.
+- runFlow:
+    when:
+      notVisible: 'User settings'
+    commands:
+      - back
+- tapOn: 'User settings'
+- tapOn: 'My account'
+- scrollUntilVisible:
+    element: 'Delete'
+- runFlow: pause.yaml
+- tapOn: 'Delete'
+- extendedWaitUntil:
+    visible: 'Delete your account'
+    timeout: 10000
+- tapOn: 'Type .* to confirm'
+- runFlow:
+    file: stage-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
+- inputText: ${USERNAME}
+- tapOn: 'Current password'
+- pasteText
+- hideKeyboard
+- takeScreenshot: 11-delete-account
+- runFlow: pause.yaml
+- tapOn:
+    text: 'Delete account'
+    index: 1
+- extendedWaitUntil:
+    visible: 'Sign in'
+    timeout: 30000
+- takeScreenshot: 12-signed-out
+- runFlow:
+    file: pause.yaml
+    env:
+      PAUSE_MS: 3000

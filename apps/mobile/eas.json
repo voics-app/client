@@ -20,6 +20,17 @@
       },
       "node": "24.11.0"
     },
+    "simulator": {
+      "environment": "preview",
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "node": "24.11.0",
+      "env": {
+        "VOICS_TEST_BACKEND_URL": "https://review-backend.invalid"
+      }
+    },
     "production": {
       "distribution": "store",
       "autoIncrement": true,

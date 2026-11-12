@@ -1,0 +1,129 @@
+# Records the Voics iOS app in the iOS Simulator for the App Store review reply: one continuous run through
+# create account, log in, chat, voice call, report, block and delete account (apps/mobile/e2e/review).
+# On demand only: GitHub-hosted macOS minutes cost 10x, so this never runs on push or pull request.
+#   gh workflow run sim-recording.yml --ref <branch> -f app_url=<EAS simulator build .tar.gz URL> -f backend_url=<https test backend> \
+#     -f email=... -f username=... -f password=... -f invite=...
+# `workflow_dispatch` only works once this file is on the default branch. Before that (or without the inputs), push a branch named
+# `sim-recording/<anything>`: the run then reads the same values from the repository variables REVIEW_APP_URL, REVIEW_BACKEND_URL, REVIEW_EMAIL,
+# REVIEW_USERNAME, REVIEW_INVITE, REVIEW_DEVICE and REVIEW_PASSWORD (a throwaway test value) (delete them after the run).
+# The app must be an EAS `simulator` profile build (it never talks to production: the backend address is swapped in below).
+# Output: the artifact `voics-review-recording` (review.mp4, screenshots, Maestro logs).
+name: sim-recording
+
+on:
+  push:
+    branches: ['sim-recording/**']
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: 'URL of the EAS simulator build archive (.tar.gz of Voics.app)'
+        required: true
+      backend_url:
+        description: 'https origin of the throwaway test backend (a local stack behind a tunnel), no trailing slash'
+        required: true
+      email:
+        description: 'Email of the test account the flow creates'
+        required: true
+      username:
+        description: 'Username of the test account the flow creates'
+        required: true
+      password:
+        description: 'Password of the test account (throwaway value for the test backend)'
+        required: true
+      invite:
+        description: 'Invite code of the demo server on the test backend'
+        required: true
+      device:
+        description: 'Simulator model'
+        default: 'iPhone 17 Pro'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sim-recording
+  cancel-in-progress: true
+
+jobs:
+  record:
+    name: Record the review flow
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      PLACEHOLDER: review-backend.invalid
+      APP_URL: ${{ inputs.app_url || vars.REVIEW_APP_URL }}
+      BACKEND_URL: ${{ inputs.backend_url || vars.REVIEW_BACKEND_URL }}
+      REVIEW_EMAIL: ${{ inputs.email || vars.REVIEW_EMAIL }}
+      REVIEW_USERNAME: ${{ inputs.username || vars.REVIEW_USERNAME }}
+      REVIEW_PASSWORD: ${{ inputs.password || vars.REVIEW_PASSWORD }}
+      REVIEW_INVITE: ${{ inputs.invite || vars.REVIEW_INVITE }}
+      DEVICE: ${{ inputs.device || vars.REVIEW_DEVICE || 'iPhone 17 Pro' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Mask the inputs
+        run: |
+          echo "::add-mask::$REVIEW_PASSWORD"
+          echo "::add-mask::$REVIEW_EMAIL"
+          echo "::add-mask::$REVIEW_INVITE"
+      - name: Check the backend answers
+        run: curl -fsS --retry 5 --retry-delay 3 "$BACKEND_URL/healthz"
+      - name: Unpack the app and point it at the test backend
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/app"
+          curl -fsSL "$APP_URL" -o "$RUNNER_TEMP/app.tar.gz"
+          tar -xzf "$RUNNER_TEMP/app.tar.gz" -C "$RUNNER_TEMP/app"
+          APP="$(find "$RUNNER_TEMP/app" -maxdepth 2 -name '*.app' -type d | head -1)"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          host="${BACKEND_URL#https://}"
+          # The simulator profile bakes https://review-backend.invalid into the app config (see app.config.ts); swap in the real host.
+          grep -rIl "$PLACEHOLDER" "$APP" | while read -r f; do sed -i '' "s/$PLACEHOLDER/$host/g" "$f"; echo "patched $(basename "$f")"; done
+          if grep -rIq "voics\.nl" "$APP"/EXConstants.bundle 2>/dev/null; then echo "production hosts still in the embedded config:"; grep -rIo "[a-z]*\.voics\.nl" "$APP"/EXConstants.bundle | sort -u; fi
+      - name: Boot the simulator
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          # The newest iOS runtime installed on the runner and the requested device model.
+          RUNTIME="$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['isAvailable'] and x['identifier'].split('.')[-1].startswith('iOS')]; r.sort(key=lambda x:[int(p) for p in x['version'].split('.')]); print(r[-1]['identifier'])")"
+          echo "runtime: $RUNTIME"
+          TYPE="com.apple.CoreSimulator.SimDeviceType.$(echo "$DEVICE" | tr ' ' '-')"
+          UDID="$(xcrun simctl create review "$TYPE" "$RUNTIME")"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          xcrun simctl list devices booted
+          xcrun simctl list runtimes | grep -i ios | tail -3
+      - name: Install the app
+        run: |
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant microphone nl.voics.app || true
+          xcrun simctl privacy "$UDID" grant camera nl.voics.app || true
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Record and run the flow
+        working-directory: apps/mobile/e2e/review
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force "$RUNNER_TEMP/out/review.mp4" &
+          REC=$!
+          sleep 3
+          set +e
+          maestro --device "$UDID" test review-flow.yaml \
+            -e EMAIL="$REVIEW_EMAIL" -e USERNAME="$REVIEW_USERNAME" -e PASSWORD="$REVIEW_PASSWORD" -e INVITE="$REVIEW_INVITE" \
+            --test-output-dir "$RUNNER_TEMP/out/maestro" --debug-output "$RUNNER_TEMP/out/debug"
+          STATUS=$?
+          sleep 3
+          kill -INT $REC; wait $REC
+          [ "$STATUS" -ne 0 ] && maestro --device "$UDID" hierarchy > "$RUNNER_TEMP/out/hierarchy-at-failure.json" || true
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/out/last-screen.png" || true
+          ls -la "$RUNNER_TEMP/out"
+          exit $STATUS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voics-review-recording
+          path: ${{ runner.temp }}/out
+          retention-days: 7

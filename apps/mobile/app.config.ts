@@ -9,6 +9,13 @@ const CAMERA_USAGE = `Voics uses the camera to send your video in calls.`;
 // refused (an ad-hoc build can carry either kind), so a wrong guess here costs a retry, not a lost push.
 const pushEnvironment: 'sandbox' | 'production' = ['preview', 'production'].includes(process.env.EAS_BUILD_PROFILE ?? '') ? 'production' : 'sandbox';
 
+// The `simulator` EAS profile (review recording, see e2e/README.md) points the app at a throwaway test backend instead of production. Only that profile
+// honours the override, so a store or preview build can never be redirected by an environment variable.
+const testBackend = process.env.EAS_BUILD_PROFILE === 'simulator' ? process.env.VOICS_TEST_BACKEND_URL : undefined;
+const backendUrls = testBackend
+  ? { apiUrl: testBackend, gatewayUrl: testBackend.replace(/^http/, 'ws'), cdnUrl: `${testBackend}/cdn` }
+  : { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl, cdnUrl: brand.cdnUrl };
+
 // Name, URL scheme and bundle id come from brand.json, like desktop.
 const config: ExpoConfig = {
   name: brand.displayName,
@@ -52,7 +59,7 @@ const config: ExpoConfig = {
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
   ],
   experiments: { typedRoutes: true },
-  extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
+  extra: { ...backendUrls, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
 };
 
 export default config;
