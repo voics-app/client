@@ -23,10 +23,10 @@ appId: nl.voics.app
 - tapOn: 'Password'
 - runFlow: pause.yaml
 - takeScreenshot: dbg-password-focused
-- tapOn:
-    text: 'Not Now'
-    optional: true
-- inputText: ${PASSWORD}
+- runFlow:
+    file: type-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
 - takeScreenshot: dbg-password-typed
 - runFlow: pause.yaml
 - pressKey: Enter
@@ -50,7 +50,10 @@ appId: nl.voics.app
 - inputText: ${EMAIL}
 - tapOn: 'Password'
 - runFlow: pause.yaml
-- inputText: ${PASSWORD}
+- runFlow:
+    file: type-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
 - runFlow: pause.yaml
 - pressKey: Enter
 - extendedWaitUntil:
@@ -183,7 +186,10 @@ appId: nl.voics.app
 - tapOn: 'Type .* to confirm'
 - inputText: ${USERNAME}
 - tapOn: 'Current password'
-- inputText: ${PASSWORD}
+- runFlow:
+    file: type-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
 - hideKeyboard
 - takeScreenshot: 11-delete-account
 - runFlow: pause.yaml
