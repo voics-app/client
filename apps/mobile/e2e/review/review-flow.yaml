@@ -22,7 +22,12 @@ appId: nl.voics.app
 - inputText: ${USERNAME}
 - tapOn: 'Password'
 - runFlow: pause.yaml
+- takeScreenshot: dbg-password-focused
+- tapOn:
+    text: 'Not Now'
+    optional: true
 - inputText: ${PASSWORD}
+- takeScreenshot: dbg-password-typed
 - runFlow: pause.yaml
 - pressKey: Enter
 - extendedWaitUntil:
