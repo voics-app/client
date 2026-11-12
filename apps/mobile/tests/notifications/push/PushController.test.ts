@@ -4,12 +4,14 @@ import type { NativePush } from '../../../src/notifications/push/nativePush';
 import { PushController } from '../../../src/notifications/push/PushController';
 import type { PermissionState, PushStatus, PushTarget } from '../../../src/notifications/push/pushModel';
 
-function setup(initial: { permission?: PermissionState; offered?: boolean; native?: boolean; token?: string | null; launchedBy?: unknown } = {}) {
+function setup(initial: { permission?: PermissionState; offered?: boolean; native?: boolean; token?: string | null; launchedBy?: unknown; platform?: 'apns' | 'fcm' } = {}) {
   let permission: PermissionState = initial.permission ?? 'undetermined';
   let offered = initial.offered ?? false;
   const listeners = { tap: [] as ((data: unknown) => void)[], token: [] as ((token: string) => void)[] };
   let foreground: ((data: unknown) => boolean) | null = null;
   const native = {
+    platform: initial.platform ?? ('apns' as 'apns' | 'fcm'),
+    prepare: jest.fn(async () => undefined),
     permission: jest.fn(async () => permission),
     request: jest.fn(async (): Promise<PermissionState> => permission),
     deviceToken: jest.fn(async () => (initial.token === undefined ? 'devtoken' : initial.token)),
@@ -89,6 +91,14 @@ describe('registration', () => {
     t.controller.attach();
     await t.controller.signedInStart(false);
     expect(t.registered).toEqual([{ platform: 'apns', token: 'devtoken', environment: 'sandbox', previews: false, only_mentions: true }]);
+  });
+
+  it('registers an Android phone with its FCM token as platform fcm, and prepares the channels when it starts listening', async () => {
+    const t = setup({ permission: 'granted', platform: 'fcm', token: 'fcm-token' });
+    t.controller.attach();
+    expect(t.native.prepare).toHaveBeenCalled();
+    await t.controller.signedInStart(false);
+    expect(t.registered).toEqual([{ platform: 'fcm', token: 'fcm-token', environment: 'production', previews: true, only_mentions: false }]);
   });
 
   it('does not register before permission, or when the system gives no token', async () => {

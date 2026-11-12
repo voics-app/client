@@ -1,0 +1,33 @@
+import groovy.json.JsonSlurper
+
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'nl.voics.callkit'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.voicscallkit"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+// VoicsMessagingService extends expo-notifications' ExpoFirebaseMessagingService, so every non-call push keeps its normal handling.
+// Expo autolinking links expo-notifications either as a project (built from source) or, when it ships a prebuilt publication (the default in
+// SDK 58), as a maven artifact in the package's local-maven-repo; this module has to name whichever one the app uses.
+def notificationsDependency() {
+  if (rootProject.findProject(':expo-notifications') != null) return project(':expo-notifications')
+  def manifest = ['node', '--print', "require.resolve('expo-notifications/package.json')"].execute(null, projectDir).text.trim()
+  def version = new JsonSlurper().parse(new File(manifest)).version
+  return "host.exp.exponent:expo.modules.notifications:${version}"
+}
+
+dependencies {
+  implementation notificationsDependency()
+  // The version expo-notifications builds against.
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
+}

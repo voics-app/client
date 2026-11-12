@@ -5,7 +5,7 @@ import type { NativePush } from './nativePush';
 import { badgeOf, foregroundPresentation, permissionPlan, pushTargetOf, registrationOf, type PushEnvironment, type PushStatus, type PushTarget } from './pushModel';
 
 export interface PushDeps {
-  /** Null where push cannot work (Expo Go, not iOS): every method then does nothing. */
+  /** Null where push cannot work (Expo Go, not iOS or Android): every method then does nothing. */
   native: NativePush | null;
   api: { registerPushToken(body: PushTokenBody): Promise<void> };
   prefs: { offered(): boolean; previews(): boolean; onlyMentions(): boolean; markOffered(): void };
@@ -34,6 +34,7 @@ export class PushController {
       this.deps.setStatus('unavailable');
       return;
     }
+    void native.prepare().catch(() => undefined);
     native.setForegroundPolicy((data) => foregroundPresentation({ gateway: this.deps.gatewayState(), viewing: this.deps.viewing(), data }) === 'show');
     this.subscriptions.push(
       native.onTap((data) => this.tapped(data)),
@@ -71,7 +72,7 @@ export class PushController {
     void this.deps.native?.setBadge(0).catch(() => undefined);
   }
 
-  /** The Notifications page: ask, or send the person to iOS Settings after a refusal. */
+  /** The Notifications page: ask, or send the person to the system settings after a refusal. */
   async enable(): Promise<void> {
     const { native } = this.deps;
     if (!native) return;
@@ -130,7 +131,7 @@ export class PushController {
 
   private async register(token: string): Promise<void> {
     try {
-      await this.deps.api.registerPushToken(registrationOf(token, this.deps.environment, this.deps.prefs.previews(), this.deps.prefs.onlyMentions()));
+      await this.deps.api.registerPushToken(registrationOf(token, this.deps.environment, this.deps.prefs.previews(), this.deps.prefs.onlyMentions(), this.deps.native?.platform));
     } catch {
       // Offline or the api is down: the next start registers again.
     }

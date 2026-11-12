@@ -45,9 +45,9 @@ export function permissionPlan(input: { permission: PermissionState; offered: bo
   return input.offered || !input.inChat ? 'wait' : 'offer';
 }
 
-/** The body of `POST /users/@me/devices/push` for an iPhone. */
-export function registrationOf(token: string, environment: PushEnvironment, previews: boolean, onlyMentions: boolean): PushTokenBody {
-  return { platform: 'apns', token, environment, previews, only_mentions: onlyMentions };
+/** The body of `POST /users/@me/devices/push`: an APNs token for an iPhone, an FCM registration token for Android (which has no sandbox, so it is always `production`). */
+export function registrationOf(token: string, environment: PushEnvironment, previews: boolean, onlyMentions: boolean, platform: PushTokenBody['platform'] = 'apns'): PushTokenBody {
+  return { platform, token, environment: platform === 'fcm' ? 'production' : environment, previews, only_mentions: onlyMentions };
 }
 
 /** The number on the app icon: unread mentions, never negative, and 0 clears it. */
@@ -63,12 +63,12 @@ export function environmentOf(configured: unknown): PushEnvironment {
 export type PushStatus = 'unavailable' | PermissionState;
 
 /** What the settings page says about push. */
-export function statusLabel(status: PushStatus): string {
+export function statusLabel(status: PushStatus, settingsName = 'iOS Settings'): string {
   switch (status) {
     case 'granted':
       return 'On';
     case 'denied':
-      return 'Off in iOS Settings';
+      return `Off in ${settingsName}`;
     case 'undetermined':
       return 'Not turned on yet';
     case 'unavailable':

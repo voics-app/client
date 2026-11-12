@@ -1,7 +1,10 @@
 {
-  "platforms": ["apple"],
+  "platforms": ["apple", "android"],
   "apple": {
     "modules": ["VoicsCallKitModule"],
     "appDelegateSubscribers": ["VoicsCallKitAppDelegate"]
+  },
+  "android": {
+    "modules": ["expo.modules.voicscallkit.VoicsCallKitModule"]
   }
 }
