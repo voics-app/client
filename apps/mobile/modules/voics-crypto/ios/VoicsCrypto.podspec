@@ -23,9 +23,12 @@ Pod::Spec.new do |s|
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_INCLUDE_PATHS' => '$(inherited) "${PODS_TARGET_SRCROOT}/Generated"',
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'x86_64',
   }
   # The app target imports this pod's Swift module, which needs the C module too.
   s.user_target_xcconfig = {
     'SWIFT_INCLUDE_PATHS' => '$(inherited) "${PODS_ROOT}/../../modules/voics-crypto/ios/Generated"',
+    # The XCFramework has an arm64 simulator slice only (Apple silicon); an EAS simulator build would otherwise also link x86_64 and fail.
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'x86_64',
   }
 end
