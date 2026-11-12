@@ -21,6 +21,7 @@ appId: nl.voics.app
 - tapOn: 'Username'
 - inputText: ${USERNAME}
 - tapOn: 'Password'
+- runFlow: pause.yaml
 - inputText: ${PASSWORD}
 - runFlow: pause.yaml
 - pressKey: Enter
@@ -43,6 +44,7 @@ appId: nl.voics.app
 - tapOn: 'Email'
 - inputText: ${EMAIL}
 - tapOn: 'Password'
+- runFlow: pause.yaml
 - inputText: ${PASSWORD}
 - runFlow: pause.yaml
 - pressKey: Enter
