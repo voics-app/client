@@ -17,16 +17,17 @@ appId: nl.voics.app
 # 1. Create a new account.
 - tapOn: 'New here? Create an account'
 - tapOn: 'Email'
+- runFlow:
+    file: stage-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
 - inputText: ${EMAIL}
 - tapOn: 'Username'
 - inputText: ${USERNAME}
 - tapOn: 'Password'
 - runFlow: pause.yaml
 - takeScreenshot: dbg-password-focused
-- runFlow:
-    file: type-secret.yaml
-    env:
-      SECRET: ${PASSWORD}
+- pasteText
 - takeScreenshot: dbg-password-typed
 - runFlow: pause.yaml
 - pressKey: Enter
@@ -47,13 +48,14 @@ appId: nl.voics.app
     visible: 'Sign in'
     timeout: 30000
 - tapOn: 'Email'
+- runFlow:
+    file: stage-secret.yaml
+    env:
+      SECRET: ${PASSWORD}
 - inputText: ${EMAIL}
 - tapOn: 'Password'
 - runFlow: pause.yaml
-- runFlow:
-    file: type-secret.yaml
-    env:
-      SECRET: ${PASSWORD}
+- pasteText
 - runFlow: pause.yaml
 - pressKey: Enter
 - extendedWaitUntil:
@@ -184,12 +186,13 @@ appId: nl.voics.app
     visible: 'Delete your account'
     timeout: 10000
 - tapOn: 'Type .* to confirm'
-- inputText: ${USERNAME}
-- tapOn: 'Current password'
 - runFlow:
-    file: type-secret.yaml
+    file: stage-secret.yaml
     env:
       SECRET: ${PASSWORD}
+- inputText: ${USERNAME}
+- tapOn: 'Current password'
+- pasteText
 - hideKeyboard
 - takeScreenshot: 11-delete-account
 - runFlow: pause.yaml
