@@ -3,11 +3,16 @@
 # On demand only: GitHub-hosted macOS minutes cost 10x, so this never runs on push or pull request.
 #   gh workflow run sim-recording.yml --ref <branch> -f app_url=<EAS simulator build .tar.gz URL> -f backend_url=<https test backend> \
 #     -f email=... -f username=... -f password=... -f invite=...
+# `workflow_dispatch` only works once this file is on the default branch. Before that (or without the inputs), push a branch named
+# `sim-recording/<anything>`: the run then reads the same values from the repository variables REVIEW_APP_URL, REVIEW_BACKEND_URL, REVIEW_EMAIL,
+# REVIEW_USERNAME, REVIEW_INVITE, REVIEW_DEVICE and the secret REVIEW_PASSWORD (delete them after the run).
 # The app must be an EAS `simulator` profile build (it never talks to production: the backend address is swapped in below).
 # Output: the artifact `voics-review-recording` (review.mp4, screenshots, Maestro logs).
 name: sim-recording
 
 on:
+  push:
+    branches: ['sim-recording/**']
   workflow_dispatch:
     inputs:
       app_url:
@@ -46,24 +51,31 @@ jobs:
     timeout-minutes: 30
     env:
       PLACEHOLDER: review-backend.invalid
+      APP_URL: ${{ inputs.app_url || vars.REVIEW_APP_URL }}
+      BACKEND_URL: ${{ inputs.backend_url || vars.REVIEW_BACKEND_URL }}
+      REVIEW_EMAIL: ${{ inputs.email || vars.REVIEW_EMAIL }}
+      REVIEW_USERNAME: ${{ inputs.username || vars.REVIEW_USERNAME }}
+      REVIEW_PASSWORD: ${{ inputs.password || secrets.REVIEW_PASSWORD }}
+      REVIEW_INVITE: ${{ inputs.invite || vars.REVIEW_INVITE }}
+      DEVICE: ${{ inputs.device || vars.REVIEW_DEVICE || 'iPhone 17 Pro' }}
     steps:
       - uses: actions/checkout@v5
       - name: Mask the inputs
         run: |
-          echo "::add-mask::${{ inputs.password }}"
-          echo "::add-mask::${{ inputs.email }}"
-          echo "::add-mask::${{ inputs.invite }}"
+          echo "::add-mask::$REVIEW_PASSWORD"
+          echo "::add-mask::$REVIEW_EMAIL"
+          echo "::add-mask::$REVIEW_INVITE"
       - name: Check the backend answers
-        run: curl -fsS --retry 5 --retry-delay 3 "${{ inputs.backend_url }}/healthz"
+        run: curl -fsS --retry 5 --retry-delay 3 "$BACKEND_URL/healthz"
       - name: Unpack the app and point it at the test backend
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/app"
-          curl -fsSL "${{ inputs.app_url }}" -o "$RUNNER_TEMP/app.tar.gz"
+          curl -fsSL "$APP_URL" -o "$RUNNER_TEMP/app.tar.gz"
           tar -xzf "$RUNNER_TEMP/app.tar.gz" -C "$RUNNER_TEMP/app"
           APP="$(find "$RUNNER_TEMP/app" -maxdepth 2 -name '*.app' -type d | head -1)"
           echo "APP=$APP" >> "$GITHUB_ENV"
-          host="${{ inputs.backend_url }}"; host="${host#https://}"
+          host="${BACKEND_URL#https://}"
           # The simulator profile bakes https://review-backend.invalid into the app config (see app.config.ts); swap in the real host.
           grep -rIl "$PLACEHOLDER" "$APP" | while read -r f; do sed -i '' "s/$PLACEHOLDER/$host/g" "$f"; echo "patched $(basename "$f")"; done
           if grep -rIq "voics\.nl" "$APP"/EXConstants.bundle 2>/dev/null; then echo "production hosts still in the embedded config:"; grep -rIo "[a-z]*\.voics\.nl" "$APP"/EXConstants.bundle | sort -u; fi
@@ -74,7 +86,7 @@ jobs:
           # The newest iOS runtime installed on the runner and the requested device model.
           RUNTIME="$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['isAvailable'] and x['identifier'].split('.')[-1].startswith('iOS')]; r.sort(key=lambda x:[int(p) for p in x['version'].split('.')]); print(r[-1]['identifier'])")"
           echo "runtime: $RUNTIME"
-          TYPE="com.apple.CoreSimulator.SimDeviceType.$(echo '${{ inputs.device }}' | tr ' ' '-')"
+          TYPE="com.apple.CoreSimulator.SimDeviceType.$(echo "$DEVICE" | tr ' ' '-')"
           UDID="$(xcrun simctl create review "$TYPE" "$RUNTIME")"
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID"
@@ -100,7 +112,7 @@ jobs:
           sleep 3
           set +e
           maestro --device "$UDID" test review-flow.yaml \
-            -e EMAIL='${{ inputs.email }}' -e USERNAME='${{ inputs.username }}' -e PASSWORD='${{ inputs.password }}' -e INVITE='${{ inputs.invite }}' \
+            -e EMAIL="$REVIEW_EMAIL" -e USERNAME="$REVIEW_USERNAME" -e PASSWORD="$REVIEW_PASSWORD" -e INVITE="$REVIEW_INVITE" \
             --test-output-dir "$RUNNER_TEMP/out/maestro" --debug-output "$RUNNER_TEMP/out/debug"
           STATUS=$?
           sleep 3
