@@ -51,6 +51,8 @@ const config: ExpoConfig = {
     // On Android it also makes `messages` the channel of FCM notification messages that name none.
     ['expo-notifications', { mode: pushEnvironment === 'sandbox' ? 'development' : 'production', defaultChannel: 'messages' }],
     'expo-audio',
+    // R8 rule for the LiveKit WebRTC release build (see the file).
+    './plugins/withAndroidProguard',
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
