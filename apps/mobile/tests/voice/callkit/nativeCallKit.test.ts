@@ -95,15 +95,24 @@ describe('loadNativeCallKit', () => {
     return (require('../../../src/voice/callkit/nativeCallKit') as typeof NativeCallKitModule).loadNativeCallKit();
   }
 
-  it('is null in Expo Go, off iOS, without the module, and when loading fails', () => {
+  it('is null in Expo Go, on other platforms, without the module, and when loading fails', () => {
     const module = fakeModule().module;
     expect(load({ native: false, os: 'ios', module })).toBeNull();
-    expect(load({ native: true, os: 'android', module })).toBeNull();
+    expect(load({ native: false, os: 'android', module })).toBeNull();
+    expect(load({ native: true, os: 'web', module })).toBeNull();
     expect(load({ native: true, os: 'ios', module: null })).toBeNull();
     expect(load({ native: true, os: 'ios', module: 'throws' })).toBeNull();
   });
 
   it('is the module in an iOS native build', () => {
     expect(load({ native: true, os: 'ios', module: fakeModule().module })).not.toBeNull();
+  });
+
+  it('is the module in an Android native build, with no PushKit token', async () => {
+    const { module } = fakeModule();
+    (module.voipToken as jest.Mock).mockResolvedValue(null);
+    const native = load({ native: true, os: 'android', module });
+    expect(native).not.toBeNull();
+    expect(await native?.voipToken()).toBeNull();
   });
 });

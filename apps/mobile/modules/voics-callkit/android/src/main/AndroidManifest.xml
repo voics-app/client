@@ -1,0 +1,50 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <!-- Self-managed Telecom calls, the full-screen incoming-call notification and the call foreground service (Android 14 types phoneCall and microphone). -->
+  <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <application>
+    <!-- Takes the FCM events from expo-notifications' service (priority 0 beats its -1): a data-only `call` push rings, everything else is passed on to it. -->
+    <service
+      android:name="expo.modules.voicscallkit.VoicsMessagingService"
+      android:exported="false">
+      <intent-filter android:priority="0">
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
+    <service android:name="expo.modules.notifications.service.ExpoFirebaseMessagingService" tools:node="remove" />
+
+    <service
+      android:name="expo.modules.voicscallkit.VoicsConnectionService"
+      android:exported="true"
+      android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+      <intent-filter>
+        <action android:name="android.telecom.ConnectionService" />
+      </intent-filter>
+    </service>
+
+    <service
+      android:name="expo.modules.voicscallkit.CallForegroundService"
+      android:exported="false"
+      android:foregroundServiceType="phoneCall|microphone" />
+
+    <receiver android:name="expo.modules.voicscallkit.CallActionReceiver" android:exported="false" />
+
+    <!-- The lock-screen call screen. It is its own activity, so the app itself never shows over the lock screen. -->
+    <activity
+      android:name="expo.modules.voicscallkit.IncomingCallActivity"
+      android:exported="false"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:excludeFromRecents="true"
+      android:launchMode="singleTask"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+  </application>
+</manifest>

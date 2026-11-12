@@ -13,6 +13,7 @@ function fakeModule(overrides: Partial<NotificationsModule> = {}) {
     getLastNotificationResponse: jest.fn(() => null),
     setNotificationHandler: jest.fn((handler: Handler | null) => void (calls.handler = handler)),
     setBadgeCountAsync: jest.fn(async (_count: number) => true),
+    setNotificationChannelAsync: jest.fn(async (_id: string, _channel: object) => ({})),
     ...overrides,
   };
   return { module, calls };
@@ -78,6 +79,49 @@ describe('createNativePush', () => {
   });
 });
 
+describe('createNativePush on Android', () => {
+  const android = (module: NotificationsModule, openSettings = jest.fn(async () => undefined)) => createNativePush(module, openSettings, 'android');
+
+  it('reports the FCM service and gives the FCM registration token', async () => {
+    const { module } = fakeModule({ getDevicePushTokenAsync: jest.fn(async () => ({ type: 'android', data: 'fcm-token:APA91b' as unknown })) });
+    const push = android(module);
+    expect(push.platform).toBe('fcm');
+    expect(await push.deviceToken()).toBe('fcm-token:APA91b');
+    expect(createNativePush(module, jest.fn(), 'ios').platform).toBe('apns');
+  });
+
+  it('returns null when Firebase is not configured in the build', async () => {
+    const { module } = fakeModule({ getDevicePushTokenAsync: jest.fn(async () => Promise.reject(new Error('Default FirebaseApp is not initialized'))) });
+    expect(await android(module).deviceToken()).toBeNull();
+  });
+
+  it('creates the messages and calls channels (calls heads-up) before it asks for the Android 13 permission', async () => {
+    const { module } = fakeModule();
+    const order: string[] = [];
+    (module.setNotificationChannelAsync as jest.Mock).mockImplementation(async (id: string) => void order.push(id));
+    (module.requestPermissionsAsync as jest.Mock).mockImplementation(async () => {
+      order.push('prompt');
+      return { status: 'granted' };
+    });
+    expect(await android(module).request()).toBe('granted');
+    expect(order).toEqual(['messages', 'calls', 'prompt']);
+    expect(module.setNotificationChannelAsync).toHaveBeenCalledWith('calls', expect.objectContaining({ importance: 4 }));
+    expect(module.setNotificationChannelAsync).toHaveBeenCalledWith('messages', expect.objectContaining({ importance: 3 }));
+    expect(module.requestPermissionsAsync).toHaveBeenCalledWith(undefined);
+  });
+
+  it('still asks when a channel cannot be created', async () => {
+    const { module } = fakeModule({ setNotificationChannelAsync: jest.fn(async () => Promise.reject(new Error('nope'))) });
+    expect(await android(module).request()).toBe('granted');
+  });
+
+  it('creates no channels on iPhone', async () => {
+    const { module } = fakeModule();
+    await createNativePush(module, jest.fn(), 'ios').prepare();
+    expect(module.setNotificationChannelAsync).not.toHaveBeenCalled();
+  });
+});
+
 describe('loadNativePush', () => {
   const load = (native: boolean, os: string) => {
     jest.resetModules();
@@ -92,8 +136,12 @@ describe('loadNativePush', () => {
     expect(load(false, 'ios')).toBeNull();
   });
 
-  it('is off on Android until FCM exists', () => {
-    expect(load(true, 'android')).toBeNull();
+  it('is on in an Android native build', () => {
+    expect(load(true, 'android')).not.toBeNull();
+  });
+
+  it('is off on any other platform', () => {
+    expect(load(true, 'web')).toBeNull();
   });
 
   it('is on in an iOS development or store build', () => {

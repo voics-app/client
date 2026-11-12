@@ -10,7 +10,7 @@ import { ANSWER_JOIN_MS, GATEWAY_SETTLE_MS, RING_SECONDS, type CallSnapshot } fr
 import type { CallEndReason, CallKitEvent, NativeCallKit } from './nativeCallKit';
 
 export interface CallKitDeps {
-  /** Null where CallKit cannot work (Expo Go, not iOS): every method then does nothing. */
+  /** Null where CallKit cannot work (Expo Go, not iOS or Android): every method then does nothing. */
   native: NativeCallKit | null;
   api: {
     registerVoipToken(body: { token: string; environment: 'production' | 'sandbox' }): Promise<void>;
