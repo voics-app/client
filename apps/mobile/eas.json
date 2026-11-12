@@ -24,6 +24,13 @@
       "distribution": "store",
       "autoIncrement": true,
       "node": "24.11.0"
+    },
+    "apk": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
