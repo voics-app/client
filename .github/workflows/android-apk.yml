@@ -38,6 +38,9 @@ jobs:
           curl -fsSL "$APK_URL" -o "out/Voics-${VERSION}.apk"
           # An APK is a zip that starts with PK and holds AndroidManifest.xml.
           unzip -l "out/Voics-${VERSION}.apk" | grep -q AndroidManifest.xml || { echo "::error::not an APK"; exit 1; }
+          # The stable download name is a real file in the artifact: minio-publish applies short-cache to artifact
+          # files only, before its copies step runs.
+          cp "out/Voics-${VERSION}.apk" out/Voics-latest.apk
           ls -la out
       - uses: actions/upload-artifact@v4
         with:
@@ -62,4 +65,3 @@ jobs:
       artifact: android-apk
       bucket: discordy-updates
       short-cache: Voics-latest.apk
-      copies: Voics-${{ inputs.version }}.apk:Voics-latest.apk
