@@ -16,6 +16,8 @@ export interface ScheduleEditorOptions {
   source: ScheduleSourceDraft | null;
   item?: ScheduledMessage;
   active?: boolean;
+  contentAllowed?: boolean;
+  canAccessContent?(): boolean;
   refreshKey?: number;
   onComplete(item: ScheduledMessage, source: ScheduleSourceDraft | null): void;
 }
@@ -27,6 +29,7 @@ export function useScheduledMessageEditor(options: ScheduleEditorOptions) {
   const { manager, channelId, mode, canSend, canTts } = options;
   const callbacks = useRef(options);
   callbacks.current = options;
+  const mayAccess = () => callbacks.current.contentAllowed !== false && callbacks.current.canAccessContent?.() !== false;
   const records = useSyncExternalStore(manager.subscribe, manager.snapshot, manager.snapshot);
   const [initial] = useState(() => {
     try { return { pending: options.item ? null : manager.pending(channelId), error: null }; }
@@ -44,13 +47,13 @@ export function useScheduledMessageEditor(options: ScheduleEditorOptions) {
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const baselineId = baseline?.id;
   useEffect(() => {
-    if (!baselineId || options.active === false) return;
+    if (!baselineId || options.active === false || options.contentAllowed === false) return;
     let current = true;
-    const refresh = () => { void manager.detail(channelId, baselineId).catch(() => { if (current) setError('Could not refresh the current status. Saving still checks for changes on the server.'); }); };
+    const refresh = () => { if (callbacks.current.canAccessContent?.() === false) return; void manager.detail(channelId, baselineId).catch(() => { if (current) setError('Could not refresh the current status. Saving still checks for changes on the server.'); }); };
     refresh();
     const timer = setInterval(refresh, 15_000);
     return () => { current = false; clearInterval(timer); };
-  }, [manager, channelId, baselineId, options.active, options.refreshKey]);
+  }, [manager, channelId, baselineId, options.active, options.contentAllowed, options.refreshKey]);
   const latest = baselineId ? records[baselineId] : undefined;
   useEffect(() => {
     if (baseline && latest && latest.revision > baseline.revision) {
@@ -71,7 +74,7 @@ export function useScheduledMessageEditor(options: ScheduleEditorOptions) {
     ?? (timeChanged ? instant ? scheduleTimeError(instant) : 'Choose a valid local date and time. That time may be skipped by a clock change.' : null);
 
   const save = async () => {
-    if (running.current || validation || conflict || !instant || (baseline && !timeChanged && !messageChanged)) return;
+    if (!mayAccess() || running.current || validation || conflict || !instant || (baseline && !timeChanged && !messageChanged)) return;
     running.current = true; setBusy(true); setError(null);
     try {
       if (baseline) {
@@ -85,7 +88,7 @@ export function useScheduledMessageEditor(options: ScheduleEditorOptions) {
     } catch (failure) {
       if (!alive.current) return;
       setError(errorMessage(failure));
-      if (baseline && failure && typeof failure === 'object' && 'status' in failure && failure.status === 409) {
+      if (mayAccess() && baseline && failure && typeof failure === 'object' && 'status' in failure && failure.status === 409) {
         try {
           const latest = await manager.detail(channelId, baseline.id);
           if (alive.current) { setConflict(latest); setError('This schedule changed on another device or started sending. Your edits are still here. Review the latest version before saving.'); }
@@ -103,13 +106,13 @@ export function useScheduledMessageEditor(options: ScheduleEditorOptions) {
     }
   };
   const useLatest = () => {
-    if (!conflict?.message || conflict.status !== 'pending') return;
+    if (!mayAccess() || !conflict?.message || conflict.status !== 'pending') return;
     setBaseline(conflict); setMessage(normalized(conflict.message)); setLocalTime(localScheduleInput(conflict.scheduled_at)); setConflict(null); setError(null);
   };
   return {
     message, setMessage, localTime, setLocalTime, instant, validation, error, busy, pending, conflict, useLatest,
     isEditing: Boolean(baseline), fieldsDisabled: busy || pending !== null || conflict !== null,
-    canSave: !busy && !validation && !conflict && (pending !== null || !baseline || timeChanged || messageChanged),
+    canSave: options.contentAllowed !== false && !busy && !validation && !conflict && (pending !== null || !baseline || timeChanged || messageChanged),
     save,
   };
 }

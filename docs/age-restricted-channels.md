@@ -55,11 +55,27 @@ link; account/instance isolation, restriction round trips, malformed context,
 late saves/search responses, NL error/retry, report disclosure/DTO, sidebar changes,
 foreground/native notifications, TTS and immediate voice revocation.
 
+Scheduled messages share the boundary: body previews, conflict text and editor
+fields do not render before Continue, while the author's own status list and
+revision-checked cancellation remain available from the warning. Detail polling
+and submit/retry actions are paused until content access is restored. The existing
+list DTO includes message bodies; this is render suppression, not a new redacted
+API projection. No message-history or media fetch is needed to manage schedules.
+
+The scheduling host is a sibling of the gated route/stage. Revoking content access
+unmounts channel/media content but retains the open schedule form's local draft.
+Confirmation restores it; account/instance changes close it. Pending create retry
+identity remains in the original account/instance journal. Composer cleanup still
+checks the current source text and reply before clearing anything, including after
+that composer remounts. Unknown delivery keeps its existing inspect-only action.
+The new warning/list-disclosure labels are in the central EN/NL catalog; scheduling
+PR358's pre-existing labels remain unchanged by this integration.
+
 Root owns native Windows/iOS/Android and paired API acceptance. Check direct links
 and notification taps before Continue, minimum desktop viewport, keyboard/screen
 reader navigation, live remote Hide, logout/login/account switching, active media,
-report/leave success and retry, and generic background pushes. When integrating
-scheduled-message PR358, redact scheduled body previews until Continue while
-keeping the own-message list and cancellation available. This branch is based on
-locale PR357; preserve the independent 352 draft/reply/notification-route behavior
+report/leave success and retry, generic background pushes, scheduled cancel from
+a hidden channel, open-editor revocation/re-confirmation and account switching.
+This integration combines frozen PR359 and PR358 on locale PR357; preserve the
+independent 352 draft/reply/notification-route behavior
 and 348 public-listing report target during combined integration.

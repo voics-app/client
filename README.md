@@ -4,6 +4,10 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Age-restricted channels
 
+Own scheduled-message status and cancellation stay reachable from the warning.
+Scheduled text and editing require Continue; an open planning draft survives
+content being hidden again.
+
 Age-restricted channels require a per-channel Continue on desktop and mobile before
 messages or media load. Privacy settings can hide them account-wide; failed saves
 retain the previous choice. The gate includes channel reporting, a safe way back,

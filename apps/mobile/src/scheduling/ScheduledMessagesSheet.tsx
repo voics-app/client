@@ -1,3 +1,6 @@
+import { createI18n } from '@discordy/core/domain/i18n';
+import { useAgeRestrictedStore } from '@discordy/core/application/stores/ageRestrictedStore';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 import { uuid } from 'expo';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -21,21 +24,25 @@ import { ScheduleEditor } from './ScheduleEditor';
 
 export interface ScheduleOpening { initial: 'actions' | 'list' | 'create'; draft: ScheduledMessageDraft; source: ScheduleSourceDraft; createDisabledReason: string | null }
 export interface SchedulingContext { channelId: string; mode: DeliveryMode; canTts: boolean }
-interface Props { request: ScheduleOpening | null; context: SchedulingContext; canSend: boolean; attachments?: ReactNode; onAccepted(source: ScheduleSourceDraft | null): void; onClose(): void }
+export interface ScheduledMessagesSheetProps { request: ScheduleOpening | null; context: SchedulingContext; canSend: boolean; attachments?: ReactNode; onAccepted(source: ScheduleSourceDraft | null): void; onClose(): void }
 
-export function ScheduledMessagesSheet(props: Props) {
+export function ScheduledMessagesSheet(props: ScheduledMessagesSheetProps) {
   const authorId = useSessionStore((state) => state.user?.id);
+  const instance = useAgeRestrictedStore((state) => state.instance);
   const retained = useLastValue(props.request);
-  const [opening, setOpening] = useState({ request: props.request, authorId, version: 0 });
-  if (opening.request !== props.request) setOpening({ request: props.request, authorId, version: opening.version + (props.request ? 1 : 0) });
+  const [opening, setOpening] = useState({ request: props.request, authorId, instance, version: 0 });
+  if (opening.request !== props.request) setOpening({ request: props.request, authorId, instance, version: opening.version + (props.request ? 1 : 0) });
   const { onClose } = props;
-  const ownerChanged = props.request !== null && authorId !== opening.authorId;
+  const ownerChanged = props.request !== null && (authorId !== opening.authorId || instance !== opening.instance);
   useEffect(() => { if (ownerChanged) onClose(); }, [ownerChanged, onClose]);
   return retained && authorId && !ownerChanged ? <Content key={`${authorId}:${props.context.channelId}:${opening.version}`} {...props} request={retained} visible={props.request !== null} authorId={authorId} /> : null;
 }
 
-function Content(props: Omit<Props, 'request'> & { request: ScheduleOpening; visible: boolean; authorId: string }) {
+function Content(props: Omit<ScheduledMessagesSheetProps, 'request'> & { request: ScheduleOpening; visible: boolean; authorId: string }) {
   const runtime = getRuntime();
+  const locale = useSessionStore((state) => state.settings.locale);
+  const { t } = createI18n(locale);
+  const contentAllowed = useChannelContentAccess().canShow(props.context.channelId);
   const [manager] = useState(() => new ScheduledMessages({ api: runtime.api, storage: deviceStorage, instance: runtime.apiUrl, authorId: props.authorId, randomId: () => uuid.v4() }));
   const [editing, setEditing] = useState<'new' | ScheduledMessage | null>(props.request.initial === 'create' ? 'new' : null);
   const [actions, setActions] = useState(props.request.initial === 'actions');
@@ -70,7 +77,8 @@ function Content(props: Omit<Props, 'request'> & { request: ScheduleOpening; vis
     if (item.status === 'sent' && item.message_id) useReadNavStore.getState().requestJump(props.context.channelId, item.message_id);
   };
   return <Sheet visible={props.visible} onClose={close} title={actions ? 'Message actions' : editing === 'new' ? 'Send later' : editing ? 'Edit scheduled message' : 'Scheduled messages'} closeLabel="Close scheduled messages">
-    {actions ? <><View>{props.attachments}</View><View style={styles.list}><Button label={pending ? 'Confirm previous request' : 'Send later'} size="large" disabled={Boolean(props.request.createDisabledReason) && !pending} onPress={() => { setActions(false); setEditing('new'); }} />{props.request.createDisabledReason && !pending && <Text style={styles.help}>{props.request.createDisabledReason}</Text>}<Button label="Scheduled messages" size="large" onPress={() => setActions(false)} /></View></> : editing ? <ScheduleEditor key={editing === 'new' ? 'new' : editing.id} options={{ manager, channelId: props.context.channelId, mode: props.context.mode, canSend: props.canSend, canTts: props.context.canTts, draft: props.request.draft, source: props.request.source, active: props.visible && active, ...(editing === 'new' ? {} : { item: editing }), onComplete: complete }} onBack={() => setEditing(null)} onBusy={setBusy} /> : <View style={styles.list}>
+    {actions ? <><View>{contentAllowed && props.attachments}</View><View style={styles.list}><Button label={pending ? 'Confirm previous request' : 'Send later'} size="large" disabled={Boolean(props.request.createDisabledReason) && !pending} onPress={() => { setActions(false); setEditing('new'); }} />{props.request.createDisabledReason && !pending && <Text style={styles.help}>{props.request.createDisabledReason}</Text>}<Button label="Scheduled messages" size="large" onPress={() => setActions(false)} /></View></> : editing ? <ScheduleEditor key={editing === 'new' ? 'new' : editing.id} options={{ manager, channelId: props.context.channelId, mode: props.context.mode, canSend: props.canSend, canTts: props.context.canTts, draft: props.request.draft, source: props.request.source, active: props.visible && active, ...(editing === 'new' ? {} : { item: editing }), onComplete: complete }} onBack={() => setEditing(null)} onBusy={setBusy} /> : <View style={styles.list}>
+      {!contentAllowed && <Text style={styles.help}>{t('age.scheduledHidden')}</Text>}
       <Text style={styles.help}>Only yours in this channel. Local time · {Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
       <View style={styles.actions}><Button label={pending ? 'Confirm previous request' : 'Send later'} tone="primary" disabled={Boolean(props.request.createDisabledReason) && !pending} onPress={() => setEditing('new')} /><Button label="Refresh" disabled={list.busy} onPress={() => void list.refresh()} /></View>
       {props.request.createDisabledReason && !pending && <Text style={styles.help}>{props.request.createDisabledReason}</Text>}
@@ -80,7 +88,7 @@ function Content(props: Omit<Props, 'request'> & { request: ScheduleOpening; vis
         return <View key={item.id} style={styles.item}>
           <Text accessibilityRole="header" style={[styles.heading, (item.status === 'delivery_unknown' || item.status === 'failed') && styles.error]}>{status.title}</Text>
           <Text style={styles.time}>{scheduleTimeLabel(item.scheduled_at)}</Text>
-          {item.message && <Text style={styles.message}>{item.message.content}</Text>}
+          {contentAllowed && item.message && <Text style={styles.message}>{item.message.content}</Text>}
           <Text style={styles.help}>{status.detail}</Text>
           {cancelling?.id === item.id ? <SheetConfirm body="Cancel this scheduled message?" confirmLabel="Cancel message" onConfirm={() => { if (!busy) void cancel(); }} onCancel={() => { if (!busy) setCancelling(null); }} /> : <View style={styles.actions}>
             {item.status === 'pending' && <><Button label="Edit" disabled={busy || !props.canSend || props.context.mode !== 'standard'} onPress={() => setEditing(item)} /><Button label="Cancel message" disabled={busy} onPress={() => setCancelling(item)} /></>}

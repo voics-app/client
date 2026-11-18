@@ -17,3 +17,20 @@ Background refresh covers the pages already loaded and preserves visible entries
 Delivery could not be confirmed is an explicit state with an Inspect channel action. Its chosen message ID is not evidence of delivery and there is no automatic resend. Sent means the server stored the message, not that every recipient device received it. Attachments, forwarding, embeds, components, application commands and non-Standard drafts are not scheduled or silently discarded.
 
 Wire authority: contracts #50 (`0de0e52c7cce04aad1b7f5a3e46677bcbb15848f`), docs #182 / ADR 0028 and the scheduled-message specification. Backend, client and native/runtime acceptance are separate gates; source or component fixtures are not evidence of deployed scheduling.
+
+## Age-restricted channel integration
+
+The own-message list is reachable from a channel's age warning even while Hide is
+on. Status, due time and author cancellation stay usable; bodies and edit/create
+forms require the current session's Continue. Detail polling and submitting a
+pending retry stop while gated. Returning to the same session restores an open
+form without clearing its draft. Account/instance changes close the old form and
+keep the existing journal isolation. The list API is unchanged and still returns
+its ordinary DTO; bodies are withheld from rendering and no channel history or
+media is mounted. The channel warning and disclosure use the EN/NL catalog.
+
+The platform scheduling hosts sit outside the content boundary. Composer receipt
+cleanup follows the currently mounted composer when one exists, and checks its
+source text/reply before clearing. Full body text, conflicts, unknown delivery,
+failed retries, cancellation and same/different-account reopen remain native
+acceptance checks in addition to the interaction regressions.

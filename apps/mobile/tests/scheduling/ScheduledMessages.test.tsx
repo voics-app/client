@@ -1,3 +1,6 @@
+import { confirmAgeRestrictedChannel, initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
+import { clearAgeRestrictedConfirmations } from '@discordy/core/application/stores/ageRestrictedStore';
+import { useGuildStore, type GuildMeta } from '@discordy/core/application/stores/guildStore';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { Alert, AppState } from 'react-native';
@@ -11,6 +14,7 @@ import type { ScheduledMessage } from '@discordy/core/contracts/scheduledMessage
 import type { User } from '@discordy/core/contracts/rest';
 import { Composer, type ComposerProps } from '../../src/messages/Composer';
 import { ScheduledMessagesSheet, type ScheduleOpening } from '../../src/scheduling/ScheduledMessagesSheet';
+import { AgeRestrictedGate } from '../../src/safety/AgeRestrictedGate';
 
 const mockApi = { createScheduledMessage: jest.fn(), scheduledMessages: jest.fn(), scheduledMessage: jest.fn(), editScheduledMessage: jest.fn(), cancelScheduledMessage: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -29,6 +33,10 @@ beforeEach(() => {
   for (const method of Object.values(mockApi)) method.mockReset();
   installDeviceStorage(createMemoryStorage());
   useSessionStore.setState({ user: { id: '7', username: 'scheduler', global_name: null, avatar: null } as User });
+  useGuildStore.getState().reset();
+  initialiseAgeRestrictedAccess('https://api.test');
+  useSessionStore.setState({ status: 'ready', settings: { default_delivery_mode: 'standard' } });
+  useGuildStore.getState().upsertChannel({ id: '10', type: 1, delivery_mode: 'standard' });
   useDraftStore.setState({ drafts: {} });
   mockApi.scheduledMessages.mockResolvedValue({ items: [], next_after: null });
   mockApi.scheduledMessage.mockResolvedValue(resource());
@@ -135,6 +143,7 @@ it('refreshes a visible edit when returning to the foreground, retaining the loc
 });
 
 it('never presents an uncertain delivery as sent or offers a retry', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
   mockApi.scheduledMessages.mockResolvedValue({ items: [resource({ status: 'delivery_unknown', revision: 3, message: null, message_id: '99', failure: 'delivery_unknown' })], next_after: null });
   const jump = jest.spyOn(useReadNavStore.getState(), 'requestJump');
   await mountSheet();
@@ -148,10 +157,97 @@ it('never presents an uncertain delivery as sent or offers a retry', async () =>
 });
 
 it('closes the old account’s open form without exposing its composer snapshot to the next account', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+  confirmAgeRestrictedChannel('10');
   const close = jest.fn();
   await render(wrap(<ScheduledMessagesSheet request={request('create')} context={context} canSend onAccepted={jest.fn()} onClose={close} />));
   expect(screen.getByLabelText('Message')).toHaveProp('value', 'Composer draft');
   await act(async () => useSessionStore.setState({ user: { id: '8', username: 'another', global_name: null, avatar: null } as User }));
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(close).toHaveBeenCalled();
+  expect(mockApi.createScheduledMessage).not.toHaveBeenCalled();
+});
+
+it('retains scheduled status and cancellation behind Hide without rendering the body or editor', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+  useSessionStore.getState().setSettings({ locale: 'nl', preferences: { hide_age_restricted_channels: true } });
+  mockApi.scheduledMessages.mockResolvedValue({ items: [resource()], next_after: null });
+  mockApi.cancelScheduledMessage.mockResolvedValue(resource({ status: 'cancelled', revision: 2, message: null }));
+  await render(wrap(<AgeRestrictedGate channelId="10"><Composer mode={{ kind: 'compose' }} blockedReason={null} placeholder="Message" canAttach onSubmit={jest.fn()} onCancelMode={jest.fn()} /></AgeRestrictedGate>));
+  await fireEvent.press(screen.getByRole('button', { name: 'Geplande berichten' }));
+  await screen.findByText('Scheduled');
+  expect(screen.getByText(/Berichttekst en bewerken blijven verborgen/)).toBeTruthy();
+  expect(screen.queryByText('Original message')).toBeNull();
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  await fireEvent.press(screen.getByLabelText('Cancel message'));
+  await fireEvent.press(screen.getByLabelText('Cancel message'));
+  await screen.findByText('Cancelled');
+  expect(mockApi.cancelScheduledMessage).toHaveBeenCalledWith('10', id, 1);
+});
+
+it('blocks detail polling before Continue and restores unsaved editor fields after re-confirmation', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+  mockApi.scheduledMessages.mockResolvedValue({ items: [resource()], next_after: null });
+  await mountSheet();
+  await fireEvent.press(await screen.findByLabelText('Edit'));
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(mockApi.scheduledMessage).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.changeText(screen.getByLabelText('Message'), 'Unsaved edit');
+  await waitFor(() => expect(mockApi.scheduledMessage).toHaveBeenCalledTimes(1));
+  await act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: true } }));
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  expect(mockApi.editScheduledMessage).not.toHaveBeenCalled();
+  await act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: false } }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByLabelText('Message')).toHaveProp('value', 'Unsaved edit');
+});
+
+it('keeps a pending retry hidden on reopen until a fresh acknowledgement, then reuses the same request', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+  confirmAgeRestrictedChannel('10');
+  mockApi.createScheduledMessage.mockRejectedValueOnce(new Error('Response lost'));
+  const first = await mountSheet('create');
+  await fireEvent.press(screen.getByLabelText('Schedule message'));
+  await screen.findByLabelText('Retry confirmation');
+  const original = mockApi.createScheduledMessage.mock.calls[0];
+  await first.unmount();
+  clearAgeRestrictedConfirmations();
+  await mountSheet('create');
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(screen.queryByLabelText('Retry confirmation')).toBeNull();
+  expect(mockApi.createScheduledMessage).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+  await fireEvent.press(screen.getByLabelText('Retry confirmation'));
+  await screen.findByText('Scheduled');
+  expect(mockApi.createScheduledMessage.mock.calls[1]).toEqual(original);
+});
+
+it('retains the real composer’s open schedule edit across content unmount and clears only accepted text', async () => {
+  useGuildStore.getState().upsertChannel({ id: '10', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+  useGuildStore.setState({ guilds: { g: { id: 'g', owner_id: '7', roles: [] } as unknown as GuildMeta } });
+  confirmAgeRestrictedChannel('10');
+  await render(wrap(<AgeRestrictedGate channelId="10"><Composer mode={{ kind: 'compose' }} blockedReason={null} placeholder="Message" canAttach draftKey="10" scheduling={context} onSubmit={jest.fn()} onCancelMode={jest.fn()} /></AgeRestrictedGate>));
+  await fireEvent.changeText(screen.getByLabelText('Message'), 'Original draft');
+  await fireEvent(screen.getByLabelText('Send'), 'longPress');
+  await fireEvent.changeText(screen.getAllByLabelText('Message').at(-1)!, 'Schedule-only edit');
+  await act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: true } }));
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(useDraftStore.getState().drafts['10']?.text).toBe('Original draft');
+  await act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: false } }));
+  await fireEvent.press(screen.getAllByRole('button', { name: 'Continue' }).at(-1)!);
+  expect(screen.getAllByLabelText('Message').at(-1)).toHaveProp('value', 'Schedule-only edit');
+  await fireEvent.press(screen.getByLabelText('Schedule message'));
+  await screen.findByText('Scheduled');
+  expect(screen.getByLabelText('Message')).toHaveProp('value', '');
+});
+
+it('closes an existing sheet on an instance change before showing a different account scope', async () => {
+  const close = jest.fn();
+  await render(wrap(<ScheduledMessagesSheet request={request('create')} context={context} canSend onAccepted={jest.fn()} onClose={close} />));
+  await act(() => initialiseAgeRestrictedAccess('https://other.test'));
   expect(screen.queryByLabelText('Message')).toBeNull();
   expect(close).toHaveBeenCalled();
   expect(mockApi.createScheduledMessage).not.toHaveBeenCalled();

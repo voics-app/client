@@ -1,43 +1,10 @@
-import { ShieldWarning } from '@phosphor-icons/react';
-import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { confirmAgeRestrictedChannel } from '@discordy/core/application/ageRestrictedAccess';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { attempt, leaveGuild } from '../../app/actions';
+import type { ReactNode } from 'react';
 import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
-import { useI18n } from '../../shared/i18n';
-import { Button } from '../../shared/ui/Button';
-import './ageRestricted.css';
+import { ScheduledMessagesBoundary } from '../scheduling/ScheduledMessagesBoundary';
+import { AgeRestrictedNotice } from './AgeRestrictedNotice';
 
-/** The children must not mount until acknowledgement; CSS hiding would still fetch media. */
+/** Content unmounts on revocation; the author's scheduling controls retain their drafts. */
 export function AgeRestrictedGate({ channelId, children, onExit }: { channelId: string; children: ReactNode; onExit?: () => void }) {
-  const { t } = useI18n();
   const { kind } = useChannelContentAccess().access(channelId);
-  const channel = useGuildStore((s) => s.channels[channelId]);
-  const guild = useGuildStore((s) => channel?.guild_id ? s.guilds[channel.guild_id] : undefined);
-  const me = useSessionStore((s) => s.user?.id);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const labelId = useId();
-  useEffect(() => { if (kind !== 'open') heading.current?.focus(); }, [channelId, kind]);
-  if (kind === 'open') return children;
-  const exit = () => { useUiStore.getState().openDialog(null); useUiStore.getState().navigate({ kind: 'home', channelId: null }); onExit?.(); };
-  const leave = () => useUiStore.getState().openDialog({ kind: 'confirm', title: t('age.leaveTitle'), body: t('age.leaveBody'), confirmLabel: t('age.leave'), danger: true, onConfirm: async () => { await attempt(() => leaveGuild(guild!.id), t('age.leaveError')); } });
-  return (
-    <section className="age-gate" aria-labelledby={labelId}>
-      <ShieldWarning size={40} weight="light" aria-hidden="true" />
-      <h2 id={labelId} tabIndex={-1} ref={heading}>{t(kind === 'unavailable' ? 'age.unavailable' : kind === 'hidden' ? 'age.hidden' : 'age.title')}</h2>
-      {kind === 'confirm' && <p className="age-gate-channel" dir="auto">#{channel?.name}</p>}
-      <p>{t(kind === 'unavailable' ? 'age.unavailableBody' : kind === 'hidden' ? 'age.hiddenBody' : 'age.body')}</p>
-      <div className="age-gate-actions">
-        <Button onClick={exit}>{t('age.back')}</Button>
-        {kind === 'confirm' && <Button variant="primary" onClick={() => confirmAgeRestrictedChannel(channelId)}>{t('age.continue')}</Button>}
-      </div>
-      <div className="age-gate-actions">
-        <Button variant="ghost" onClick={() => useUiStore.getState().openSettings({ kind: 'user', tab: 'privacy' })}>{t('age.settings')}</Button>
-        {channel?.guild_id && <Button variant="ghost" onClick={() => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'channel', channelId, channelName: channel.name ?? channelId } })}>{t('age.report')}</Button>}
-        {guild && guild.owner_id !== me && <Button variant="ghost" onClick={leave}>{t('age.leave')}</Button>}
-      </div>
-    </section>
-  );
+  return <ScheduledMessagesBoundary key={channelId} channelId={channelId}>{(openList) => kind === 'open' ? children : <AgeRestrictedNotice channelId={channelId} {...(onExit ? { onExit } : {})} {...(kind !== 'unavailable' ? { onScheduled: openList } : {})} />}</ScheduledMessagesBoundary>;
 }

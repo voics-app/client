@@ -18,6 +18,7 @@ import { SlashSuggestions } from '../commands/SlashSuggestions';
 import { useSlashCommands } from '../commands/useSlashCommands';
 import { theme } from '../theme';
 import { ScheduledMessagesSheet, type ScheduleOpening, type SchedulingContext } from '../scheduling/ScheduledMessagesSheet';
+import { useScheduledMessagesHost } from '../scheduling/ScheduledMessagesBoundary';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { emojiText, insertAt } from '../emoji/emojiPickerModel';
 import { AttachMenu, AttachmentOptions } from './AttachMenu';
@@ -51,6 +52,9 @@ export interface ComposerProps {
 }
 
 export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, scheduling, onSubmit, onCancelMode }: ComposerProps) {
+  const scheduleHost = useScheduledMessagesHost();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
@@ -99,14 +103,22 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
     const draft = schedulingDraft();
     const createDisabledReason = scheduleUnavailable({ mode: scheduling.mode, attachments: files.length, editing: current.editing, command: command !== null || (slash.query !== null && parseTtsCommand(text) === null), canSend: !blockedReason }) ?? scheduleDraftError(draft);
     if (initial === 'create' && createDisabledReason) { Alert.alert('Cannot schedule this message', createDisabledReason); return; }
-    setScheduleRequest({ initial, draft, source: { text, replyTo: current.replyTo }, createDisabledReason });
+    const request = { initial, draft, source: { text, replyTo: current.replyTo }, createDisabledReason };
+    if (scheduleHost) scheduleHost.open({ request, context: scheduling, canSend: !blockedReason, onAccepted: scheduled, composerMounted: () => mounted.current, attachments: mode.kind === 'compose' && canAttach ? <AttachmentOptions onClose={() => scheduleHost.open(null)} onPicked={pick} /> : undefined });
+    else setScheduleRequest(request);
   };
   const scheduled = (source: ScheduleSourceDraft | null) => {
     if (!source || latest.current.deliveryMode !== 'standard' || latest.current.editing || latest.current.attachmentCount > 0 || useSessionStore.getState().user?.id !== authorId || latest.current.text !== source.text || latest.current.replyTo !== source.replyTo) return;
+    if (!mounted.current && (!draftKey || useDraftStore.getState().drafts[draftKey]?.text !== source.text)) return;
     latest.current.text = ''; setText('');
     if (draftKey) useDraftStore.getState().clearDraft(draftKey);
     if (source.replyTo) onCancelMode();
   };
+  useEffect(() => {
+    if (!scheduleHost) return;
+    scheduleHost.accepted.current = scheduled;
+    return () => { if (scheduleHost.accepted.current === scheduled) scheduleHost.accepted.current = null; };
+  });
 
   if (blockedReason) {
     return (

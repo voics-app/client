@@ -1,3 +1,7 @@
+import { useI18n } from '../../shared/i18n';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
+import { AgeRestrictedNotice } from '../channels/AgeRestrictedNotice';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { useEffect } from 'react';
 import { scheduleTimeLabel } from '@discordy/core/domain/scheduledMessages';
 import { useScheduledMessageEditor, type ScheduleEditorOptions } from '@discordy/react/useScheduledMessageEditor';
@@ -6,8 +10,11 @@ import { Field, Input, TextArea } from '../../shared/ui/Form';
 
 /** Nightglass composer extension: message, exact local time, then one explicit commit. */
 export function ScheduleEditor({ options, onBack, onBusy }: { options: ScheduleEditorOptions; onBack(): void; onBusy(busy: boolean): void }) {
-  const form = useScheduledMessageEditor(options);
+  const { t } = useI18n();
+  const contentAllowed = useChannelContentAccess().canShow(options.channelId);
+  const form = useScheduledMessageEditor({ ...options, contentAllowed, canAccessContent: () => canShowChannelContent(options.channelId) });
   useEffect(() => { onBusy(form.busy); return () => onBusy(false); }, [form.busy, onBusy]);
+  if (!contentAllowed) return <><AgeRestrictedNotice channelId={options.channelId} inline /><Button disabled={form.busy} onClick={onBack}>{t('age.backSchedules')}</Button></>;
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return <form className="schedule-form" onSubmit={(event) => { event.preventDefault(); void form.save(); }}>
     {form.pending && <p className="schedule-notice" role="status">A previous request is waiting for confirmation. Retry checks the same request; it does not schedule another copy. Your composer draft stays here until confirmation.</p>}

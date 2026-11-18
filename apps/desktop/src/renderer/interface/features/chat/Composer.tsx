@@ -37,6 +37,7 @@ import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
 import { ScheduledMessagesDialog } from '../scheduling/ScheduledMessagesDialog';
+import { useScheduledMessagesHost } from '../scheduling/ScheduledMessagesBoundary';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -74,6 +75,9 @@ function initialDraft(channelId: string, standard: boolean) {
 }
 
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const scheduleHost = useScheduledMessagesHost();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const { t: msg } = useI18n();
   const { t, number, locale } = useI18n();
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
@@ -430,12 +434,22 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     return { content, tts: tts !== null, silent: silent !== null, reply_to: replyTo?.id ?? null, replied_user: replyTo?.author.id !== me ? pingReplied : true };
   };
   const schedulingUnavailable = scheduleUnavailable({ mode, attachments: files.length, editing: editing?.channelId === channel.id, command: command !== null || (commandSearch !== null && parseTtsCommand(text) === null), canSend }) ?? scheduleDraftError(schedulingDraft());
-  const openScheduling = (initial: 'list' | 'create') => setSchedule({ initial, draft: schedulingDraft(), source: { text, replyTo: replyTo?.id ?? null } });
+  const openScheduling = (initial: 'list' | 'create') => {
+    const request = { initial, draft: schedulingDraft(), source: { text, replyTo: replyTo?.id ?? null } };
+    if (scheduleHost) scheduleHost.open({ ...request, channelId: channel.id, mode, createDisabledReason: schedulingUnavailable, canSend, canTts: ttsAllowed, onAccepted: scheduled });
+    else setSchedule(request);
+  };
   const scheduled = (source: ScheduleSourceDraft | null) => {
     if (!source || mode !== 'standard' || files.length > 0 || useUiStore.getState().editing?.channelId === channel.id || useSessionStore.getState().user?.id !== me || textRef.current !== source.text || (useUiStore.getState().replyTo[channel.id]?.id ?? null) !== source.replyTo) return;
+    if (!mounted.current && useDraftStore.getState().drafts[channel.id]?.text !== source.text) return;
     textRef.current = ''; setText(''); setReplyTo(channel.id, null); mentionMap.current.clear();
     useDraftStore.getState().clearDraft(channel.id);
   };
+  useEffect(() => {
+    if (!scheduleHost) return;
+    scheduleHost.accepted.current = scheduled;
+    return () => { if (scheduleHost.accepted.current === scheduled) scheduleHost.accepted.current = null; };
+  });
   const plusEntries: MenuEntry[] = [...plusMenuEntries().map((id): MenuEntry => {
     if (id === 'upload') return { kind: 'item', label: t('composer.upload'), icon: <UploadSimple size={16} />, disabled: !canSend || !canAttach, title: canAttach ? undefined : t('composer.noAttachments'), onSelect: () => fileInput.current?.click() };
     const label = id === 'thread' ? msg('settings.composer.create.thread') : id === 'poll' ? msg('settings.composer.create.poll') : msg('settings.composer.use.apps');

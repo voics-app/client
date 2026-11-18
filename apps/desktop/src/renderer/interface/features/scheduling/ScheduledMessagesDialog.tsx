@@ -1,3 +1,5 @@
+import { useI18n } from '../../shared/i18n';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { deviceStorage } from '@discordy/core/application/ports/deviceStorage';
@@ -42,6 +44,8 @@ export function ScheduledMessagesDialog(props: ScheduledMessagesDialogProps) {
 }
 
 function Content(props: ScheduledMessagesDialogProps & { authorId: string; instance: string }) {
+  const { t } = useI18n();
+  const contentAllowed = useChannelContentAccess().canShow(props.channelId);
   const [manager] = useState(() => new ScheduledMessages({ api: getRuntime().api, storage: deviceStorage, instance: props.instance, authorId: props.authorId, randomId: () => crypto.randomUUID() }));
   const [foreground, setForeground] = useState(() => document.visibilityState !== 'hidden');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -88,6 +92,7 @@ function Content(props: ScheduledMessagesDialogProps & { authorId: string; insta
   };
   return <Modal open onClose={close} width={560} title={editing === 'new' ? 'Send later' : editing ? 'Edit scheduled message' : 'Scheduled messages'} description={editing ? undefined : `Only yours in this channel. Local time · ${Intl.DateTimeFormat().resolvedOptions().timeZone}`}>
     {editing ? <ScheduleEditor key={editing === 'new' ? 'new' : editing.id} options={{ manager, channelId: props.channelId, mode: props.mode, canSend: props.canSend, canTts: props.canTts, draft: props.draft, source: props.source, active: foreground, refreshKey, ...(editing === 'new' ? {} : { item: editing }), onComplete: complete }} onBack={() => setEditing(null)} onBusy={setBusy} /> : <div className="schedule-list-view">
+      {!contentAllowed && <p className="field-hint" role="status">{t('age.scheduledHidden')}</p>}
       <div className="schedule-toolbar"><Button size="sm" variant="primary" disabled={Boolean(props.createDisabledReason) && !pending} title={props.createDisabledReason ?? undefined} onClick={() => setEditing('new')}>{pending ? 'Confirm previous request' : 'Send later'}</Button><Button size="sm" disabled={list.busy} onClick={() => void list.refresh()}>Refresh</Button></div>
       {props.createDisabledReason && !pending && <p className="field-hint">{props.createDisabledReason}</p>}
       {(error || list.error || journalError) && <p className="field-error" role="alert">{error ?? list.error ?? journalError}</p>}
@@ -95,7 +100,7 @@ function Content(props: ScheduledMessagesDialogProps & { authorId: string; insta
         const status = scheduleStatus(item);
         return <li key={item.id} className="schedule-item">
           <div className="schedule-heading"><h3 data-status={item.status}>{status.title}</h3><time dateTime={item.scheduled_at}>{scheduleTimeLabel(item.scheduled_at)}</time></div>
-          {item.message && <p className="schedule-message">{item.message.content}</p>}
+          {contentAllowed && item.message && <p className="schedule-message">{item.message.content}</p>}
           <p className="field-hint">{status.detail}</p>
           {cancelling?.id === item.id ? <div className="schedule-cancel" role="group" aria-label="Confirm cancellation"><p>Cancel this scheduled message?</p><Button size="sm" disabled={busy} onClick={() => setCancelling(null)}>Keep scheduled</Button><Button size="sm" variant="danger" loading={busy} onClick={() => void cancel()}>Cancel message</Button></div> : <div className="row">
             {item.status === 'pending' && <><Button size="sm" disabled={busy || !props.canSend || props.mode !== 'standard'} onClick={() => setEditing(item)}>Edit</Button><Button size="sm" variant="ghost" disabled={busy} onClick={() => setCancelling(item)}>Cancel message</Button></>}

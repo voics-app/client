@@ -1,3 +1,8 @@
+import { createI18n } from '@discordy/core/domain/i18n';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
+import { AgeRestrictedNotice } from '../safety/AgeRestrictedNotice';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { useEffect } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { localScheduleInput, scheduleTimeLabel } from '@discordy/core/domain/scheduledMessages';
@@ -7,8 +12,12 @@ import { Button, Field } from '../ui/controls';
 
 /** Existing native sheet controls, explicit local calendar fields, one scheduling action. */
 export function ScheduleEditor({ options, onBack, onBusy }: { options: ScheduleEditorOptions; onBack(): void; onBusy(busy: boolean): void }) {
-  const form = useScheduledMessageEditor(options);
+  const locale = useSessionStore((state) => state.settings.locale);
+  const { t } = createI18n(locale);
+  const contentAllowed = useChannelContentAccess().canShow(options.channelId);
+  const form = useScheduledMessageEditor({ ...options, contentAllowed, canAccessContent: () => canShowChannelContent(options.channelId) });
   useEffect(() => { onBusy(form.busy); return () => onBusy(false); }, [form.busy, onBusy]);
+  if (!contentAllowed) return <><AgeRestrictedNotice channelId={options.channelId} inline /><Button label={t('age.backSchedules')} disabled={form.busy} onPress={onBack} /></>;
   const [date = '', time = ''] = form.localTime.split('T');
   const tomorrow = () => { const next = new Date(); next.setDate(next.getDate() + 1); next.setHours(9, 0, 0, 0); form.setLocalTime(localScheduleInput(next.getTime())); };
   return <View style={styles.form}>
