@@ -5,6 +5,7 @@ import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { DaveSession } from '@discordy/core/application/voice/daveSession';
 import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import type { IceServer } from '@discordy/core/domain/turn';
+import { DEFAULT_VIDEO_CODEC } from '@discordy/core/domain/sdp';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
 import { AppState } from 'react-native';
 import { AudioRoute } from './audioRoute';
@@ -36,6 +37,7 @@ export function createMobileVoice({ gateway, native, socketFactory, iceServers, 
   const route = new AudioRoute(native.route);
   const controller = new MobileCallController({
     gateway,
+    screenShare: native.screenShare,
     openCamera: (facing) => native.openCamera(facing),
     onBackground: (listener) => {
       const subscription = AppState.addEventListener('change', (state) => {
@@ -58,8 +60,8 @@ export function createMobileVoice({ gateway, native, socketFactory, iceServers, 
         socketFactory,
         createPeerConnection: () => native.createPeerConnection(iceServers()),
         createStream: (track) => native.createStream(track),
-        // VP8 is on every iPhone and the encrypted frame format covers it; H264 is not covered.
-        preferredVideoCodec: 'VP8',
+        // VoiceSession's common VP8 default keeps mobile and desktop media compatible.
+        preferredVideoCodec: DEFAULT_VIDEO_CODEC,
         ...(cryptor && crypto
           ? {
               cryptor,

@@ -9,12 +9,17 @@ import type {
   AccountChange,
   AuthResponse,
   BackupCode,
+  Passkey,
+  PasskeyChallenge,
+  PasskeyFinish,
+  PasskeyRegistration,
   TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   Device,
@@ -67,6 +72,13 @@ export interface ApiPort {
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
   loginMfa(body: { ticket: string; code: string }): Promise<AuthResponse>;
+  startPasskeyLogin(ticket: string): Promise<PasskeyChallenge>;
+  finishPasskeyLogin(body: PasskeyFinish & { ticket: string }): Promise<AuthResponse>;
+  passkeys(): Promise<Passkey[]>;
+  startPasskeyRegistration(password: string, name: string): Promise<PasskeyChallenge>;
+  finishPasskeyRegistration(body: PasskeyFinish): Promise<PasskeyRegistration>;
+  renamePasskey(id: string, name: string): Promise<Passkey>;
+  removePasskey(id: string, password: string, code: string): Promise<void>;
   forgotPassword(email: string): Promise<void>;
   resetPassword(token: string, password: string): Promise<void>;
   verifyEmail(token: string): Promise<void>;
@@ -182,7 +194,7 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }): Promise<Message>;
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
   removeReaction(channelId: string, messageId: string, emoji: string): Promise<void>;

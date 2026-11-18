@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
-import { joinVoice, leaveVoice, switchCamera, toggleCamera, toggleDeafen, toggleMute, voiceAvailable } from './voiceActions';
+import { joinVoice, leaveVoice, switchCamera, toggleCamera, toggleDeafen, toggleMute, toggleScreenShare, voiceAvailable } from './voiceActions';
 import type { CameraFacing, NativeVideoStream } from './nativeVoice';
 import { buildTiles, stageView } from './stageModel';
 import { VoiceStage } from './VoiceStage';
@@ -82,6 +82,7 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
   const selfVideo = useVoiceStore((s) => s.selfVideo);
   const remote = useVoiceStore((s) => s.remoteStreams);
   const localCamera = useVoiceStore((s) => s.localCamera);
+  const localScreen = useVoiceStore((s) => s.localScreen);
   const screenSsrcs = useVoiceStore((s) => s.screenSsrcs);
   const watching = useVoiceStore((s) => s.watching);
   const focused = useVoiceStore((s) => s.focusedStream);
@@ -91,6 +92,8 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
   const videoRequested = useRef(video === '1');
   const insets = useSafeAreaInsets();
   const available = voiceAvailable();
+  const share = getRuntime().voice?.controller.screenShare;
+  const shareStatus = useSyncExternalStore(share?.subscribe ?? (() => () => undefined), () => share?.status ?? 'idle');
 
   useEffect(() => {
     if (available) void joinVoice(info.guildId, channelId);
@@ -107,8 +110,8 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
   }, [connectedHere]);
 
   const view = useMemo(
-    () => stageView(buildTiles({ rows: info.participants, remote, localCamera: localCamera as NativeVideoStream | null, screenKeys: Object.keys(screenSsrcs), watching }), focused),
-    [info.participants, remote, localCamera, screenSsrcs, watching, focused],
+    () => stageView(buildTiles({ rows: info.participants, remote, localCamera: localCamera as NativeVideoStream | null, localScreen: localScreen as NativeVideoStream | null, screenKeys: Object.keys(screenSsrcs), watching }), focused),
+    [info.participants, remote, localCamera, localScreen, screenSsrcs, watching, focused],
   );
 
   // A call that ends without the Leave button (hung up from the lock screen, the server disconnected you) closes this screen too.
@@ -160,6 +163,7 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
         <ControlButton icon={selfMute ? 'mic-off' : 'mic'} label={selfMute ? 'Unmute' : 'Mute'} on={selfMute} onPress={toggleMute} />
         <ControlButton icon={selfVideo ? 'videocam' : 'videocam-off'} label={selfVideo ? 'Turn camera off' : 'Turn camera on'} on={selfVideo} disabled={!connectedHere} onPress={() => void toggleCamera()} />
         {selfVideo && <ControlButton icon="camera-reverse" label={facing === 'front' ? 'Switch to back camera' : 'Switch to front camera'} onPress={switchCamera} />}
+        {share?.available && <ControlButton icon="desktop-outline" label={shareStatus === 'starting' ? 'Cancel screen sharing' : shareStatus === 'sharing' ? 'Stop sharing screen' : 'Share screen'} on={shareStatus !== 'idle'} disabled={!connectedHere && shareStatus === 'idle'} onPress={toggleScreenShare} />}
         <ControlButton icon={selfDeaf ? 'volume-mute' : 'headset'} label={selfDeaf ? 'Undeafen' : 'Deafen'} on={selfDeaf} onPress={toggleDeafen} />
         <ControlButton
           icon={route.current === 'speaker' ? 'volume-high' : 'ear-outline'}
@@ -182,7 +186,7 @@ const styles = StyleSheet.create({
   personText: { flex: 1 },
   personName: { color: theme.text, fontSize: 16, fontWeight: '600' },
   empty: { color: theme.subtle, textAlign: 'center', padding: 32 },
-  controls: { flexDirection: 'row', justifyContent: 'space-evenly', paddingHorizontal: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.hairline },
+  controls: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', paddingHorizontal: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.hairline },
   control: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.raised },
   controlOn: { backgroundColor: theme.text },
   controlOff: { opacity: 0.4 },

@@ -778,3 +778,4 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .report-category strong { display: block; font-weight: 600; }
 .report-category small { display: block; color: var(--fg-subtle); }
 .field-error { margin: 0; color: var(--danger, #d03b3b); font-size: var(--fs-small); }
+.passkey-list { list-style: none; margin: 0; padding: 0; }

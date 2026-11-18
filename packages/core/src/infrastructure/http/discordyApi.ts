@@ -9,12 +9,17 @@ import type {
   AccountChange,
   AuthResponse,
   BackupCode,
+  Passkey,
+  PasskeyChallenge,
+  PasskeyFinish,
+  PasskeyRegistration,
   TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   PushTokenBody,
@@ -78,6 +83,27 @@ export class DiscordyApi implements ApiPort {
   }
   loginMfa(body: { ticket: string; code: string }) {
     return this.http.request<AuthResponse>('POST', '/auth/mfa/totp', { body, auth: false });
+  }
+  startPasskeyLogin(ticket: string) {
+    return this.http.request<PasskeyChallenge>('POST', '/auth/mfa/webauthn/start', { body: { ticket }, auth: false });
+  }
+  finishPasskeyLogin(body: PasskeyFinish & { ticket: string }) {
+    return this.http.request<AuthResponse>('POST', '/auth/mfa/webauthn/finish', { body, auth: false });
+  }
+  passkeys() {
+    return this.get<Passkey[]>('/users/@me/mfa/passkeys');
+  }
+  startPasskeyRegistration(password: string, name: string) {
+    return this.post<PasskeyChallenge>('/users/@me/mfa/passkeys/register/start', { password, name });
+  }
+  finishPasskeyRegistration(body: PasskeyFinish) {
+    return this.post<PasskeyRegistration>('/users/@me/mfa/passkeys/register/finish', body);
+  }
+  renamePasskey(id: string, name: string) {
+    return this.patch<Passkey>(`/users/@me/mfa/passkeys/${enc(id)}`, { name });
+  }
+  async removePasskey(id: string, password: string, code: string) {
+    await this.http.request<void>('DELETE', `/users/@me/mfa/passkeys/${enc(id)}`, { body: { password, code } });
   }
   async forgotPassword(email: string) {
     await this.http.request('POST', '/auth/forgot-password', { body: { email }, auth: false });
@@ -404,7 +430,7 @@ export class DiscordyApi implements ApiPort {
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
   }
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }) {
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);
   }
   deleteMessage(channelId: string, messageId: string) {

@@ -74,12 +74,30 @@ Server settings group implemented pages under Server, People and Moderation. The
 
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.
 
+Native iOS builds include a ReplayKit broadcast extension for screen sharing during calls. Its app group, embedded target, EAS signing metadata and consent bridge are generated from source; see the mobile README for build and real-device acceptance checks. Camera and screen streams use the existing encrypted media path, including safe cancellation of late permission results and delayed native SSRC announcements.
+
 Mobile presence becomes Idle when the app enters the background by default. Explicitly choosing
 Online keeps that status on this device; the intent is stored per account across restarts.
 Idle, DND and Invisible remain as selected. Returning to the foreground restores the current
 status after the gateway resumes. Logout clears the live presence, and a cold start stays
 invisible until READY has loaded the account settings. A supporting gateway retains suspended
 mobile availability for a bounded lease (24 hours by default), without keeping the app running.
+
+## Edit attachment descriptions and spoilers
+
+In a Standard chat, open the menu on one of your sent messages and choose **Edit Attachments**
+(right-click on desktop, long-press on mobile). Each existing file has a description and a
+**Mark as spoiler** switch. Save applies only changed fields; Cancel discards the draft. A failed
+save keeps the draft open for retry and leaves the timeline unchanged. Descriptions accept up to
+1,024 Unicode characters; clearing one removes it. Files cannot be replaced, renamed or removed
+through this editor. Pending messages, other authors' messages and private delivery modes do not
+offer this action.
+
+This uses the metadata PATCH contract in contracts#38 and messages#79. Explicit attachment flags
+are authoritative: clearing a spoiler also reveals a file whose immutable name starts with
+`SPOILER_`; filename fallback applies only to older payloads without flags. File and audio rows
+require a reveal too, and opening a different image does not reveal concealed neighbours in the
+viewer. See [docs/attachment-metadata.md](docs/attachment-metadata.md) for validation and QA steps.
 
 ## Test and lint
 
@@ -135,6 +153,21 @@ Users can also switch profile from the sign-in screen or Settings, Connection.
 - Protected (DRM) video captures as black by design. The share picker detects this and offers Watch Together.
 - The session is stored with Electron `safeStorage` (OS keychain). The store key for local private history is wrapped by the same keychain.
 
+Desktop and mobile save a random refresh request UUID before sending a rotation.
+After a lost response or failed successor save, the same token/UUID pair survives
+a restart. Only a successful vault save replaces the runtime tokens and removes
+the pending UUID. Logout serializes its clear after pending writes. The supporting
+API recovers one immediate unused successor for five minutes; it retains strict
+reuse detection for other replays and never restores revoked sessions.
+
+Desktop encrypted files use a flushed temporary file and atomic replacement.
+On Windows, Electron 38.8.6 can encrypt before its first `Local State` key write.
+The first secret save therefore waits for that wrapped key and flushes its file,
+failing after 15 seconds if storage stays unavailable. This may delay a very fast
+first sign-in; refresh is not sent before its recovery identity is durable. This
+guard depends on Electron's Windows profile format and must be revalidated when
+upgrading Electron. It makes no OS power-loss or filesystem durability guarantee.
+
 ## Not in v1
 
 Payments, DRM capture, full-text search, slash-command picker UI, and attachments in private delivery modes.
@@ -148,3 +181,6 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 ## Git hooks
 
 Tests run locally, not in CI. Install [lefthook](https://github.com/evilmartians/lefthook) once and run `make hooks` (or `lefthook install`) to enable the pre-push hook in `lefthook.yml`: it runs this repository's lint and unit tests before every push. CI repeats only the slim gate on pull requests. Skip once with `LEFTHOOK=0 git push`.
+# Passkeys
+
+Desktop account settings support passkey enrollment, naming and removal; password sign-in offers registered passkeys as a second factor. The ceremony uses the system browser at an explicitly configured HTTPS relying-party origin. See [desktop passkeys](docs/passkeys.md) for configuration, recovery, security boundaries, the isolated browser/API test and OS/mobile acceptance limits.

@@ -58,6 +58,13 @@ describe('reaction menu', () => {
 
 describe('message menu placeholders', () => {
   const base = { isMine: false, standard: true, canReact: true, canManageMessages: false, canCreateThread: false, forwardSupported: false, canSpeak: false, hasText: true, pinned: false, selection: '', canAddEmoji: false, quick: [] };
+  it('offers attachment editing only for author-owned standard attachments', () => {
+    const edit = { ...base, isMine: true, hasEditableAttachments: true };
+    expect(idsOf(buildMessageMenu(edit, { kind: 'message' }))).toContain('editAttachments');
+    for (const disabled of [{ isMine: false }, { standard: false }, { hasEditableAttachments: false }]) {
+      expect(idsOf(buildMessageMenu({ ...edit, ...disabled }, { kind: 'message' }))).not.toContain('editAttachments');
+    }
+  });
   it('shows a disabled Forward until its backend lands', () => {
     const model = buildMessageMenu(base, { kind: 'message' });
     const items = model.filter((m) => m.kind === 'item');

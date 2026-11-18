@@ -7,6 +7,13 @@ function fakeHttp() {
   return { http: { request } as unknown as HttpClient, request };
 }
 
+it('sends partial attachment metadata with explicit clear values', async () => {
+  const { http, request } = fakeHttp();
+  const patch = { attachments: [{ id: '7', description: null, flags: 0 }] };
+  await new DiscordyApi(http).editMessage('12', '17', patch);
+  expect(request).toHaveBeenCalledWith('PATCH', '/channels/12/messages/17', { body: patch });
+});
+
 describe('DiscordyApi permanent invitations', () => {
   it('sends a listing report to discovery with only its allowed fields', async () => {
     const { http, request } = fakeHttp();

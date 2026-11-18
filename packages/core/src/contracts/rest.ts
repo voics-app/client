@@ -632,6 +632,7 @@ export interface ApiErrorBody {
   errors?: Record<string, unknown>;
   /** Login answered 60008: the ticket completes the login with a second factor. */
   ticket?: string;
+  methods?: string[];
   retry_after?: number;
 }
 
@@ -644,6 +645,28 @@ export interface BackupCode {
   /** Plaintext, present only right after generation. */
   code?: string;
   consumed: boolean;
+}
+
+export interface Passkey {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface PasskeyChallenge {
+  challenge_id: string;
+  publicKey: Record<string, unknown>;
+}
+
+export interface PasskeyRegistration {
+  passkey: Passkey;
+  backup_codes?: BackupCode[];
+}
+
+export interface PasskeyFinish {
+  challenge_id: string;
+  credential: Record<string, unknown>;
 }
 
 export interface AccountChange {
@@ -684,6 +707,20 @@ export interface AttachmentUploadSlot {
   id: string;
   upload_url: string;
   upload_filename: string;
+}
+
+/** Partial metadata edits of existing attachments. Files and filenames are immutable. */
+export interface AttachmentMetadataEdit {
+  id: Snowflake;
+  description?: string | null;
+  /** Only IS_SPOILER may be changed; zero explicitly clears it. */
+  flags?: number;
+}
+
+export interface EditMessageBody {
+  content?: string;
+  flags?: number;
+  attachments?: AttachmentMetadataEdit[];
 }
 
 /** Short-lived coturn REST credentials minted by the gateway (P2 TURN_URLS / TURN_STATIC_AUTH_SECRET). */

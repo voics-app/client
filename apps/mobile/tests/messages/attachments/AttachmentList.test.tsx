@@ -49,6 +49,27 @@ describe('AttachmentList', () => {
     expect(screen.getByLabelText('x.png')).toBeTruthy();
   });
 
+  it('shows a legacy filename once its spoiler flag has explicitly been cleared', async () => {
+    await render(<AttachmentList attachments={[att('1', 'SPOILER_x.png', 'image/png', { flags: 0 })]} messageId="m" sending={false} />);
+    expect(screen.getByLabelText('x.png')).toBeTruthy();
+    expect(screen.queryByLabelText('Spoiler image, tap to reveal')).toBeNull();
+  });
+
+  it('does not reveal other spoiler media through the viewer', async () => {
+    await render(<AttachmentList attachments={[att('1', 'a.png', 'image/png'), att('2', 'hidden.png', 'image/png', { flags: 8 })]} messageId="m" sending={false} />);
+    await fireEvent.press(screen.getByLabelText('a.png'));
+    expect(await screen.findByLabelText('Close viewer')).toBeTruthy();
+    expect(screen.queryByLabelText('hidden.png')).toBeNull();
+    expect(screen.queryByText(/1 of 2/)).toBeNull();
+  });
+
+  it('requires revealing a spoiler file before offering to open it', async () => {
+    await render(<AttachmentList attachments={[att('1', 'report.pdf', 'application/pdf', { flags: 8 })]} messageId="m" sending={false} />);
+    expect(screen.queryByLabelText('Open report.pdf')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Spoiler file, tap to reveal'));
+    expect(screen.getByLabelText('Open report.pdf')).toBeTruthy();
+  });
+
   it('shows a video as a tile that opens the viewer', async () => {
     await render(<AttachmentList attachments={[att('1', 'clip.mp4', 'video/mp4')]} messageId="m" sending={false} />);
     await fireEvent.press(screen.getByLabelText('clip.mp4'));

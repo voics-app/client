@@ -21,6 +21,8 @@ export interface MessageMenuContext {
   forwardSupported: boolean;
   canSpeak: boolean;
   hasText: boolean;
+  /** Author-owned, already sent standard message with editable attachments. */
+  hasEditableAttachments?: boolean;
   pinned: boolean;
   /** Text selected inside the message at the time of the right-click. */
   selection: string;
@@ -73,6 +75,7 @@ function messageBlock(ctx: MessageMenuContext): MenuModel[] {
     });
   }
   if (ctx.isMine && ctx.standard) out.push(item('edit', 'Edit Message'));
+  if (ctx.isMine && ctx.standard && ctx.hasEditableAttachments) out.push(item('editAttachments', 'Edit Attachments'));
   if (ctx.standard && ctx.canManageMessages) out.push(item(ctx.pinned ? 'unpin' : 'pin', ctx.pinned ? 'Unpin Message' : 'Pin Message'));
   out.push(item('reply', 'Reply'));
   if (ctx.forwardSupported) out.push(ctx.standard ? item('forward', 'Forward') : item('forward', 'Forward', { disabled: true, hint: FORWARD_MENU_HINT }));

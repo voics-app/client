@@ -32,6 +32,8 @@ export interface RuntimeConfig {
   vault: SessionVault;
   socketFactory: SocketFactory;
   fetch?: typeof fetch;
+  /** Native UUID generator. Tests/web may use WebCrypto. */
+  refreshRequestId?: () => string;
   /** Uploads attachments with progress; without it they use a plain PUT and report no progress. */
   progressUpload?: ProgressUpload;
   /** Builds the voice stack; returns null where native WebRTC is not available (Expo Go). */
@@ -78,15 +80,11 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     tokens: {
       access: () => tokens.access,
       refresh: async () => {
-        if (!tokens.refresh) return null;
-        const rotated = await http.request<Pick<AuthResponse, 'access_token' | 'refresh_token'>>('POST', '/auth/refresh', {
+        if (!manager) return null;
+        return manager.renewTokens((body) => http.request<Pick<AuthResponse, 'access_token' | 'refresh_token'>>('POST', '/auth/refresh', {
           auth: false,
-          body: { refresh_token: tokens.refresh },
-        });
-        tokens.access = rotated.access_token;
-        tokens.refresh = rotated.refresh_token;
-        await manager?.persistTokens(tokens);
-        return tokens.access;
+          body,
+        }), config.refreshRequestId ?? (() => globalThis.crypto.randomUUID()));
       },
       expired: () => void manager?.sessionExpired(),
     },

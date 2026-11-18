@@ -98,6 +98,17 @@ describe('channel screen', () => {
     expect(mockApi.messages).toHaveBeenCalledWith('general', { limit: 50 });
   });
 
+  it('opens attachment editing from the author message actions', async () => {
+    mockApi.messages.mockResolvedValueOnce([message(1, { attachments: [{ id: 'a', filename: 'photo.png', size: 1, url: 'https://cdn.test/photo' }] })]);
+    await open();
+    await fireEvent(await screen.findByText('message 1'), 'longPress');
+    await fireEvent.press(screen.getByText('Edit Attachments'));
+    expect(await screen.findByLabelText('Description for photo.png')).toBeTruthy();
+    expect(screen.getByLabelText('Mark photo.png as spoiler')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Cancel'));
+    expect(mockApi.editMessage).not.toHaveBeenCalled();
+  });
+
   it('shows live updates from the store', async () => {
     await open();
     await screen.findByText('message 1');
