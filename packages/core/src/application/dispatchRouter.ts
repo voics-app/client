@@ -20,7 +20,7 @@ import type {
   VoiceState,
 } from '@discordy/core/contracts/rest';
 import { RelationshipType } from '@discordy/core/contracts/rest';
-import type { CallDeleteEvent, CallEvent, MessageAck, TypingStart, VoiceServerUpdate } from '@discordy/core/contracts/gateway';
+import type { CallDeleteEvent, CallEvent, MessageAck, ReadStateSync, ReadStateUpdate, TypingStart, VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
@@ -81,7 +81,7 @@ function hydrateReady(ready: ReadyPayload): void {
   useRelationshipStore.getState().hydrate(ready.relationships ?? []);
   useNotificationSettingsStore.getState().hydrate(ready.user_guild_settings ?? []);
   useUserNotesStore.getState().hydrate(ready.notes ?? {});
-  useReadStateStore.getState().hydrate(ready.read_state ?? []);
+  useReadStateStore.getState().hydrate(ready.read_state ?? [], { versioned: ready.read_state_versioned === true });
   applyPresences([...(ready.presences ?? []), ...guilds.flatMap((g) => g.presences ?? [])]);
   for (const g of guilds) useVoiceStore.getState().hydrate(g.id, g.voice_states ?? []);
   useSessionStore.setState({ sessionId: ready.session_id, status: 'ready' });
@@ -91,13 +91,14 @@ function hydrateReady(ready: ReadyPayload): void {
  * gateway MESSAGE_CREATE and the private (ephemeral/P2P) paths, which only have plaintext after decrypting. */
 export function registerIncoming(message: ChatMessage, notify: (message: ChatMessage) => void): void {
   const me = meId();
+  const localCounts = !useReadStateStore.getState().versioned || (message.deliveryMode !== undefined && message.deliveryMode !== 'standard');
   if (message.author.id === me) {
-    useReadStateStore.getState().markRead(message.channel_id, message.id);
+    if (localCounts) useReadStateStore.getState().markRead(message.channel_id, message.id);
   } else if (me) {
     const settings = useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)];
     const channel = useGuildStore.getState().channels[message.channel_id];
     const ctx = { meId: me, myRoleIds: viewerRoleIds(message.guild_id, me), suppressEveryone: settings?.suppress_everyone, suppressRoles: settings?.suppress_roles };
-    if (isMentioned(message, ctx) && !isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now())) {
+    if (localCounts && isMentioned(message, ctx) && !isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now())) {
       useReadStateStore.getState().addMention(message.channel_id);
     }
     const entry = inboxEntryOf(message, ctx);
@@ -105,6 +106,11 @@ export function registerIncoming(message: ChatMessage, notify: (message: ChatMes
   }
   readAloudIfWanted(message, me ?? undefined);
   notify(message);
+}
+
+function privateReadState(channelId: string): boolean {
+  const mode = useGuildStore.getState().channels[channelId]?.delivery_mode;
+  return mode !== undefined && mode !== 'standard';
 }
 
 function receiveMessage(message: Message, ctx: DispatchContext): void {
@@ -194,9 +200,25 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     MESSAGE_REACTION_REMOVE: (d: ReactionEvent) => messages().reactionRemove(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE_ALL: (d: { channel_id: string; message_id: string }) => messages().reactionClear(d.channel_id, d.message_id),
     MESSAGE_ACK: (d: MessageAck) => {
-      // The server echoes the resulting marker; with a mention count it is authoritative (it may be a backwards Mark Unread).
+      if (useReadStateStore.getState().versioned && !privateReadState(d.channel_id)) {
+        if (d.mention_count !== undefined) {
+          useReadStateStore.getState().applySnapshot({ id: d.channel_id, last_message_id: d.message_id, mention_count: d.mention_count, read_state_version: d.read_state_version });
+        }
+        return;
+      }
+      // Private ACKs still carry the user's explicit cross-device read intent.
+      // Only Standard snapshots own server-computed counts; legacy/private ACK
+      // retains its existing marker and manual-unread semantics.
       if (d.mention_count !== undefined) useReadStateStore.getState().setPosition(d.channel_id, d.message_id, d.mention_count);
       else useReadStateStore.getState().markRead(d.channel_id, d.message_id);
+    },
+    READ_STATE_UPDATE: (d: ReadStateUpdate) => {
+      if (!privateReadState(d.channel_id)) useReadStateStore.getState().applySnapshot({ ...d, id: d.channel_id });
+    },
+    READ_STATE_SYNC: (d: ReadStateSync) => {
+      if (d.read_state_versioned === true && Array.isArray(d.read_state)) {
+        useReadStateStore.getState().syncSnapshots(d.read_state.filter((entry) => !privateReadState(entry.id)));
+      }
     },
     TYPING_START: (d: TypingStart) => {
       if (d.user_id !== meId()) useTypingStore.getState().start(d.channel_id, d.user_id);
