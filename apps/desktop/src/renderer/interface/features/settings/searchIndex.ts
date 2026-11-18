@@ -44,6 +44,7 @@ const TAB_KEYWORDS: Record<UserSettingsTab, string> = {
   desktop: 'tray startup idle window launch',
   advanced: 'developer mode copy id debug',
   developer: 'applications bots bot token commands slash context menu api portal',
+  authorizedApps: 'applications authorization consent revoke oauth bots permissions',
   about: 'version update platform',
 };
 

@@ -1,6 +1,7 @@
 import { useI18n } from '../../shared/i18n';
 import { ChannelNotificationDialog, GuildNotificationDialog } from '../notifications/NotificationDialogs';
 import { MentionsInbox } from '../notifications/MentionsInbox';
+import { BotAuthorizeDialog } from '../integrations/BotAuthorizeDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dmCandidates } from '@discordy/core/application/dmCandidates';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -393,6 +394,7 @@ function ActiveDialog() {
   const dialog = useUiStore((s) => s.dialog);
   if (!dialog) return null;
   switch (dialog.kind) {
+    case 'botAuthorize': return <BotAuthorizeDialog key={JSON.stringify(dialog.request)} request={dialog.request} />;
     case 'createGuild': return <CreateGuildDialog />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;

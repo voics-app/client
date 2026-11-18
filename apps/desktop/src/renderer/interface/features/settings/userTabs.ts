@@ -6,6 +6,7 @@ export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] 
   { id: 'profile', label: 'Profile', group: 'User settings' },
   { id: 'privacy', label: 'Privacy and delivery', group: 'User settings' },
   { id: 'devices', label: 'Devices', group: 'User settings' },
+  { id: 'authorizedApps', label: 'Authorized apps', group: 'User settings' },
   { id: 'voice', label: 'Voice and video', group: 'App settings' },
   { id: 'keybinds', label: 'Keybinds', group: 'App settings' },
   { id: 'appearance', label: 'Appearance', group: 'App settings' },

@@ -409,6 +409,45 @@ export interface ApplicationSummary {
   bot?: User;
 }
 
+/** Explicit personal bot-install consent; these records contain no access token. */
+export interface ApplicationAuthorization {
+  id: Snowflake;
+  application: ApplicationSummary;
+  guild: { id: Snowflake; name: string; icon: string | null };
+  scopes: ('bot' | 'applications.commands')[];
+  permissions: string;
+  created_at: string;
+  authorized_at: string;
+}
+
+export interface BotAuthorizationInfo {
+  application: ApplicationSummary;
+  user: User;
+  guilds: { id: Snowflake; name: string; icon: string | null; permissions: string; bot_permissions: string | null; installation_revision: string }[];
+  scopes: ('bot' | 'applications.commands')[];
+  permissions: string;
+}
+
+export interface GuildIntegration {
+  application: ApplicationSummary;
+  permissions: string;
+  installed_at: string;
+}
+
+export interface Webhook {
+  id: Snowflake;
+  type: number;
+  guild_id?: Snowflake | null;
+  channel_id: Snowflake | null;
+  name: string | null;
+  avatar: string | null;
+  application_id: Snowflake | null;
+}
+
+/** Only create/reset responses include credentials. Never persist or cache this object. */
+export interface WebhookCredential extends Webhook { token: string; url: string }
+export interface WebhookEdit { name?: string; avatar?: string | null; channel_id?: Snowflake }
+
 /** Application entry of `GET /guilds/{id}/application-command-index`: an installed bot and its avatar. */
 export interface CommandIndexApplication {
   id: Snowflake;
