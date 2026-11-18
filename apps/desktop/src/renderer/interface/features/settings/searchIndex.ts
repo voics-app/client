@@ -29,7 +29,7 @@ const row = (tab: UserSettingsTab, label: string, keywords = ''): SettingEntry =
 
 const TAB_KEYWORDS: Record<UserSettingsTab, string> = {
   account: 'username email password security two-factor 2fa log out sign out delete',
-  profile: 'display name avatar about me bio colour color banner',
+  profile: 'display name avatar about me bio colour color banner pronouns theme server nickname',
   privacy: 'delivery mode encryption e2ee ephemeral p2p',
   devices: 'sessions fingerprint identity',
   voice: 'microphone camera input output audio video noise',

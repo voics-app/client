@@ -126,11 +126,11 @@ describe('userMenuGroups: visibility', () => {
     expect(ids).toContain('kick');
   });
 
-  it('own menu: profile, nickname (CHANGE_NICKNAME) and copy id only', () => {
+  it('own menu opens server profiles even without nickname permission', () => {
     const own = caps(Permission.CHANGE_NICKNAME, ['top'], ['top'], { actor: 'me', target: 'me' });
     expect(flat(base(own))).toEqual(['profile', 'nickname', 'copyId']);
     const noNick = caps(0n, [], [], { actor: 'me', target: 'me' });
-    expect(flat(base(noNick))).toEqual(['profile', 'copyId']);
+    expect(flat(base(noNick))).toEqual(['profile', 'nickname', 'copyId']);
   });
 
   it('no guild context (DM list, friends list): no moderation, no nickname', () => {

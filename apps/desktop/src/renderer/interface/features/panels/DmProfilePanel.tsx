@@ -7,6 +7,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { FriendsSince } from '../members/FriendsSince';
 import { ProfileAvatar } from '../members/ProfileAvatar';
+import { ProfileBanner } from '../members/ProfileBanner';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Misc';
@@ -22,10 +23,12 @@ export function DmProfilePanel({ channelId }: { channelId: string }) {
   const u = user.data ?? peer;
   return (
     <div className="panel-body dm-profile">
+      <ProfileBanner user={u} />
       <div className="dm-profile-head">
         <ProfileAvatar user={u} size={72} status={status} />
         <h3>{displayName(u)}</h3>
         <p className="mono">{u.username}</p>
+        {u.pronouns && <p>{u.pronouns}</p>}
       </div>
       {u.bio && <section className="profile-section"><h4>About me</h4><p className="selectable">{u.bio}</p></section>}
       <FriendsSince userId={u.id} />
