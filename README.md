@@ -92,6 +92,14 @@ pnpm test:e2e       # builds, then Playwright drives the real Electron app again
 
 Media-worker tests wait for the output stream to close before asserting on frames. They do not assume WebCrypto finishes within a fixed number of milliseconds on a busy runner.
 
+For Community and discovery browser acceptance, run `pnpm --filter @discordy/desktop build`, then
+`pnpm --filter @discordy/desktop exec playwright test tests/e2e/community.browser.spec.ts --workers=1`.
+This uses the production renderer in headless Chromium at 1280×900 and 1000×720. An isolated
+in-process REST/gateway fixture covers setup, a failed-save retry, listing, disabling Community,
+and a public-listing report. All external requests are blocked; no live account or Electron window
+is used. Screenshots are written to `apps/desktop/test-results/`. Real PostgreSQL behavior is
+verified separately by the API Community, discovery and reports integration suites.
+
 ## Package
 
 ```

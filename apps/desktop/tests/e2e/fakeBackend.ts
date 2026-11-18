@@ -29,6 +29,9 @@ const USER = { id: snowflake(), username: 'ada', global_name: 'Ada Lovelace', av
 interface Guild {
   id: string;
   name: string;
+  features?: string[];
+  rules_channel_id?: string | null;
+  public_updates_channel_id?: string | null;
   channels: { id: string; name: string; type: number; guild_id: string; position: number; delivery_mode: string; last_message_id: string | null; topic: string | null }[];
 }
 
@@ -38,6 +41,7 @@ export interface FakeBackend {
   messages: Map<string, unknown[]>;
   /** Bodies received by `POST /interactions`. */
   interactions: Record<string, unknown>[];
+  community: { failNextSave: boolean; reports: Record<string, unknown>[]; patches: Record<string, unknown>[] };
   close(): Promise<void>;
 }
 
@@ -45,6 +49,9 @@ function guildPayload(g: Guild) {
   return {
     id: g.id,
     name: g.name,
+    features: g.features ?? [],
+    rules_channel_id: g.rules_channel_id ?? null,
+    public_updates_channel_id: g.public_updates_channel_id ?? null,
     icon: null,
     owner_id: USER.id,
     roles: [{ id: g.id, name: '@everyone', color: 0, hoist: false, position: 0, permissions: '1071698660929', managed: false, mentionable: false }],
@@ -61,6 +68,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const community = { failNextSave: false, reports: [] as Record<string, unknown>[], patches: [] as Record<string, unknown>[] };
+  const listings = new Map<string, { category: string | null; tags: string[] }>();
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -179,6 +188,38 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (path === '/users/@me') return json(res, 200, USER);
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
+    const guildRoute = /^\/guilds\/(\d+)$/.exec(path);
+    if (guildRoute && (req.method === 'GET' || req.method === 'PATCH')) {
+      const guild = guilds.find((g) => g.id === guildRoute[1]);
+      if (!guild) return json(res, 404, { message: 'Unknown Guild' });
+      if (req.method === 'PATCH') {
+        community.patches.push(body);
+        if (community.failNextSave) { community.failNextSave = false; return json(res, 500, { message: 'Community save interrupted' }); }
+        Object.assign(guild, body);
+        if (!guild.features?.includes('COMMUNITY')) {
+          guild.rules_channel_id = null;
+          guild.public_updates_channel_id = null;
+          listings.delete(guild.id);
+        }
+        dispatch('GUILD_UPDATE', guildPayload(guild));
+      }
+      return json(res, 200, guildPayload(guild));
+    }
+    if (/^\/guilds\/\d+\/vanity-url$/.test(path)) return json(res, 200, { code: null, uses: 0 });
+    const discovery = /^\/guilds\/(\d+)\/discovery$/.exec(path);
+    if (discovery) {
+      const id = discovery[1]!;
+      if (req.method === 'PUT') {
+        if (body.enabled) listings.set(id, { category: String(body.category), tags: body.tags as string[] });
+        else listings.delete(id);
+      }
+      const listing = listings.get(id);
+      const configured = guilds.find((g) => g.id === id)?.features?.includes('COMMUNITY');
+      return json(res, 200, { enabled: Boolean(listing), category: listing?.category ?? null, tags: listing?.tags ?? [], listed_at: listing ? new Date().toISOString() : null, member_count: 10, blockers: configured ? [] : ['COMMUNITY_REQUIRED'] });
+    }
+    if (path === '/discovery/categories') return json(res, 200, { categories: ['community'] });
+    if (path === '/discovery/guilds') return json(res, 200, { guilds: [{ id: '900001', name: 'Public study hub', icon: null, description: 'A public listing for learning together', category: 'community', tags: ['study'], approximate_member_count: 42, approximate_presence_count: 5 }], total: 1, offset: 0, limit: 24 });
+    if (path === '/discovery/guilds/900001/reports' && req.method === 'POST') { community.reports.push(body); return json(res, 204, null); }
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
       const payload = guildPayload(guild);
@@ -264,10 +305,12 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     gatewayUrl: `ws://127.0.0.1:${port}`,
     messages,
     interactions,
+    community,
     close: () =>
       new Promise<void>((resolve) => {
         for (const ws of sockets) ws.terminate();
         wss.close();
+        server.closeAllConnections();
         server.close(() => resolve());
       }),
   };
