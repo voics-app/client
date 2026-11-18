@@ -25,7 +25,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
   ];
 }
 
-/** The "Server settings" entry in the server menu shows for anyone who can change the server, its roles or its channels. */
+/** Settings remain reachable for audit readers as well as server managers. */
 export function canOpenServerSettings(perms: bigint): boolean {
-  return hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS);
+  return hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS) || hasPermission(perms, Permission.VIEW_AUDIT_LOG);
 }

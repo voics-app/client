@@ -27,7 +27,7 @@ export const PERMISSION_CATALOG: readonly PermissionEntry[] = [
   e('MANAGE_CHANNELS', 'Manage channels', 'Create, edit and delete channels.', 'General'),
   e('MANAGE_ROLES', 'Manage roles', 'Create and edit roles below their own.', 'General'),
   e('MANAGE_GUILD_EXPRESSIONS', 'Manage expressions', 'Add, edit and remove custom emoji.', 'General', false),
-  e('VIEW_AUDIT_LOG', 'View audit log', 'See who changed what in the server.', 'General', false),
+  e('VIEW_AUDIT_LOG', 'View audit log', 'Read server moderation and configuration actions. Only administrators can change logging and retention.', 'General', false),
   e('MANAGE_WEBHOOKS', 'Manage webhooks', 'Create and manage webhooks.', 'General'),
   e('MANAGE_GUILD', 'Manage server', 'Change the server name, region and settings.', 'General', false),
   e('CREATE_INSTANT_INVITE', 'Create invite', 'Invite new people to the server.', 'Membership'),

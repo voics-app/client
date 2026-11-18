@@ -7,6 +7,19 @@ function fakeHttp() {
   return { http: { request } as unknown as HttpClient, request };
 }
 
+describe('DiscordyApi permanent invitations', () => {
+  it('uses the guild vanity route and sends explicit null when removing', async () => {
+    const { http, request } = fakeHttp();
+    const api = new DiscordyApi(http);
+    await api.guildVanityUrl('7');
+    expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/vanity-url', expect.anything());
+    await api.updateGuildVanityUrl('7', 'Study-Club');
+    expect(request).toHaveBeenLastCalledWith('PATCH', '/guilds/7/vanity-url', { body: { code: 'Study-Club' } });
+    await api.updateGuildVanityUrl('7', null);
+    expect(request).toHaveBeenLastCalledWith('PATCH', '/guilds/7/vanity-url', { body: { code: null } });
+  });
+});
+
 describe('DiscordyApi relationships', () => {
   it('sends a friend request by username with POST /users/@me/relationships', async () => {
     const { http, request } = fakeHttp();
