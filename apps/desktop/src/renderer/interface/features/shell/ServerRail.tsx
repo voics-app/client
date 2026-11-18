@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { BellRinging, BellSlash, Check, Compass, FolderSimple, FolderSimpleDashed, Gear, House, LinkSimple, Plus } from '@phosphor-icons/react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -14,10 +14,11 @@ import { useConnectionStore } from '../../app/connectionStore';
 import { assetCandidates } from '@discordy/core/domain/assets';
 import { AssetImage } from '../../shared/ui/AssetImage';
 import { DM_SCOPE, isChannelMuted, isChannelMutedDeep, isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { useNow } from '../../shared/hooks/useNow';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { Avatar, initialsOf } from '../../shared/ui/Avatar';
 import { displayName } from '../../shared/hooks/useNames';
-import { unreadDms, type UnreadDm } from '@discordy/core/domain/unreadDms';
+import { MAX_RAIL_DMS, unreadDms, type UnreadDm } from '@discordy/core/domain/unreadDms';
 import { Count } from '../../shared/ui/Misc';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { snappy } from '../../shared/ui/motion';
@@ -34,14 +35,16 @@ function computeActivity(
   reads: ReturnType<typeof useReadStateStore.getState>['byChannel'],
   settingsFor: (guildId: string) => GuildNotificationSettings | undefined,
   guildIds: ReadonlySet<string>,
+  now: number,
 ): Activity {
   let unread = false;
   let mentions = 0;
   for (const c of Object.values(channels)) {
-    if (!c.guild_id || !guildIds.has(c.guild_id) || c.type !== ChannelType.GUILD_TEXT) continue;
+    if (!c.guild_id || !guildIds.has(c.guild_id) || (c.type !== ChannelType.GUILD_TEXT && c.type !== ChannelType.GUILD_ANNOUNCEMENT && !(c.type >= 10 && c.type <= 12))) continue;
+    if (isGuildMuted(settingsFor(c.guild_id), now)) continue;
     const r = reads[c.id];
     mentions += r?.mentionCount ?? 0;
-    if (!isChannelMutedDeep(settingsFor(c.guild_id), c, Date.now()) && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
+    if (!isChannelMutedDeep(settingsFor(c.guild_id), c, now) && isUnread(c.last_message_id, r?.lastReadId)) unread = true;
   }
   return { unread, mentions };
 }
@@ -56,13 +59,15 @@ export function useFolderActivity(guildIds: string[]): Activity {
   const reads = useReadStateStore((s) => s.byChannel);
   const byScope = useNotificationSettingsStore((s) => s.byScope);
   const key = guildIds.join(',');
+  const now = useNow(1000);
   return useMemo(
-    () => computeActivity(channels, reads, (id) => byScope[scopeKey(id)], new Set(key ? key.split(',') : [])),
-    [channels, reads, byScope, key],
+    () => computeActivity(channels, reads, (id) => byScope[scopeKey(id)], new Set(key ? key.split(',') : []), now),
+    [channels, reads, byScope, key, now],
   );
 }
 
 interface DndApi {
+  drag: DragItem | null;
   hover: { key: string; zone: DropZone } | null;
   begin(item: DragItem): void;
   over(event: React.DragEvent, key: string, allowOnto: boolean): void;
@@ -88,6 +93,9 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const { unread, mentions } = useGuildActivity(guildId);
   const inCall = useVoiceStore((s) => s.call.guildId === guildId && s.call.status !== 'idle');
+  const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
+  const now = useNow(1000);
+  const muted = isGuildMuted(settings, now);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (!guild) return null;
   const item: DragItem = { kind: 'guild', id: guildId };
@@ -105,7 +113,7 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
   };
   return (
     <div
-      className={`rail-item${folderId !== null ? ' in-folder' : ''}${dropClass(dnd, keyOf(item))}`}
+      className={`rail-item${folderId !== null ? ' in-folder' : ''}${dnd.drag && keyOf(dnd.drag) === keyOf(item) ? ' is-dragging' : ''}${dropClass(dnd, keyOf(item))}`}
       onDragOver={(e) => dnd.over(e, keyOf(item), true)}
       onDrop={(e) => dnd.drop(e, item)}
     >
@@ -120,7 +128,18 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
             dnd.begin(item);
           }}
           onDragEnd={dnd.end}
-          className={`guild-btn${active ? ' is-active' : ''}`}
+          className={`guild-btn${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}`}
+          aria-keyshortcuts="Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
+          onKeyDown={(e) => {
+            if (!e.altKey || !e.shiftKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const { rail, order } = useGuildStore.getState();
+            const index = order.indexOf(guildId);
+            const next = index + (e.key === 'ArrowUp' ? -1 : 1);
+            if (next < 0 || next >= order.length) return;
+            void saveRail(moveGuildToIndex(rail, guildId, next));
+          }}
           aria-label={guild.name}
           aria-current={active || undefined}
           onClick={() => openGuild(guildId)}
@@ -179,7 +198,7 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
 
   return (
     <div className="rail-folder" style={tint ? ({ '--folder-tint': tint } as React.CSSProperties) : undefined}>
-      <div className={`rail-item${dropClass(dnd, keyOf(item))}`} onDragOver={(e) => dnd.over(e, keyOf(item), true)} onDrop={(e) => dnd.drop(e, item)}>
+      <div className={`rail-item${dnd.drag && keyOf(dnd.drag) === keyOf(item) ? ' is-dragging' : ''}${dropClass(dnd, keyOf(item))}`} onDragOver={(e) => dnd.over(e, keyOf(item), true)} onDrop={(e) => dnd.drop(e, item)}>
         <span className={`rail-pip${closed && activity.unread && !containsActive ? ' is-unread' : ''}`} />
         <Tooltip label={label} side="right" delay={150}>
           <button
@@ -249,14 +268,29 @@ function UnreadDmItem({ dm }: { dm: UnreadDm }) {
   );
 }
 
-function useRailDnd(): DndApi {
+function useRailDnd(scrollRef: RefObject<HTMLDivElement | null>): DndApi {
   const [drag, setDrag] = useState<DragItem | null>(null);
   const [hover, setHover] = useState<{ key: string; zone: DropZone } | null>(null);
+  // Native dragover events continue while the pointer is stationary near an edge.
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!drag || !scroll) return;
+    const autoScroll = (event: DragEvent) => {
+      const box = scroll.getBoundingClientRect();
+      if (event.clientX < box.left || event.clientX > box.right) return;
+      const edge = 36;
+      const delta = event.clientY < box.top + edge ? -16 : event.clientY > box.bottom - edge ? 16 : 0;
+      if (delta) scroll.scrollTop += delta;
+    };
+    scroll.addEventListener('dragover', autoScroll);
+    return () => scroll.removeEventListener('dragover', autoScroll);
+  }, [drag, scrollRef]);
   const end = () => {
     setDrag(null);
     setHover(null);
   };
   return {
+    drag,
     hover,
     begin: setDrag,
     end,
@@ -282,15 +316,14 @@ export function ServerRail() {
   const openDialog = useUiStore((s) => s.openDialog);
   const channels = useGuildStore((s) => s.channels);
   const reads = useReadStateStore((s) => s.byChannel);
-  const dnd = useRailDnd();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dnd = useRailDnd(scrollRef);
   const navRef = useRef<HTMLElement>(null);
   useRovingFocus(navRef, { selector: '.guild-btn' });
-  const dmMentions = useMemo(
-    () => Object.values(channels).filter((c) => !c.guild_id).reduce((sum, c) => sum + (reads[c.id]?.mentionCount ?? 0), 0),
-    [channels, reads],
-  );
   const dmSettings = useNotificationSettingsStore((s) => s.byScope[DM_SCOPE]);
-  const dms = useMemo(() => unreadDms(channels, reads, (c) => isChannelMuted(dmSettings, c.id, Date.now())), [channels, reads, dmSettings]);
+  const now = useNow(1000);
+  const allUnreadDms = useMemo(() => unreadDms(channels, reads, (c) => isChannelMuted(dmSettings, c.id, now), Infinity), [channels, reads, dmSettings, now]);
+  const dms = allUnreadDms.slice(0, MAX_RAIL_DMS);
   const homeActive = view.kind === 'home';
   const activeGuildId = view.kind === 'guild' ? view.guildId : null;
 
@@ -309,9 +342,9 @@ export function ServerRail() {
             <House size={24} weight={homeActive ? 'fill' : 'regular'} />
           </button>
         </Tooltip>
-        {dmMentions > 0 && dms.length === 0 && (
+        {allUnreadDms.length > 0 && (
           <span className="rail-badge">
-            <Count value={dmMentions} tone="danger" />
+            <Count value={allUnreadDms.length} tone="danger" />
           </span>
         )}
       </div>
@@ -319,7 +352,7 @@ export function ServerRail() {
         <UnreadDmItem key={dm.channel.id} dm={dm} />
       ))}
       <div className="rail-sep" />
-      <div className="rail-scroll">
+      <div ref={scrollRef} className="rail-scroll">
         {rail.map((entry) =>
           entry.id === null ? (
             <GuildButton key={entry.guild_ids[0]} guildId={entry.guild_ids[0]!} active={activeGuildId === entry.guild_ids[0]} dnd={dnd} folderId={null} />

@@ -172,6 +172,9 @@ export function PrivacyTab() {
       <h3>This device's identity</h3>
       <p className="setting-desc">Your device signs its P2P connections and MLS credentials with this key. Others see it as your device fingerprint.</p>
       <code className="fingerprint selectable">{identity ?? 'No identity: native crypto is unavailable.'}</code>
+      <h3>Safety centre</h3>
+      <p className="setting-desc">To report a message, open its menu and choose Report message. To report or block someone, open their profile menu. Blocking stops their direct messages and friend requests.</p>
+      <p className="setting-desc">Reports from Standard chats include the stored message. In Ephemeral E2EE and P2P chats, you choose whether to share the message text with moderators. Private bot responses marked “Only you can see this” can be dismissed from this device.</p>
     </Page>
   );
 }

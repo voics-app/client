@@ -56,7 +56,7 @@ export type Dialog =
   | { kind: 'forward'; message: ChatMessage }
   | { kind: 'report'; target: ReportTarget }
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
-  | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
+  | { kind: 'confirm'; title: string; body: string; confirmLabel: string; confirmText?: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
 export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | { kind: 'profile' } | null;
 

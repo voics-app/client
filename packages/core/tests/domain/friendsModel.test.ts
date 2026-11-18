@@ -38,6 +38,18 @@ describe('activeNow', () => {
     expect(out.map((e) => [e.rel.id, e.kind, e.detail])).toEqual([['1', 'voice', 'c1'], ['2', 'playing', 'Chess']]);
     expect(activeNow(friends, { g: { '1': vs('1', null) } }, {})).toEqual([]);
   });
+  it('includes custom statuses and other rich activities but never an offline activity', () => {
+    const friends = [rel('1', RelationshipType.FRIEND, 'one'), rel('2', RelationshipType.FRIEND, 'two'), rel('3', RelationshipType.FRIEND, 'three')];
+    const out = activeNow(friends, {}, {
+      '1': { status: 'online', activities: [{ type: 4, name: 'Custom Status', state: 'Building Voics' }] },
+      '2': { status: 'idle', activities: [{ type: 2, name: 'Jazz' }] },
+      '3': { status: 'offline', activities: [{ type: 0, name: 'Chess' }] },
+    });
+    expect(out.map((entry) => [entry.rel.id, entry.kind, entry.detail])).toEqual([
+      ['1', 'status', 'Building Voics'], ['2', 'activity', 'Listening to Jazz'],
+    ]);
+    expect(activeNow(friends, {}, { '1': { status: 'online', activities: [{ type: 4, name: 'Custom Status', emoji: { name: '🌱' } }] } })[0]).toMatchObject({ kind: 'status', detail: '🌱' });
+  });
 });
 
 import { friendRequestError } from '@discordy/core/domain/friendsModel';

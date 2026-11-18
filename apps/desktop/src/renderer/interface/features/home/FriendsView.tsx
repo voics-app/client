@@ -10,6 +10,10 @@ import { RelationshipType, type Relationship } from '@discordy/core/contracts/re
 import { attempt, errorMessage } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
+import { openVoiceChannel } from '../../app/voiceActions';
+import { useChannelPermissions, can } from '../../shared/hooks/usePermissions';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -85,6 +89,17 @@ function AddFriend() {
   );
 }
 
+function JoinActivityVoice({ channelId, guildId }: { channelId: string; guildId: string | null }) {
+  const channel = useGuildStore((s) => s.channels[channelId]);
+  const permissions = useChannelPermissions(channelId);
+  const connected = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
+  // A presence alone does not grant access to another person's DM or server voice channel.
+  if (!channel || !guildId || channel.guild_id !== guildId ||
+    (channel.type !== ChannelType.GUILD_VOICE && channel.type !== ChannelType.GUILD_STAGE_VOICE) ||
+    !can(permissions, Permission.VIEW_CHANNEL) || !can(permissions, Permission.CONNECT)) return null;
+  return <Button size="sm" variant="ghost" disabled={connected} onClick={() => void openVoiceChannel(guildId, channelId)}>{connected ? 'Joined' : 'Join voice'}</Button>;
+}
+
 function ActiveNow({ friends }: { friends: Relationship[] }) {
   const voice = useVoiceStore((s) => s.states);
   const presence = usePresenceStore((s) => s.byUser);
@@ -95,18 +110,19 @@ function ActiveNow({ friends }: { friends: Relationship[] }) {
     <aside className="active-now" aria-label="Active Now">
       <h2>Active Now</h2>
       {entries.length === 0 ? (
-        <p className="setting-desc">When a friend is in a voice channel or playing something, it shows up here.</p>
+        <p className="setting-desc">Friends' voice channels, activities and custom statuses appear here.</p>
       ) : (
         <ul>
           {entries.map((e) => {
             const name = e.rel.nickname || displayName(e.rel.user);
             const channel = e.channelId ? channels[e.channelId] : undefined;
             const guild = e.guildId ? guilds[e.guildId] : undefined;
-            const where = e.kind === 'voice' ? `In voice${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : `Playing ${e.detail}`;
+            const where = e.kind === 'voice' ? `In voice${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : e.kind === 'playing' ? `Playing ${e.detail}` : e.detail;
             return (
               <li key={e.rel.id} className="active-now-card">
-                <Avatar id={e.rel.id} name={name} avatar={e.rel.user.avatar} size={36} status="online" />
+                <Avatar id={e.rel.id} name={name} avatar={e.rel.user.avatar} size={36} status={presence[e.rel.id]?.status ?? 'offline'} />
                 <span className="friend-copy"><span className="friend-name">{name}</span><span className="friend-sub">{where}</span></span>
+                {e.kind === 'voice' && e.channelId && <JoinActivityVoice channelId={e.channelId} guildId={e.guildId} />}
               </li>
             );
           })}
