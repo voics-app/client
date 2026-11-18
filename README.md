@@ -82,6 +82,7 @@ only your record; the shared server bot stays installed. Server managers remove 
 through Integrations, with Kick Members and the normal role hierarchy. Developer settings
 continue to list applications you own. These flows require contracts#49, docs#178 and
 the corresponding API integration implementation with migration 0070.
+The local UI structure and behavior are recorded in [Integrations and authorized applications](docs/integrations.md).
 
 ## Mobile app
 
