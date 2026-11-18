@@ -11,7 +11,7 @@ module.exports = {
   asar: true,
   asarUnpack: ['**/*.node'],
   npmRebuild: false,
-  protocols: [{ name: brand.displayName, schemes: [brand.protocolScheme] }],
+  protocols: [{ name: brand.displayName, schemes: [...new Set([brand.protocolScheme, 'discordy'])] }], // brand-check: allow (legacy installed deep links)
   publish: { provider: 'generic', url: brand.updateFeedHost },
   win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'build/icon.ico' },
   nsis: {

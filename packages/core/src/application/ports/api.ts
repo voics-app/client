@@ -1,9 +1,16 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
 import type { SearchParams } from '../../domain/messageSearch';
+import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type {
   ApplicationCommand,
   ApplicationSummary,
+  ApplicationAuthorization,
+  BotAuthorizationInfo,
+  GuildIntegration,
+  Webhook,
+  WebhookCredential,
+  WebhookEdit,
   AttachmentUploadSlot,
   AuditLog,
   AccountChange,
@@ -211,6 +218,17 @@ export interface ApiPort {
   voiceRegions(): Promise<VoiceRegion[]>;
 
   applications(): Promise<ApplicationSummary[]>;
+  botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string; installation_revision: string }): Promise<{ location: string }>;
+  applicationAuthorizations(): Promise<ApplicationAuthorization[]>;
+  revokeApplicationAuthorization(authorizationId: string): Promise<void>;
+  guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
+  removeGuildIntegration(guildId: string, applicationId: string): Promise<void>;
+  guildWebhooks(guildId: string): Promise<Webhook[]>;
+  createWebhook(channelId: string, body: { name: string; avatar?: string }): Promise<WebhookCredential>;
+  updateWebhook(webhookId: string, body: WebhookEdit): Promise<Webhook>;
+  resetWebhookToken(webhookId: string): Promise<WebhookCredential>;
+  deleteWebhook(webhookId: string): Promise<void>;
   globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
   createApplication(body: { name: string; description?: string }): Promise<ApplicationSummary>;
   /** Issues a new bot token and invalidates the old one. The token is returned once; callers must not persist or log it. */

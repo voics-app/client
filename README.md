@@ -77,6 +77,32 @@ The Forward picker uses each DM recipient's user ID for their global avatar, inc
 
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
+## Webhooks and authorized applications
+
+Server Settings → Integrations lists installed application bots and incoming webhooks.
+Manage Server exposes application management; Manage Webhooks exposes webhook editing.
+Create or edit a webhook's name, avatar and channel, follow its audit entries, or confirm
+deletion and URL regeneration. Create/regenerate shows the execution URL once, with Copy
+and Hide controls. Leaving the editor discards it; it never enters the query cache or
+persistent settings. Failed saves retain the draft and show a persistent retry action.
+
+`voics://oauth2/authorize` and the legacy `discordy://oauth2/authorize` alias open a bot
+consent dialog. It supports `bot` and optional `applications.commands`, displays the
+server and permissions, and requires an explicit review before authorizing. Unsupported
+scopes and redirect/code-flow parameters are rejected. An already installed bot keeps
+its current permissions; the dialog acknowledges those permissions without changing them.
+Consent also binds to the selected server's exact installation revision from the preview.
+Removal or reinstall invalidates the review even when permission bits are unchanged;
+the API rejects stale revisions with 409 and requires a fresh preview. The POST field
+is required and non-null, so this client requires the matching API/contracts release.
+
+User Settings → Authorized apps lists personal consent records. Revoke consent removes
+only your record; the shared server bot stays installed. Server managers remove a bot
+through Integrations, with Kick Members and the normal role hierarchy. Developer settings
+continue to list applications you own. These flows require contracts#49, docs#178 and
+the corresponding API integration implementation with migration 0070.
+The local UI structure and behavior are recorded in [Integrations and authorized applications](docs/integrations.md).
+
 ## Mobile app
 
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.
