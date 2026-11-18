@@ -7,6 +7,8 @@ on:
       - 'apps/mobile/plugins/withIosScreenShare.js'
       - 'apps/mobile/plugins/broadcast/**'
       - 'apps/mobile/scripts/verify-ios-broadcast.mjs'
+      - 'apps/mobile/scripts/ios-simulator-smoke.mjs'
+      - 'apps/mobile/e2e/ios-startup.yml'
       - '.github/workflows/mobile-ios-native.yml'
 
 permissions:
@@ -59,9 +61,30 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -workspace ios/Voics.xcworkspace -scheme Voics -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/voics-ios" build | tee "$RUNNER_TEMP/voics-ios-build.log"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned Maestro CLI
+        run: |
+          curl --fail --location --retry 3 https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.12.1/maestro.zip --output "$RUNNER_TEMP/maestro.zip"
+          echo '54dbb0716425626604973cbb374c585ca30272375d9ce15177a1152765ddd9d7  '"$RUNNER_TEMP/maestro.zip" | shasum --algorithm 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+      - name: Launch app and verify native sign-in screens
+        working-directory: apps/mobile
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: 'true'
+        run: node scripts/ios-simulator-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-native-build-log
           path: ${{ runner.temp }}/voics-ios-build.log
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-smoke
+          path: ${{ runner.temp }}/voics-ios-smoke
           if-no-files-found: ignore

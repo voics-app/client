@@ -1,0 +1,20 @@
+appId: nl.voics.app
+---
+# The runner opens the local Metro bundle before this flow. No account or API
+# request is needed: this verifies the real native app can mount and navigate.
+- extendedWaitUntil:
+    visible: Welcome back
+    timeout: 120000
+- assertVisible: Email
+- assertVisible: Password
+- takeScreenshot: ${SMOKE_OUTPUT}/sign-in
+- tapOn: 'Forgot password\?'
+- assertVisible: 'Forgot your password\?'
+- assertVisible: Email me a reset code
+- tapOn: Back to sign in
+- tapOn: 'New here\? Create an account'
+- assertVisible: Create your account
+- assertVisible: Username
+- takeScreenshot: ${SMOKE_OUTPUT}/register
+- tapOn: 'Have an account\? Sign in'
+- assertVisible: Welcome back
