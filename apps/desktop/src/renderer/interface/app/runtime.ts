@@ -1,4 +1,5 @@
 import { getI18n } from '../shared/i18n';
+import { initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
 /** Composition root: builds the HTTP/gateway clients, session manager and dispatch routing once per app start. */
 import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@discordy/core/contracts/gateway';
@@ -60,6 +61,7 @@ export function getRuntime(): Runtime {
 
 export function createRuntime(info: AppInfo): Runtime {
   const { connection } = info;
+  initialiseAgeRestrictedAccess(connection.apiUrl);
   useConnectionStore.getState().set({ apiUrl: connection.apiUrl, gatewayUrl: connection.gatewayUrl, cdnUrl: connection.cdnUrl });
   useSessionStore.getState().setAppInfo(info);
 

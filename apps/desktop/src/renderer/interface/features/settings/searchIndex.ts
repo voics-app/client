@@ -52,6 +52,7 @@ export const USER_SETTINGS_INDEX: SettingEntry[] = [
   row('account', 'Username'), row('account', 'Email'), row('account', 'Password'), row('account', 'Two-factor authentication', '2fa authenticator backup codes'),
   row('account', 'Disable account'), row('account', 'Delete account'), row('account', 'Log out', 'sign out logout'),
   row('privacy', 'Encrypt all my calls end-to-end', 'e2ee calls'),
+  row('privacy', 'Hide age-restricted channels', 'nsfw mature adult content privacy'),
   row('voice', 'Input mode', 'voice activity push to talk'), row('voice', 'Sensitivity', 'voice activity threshold'), row('voice', 'Push-to-talk key'), row('voice', 'Release delay'),
   row('voice', 'Noise suppression', 'rnnoise'), row('voice', 'Echo cancellation'), row('voice', 'Automatic gain control', 'agc'),
   row('appearance', 'Sync with computer', 'theme os system'), row('appearance', 'Message density', 'compact cozy'), row('appearance', 'Show avatars in compact'),

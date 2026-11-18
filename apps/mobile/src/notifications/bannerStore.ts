@@ -1,4 +1,5 @@
 import { AppState } from 'react-native';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { create } from 'zustand';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -28,6 +29,7 @@ export const useBannerStore = create<BannerState>((set) => ({
 
 /** Raises the in-app banner for a message that just arrived, when the notification rules say it deserves one and the app is in the foreground. */
 export function offerBanner(message: ChatMessage): void {
+  if (!canShowChannelContent(message.channel_id)) return;
   const me = useSessionStore.getState().user;
   if (!me || AppState.currentState !== 'active') return;
   const guilds = useGuildStore.getState();

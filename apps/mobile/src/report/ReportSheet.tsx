@@ -19,9 +19,13 @@ import { useLastValue } from '../sheets/useLastValue';
 import { theme } from '../theme';
 import { Button, Field } from '../ui/controls';
 import { Sheet } from '../ui/Sheet';
+import { createI18n } from '@discordy/core/domain/i18n';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 
 /** Report a message or a user: pick what is wrong, add an optional note, see what is shared, send. Same rules and wording as desktop (core `reportModel`). */
 export function ReportSheet({ target: shown, onClose }: { target: ReportTarget | null; onClose(): void }) {
+  const locale = useSessionStore((s) => s.settings.locale);
+  const { t, catalogText } = createI18n(locale);
   const target = useLastValue(shown);
   const [draft, setDraft] = useState<ReportDraft>(emptyReportDraft);
   const [busy, setBusy] = useState(false);
@@ -41,25 +45,25 @@ export function ReportSheet({ target: shown, onClose }: { target: ReportTarget |
     if (!target) return;
     setBusy(true);
     setError(null);
-    const outcome = await submitReport(getRuntime().api, target, draft);
+    const outcome = await submitReport(getRuntime().api, target, draft, locale);
     setBusy(false);
     if (outcome.ok) setSent(true);
     else setError(outcome.message);
   };
 
   return (
-    <Sheet visible={shown !== null} title={sent ? REPORT_CONFIRMATION.title : target ? reportTitle(target) : 'Report'} closeLabel="Close report" onClose={onClose}>
+    <Sheet visible={shown !== null} title={sent ? catalogText(REPORT_CONFIRMATION.title) : target ? reportTitle(target, locale) : catalogText('Report')} closeLabel={t('report.close')} onClose={onClose}>
       {target && sent && (
         <View style={styles.body}>
-          <Text style={styles.text}>{REPORT_CONFIRMATION.body}</Text>
-          <Button label="Done" tone="primary" onPress={onClose} />
+          <Text style={styles.text}>{target.kind === 'channel' ? t('report.channelSentBody') : catalogText(REPORT_CONFIRMATION.body)}</Text>
+          <Button label={t('common.done')} tone="primary" onPress={onClose} />
         </View>
       )}
       {target && !sent && (
         <View style={styles.body}>
-          <Text style={styles.text}>{reportDisclosure(target)}</Text>
+          <Text style={styles.text}>{reportDisclosure(target, locale)}</Text>
           <Text accessibilityRole="header" style={styles.heading}>
-            What is wrong?
+            {t('settings.reportdialog.what.is.wrong')}
           </Text>
           {REPORT_CATEGORIES.map((c) => {
             const on = draft.category === c.id;
@@ -67,31 +71,31 @@ export function ReportSheet({ target: shown, onClose }: { target: ReportTarget |
               <Pressable
                 key={c.id}
                 accessibilityRole="radio"
-                accessibilityLabel={c.label}
-                accessibilityHint={c.hint}
+                accessibilityLabel={catalogText(c.label)}
+                accessibilityHint={catalogText(c.hint)}
                 accessibilityState={{ selected: on }}
                 onPress={() => setDraft({ ...draft, category: c.id })}
                 style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
               >
                 <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={22} color={on ? theme.accent : theme.muted} />
                 <View style={styles.choiceCopy}>
-                  <Text style={styles.choiceLabel}>{c.label}</Text>
-                  <Text style={styles.choiceHint}>{c.hint}</Text>
+                  <Text style={styles.choiceLabel}>{catalogText(c.label)}</Text>
+                  <Text style={styles.choiceHint}>{catalogText(c.hint)}</Text>
                 </View>
               </Pressable>
             );
           })}
-          <Field label="Note (optional)" value={draft.note} onChangeText={(note) => setDraft({ ...draft, note })} maxLength={REPORT_NOTE_MAX} multiline placeholder="Anything that helps the moderators" autoCapitalize="sentences" />
+          <Field label={t('settings.reportdialog.note.optional')} value={draft.note} onChangeText={(note) => setDraft({ ...draft, note })} maxLength={REPORT_NOTE_MAX} multiline placeholder={t('report.notePlaceholder')} autoCapitalize="sentences" />
           {canIncludeContent(target) && (
             <Pressable
               accessibilityRole="checkbox"
-              accessibilityLabel="Send the text of this message with the report"
+              accessibilityLabel={t('settings.reportdialog.send.the.text.of.this.message.with.the.report')}
               accessibilityState={{ checked: draft.includeContent }}
               onPress={() => setDraft({ ...draft, includeContent: !draft.includeContent })}
               style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
             >
               <Ionicons name={draft.includeContent ? 'checkbox' : 'square-outline'} size={22} color={draft.includeContent ? theme.accent : theme.muted} />
-              <Text style={[styles.choiceLabel, styles.choiceCopy]}>Send the text of this message with the report</Text>
+              <Text style={[styles.choiceLabel, styles.choiceCopy]}>{t('settings.reportdialog.send.the.text.of.this.message.with.the.report')}</Text>
             </Pressable>
           )}
           {error && (
@@ -100,8 +104,8 @@ export function ReportSheet({ target: shown, onClose }: { target: ReportTarget |
             </Text>
           )}
           <View style={styles.actions}>
-            <Button label="Send report" tone="danger" busy={busy} disabled={!canSubmitReport(draft)} onPress={() => void send()} />
-            <Button label="Cancel" onPress={onClose} />
+            <Button label={t('settings.reportdialog.send.report')} tone="danger" busy={busy} disabled={!canSubmitReport(draft)} onPress={() => void send()} />
+            <Button label={t('common.cancel')} onPress={onClose} />
           </View>
         </View>
       )}

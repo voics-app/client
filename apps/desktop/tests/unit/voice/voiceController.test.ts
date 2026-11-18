@@ -118,6 +118,19 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('VoiceController', () => {
+  it('closes playback synchronously when content access is revoked while capture cleanup is still pending', async () => {
+    const { controller, sessions, mic } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const leaving = controller.leaveImmediately();
+    expect(sessions[0]!.close).toHaveBeenCalled();
+    expect(mic.stop).toHaveBeenCalled();
+    controller.onVoiceServerUpdate({ ...update, channel_id: 'restricted' });
+    expect(sessions).toHaveLength(1);
+    await leaving;
+    expect(useVoiceStore.getState().call.status).toBe('idle');
+  });
+
   it('joins: starts the mic, sends op 4, then opens a session when the server is allocated', async () => {
     const { controller, sent, sessions, mic } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });

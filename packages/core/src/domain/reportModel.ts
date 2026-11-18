@@ -31,7 +31,8 @@ export type ReportTarget =
       content: string;
       mode: DeliveryMode;
     }
-  | { kind: 'user'; userId: string; userName: string };
+  | { kind: 'user'; userId: string; userName: string }
+  | { kind: 'channel'; channelId: string; channelName: string };
 
 export interface ReportDraft {
   category: ReportCategory | null;
@@ -44,7 +45,7 @@ export const emptyReportDraft = (): ReportDraft => ({ category: null, note: '', 
 
 /** The JSON body of `POST /reports`. */
 export interface CreateReportBody {
-  target: 'message' | 'user';
+  target: 'message' | 'user' | 'channel';
   category: ReportCategory;
   note?: string;
   channel_id?: string;
@@ -63,12 +64,14 @@ export const serverHoldsCopy = (target: ReportTarget): boolean => target.kind ==
 export const canIncludeContent = (target: ReportTarget): boolean => target.kind === 'message' && target.mode !== 'standard' && target.content.trim().length > 0;
 
 export function reportTitle(target: ReportTarget, locale?: string): string {
+  if (target.kind === 'channel') return createI18n(locale).t('report.channel', { name: target.channelName });
   const intl = createI18n(locale);
   return target.kind === 'message' ? intl.catalogText('Report message') : intl.t('report.user', { name: target.userName });
 }
 
 /** What the person is told about the data this report shares, before sending. */
 export function reportDisclosure(target: ReportTarget, locale?: string): string {
+  if (target.kind === 'channel') return createI18n(locale).t('report.discloseChannel');
   return createI18n(locale).t(target.kind === 'user' ? 'report.discloseUser' : serverHoldsCopy(target) ? 'report.discloseMessage' : 'report.disclosePrivate', { brand: brand().displayName, kind: target.kind === 'message' ? target.mode : '' });
 }
 
@@ -93,6 +96,7 @@ export function buildReportBody(target: ReportTarget, draft: ReportDraft): Creat
   const note = draft.note.trim();
   const base = { category: draft.category, ...(note ? { note } : {}) };
   if (target.kind === 'user') return { target: 'user', user_id: target.userId, ...base };
+  if (target.kind === 'channel') return { target: 'channel', channel_id: target.channelId, ...base };
   const body: CreateReportBody = { target: 'message', channel_id: target.channelId, message_id: target.messageId, ...base };
   if (target.mode === 'standard') return body;
   body.author_id = target.authorId;

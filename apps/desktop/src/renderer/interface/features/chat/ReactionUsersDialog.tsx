@@ -12,11 +12,14 @@ import { displayName } from '../../shared/hooks/useNames';
 import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { Button } from '../../shared/ui/Button';
 import { Modal } from '../../shared/ui/Modal';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
+import { AgeRestrictedGate } from '../channels/AgeRestrictedGate';
 
 type Who = { id: string; username?: string; global_name?: string | null; avatar?: string | null };
 
 /** Everyone who reacted, one tab per emoji of the message. Moderators can remove single reactions. */
 export function ReactionUsersDialog({ channelId, messageId, emoji: initial }: { channelId: string; messageId: string; emoji: string }) {
+  const allowed = useChannelContentAccess().canShow(channelId);
   const { t: msg, number } = useI18n();
   const [current, setCurrent] = useState(initial);
   const [users, setUsers] = useState<Who[] | null>(null);
@@ -30,11 +33,14 @@ export function ReactionUsersDialog({ channelId, messageId, emoji: initial }: { 
   useEffect(() => {
     let live = true;
     setUsers(null);
+    if (!allowed) return;
     void attempt(() => getRuntime().api.reactionUsers(channelId, messageId, current), msg("settings.reactionusersdialog.could.not.load.reactions")).then((r) => live && setUsers(r ?? []));
     return () => {
       live = false;
     };
-  }, [channelId, messageId, current, count, msg]);
+  }, [channelId, messageId, current, count, msg, allowed]);
+
+  if (!allowed) return <Modal open onClose={close} title={msg('age.title')}><AgeRestrictedGate channelId={channelId}>{null}</AgeRestrictedGate></Modal>;
 
   return (
     <Modal open onClose={close} title={msg("settings.reactionusersdialog.reactions")} width={400}>

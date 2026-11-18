@@ -5,12 +5,14 @@
 export interface SpeechPort {
   /** Reads `text` aloud at `rate`; false when nothing was spoken. */
   speak(text: string, rate: number): boolean;
+  /** Stops current and queued speech after access is revoked. */
+  cancel(): void;
 }
 
-let adapter: SpeechPort = { speak: () => false };
+let adapter: SpeechPort = { speak: () => false, cancel: () => undefined };
 
 export function installSpeech(next: SpeechPort): void {
   adapter = next;
 }
 
-export const speech: SpeechPort = { speak: (text, rate) => adapter.speak(text, rate) };
+export const speech: SpeechPort = { speak: (text, rate) => adapter.speak(text, rate), cancel: () => adapter.cancel() };

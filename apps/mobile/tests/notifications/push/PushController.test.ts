@@ -4,7 +4,7 @@ import type { NativePush } from '../../../src/notifications/push/nativePush';
 import { PushController } from '../../../src/notifications/push/PushController';
 import type { PermissionState, PushStatus, PushTarget } from '../../../src/notifications/push/pushModel';
 
-function setup(initial: { permission?: PermissionState; offered?: boolean; native?: boolean; token?: string | null; launchedBy?: unknown; platform?: 'apns' | 'fcm' } = {}) {
+function setup(initial: { permission?: PermissionState; offered?: boolean; native?: boolean; token?: string | null; launchedBy?: unknown; platform?: 'apns' | 'fcm'; canShowChannel?: (channelId: string) => boolean } = {}) {
   let permission: PermissionState = initial.permission ?? 'undetermined';
   let offered = initial.offered ?? false;
   const listeners = { tap: [] as ((data: unknown) => void)[], token: [] as ((token: string) => void)[] };
@@ -45,6 +45,7 @@ function setup(initial: { permission?: PermissionState; offered?: boolean; nativ
     environment: 'sandbox',
     gatewayState: () => gateway,
     viewing: () => viewing,
+    canShowChannel: initial.canShowChannel,
     open: (target) => void opened.push(target),
     offer: jest.fn(async () => agree),
   });
@@ -68,6 +69,19 @@ function setup(initial: { permission?: PermissionState; offered?: boolean; nativ
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+it('suppresses native foreground previews without current channel acknowledgement, including while disconnected', () => {
+  let allowed = false;
+  const t = setup({ canShowChannel: (id) => id === 'restricted' && allowed });
+  t.controller.attach();
+  t.setGateway('reconnecting');
+  expect(t.foreground({ channel_id: 'restricted' })).toBe(false);
+  allowed = true;
+  expect(t.foreground({ channel_id: 'restricted' })).toBe(true);
+  allowed = false;
+  expect(t.foreground({ channel_id: 'restricted' })).toBe(false);
+  expect(t.foreground({ channel_id: 'unknown' })).toBe(false);
+});
 
 describe('PushController without the native module (Expo Go)', () => {
   it('does nothing and reports push as unavailable', async () => {

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { Alert, Linking } from 'react-native';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
@@ -15,6 +16,7 @@ export function voiceAvailable(): boolean {
 
 /** Joins a voice channel or a DM call; does nothing when already in it. Failures show on the call (`call.error`). */
 export async function joinVoice(guildId: string | null, channelId: string): Promise<void> {
+  if (!canShowChannelContent(channelId)) return;
   const voice = getRuntime().voice;
   if (!voice) return;
   const { call } = useVoiceStore.getState();

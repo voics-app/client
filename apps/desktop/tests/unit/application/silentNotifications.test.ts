@@ -8,6 +8,8 @@ import { notifyIncoming } from '@renderer/interface/app/notifications';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { confirmAgeRestrictedChannel, initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 
 const me = { id: '1', username: 'me', global_name: null, avatar: null };
@@ -22,6 +24,8 @@ describe('notifyIncoming and @silent', () => {
     play.mockClear();
     useUiStore.setState({ view: { channelId: null } } as never);
     useSessionStore.setState({ user: me, settings: { status: 'online' } } as never);
+    useGuildStore.getState().reset();
+    useGuildStore.getState().upsertChannel({ id: '300', type: 1, recipients: [friend], delivery_mode: 'standard' });
     usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false } as never);
     vi.stubGlobal('document', { hasFocus: () => false });
   });
@@ -59,5 +63,19 @@ describe('notifyIncoming and @silent', () => {
     expect(notify).not.toHaveBeenCalled();
     expect(flashFrame).not.toHaveBeenCalled();
     expect(play).not.toHaveBeenCalled();
+  });
+
+  it('withholds a restricted mention preview and sound until this channel is confirmed', () => {
+    initialiseAgeRestrictedAccess('https://instance.test');
+    useSessionStore.getState().setStatus('ready');
+    useGuildStore.getState().upsertChannel({ id: 'r', type: 0, guild_id: 'g', nsfw: true, delivery_mode: 'standard' });
+    const message = dm({ channel_id: 'r', guild_id: 'g', mentions: [me] });
+    notifyIncoming(message);
+    expect(notify).not.toHaveBeenCalled();
+    expect(play).not.toHaveBeenCalled();
+    confirmAgeRestrictedChannel('r');
+    notifyIncoming(message);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledTimes(1);
   });
 });

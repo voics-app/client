@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -7,6 +7,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
+import { confirmAgeRestrictedChannel, initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
 
 const updateMember = vi.fn(async (_g: string, u: string, patch: { channel_id: string | null }) => ({ user: { id: u }, roles: [], ...patch }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { updateMember: (...a: [string, string, never]) => updateMember(...a) } }) }));
@@ -39,6 +40,25 @@ const dragBob = () => fireEvent.dragStart(screen.getByText('bob').closest('li')!
 describe('voice channel rows', () => {
   beforeEach(() => updateMember.mockClear());
   afterEach(cleanup);
+
+  it('withholds restricted occupants until Continue and hides the channel immediately on an account preference update', () => {
+    seed(ALL_PERMISSIONS);
+    initialiseAgeRestrictedAccess('https://instance.test');
+    useSessionStore.getState().setStatus('ready');
+    useSessionStore.getState().setSettings({ preferences: {} });
+    useGuildStore.getState().upsertChannel({ ...useGuildStore.getState().channels.v1!, nsfw: true });
+    render(<ChannelSidebar guildId={G} />);
+    expect(screen.getByText('Lounge')).toBeTruthy();
+    expect(screen.queryByText('bob')).toBeNull();
+    act(() => { confirmAgeRestrictedChannel('v1'); });
+    expect(screen.getByText('bob')).toBeTruthy();
+    act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: true } }));
+    expect(screen.queryByText('Lounge')).toBeNull();
+    expect(screen.queryByText('bob')).toBeNull();
+    expect(screen.getByText('general')).toBeTruthy();
+    cleanup();
+    useSessionStore.getState().setSettings({ preferences: {} });
+  });
 
   it('renders icons, not letters, and tells server mute from self mute', () => {
     seed(ALL_PERMISSIONS);

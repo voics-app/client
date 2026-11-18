@@ -28,7 +28,7 @@ describe('submitReport', () => {
 describe('reportFailureMessage', () => {
   it('words the rate limit, a missing target and lost access', () => {
     expect(reportFailureMessage(new ApiError(429, 0, 'slow down'))).toMatch(/lot of reports/);
-    expect(reportFailureMessage(new ApiError(404, 10008, 'Unknown Message'))).toMatch(/no longer exists/);
+    expect(reportFailureMessage(new ApiError(404, 10008, 'Unknown Message'))).toMatch(/no longer available/);
     expect(reportFailureMessage(new ApiError(403, 50001, 'Missing Access'))).toMatch(/no longer see/);
   });
 

@@ -1,4 +1,5 @@
 import { useI18n } from '../../shared/i18n';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
 import { At } from '@phosphor-icons/react';
 import { useMemo } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -12,12 +13,13 @@ import { Modal } from '../../shared/ui/Modal';
 
 /** Recent @mentions across servers (Ctrl+I); selecting one jumps to the message. */
 export function MentionsInbox() {
+  const { canShow } = useChannelContentAccess();
   const { t, date } = useI18n();
   const close = () => useUiStore.getState().openDialog(null);
   const entries = useMentionInboxStore((s) => s.entries);
   const guilds = useGuildStore((s) => s.guilds);
   const channels = useGuildStore((s) => s.channels);
-  const visible = useMemo(() => entries.filter((e) => guilds[e.guildId] && channels[e.channelId]), [entries, guilds, channels]);
+  const visible = useMemo(() => entries.filter((e) => guilds[e.guildId] && channels[e.channelId] && canShow(e.channelId)), [entries, guilds, channels, canShow]);
   const groups = useMemo(() => [...entriesByGuild(visible)], [visible]);
   return (
     <Modal open onClose={close} title={t('inbox.title')} width={520}>

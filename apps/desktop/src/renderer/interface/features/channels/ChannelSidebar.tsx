@@ -8,6 +8,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore, usersInChannel } from '@discordy/core/application/stores/voiceStore';
 import { isUnread } from '@discordy/core/domain/unread';
 import { orderPinnedFirst, pinnedChannelsOf } from '@discordy/core/domain/pins';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
 import { LOOSE, layoutOf, resolveDrop, type ChannelDrag, type ChannelDropZone } from '@discordy/core/domain/channelOrder';
 import { isPrivateChannel, offscreenMentions, visibleChannelIds, type ActivityFacts } from '@discordy/core/domain/channelActivity';
 import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
@@ -128,6 +129,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
 }
 
 function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel; active: boolean; dnd: ChannelDnd; pinned?: boolean }) {
+  const { canShow } = useChannelContentAccess();
   const { t: msg } = useI18n();
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
@@ -239,7 +241,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
           </span>
         )}
       </div>
-      {occupants.length > 0 && (
+      {occupants.length > 0 && canShow(channel.id) && (
         <ul className="voice-occupants">
           {occupants.map((v) => (
             <VoiceOccupant key={v.user_id} guildId={channel.guild_id ?? null} state={v} speaking={speaking[v.user_id] ?? 0} />
@@ -388,12 +390,13 @@ function AttentionPill({ scrollRef, version }: { scrollRef: RefObject<HTMLDivEle
 }
 
 export function ChannelSidebar({ guildId }: { guildId: string }) {
+  const { visible } = useChannelContentAccess();
   const { t: msg } = useI18n();
   const channels = useGuildStore((s) => s.channels);
   const pins = useSessionStore((s) => s.settings.pinned_channel_ids);
   const { pinned, groups } = useMemo(() => {
     const listed = Object.values(channels)
-      .filter((c) => c.guild_id === guildId && !(c.type >= 10 && c.type <= 12))
+      .filter((c) => c.guild_id === guildId && !(c.type >= 10 && c.type <= 12) && visible(c.id))
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.id.localeCompare(b.id));
     // Personal pins move to the Pinned section above the categories; categories themselves cannot be pinned.
     const split = orderPinnedFirst(listed.filter((c) => c.type !== ChannelType.GUILD_CATEGORY), pinnedChannelsOf(pins, guildId));
@@ -405,7 +408,7 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
     if (loose.length > 0) result.push({ category: null, children: loose });
     for (const category of categories) result.push({ category, children: inGuild.filter((c) => c.parent_id === category.id && c.type !== ChannelType.GUILD_CATEGORY) });
     return { pinned: split.pinned, groups: result };
-  }, [channels, guildId, pins]);
+  }, [channels, guildId, pins, visible]);
 
   const categoryIds = useMemo(() => groups.flatMap((g) => (g.category ? [g.category.id] : [])), [groups]);
   const reads = useReadStateStore((s) => s.byChannel);

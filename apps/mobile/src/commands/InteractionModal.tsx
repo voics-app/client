@@ -8,11 +8,18 @@ import { BottomSheet } from '../sheets/BottomSheet';
 import { useLastValue } from '../sheets/useLastValue';
 import { theme } from '../theme';
 import { Button, Field } from '../ui/controls';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
+import { AgeRestrictedGate } from '../safety/AgeRestrictedGate';
+import { createI18n } from '@discordy/core/domain/i18n';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 
 const PARAGRAPH = 2;
 
 /** The form an application opened in answer to a command or a button; Submit sends it back as a modal-submit interaction. Mounted once, at the root. */
 export function InteractionModal() {
+  const { canShow } = useChannelContentAccess();
+  const locale = useSessionStore((s) => s.settings.locale);
+  const { t } = createI18n(locale);
   const current = useInteractionStore((s) => s.modal);
   const modal = useLastValue(current);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -25,6 +32,7 @@ export function InteractionModal() {
 
   const close = () => useInteractionStore.getState().closeModal();
   const submit = async () => {
+    if (!modal || !canShow(modal.channelId)) return;
     setBusy(true);
     try {
       await getRuntime().interactions.submitModal(values);
@@ -34,6 +42,8 @@ export function InteractionModal() {
       setBusy(false);
     }
   };
+
+  if (modal && !canShow(modal.channelId)) return <BottomSheet visible={current !== null} onClose={close} label={t('age.title')} tall><AgeRestrictedGate channelId={modal.channelId} onExit={close}>{null}</AgeRestrictedGate></BottomSheet>;
 
   return (
     <BottomSheet visible={current !== null} onClose={close} label={modal?.title ?? 'Form'} closeLabel="Close form" tall>
