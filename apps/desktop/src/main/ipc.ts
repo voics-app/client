@@ -10,6 +10,8 @@ import { sessionVault } from './sessionVault';
 import { saveMainSettings } from './settings';
 import type { Updater } from './updater';
 import type { DesktopService } from './desktop/desktopService';
+import type { PasskeyBroker } from './passkeys/passkeyBroker';
+import type { PasskeySite } from '../shared/passkeys';
 
 /** OS input idle time; the e2e harness can pin it with `globalThis.__e2eIdleSeconds` since a test cannot stop real input. */
 export function systemIdleSeconds(e2e: boolean, read: () => number): number {
@@ -19,6 +21,8 @@ export function systemIdleSeconds(e2e: boolean, read: () => number): number {
 }
 
 export interface IpcDeps {
+  passkeys: PasskeyBroker;
+  passkeySite: () => PasskeySite | null;
   window: () => BrowserWindow | null;
   info: () => AppInfo;
   setConnection: (profile: ConnectionProfile) => void;
@@ -38,6 +42,16 @@ function assertTrustedSender(event: Electron.IpcMainInvokeEvent | Electron.IpcMa
 }
 
 export function registerIpc(deps: IpcDeps): void {
+  const passkeyHandle = (channel: string, run: (value: unknown) => unknown) => ipcMain.handle(channel, (event, value: unknown) => {
+    assertTrustedSender(event, deps);
+    if (event.senderFrame !== event.sender.mainFrame) throw new Error('Passkey IPC requires the main frame');
+    return run(value);
+  });
+  passkeyHandle(IpcChannel.passkeySite, () => deps.passkeySite());
+  passkeyHandle(IpcChannel.passkeyPerform, value => deps.passkeys.perform(value));
+  passkeyHandle(IpcChannel.passkeyCancel, id => {
+    if (typeof id === 'string') deps.passkeys.cancel(id);
+  });
   const handle = <A extends unknown[], R>(channel: string, fn: (...args: A) => R | Promise<R>) =>
     ipcMain.handle(channel, (event, ...args) => {
       assertTrustedSender(event, deps);

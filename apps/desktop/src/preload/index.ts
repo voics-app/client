@@ -34,6 +34,11 @@ const crypto = Object.fromEntries(
 ) as unknown as CryptoBridge;
 
 const bridge: DiscordyBridge = {
+  passkeys: {
+    site: () => ipcRenderer.invoke(IpcChannel.passkeySite),
+    perform: (request) => ipcRenderer.invoke(IpcChannel.passkeyPerform, request),
+    cancel: (id) => ipcRenderer.invoke(IpcChannel.passkeyCancel, id),
+  },
   app: {
     info: () => ipcRenderer.invoke(IpcChannel.appInfo),
     setConnection: (profile) => ipcRenderer.invoke(IpcChannel.appSetConnection, profile),
