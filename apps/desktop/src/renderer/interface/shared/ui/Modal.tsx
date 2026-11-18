@@ -15,7 +15,7 @@ interface Props {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  width?: number;
+  width?: number | string;
   bare?: boolean;
 }
 

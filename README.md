@@ -69,6 +69,22 @@ status after the gateway resumes. Logout clears the live presence, and a cold st
 invisible until READY has loaded the account settings. A supporting gateway retains suspended
 mobile availability for a bounded lease (24 hours by default), without keeping the app running.
 
+## Edit attachment descriptions and spoilers
+
+In a Standard chat, open the menu on one of your sent messages and choose **Edit Attachments**
+(right-click on desktop, long-press on mobile). Each existing file has a description and a
+**Mark as spoiler** switch. Save applies only changed fields; Cancel discards the draft. A failed
+save keeps the draft open for retry and leaves the timeline unchanged. Descriptions accept up to
+1,024 Unicode characters; clearing one removes it. Files cannot be replaced, renamed or removed
+through this editor. Pending messages, other authors' messages and private delivery modes do not
+offer this action.
+
+This uses the metadata PATCH contract in contracts#38 and messages#79. Explicit attachment flags
+are authoritative: clearing a spoiler also reveals a file whose immutable name starts with
+`SPOILER_`; filename fallback applies only to older payloads without flags. File and audio rows
+require a reveal too, and opening a different image does not reveal concealed neighbours in the
+viewer. See [docs/attachment-metadata.md](docs/attachment-metadata.md) for validation and QA steps.
+
 ## Test and lint
 
 ```

@@ -99,7 +99,15 @@ describe('messageActions', () => {
 
   it('offers nothing on messages that are still sending or failed', () => {
     const a = messageActions({ ...msg('me'), localState: 'failed' }, mine, 'me');
-    expect(a).toEqual({ reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false });
+    expect(a).toEqual({ reply: false, edit: false, editAttachments: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false });
+  });
+
+  it('offers attachment editing only on your sent standard messages with files', () => {
+    const attachments = [{ id: 'a', filename: 'photo.png', size: 1, url: 'https://cdn.test/photo' }];
+    expect(messageActions(msg('me', { attachments }), mine, 'me').editAttachments).toBe(true);
+    expect(messageActions(msg('other', { attachments }), access(BASIC | Permission.MANAGE_MESSAGES), 'me').editAttachments).toBe(false);
+    expect(messageActions(msg('me', { attachments }), { ...mine, standard: false }, 'me').editAttachments).toBe(false);
+    expect(messageActions(msg('me'), mine, 'me').editAttachments).toBe(false);
   });
 
   it('offers Copy Message Link and Mark Unread to everyone, and Pin only with Manage Messages', () => {

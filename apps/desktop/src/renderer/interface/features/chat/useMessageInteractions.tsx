@@ -25,6 +25,8 @@ import { selectionWithin, targetFromElement } from './contextTarget';
 import { displayName } from '../../shared/hooks/useNames';
 import { runContextCommand, useContextCommands } from '../apps/useContextCommands';
 import { useEmojiPopover } from './EmojiPopover';
+import { canEditAttachments } from '@discordy/core/application/attachmentCommands';
+import { AttachmentMetadataDialog } from './AttachmentMetadataDialog';
 
 /** Forwarding is stored server-side as a snapshot (messages#13); E2EE and P2P chats are excluded in the menu model. */
 export const FORWARD_SUPPORTED = true;
@@ -33,6 +35,7 @@ const ICONS: Record<string, ReactNode> = {
   addReaction: <Smiley size={16} />,
   reactMore: <SmileyWink size={16} />,
   edit: <PencilSimple size={16} />,
+  editAttachments: <PencilSimple size={16} />,
   pin: <PushPin size={16} />,
   unpin: <PushPin size={16} />,
   reply: <ArrowBendUpLeft size={16} />,
@@ -92,6 +95,8 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const menu = useMenu();
   const [hover, setHover] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [editingAttachments, setEditingAttachments] = useState(false);
+  const closeAttachmentEditor = useCallback(() => setEditingAttachments(false), []);
   const [target, setTarget] = useState<MessageTarget>({ kind: 'message' });
   const selectionRef = useRef('');
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -155,6 +160,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'reply': return setReplyTo(message.channel_id, message);
       case 'forward': return openDialog({ kind: 'forward', message });
       case 'edit': return setEditing({ channelId: message.channel_id, messageId: message.id });
+      case 'editAttachments': return canEditAttachments(message, opts.me) && setEditingAttachments(true);
       case 'pin':
       case 'unpin':
         return void attempt(() => (id === 'unpin' ? getRuntime().api.unpin(message.channel_id, message.id) : getRuntime().api.pin(message.channel_id, message.id)), 'Could not update pin');
@@ -196,6 +202,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       forwardSupported: FORWARD_SUPPORTED,
       canSpeak: speechSupported(),
       hasText: message.content.trim().length > 0,
+      hasEditableAttachments: canEditAttachments(message, opts.me),
       pinned: Boolean(message.pinned),
       selection: selectionRef.current,
       canAddEmoji:
@@ -275,6 +282,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       <>
         <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} minWidth={220} />
         {emoji.node}
+        {editingAttachments && <AttachmentMetadataDialog message={message} onClose={closeAttachmentEditor} />}
       </>
     ),
     visible,

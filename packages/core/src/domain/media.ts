@@ -14,9 +14,9 @@ export function isSpoilerName(filename: string): boolean {
   return filename.startsWith(SPOILER_PREFIX);
 }
 
-/** A spoiler by flag (server) or by name prefix (interim and private chats). */
+/** Explicit server flags are authoritative; only legacy/private payloads omit them. */
 export function isSpoiler(attachment: Pick<Attachment, 'filename' | 'flags'>): boolean {
-  return ((attachment.flags ?? 0) & AttachmentFlag.IS_SPOILER) !== 0 || isSpoilerName(attachment.filename);
+  return attachment.flags !== undefined ? (attachment.flags & AttachmentFlag.IS_SPOILER) !== 0 : isSpoilerName(attachment.filename);
 }
 
 export function withSpoilerPrefix(filename: string): string {
