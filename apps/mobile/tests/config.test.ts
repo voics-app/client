@@ -1,5 +1,19 @@
 import brand from '../../desktop/brand.json';
 import config from '../app.config';
+import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
+import { qaConfig } from '../config/qa.cjs';
+
+it('sends local QA login to the API route without duplicating its version prefix', async () => {
+  const qa = qaConfig({ VOICS_MOBILE_QA: '1' }, brand)!;
+  const fetch = jest.fn().mockResolvedValue({ ok: true, status: 204 });
+  const client = new HttpClient({
+    baseUrl: qa.apiUrl,
+    fetch,
+    tokens: { access: () => null, refresh: async () => null, expired: () => undefined },
+  });
+  await client.request('POST', '/auth/login', { auth: false, body: {} });
+  expect(fetch).toHaveBeenCalledWith('http://10.0.2.2:28100/api/v1/auth/login', expect.anything());
+});
 
 describe('app.config', () => {
   it('takes name, scheme and bundle id from brand.json', () => {

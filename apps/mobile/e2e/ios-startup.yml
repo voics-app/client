@@ -2,6 +2,11 @@ appId: nl.voics.app
 ---
 # The runner opens the local Metro bundle before this flow. No account or API
 # request is needed: this verifies the real native app can mount and navigate.
+- runFlow:
+    when:
+      visible: 'Open in .*Voics.*'
+    commands:
+      - tapOn: Open
 - extendedWaitUntil:
     visible: Welcome back
     timeout: 120000

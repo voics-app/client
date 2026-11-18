@@ -30,7 +30,7 @@ export function getRuntime(): MobileRuntime {
     vault: createSecureSessionVault(expoSecureBackend),
     socketFactory: nativeSocketFactory,
     progressUpload: uploadWithProgress,
-    cdnUrl: BRAND.cdnUrl,
+    cdnUrl: typeof Constants.expoConfig?.extra?.cdnUrl === 'string' ? Constants.expoConfig.extra.cdnUrl : BRAND.cdnUrl,
     ...(loadNativePush() ? { removePushToken: () => getRuntime().api.removePushToken() } : {}),
     createPrivacy: loadNativePrivacy,
     createVoice: ({ gateway, iceServers, crypto, identityKeysOf }) => {

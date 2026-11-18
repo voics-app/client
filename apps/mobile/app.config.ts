@@ -1,5 +1,8 @@
 import type { ExpoConfig } from 'expo/config';
 import brand from '../desktop/brand.json';
+import { qaConfig } from './config/qa.cjs';
+
+const qa = qaConfig(process.env, brand);
 
 const MICROPHONE_USAGE = `Voics uses the microphone so other people can hear you in voice channels and calls.`;
 const CAMERA_USAGE = `Voics uses the camera to send your video in calls.`;
@@ -11,9 +14,9 @@ const pushEnvironment: 'sandbox' | 'production' = ['preview', 'production'].incl
 
 // Name, URL scheme and bundle id come from brand.json, like desktop.
 const config: ExpoConfig = {
-  name: brand.displayName,
+  name: qa?.name ?? brand.displayName,
   slug: 'voics',
-  scheme: brand.protocolScheme,
+  scheme: qa?.scheme ?? brand.protocolScheme,
   owner: 'oussamaelhajoui',
   version: '1.0.0',
   orientation: 'portrait',
@@ -21,7 +24,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'dark',
   backgroundColor: '#0c0d12',
   ios: {
-    bundleIdentifier: brand.appId,
+    bundleIdentifier: qa?.appId ?? brand.appId,
     supportsTablet: false,
     infoPlist: {
       // Standard algorithms outside iOS: no Apple documents outside France, where the app is not offered. True needs an Apple code. See docs runbooks/app-store-privacy.md.
@@ -35,10 +38,10 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    package: brand.appId,
+    package: qa?.appId ?? brand.appId,
     // Firebase client config for FCM push and call rings. On EAS it is the file environment variable GOOGLE_SERVICES_JSON (a path to the file); locally and in Expo Go it
     // is unset, the build still compiles and push stays off. The file is not committed (.gitignore).
-    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || undefined,
+    googleServicesFile: qa ? undefined : process.env.GOOGLE_SERVICES_JSON || undefined,
     adaptiveIcon: { foregroundImage: '../desktop/build/icon.png', backgroundColor: '#0c0d12' },
   },
   plugins: [
@@ -54,12 +57,13 @@ const config: ExpoConfig = {
     // R8 rule for the LiveKit WebRTC release build (see the file).
     './plugins/withAndroidProguard',
     './plugins/withIosScreenShare',
+    ...(qa ? ['./plugins/withQaCleartext.cjs'] : []),
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
   ],
   experiments: { typedRoutes: true },
-  extra: { apiUrl: brand.apiUrl, gatewayUrl: brand.gatewayUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
+  extra: { apiUrl: qa?.apiUrl ?? brand.apiUrl, gatewayUrl: qa?.gatewayUrl ?? brand.gatewayUrl, cdnUrl: qa?.cdnUrl ?? brand.cdnUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
 };
 
 export default config;

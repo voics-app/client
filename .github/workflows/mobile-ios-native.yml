@@ -87,4 +87,5 @@ jobs:
         with:
           name: ios-simulator-smoke
           path: ${{ runner.temp }}/voics-ios-smoke
+          include-hidden-files: true # Maestro stores its hierarchy/logs below .maestro.
           if-no-files-found: ignore
