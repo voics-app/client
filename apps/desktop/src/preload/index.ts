@@ -44,6 +44,7 @@ const bridge: DiscordyBridge = {
     setConnection: (profile) => ipcRenderer.invoke(IpcChannel.appSetConnection, profile),
     openExternal: (url) => ipcRenderer.invoke(IpcChannel.appOpenExternal, url),
     setActivity: (counts) => ipcRenderer.send(IpcChannel.appActivity, counts),
+    setLocale: (locale) => ipcRenderer.send(IpcChannel.appLocale, locale),
     notify: (request) => ipcRenderer.send(IpcChannel.appNotify, request),
     onNavigate: (listener) => subscribe<string>(IpcChannel.appNavigate, listener),
     takePendingRoute: () => ipcRenderer.invoke(IpcChannel.appTakePendingRoute),

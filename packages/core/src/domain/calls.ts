@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** DM call ringing: pure helpers over the call object that the gateway sends (CALL_CREATE / CALL_UPDATE). */
 import type { CallEvent, CallRingPayload } from '../contracts/gateway';
 import type { Channel, Snowflake, VoiceState } from '../contracts/rest';
@@ -59,14 +60,15 @@ export function needsCallConfirmation(enabled: boolean, call: DmCall | undefined
   return enabled && !hasParticipants(call);
 }
 
-export function callConfirmation(target: string, video: boolean): { title: string; body: string; confirmLabel: string } {
+export function callConfirmation(target: string, video: boolean, locale?: string): { title: string; body: string; confirmLabel: string } {
   const kind = video ? 'video' : 'voice';
-  return { title: `Start a ${kind} call?`, body: `Start a ${kind} call with ${target}? They will be rung.`, confirmLabel: 'Start call' };
+  const intl = createI18n(locale);
+  return { title: intl.t('call.confirmTitle', { kind }), body: intl.t('call.confirmBody', { kind, name: target }), confirmLabel: intl.catalogText('Start call') };
 }
 
 /** Who the call rings: the group name, or the other people of the conversation. */
-export function callTargetName(channel: Pick<Channel, 'name' | 'recipients'>): string {
+export function callTargetName(channel: Pick<Channel, 'name' | 'recipients'>, locale?: string): string {
   if (channel.name) return channel.name;
-  const names = (channel.recipients ?? []).map((u) => u.global_name || u.username || 'Unknown user');
-  return names.length > 0 ? names.join(', ') : 'this conversation';
+  const names = (channel.recipients ?? []).map((u) => u.global_name || u.username || createI18n(locale).catalogText('Unknown user'));
+  return names.length > 0 ? names.join(', ') : createI18n(locale).catalogText('this conversation');
 }

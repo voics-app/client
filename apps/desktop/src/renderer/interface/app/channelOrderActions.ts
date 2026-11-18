@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Commands that reorder channels and categories: optimistic update, bulk PATCH, revert on failure (client#59). */
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -10,7 +11,7 @@ import { getRuntime } from './runtime';
 export { guildChannels };
 
 async function send(guildId: string, moves: ChannelMove[], extra?: (move: ChannelMove) => Partial<Channel>): Promise<boolean> {
-  const ok = await attempt(() => sendChannelMoves(getRuntime().api, guildId, moves, extra).then(() => true), 'Could not reorder channels');
+  const ok = await attempt(() => sendChannelMoves(getRuntime().api, guildId, moves, extra).then(() => true), getI18n().catalogText("Could not reorder channels"));
   return Boolean(ok);
 }
 
@@ -31,9 +32,9 @@ export async function applyChannelLayout(guildId: string, layout: ChannelLayout,
 function promptPermissionSync(guildId: string, channel: Channel, category: Channel): void {
   useUiStore.getState().openDialog({
     kind: 'confirm',
-    title: `Sync permissions with ${category.name ?? 'the category'}?`,
-    body: `#${channel.name} has permissions that differ from its new category. Syncing replaces them with the category's. Cancel keeps the channel's own permissions.`,
-    confirmLabel: 'Sync permissions',
+    title: getI18n().t('actions.syncTitle', { name: category.name ?? getI18n().t('actions.categoryFallback') }),
+    body: getI18n().t('actions.syncBody', { name: channel.name ?? '' }),
+    confirmLabel: getI18n().catalogText("Sync permissions"),
     onConfirm: async () => {
       const current = useGuildStore.getState().channels[channel.id];
       if (!current) return;

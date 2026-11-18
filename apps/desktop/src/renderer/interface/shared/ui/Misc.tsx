@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { ReactNode } from 'react';
 
 export function Kbd({ children }: { children: ReactNode }) {
@@ -22,8 +23,9 @@ export function EmptyState({ icon, title, body, action }: { icon: ReactNode; tit
 }
 
 export function Count({ value, tone = 'accent' }: { value: number; tone?: 'accent' | 'danger' }) {
+  const { number } = useI18n();
   if (value <= 0) return null;
-  return <span className={`count count-${tone} tnum`}>{value > 99 ? '99+' : value}</span>;
+  return <span className={`count count-${tone} tnum`}>{value > 99 ? `${number(99)}+` : number(value)}</span>;
 }
 
 export function Eyebrow({ children }: { children: ReactNode }) {

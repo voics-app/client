@@ -60,7 +60,7 @@ export function VoiceDock() {
             <span>{catalogText(STATUS_LABEL[call.status])}</span>
           </span>
           <span className="voice-dock-place">
-            {channel?.name ?? msg("settings.profiledialog.call")}
+            {channel?.name ?? msg("voice.call")}
             {guild ? ` · ${guild.name}` : ''}
           </span>
         </button>

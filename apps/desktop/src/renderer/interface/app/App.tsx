@@ -39,7 +39,7 @@ export function App() {
 }
 
 function AppContent() {
-  const { t } = useI18n();
+  const { t, catalogText } = useI18n();
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const status = useSessionStore((s) => s.status);
@@ -82,7 +82,7 @@ function AppContent() {
     }
   }, [status]);
 
-  if (failure) return <Boot message={failure} />;
+  if (failure) return <Boot message={catalogText(failure)} />;
   if (!runtime) return <Boot message={t('boot.starting', { app: BRAND.displayName })} />;
 
   return (

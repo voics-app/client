@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Composition root: builds the HTTP/gateway clients, session manager and dispatch routing once per app start. */
 import { QueryClient } from '@tanstack/react-query';
 import { ALL_INTENTS, type VoiceServerUpdate } from '@discordy/core/contracts/gateway';
@@ -96,7 +97,7 @@ export function createRuntime(info: AppInfo): Runtime {
 
   const prefsSync = new PrefsSync({
     updateSettings: (patch) => api.updateSettings(patch),
-    onError: (error) => useUiStore.getState().toast({ tone: 'danger', title: 'Could not save your settings', body: error instanceof Error ? error.message : 'Try again.' }),
+    onError: (error) => useUiStore.getState().toast({ tone: 'danger', title: getI18n().catalogText("Could not save your settings"), body: error instanceof Error ? error.message : getI18n().catalogText("Try again.") }),
   });
   prefsSync.start();
   const dispatch = createDispatchRouter({
@@ -158,7 +159,7 @@ export function createRuntime(info: AppInfo): Runtime {
       return { identityKeyB64: await privacy.initialiseIdentity() };
     },
     onDeviceRegistrationFailed: () => {
-      useUiStore.getState().toast({ tone: 'warning', title: 'Signed in without encrypted modes', body: DEVICE_UNREGISTERED_REASON });
+      useUiStore.getState().toast({ tone: 'warning', title: getI18n().catalogText("Signed in without encrypted modes"), body: getI18n().catalogText(DEVICE_UNREGISTERED_REASON) });
     },
     onChange: (signedIn) => {
       queryClient.clear();

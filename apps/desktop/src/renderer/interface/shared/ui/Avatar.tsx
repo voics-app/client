@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { CSSProperties } from 'react';
 import type { PresenceStatus } from '@discordy/core/contracts/rest';
 import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
@@ -34,6 +35,7 @@ export function initialsOf(name: string): string {
 
 /** Avatar with optional presence dot and the audio-driven speaking ring. */
 export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square, kind = 'avatars', sources }: Props) {
+  const { t: msg } = useI18n();
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const h = hueOf(id ?? name ?? '');
   const style = {
@@ -51,8 +53,8 @@ export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot,
       <span className="avatar-face" style={square ? { borderRadius: 'inherit' } : undefined}>
         {candidates?.length ? <AssetImage candidates={candidates} fallback={fallback} /> : fallback}
       </span>
-      {bot && <span className="avatar-bot">BOT</span>}
-      {status && status !== 'invisible' && <span className={`status-dot status-${status}`} role="img" aria-label={status} />}
+      {bot && <span className="avatar-bot">{msg("settings.avatar.bot")}</span>}
+      {status && status !== 'invisible' && <span className={`status-dot status-${status}`} role="img" aria-label={msg(`avatar.${status}`)} />}
     </span>
   );
 }

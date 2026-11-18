@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Moderator actions that span several messages or members. Each reports failure with a toast. */
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
@@ -35,7 +36,7 @@ export async function purgeRecentMessages(guildId: string, userId: string): Prom
       for (const batch of plan.batches) await api.bulkDeleteMessages(channelId, batch);
       if (plan.single) await api.deleteMessage(channelId, plan.single);
       return true;
-    }, 'Could not delete messages');
+    }, getI18n().catalogText("Could not delete messages"));
     if (!done) break;
     deleted += ids.length;
   }
@@ -46,17 +47,17 @@ export function confirmPurgeRecentMessages(guildId: string, userId: string, name
   const count = Object.values(purgeTargets(guildId, userId)).reduce((n, ids) => n + ids.length, 0);
   useUiStore.getState().openDialog({
     kind: 'confirm',
-    title: `Delete recent messages from ${name}?`,
+    title: getI18n().t('actions.purgeTitle', { name }),
     body:
       count === 0
-        ? 'No recent messages from them are loaded. Open the channels first, or ban them with message history deletion.'
-        : `This removes ${count} loaded message${count === 1 ? '' : 's'} (newer than two weeks) from this server.`,
-    confirmLabel: 'Delete messages',
+        ? getI18n().catalogText("No recent messages from them are loaded. Open the channels first, or ban them with message history deletion.")
+        : getI18n().t('actions.purgeBody', { count }),
+    confirmLabel: getI18n().catalogText("Delete messages"),
     danger: true,
     onConfirm: async () => {
       if (count === 0) return;
       const removed = await purgeRecentMessages(guildId, userId);
-      useUiStore.getState().toast({ tone: 'success', title: `Deleted ${removed} message${removed === 1 ? '' : 's'}` });
+      useUiStore.getState().toast({ tone: 'success', title: getI18n().t('actions.purged', { count: removed }) });
     },
   });
 }

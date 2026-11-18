@@ -194,10 +194,10 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
   );
 
   return (
-    <section className="voice-stage" aria-label={msg('voice.region', { name: channel?.name ?? msg('settings.profiledialog.call') })}>
+    <section className="voice-stage" aria-label={msg('voice.region', { name: channel?.name ?? msg('voice.call') })}>
       <header className="voice-stage-head">
         <div>
-          <h1>{channel?.name ?? msg("settings.profiledialog.call")}</h1>
+          <h1>{channel?.name ?? msg("voice.call")}</h1>
           <p className="tnum">{msg('voice.count', { count: allTiles.filter((t) => t.kind !== 'screen').length })}{call.region ? ` · ${call.region}` : ''}</p>
         </div>
         {call.e2ee ? (

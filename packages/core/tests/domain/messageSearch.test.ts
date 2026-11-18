@@ -26,6 +26,16 @@ const ctx: SuggestionContext = {
   now: new Date(2026, 9, 21),
 };
 
+it('localizes search guidance and errors while preserving syntax, authored names and API values', () => {
+  const local = { ...ctx, locale: 'nl', users: [{ id: 'u1', name: 'Settings مرحبا' }] };
+  expect(suggest('fr', local)[0]).toEqual({ label: 'from:', hint: 'een gebruiker', insert: 'from:' });
+  const suggestion = suggest('from:Set', local)[0]!;
+  expect(suggestion.insert).toBe('from:"Settings مرحبا" ');
+  expect(toSearchParams(parseQuery(suggestion.insert + 'has:image original'), local)).toEqual({ params: { author_id: ['u1'], has: ['image'], content: 'original' }, problems: [] });
+  expect(toSearchParams(parseQuery('from:Nobody'), local).problems).toEqual(['Geen lid met de naam "Nobody"']);
+  expect(toSearchParams(parseQuery('pinned:ja'), local).problems).toEqual(['pinned: verwacht true of false']);
+});
+
 describe('parseQuery', () => {
   it('separates filters from free text and keeps quoted values together', () => {
     const q = parseQuery('deploy from:alice has:image "exact phrase" in:general from:"Bob Builder"');

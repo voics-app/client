@@ -71,7 +71,7 @@ function initialDraft(channelId: string, standard: boolean) {
 
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
   const { t: msg } = useI18n();
-  const { t, number } = useI18n();
+  const { t, number, locale } = useI18n();
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<Descriptions>(new Map());
@@ -285,11 +285,11 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         return;
       }
       const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
-      const { accepted, problems } = acceptFiles(files, incoming, limit, mode === 'standard');
+      const { accepted, problems } = acceptFiles(files, incoming, limit, mode === 'standard', undefined, locale);
       if (problems.length > 0) reportError(new Error(problems.join(' ')), msg("settings.composer.file.not.attached"));
       if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
     },
-    [canAttach, mode, files, msg],
+    [canAttach, mode, files, msg, locale],
   );
 
   const runCommand = async () => {
@@ -529,7 +529,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           {showCounter(remainingChars) && (
             <span className={`composer-counter${tooLong ? ' is-over' : ''}`} role="status" aria-label={t('composer.charactersLeft', { count: remainingChars })}>{number(remainingChars)}</span>
           )}
-          {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={t('composer.slowmodeLabel', { count: slowmodeLeft })}>{t('composer.slowmode', { time: formatCountdown(slowmodeLeft) })}</span>}
+          {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={t('composer.slowmodeLabel', { count: slowmodeLeft })}>{t('composer.slowmode', { time: formatCountdown(slowmodeLeft, locale) })}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label={t('composer.timestamp')} disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
           <IconButton label={t('composer.emoji')} disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>

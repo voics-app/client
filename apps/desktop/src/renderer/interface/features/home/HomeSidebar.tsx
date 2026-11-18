@@ -34,6 +34,7 @@ interface Selection { selected: boolean; onToggle: () => void }
 
 /** One DM row with its context menu: mark as read, profile, group settings, mute, close, leave. */
 function DmRow({ channel: c, name, unread, mentions, active, status, activities, pinned, pinFull, selection }: { channel: Channel; name: string; unread: boolean; mentions: number; active: boolean; status: PresenceStatus | null; activities?: Activity[]; pinned: boolean; pinFull: boolean; selection?: Selection }) {
+  const { t: msg } = useI18n();
   const { t } = useI18n();
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
@@ -90,8 +91,8 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
       <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
         {copy}
         {pinned && <PushPin size={13} weight="fill" className="dm-pin" aria-label={t('home.pinned')} />}
-        {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
-        {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
+        {c.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label={msg("settings.dialoghost.ephemeral.e2ee")} />}
+        {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label={msg("auth.peer.to.peer")} />}
         <Count value={mentions} tone="danger" />
       </button>
       <button type="button" className="dm-close" aria-label={t('home.closeConversation', { name })} onClick={() => closeDm(c.id)}><X size={16} /></button>

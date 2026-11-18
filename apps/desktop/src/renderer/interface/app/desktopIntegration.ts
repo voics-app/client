@@ -9,11 +9,14 @@ import { bridge } from './bridge';
 import { publishPresence } from './presenceActions';
 import { setStatusText } from '../features/shell/customStatus';
 import { toggleDeafen, toggleMute } from './voiceActions';
+import { useI18n } from '../shared/i18n';
 
 const IDLE_POLL_MS = 10_000;
 
 /** Wires the Electron shell: tray mute/deafen commands in, self voice state and update status out. */
 export function useDesktopIntegration(): void {
+  const { locale } = useI18n();
+  useEffect(() => { bridge?.app.setLocale?.(locale); }, [locale]);
   useEffect(() => {
     if (!bridge) return;
     const pushVoice = () => {

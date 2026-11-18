@@ -1,3 +1,4 @@
+import { getI18n, useI18n } from '../../shared/i18n';
 import { useEffect } from 'react';
 import { useCallStore } from '@discordy/core/application/stores/callStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -33,10 +34,11 @@ const ringer = new CallRinger({
   },
   notify: (call, callerId) => {
     const caller = useGuildStore.getState().channels[call.channelId]?.recipients?.find((u) => u.id === callerId);
-    const name = caller ? displayName(caller) : 'Someone';
+    const intl = getI18n();
+    const name = caller ? displayName(caller) : intl.catalogText('Someone');
     bridge?.app.notify({
-      title: `${name} is calling`,
-      body: 'Incoming call',
+      title: intl.t('call.isCalling', { name }),
+      body: intl.catalogText('Incoming call'),
       route: `/channels/@me/${call.channelId}`,
       silent: !usePrefsStore.getState().notifySounds,
     });
@@ -90,6 +92,7 @@ function useCallRinging(): void {
 
 /** The incoming-call prompt for the first DM call ringing for the user; also drives the ringtone. */
 export function IncomingCallHost() {
+  const { t: msg } = useI18n();
   useCallRinging();
   useVoiceSounds();
   useEffect(() => installAudioUnlock(), []);
@@ -102,21 +105,19 @@ export function IncomingCallHost() {
   const channel = channels[incoming.channelId];
   const callerId = callerOf(incoming, me);
   const caller = channel?.recipients?.find((u) => u.id === callerId);
-  const name = caller ? displayName(caller) : 'Someone';
+  const name = caller ? displayName(caller) : msg("chat.someone");
   return (
-    <section className="incoming-call glass" role="alertdialog" aria-label={`Incoming call from ${name}`} aria-live="assertive">
+    <section className="incoming-call glass" role="alertdialog" aria-label={msg('call.incomingFrom', { name })} aria-live="assertive">
       <Avatar id={callerId ?? incoming.channelId} name={name} avatar={caller?.avatar ?? null} size={44} />
       <div className="incoming-call-copy">
-        <p className="incoming-call-title">{name} is calling</p>
-        <p className="incoming-call-body">Incoming voice call</p>
+        <p className="incoming-call-title">{msg('call.isCalling', { name })}</p>
+        <p className="incoming-call-body">{msg("settings.incomingcall.incoming.voice.call")}</p>
       </div>
       <div className="incoming-call-actions">
         <button type="button" className="incoming-call-decline" onClick={() => declineCall(incoming.channelId)}>
-          Decline
-        </button>
+          {msg("settings.incomingcall.decline")} </button>
         <button type="button" className="incoming-call-accept" onClick={() => acceptCall(incoming.channelId)}>
-          Accept
-        </button>
+          {msg("common.accept")} </button>
       </div>
     </section>
   );

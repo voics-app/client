@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Thin command facade over the voice engine so UI never imports engine classes directly. */
 import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -26,7 +27,7 @@ export function registerVoice(next: VoiceFacade | null): void {
 }
 
 function require(): VoiceFacade | null {
-  if (!facade) useUiStore.getState().toast({ tone: 'warning', title: 'Voice is unavailable', body: 'The voice engine has not started yet.' });
+  if (!facade) useUiStore.getState().toast({ tone: 'warning', title: getI18n().catalogText("Voice is unavailable"), body: getI18n().catalogText("The voice engine has not started yet.") });
   return facade;
 }
 
@@ -36,7 +37,7 @@ export async function joinVoiceChannel(guildId: string | null, channelId: string
   try {
     await require()?.join(guildId, channelId);
   } catch (error) {
-    reportError(error, 'Could not join voice');
+    reportError(error, getI18n().catalogText("Could not join voice"));
   }
 }
 
@@ -50,7 +51,7 @@ export async function leaveVoice(): Promise<void> {
   try {
     await require()?.leave();
   } catch (error) {
-    reportError(error, 'Could not leave voice');
+    reportError(error, getI18n().catalogText("Could not leave voice"));
   }
 }
 
@@ -71,11 +72,11 @@ export async function toggleCamera(): Promise<void> {
 
 export async function startShare(options: { sourceId: string; audio: boolean; preset: VideoPresetId }): Promise<ShareResult> {
   const f = require();
-  if (!f) return { ok: false, reason: 'error', message: 'Voice is unavailable' };
+  if (!f) return { ok: false, reason: 'error', message: getI18n().catalogText("Voice is unavailable") };
   try {
     return await f.startScreenShare(options);
   } catch (error) {
-    return { ok: false, reason: 'error', message: error instanceof Error ? error.message : 'Screen share failed' };
+    return { ok: false, reason: 'error', message: error instanceof Error ? error.message : getI18n().catalogText("Screen share failed") };
   }
 }
 
@@ -97,7 +98,7 @@ async function run(fn: () => Promise<void> | undefined): Promise<void> {
   try {
     await fn();
   } catch (error) {
-    reportError(error, 'Voice error');
+    reportError(error, getI18n().catalogText("Voice error"));
   }
 }
 

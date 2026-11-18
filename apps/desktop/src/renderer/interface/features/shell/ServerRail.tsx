@@ -253,9 +253,10 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
 
 /** A conversation with unread messages, above the servers: the person's avatar with the number of new messages. */
 function UnreadDmItem({ dm }: { dm: UnreadDm }) {
+  const { t: msg } = useI18n();
   const navigate = useUiStore((s) => s.navigate);
   const recipients = dm.channel.recipients ?? [];
-  const name = dm.channel.name || recipients.map((u) => displayName(u)).join(', ') || 'Unknown';
+  const name = dm.channel.name || recipients.map((u) => displayName(u)).join(', ') || msg("domain.unknown");
   const peer = recipients.length === 1 ? recipients[0]! : null;
   return (
     <div className="rail-item">

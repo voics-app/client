@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Message search: the query language (from:, in:, has: ...), suggestions, API params and local matching. Pure. */
 import type { Message } from '../contracts/rest';
 import { compareSnowflakes, timestampOf } from './snowflake';
@@ -75,6 +76,7 @@ export interface Suggestion {
 }
 
 export interface SuggestionContext {
+  locale?: string;
   users: { id: string; name: string }[];
   channels: { id: string; name: string }[];
   now?: Date;
@@ -96,7 +98,7 @@ export function suggest(input: string, ctx: SuggestionContext, limit = 8): Sugge
     if (prefix.startsWith('"')) return [];
     return FILTER_KEYS.filter((k) => k.startsWith(prefix))
       .slice(0, limit)
-      .map((k) => ({ label: `${k}:`, hint: FILTER_HINTS[k], insert: `${k}:` }));
+      .map((k) => ({ label: `${k}:`, hint: createI18n(ctx.locale).catalogText(FILTER_HINTS[k]), insert: `${k}:` }));
   }
   const key = last.slice(0, colon).toLowerCase() as FilterKey;
   const typed = unquote(last.slice(colon + 1)).toLowerCase();
@@ -121,7 +123,7 @@ export function suggest(input: string, ctx: SuggestionContext, limit = 8): Sugge
     case 'after':
     case 'during': {
       const today = isoDay(ctx.now ?? new Date());
-      return today.startsWith(typed) || typed === '' ? [{ label: `${key}:${today}`, hint: 'today', insert: done(today) }] : [];
+      return today.startsWith(typed) || typed === '' ? [{ label: `${key}:${today}`, hint: createI18n(ctx.locale).catalogText('today'), insert: done(today) }] : [];
     }
     default:
       return [];
@@ -193,28 +195,28 @@ export function toSearchParams(parsed: ParsedQuery, ctx: SuggestionContext, extr
       case 'from':
       case 'mentions': {
         const found = user(f.value);
-        if (!found) problems.push(`No member named "${f.value}"`);
+        if (!found) problems.push(createI18n(ctx.locale).t('search.memberMissing', { name: f.value }));
         else (f.key === 'from' ? (params.author_id ??= []) : (params.mentions ??= [])).push(found.id);
         break;
       }
       case 'in': {
         const name = f.value.replace(/^#/, '');
         const found = ctx.channels.find((c) => same(c.name, name) || c.id === name);
-        if (!found) problems.push(`No channel named "${name}"`);
+        if (!found) problems.push(createI18n(ctx.locale).t('search.channelMissing', { name }));
         else (params.channel_id ??= []).push(found.id);
         break;
       }
       case 'has':
         if ((HAS_KINDS as readonly string[]).includes(f.value.toLowerCase())) (params.has ??= []).push(f.value.toLowerCase() as HasKind);
-        else problems.push(`has: expects ${HAS_KINDS.join(', ')}`);
+        else problems.push(createI18n(ctx.locale).t('search.hasValues', { values: HAS_KINDS.join(', ') }));
         break;
       case 'pinned':
         if (f.value === 'true' || f.value === 'false') params.pinned = f.value === 'true';
-        else problems.push('pinned: expects true or false');
+        else problems.push(createI18n(ctx.locale).t('search.pinnedValues'));
         break;
       default: {
         const bounds = dateBounds(f.key, f.value);
-        if (!bounds) problems.push(`${f.key}: expects a date like 2026-10-31`);
+        if (!bounds) problems.push(createI18n(ctx.locale).t('search.dateValue', { key: f.key }));
         else {
           if (bounds.min && (!params.min_id || compareSnowflakes(bounds.min, params.min_id) > 0)) params.min_id = bounds.min;
           if (bounds.max && (!params.max_id || compareSnowflakes(bounds.max, params.max_id) < 0)) params.max_id = bounds.max;

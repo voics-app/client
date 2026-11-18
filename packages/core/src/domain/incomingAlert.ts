@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Whether an incoming message deserves an alert (sound, notification, in-app banner) and the text to show for it. */
 import type { GuildNotificationSettings } from '../contracts/rest';
 import { parseMarkdown, toPlainText } from './markdown';
@@ -35,7 +36,7 @@ export function incomingAlert(input: IncomingAlertInput): boolean {
 }
 
 /** The message as plain text for a notification, at most `limit` characters; private messages never show their text. */
-export function alertBody(message: { content: string; deliveryMode?: string }, limit = 180): string {
-  if (message.deliveryMode === 'ephemeral' || message.deliveryMode === 'p2p') return 'Sent a private message';
-  return toPlainText(parseMarkdown(message.content)).slice(0, limit) || 'Sent an attachment';
+export function alertBody(message: { content: string; deliveryMode?: string }, limit = 180, locale?: string): string {
+  if (message.deliveryMode === 'ephemeral' || message.deliveryMode === 'p2p') return createI18n(locale).catalogText('Sent a private message');
+  return toPlainText(parseMarkdown(message.content)).slice(0, limit) || createI18n(locale).catalogText('Sent an attachment');
 }

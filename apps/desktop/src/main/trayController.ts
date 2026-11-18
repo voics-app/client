@@ -10,6 +10,7 @@ export interface TrayController {
   apply(settings: DesktopSettings): void;
   setActivity(counts: ActivityCounts): void;
   setVoice(state: VoiceState): void;
+  setLocale(locale: string): void;
 }
 
 export function createTrayController(options: {
@@ -18,16 +19,19 @@ export function createTrayController(options: {
   e2e: boolean;
   /** Re-applies the unread state to a freshly created tray (icon variant and tooltip). */
   onCreated: (counts: ActivityCounts) => void;
+  locale?: string;
 }): TrayController {
   let tray: TrayHandle | null = null;
   let activity: ActivityCounts = { mentions: 0, unread: 0 };
   let voice: VoiceState = { muted: false, deafened: false };
+  let locale = options.locale ?? 'en-US';
   return {
     handle: () => tray,
     apply(settings) {
       const wanted = shouldShowTray(settings, options.e2e);
       if (wanted && !tray) {
         tray = createTray(options.getWindow, options.actions);
+        tray.setLocale(locale);
         tray.setActivity(activity);
         tray.setVoice(voice);
         options.onCreated(activity);
@@ -46,6 +50,10 @@ export function createTrayController(options: {
     setVoice(state) {
       voice = state;
       tray?.setVoice(state);
+    },
+    setLocale(next) {
+      locale = next;
+      tray?.setLocale(locale);
     },
   };
 }

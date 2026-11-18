@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 export const MAX_MESSAGE_LENGTH = 2000;
 export const COUNTER_THRESHOLD = 200;
 export const MAX_FILES = 10;
@@ -18,10 +19,10 @@ export function slowmodeRemaining(rateLimitPerUser: number | undefined, lastSent
   return Math.max(0, Math.ceil((lastSentAt + rateLimitPerUser * 1000 - nowMs) / 1000));
 }
 
-export function formatCountdown(seconds: number): string {
-  if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-  if (seconds >= 60) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-  return `${seconds}s`;
+export function formatCountdown(seconds: number, locale?: string): string {
+  if (seconds >= 3600) return createI18n(locale).t('duration.hoursMinutes', { hours: Math.floor(seconds / 3600), minutes: Math.floor((seconds % 3600) / 60) });
+  if (seconds >= 60) return createI18n(locale).t('duration.minutesSeconds', { minutes: Math.floor(seconds / 60), seconds: seconds % 60 });
+  return createI18n(locale).t('duration.seconds', { seconds });
 }
 
 /** Anything with a byte size: a DOM File, or a picked file on another platform. */
@@ -36,13 +37,13 @@ export interface FileLimitResult<F extends SizedFile = SizedFile> {
 }
 
 /** Applies the per-message file count and per-file size limits to dropped or pasted files. */
-export function acceptFiles<F extends SizedFile>(existing: readonly F[], incoming: readonly F[], maxBytes: number, allowEmpty: boolean, maxFiles = MAX_FILES): FileLimitResult<F> {
+export function acceptFiles<F extends SizedFile>(existing: readonly F[], incoming: readonly F[], maxBytes: number, allowEmpty: boolean, maxFiles = MAX_FILES, locale?: string): FileLimitResult<F> {
   const problems: string[] = [];
   const sized = incoming.filter((f) => f.size <= maxBytes && (allowEmpty || f.size > 0));
   const rejected = incoming.length - sized.length;
-  if (rejected > 0) problems.push(`${rejected === 1 ? 'A file is' : `${rejected} files are`} empty or larger than ${Math.round(maxBytes / 1048576)} MB.`);
+  if (rejected > 0) problems.push(createI18n(locale).t('files.rejected', { count: rejected, max: Math.round(maxBytes / 1048576) }));
   const room = Math.max(0, maxFiles - existing.length);
-  if (sized.length > room) problems.push(`You can attach at most ${maxFiles} files to a message.`);
+  if (sized.length > room) problems.push(createI18n(locale).t('files.limit', { max: maxFiles }));
   return { accepted: sized.slice(0, room), problems };
 }
 

@@ -8,7 +8,7 @@ import { scopeKeyOf, searchTarget, submitSearch } from '../../app/searchActions'
 
 /** Search box of the channel header: Ctrl+F focuses it, `from:`/`in:`/`has:` ... suggest as you type, Enter searches. */
 export function SearchBar({ channelId }: { channelId: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const input = useSearchStore((s) => s.input);
   const scopeKey = useSearchStore((s) => s.scopeKey);
   const set = useSearchStore((s) => s.set);
@@ -38,8 +38,8 @@ export function SearchBar({ channelId }: { channelId: string }) {
   const suggestions = useMemo(() => {
     if (!open) return [];
     const target = searchTarget(channelId);
-    return target ? suggest(input, target.candidates) : [];
-  }, [open, input, channelId]);
+    return target ? suggest(input, { ...target.candidates, locale }) : [];
+  }, [open, input, channelId, locale]);
 
   const choose = (index: number) => {
     const picked = suggestions[index];

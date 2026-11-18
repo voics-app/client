@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { setDmPinned as coreSetDmPinned } from '@discordy/core/application/dmCommands';
 import { MAX_PINNED_PER_GUILD, pinnedChannelsOf, withPin, withoutPin } from '@discordy/core/domain/pins';
@@ -10,7 +11,7 @@ async function savePins(patch: Pick<UserSettings, 'pinned_dm_channel_ids' | 'pin
   const session = useSessionStore.getState();
   const previous = { pinned_dm_channel_ids: session.settings.pinned_dm_channel_ids, pinned_channel_ids: session.settings.pinned_channel_ids };
   session.setSettings(patch);
-  const saved = await attempt(() => getRuntime().api.updateSettings(patch), 'Could not save pins');
+  const saved = await attempt(() => getRuntime().api.updateSettings(patch), getI18n().catalogText("Could not save pins"));
   if (!saved) useSessionStore.getState().setSettings(previous);
 }
 
@@ -21,7 +22,7 @@ export function pinnedIdsIn(guildId: string): string[] {
 }
 
 export async function setDmPinned(channelId: string, pinned: boolean): Promise<void> {
-  await attempt(() => coreSetDmPinned(getRuntime().api, channelId, pinned), 'Could not save pins');
+  await attempt(() => coreSetDmPinned(getRuntime().api, channelId, pinned), getI18n().catalogText("Could not save pins"));
 }
 
 export async function setChannelPinned(guildId: string, channelId: string, pinned: boolean): Promise<void> {

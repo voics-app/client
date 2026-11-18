@@ -80,7 +80,7 @@ const ICONS = { text: Hash, voice: SpeakerHigh, announcement: Megaphone, forum: 
 let draggedOccupant: VoiceState | null = null;
 
 export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | null; state: VoiceState; speaking: number }) {
-  const { t: msg } = useI18n();
+  const { t: msg, catalogText } = useI18n();
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[state.user_id] : undefined)) ?? state.member;
   const user = member?.user;
   const name = user ? displayName(user, member?.nick) : state.user_id;
@@ -114,8 +114,8 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
       <UserAvatar id={state.user_id} name={name} avatar={user?.avatar} guildId={guildId} member={member} size={22} speaking={speaking} />
       <span className="occupant-name">{name}</span>
       <span className="occupant-flags">
-        {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={MUTE_LABEL[flags.mute]} />}
-        {flags.deaf && <SpeakerSlash size={14} weight="fill" className={`occupant-flag is-${flags.deaf}`} aria-label={DEAF_LABEL[flags.deaf]} />}
+        {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={catalogText(MUTE_LABEL[flags.mute])} />}
+        {flags.deaf && <SpeakerSlash size={14} weight="fill" className={`occupant-flag is-${flags.deaf}`} aria-label={catalogText(DEAF_LABEL[flags.deaf])} />}
         {flags.camera && <VideoCamera size={14} weight="fill" className="occupant-flag" aria-label={msg("settings.channelsidebar.camera.on")} />}
         {flags.live && (
           <span className="occupant-live" title={msg("settings.channelsidebar.streaming")}>
