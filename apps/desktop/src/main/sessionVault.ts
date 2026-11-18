@@ -20,9 +20,9 @@ export const sessionVault = {
       return null;
     }
   },
-  save(session: StoredSession): void {
+  async save(session: StoredSession): Promise<void> {
     if (!isStoredSession(session)) throw new Error('invalid session payload');
-    writeSecret(FILE(), Buffer.from(JSON.stringify(session), 'utf8'));
+    await writeSecret(FILE(), Buffer.from(JSON.stringify(session), 'utf8'));
   },
   clear(): void {
     removeFile(FILE());

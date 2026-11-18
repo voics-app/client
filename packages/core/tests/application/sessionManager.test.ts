@@ -38,6 +38,117 @@ function runtime(): SessionRuntime & { connect: ReturnType<typeof vi.fn> } {
 
 const stored: StoredSession = { accessToken: 'old', refreshToken: 'r0', userId: '1', deviceId: null };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+describe('refresh crash recovery', () => {
+  const id = 'ae4b0d8e-06d1-4b72-9401-44f83fc966bf';
+  const next = { access_token: 'new-access', refresh_token: 'new-refresh' };
+  const make = async (v = vault(stored)) => {
+    const rt = runtime();
+    const manager = new SessionManager({ vault: v, runtime: rt, identity: async () => null });
+    await manager.boot();
+    return { manager, rt, v };
+  };
+
+  it('does not send a refresh if saving the recovery identity fails', async () => {
+    const { manager, rt, v } = await make();
+    vi.mocked(v.save).mockRejectedValueOnce(new Error('vault unavailable'));
+    const rotate = vi.fn(async () => next);
+    await expect(manager.renewTokens(rotate, () => id)).rejects.toThrow('vault unavailable');
+    expect(rotate).not.toHaveBeenCalled();
+    expect(v.saved).toEqual(stored);
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: 'old', refresh: 'r0' });
+  });
+
+  it('keeps the same recovery identity across a failed response and process restart', async () => {
+    const { manager, v } = await make();
+    const first = vi.fn(async (_body: { refresh_token: string; request_id: string }) => { throw new Error('response lost'); });
+    await expect(manager.renewTokens(first, () => id)).rejects.toThrow('response lost');
+    expect(v.saved).toEqual({ ...stored, refreshRequestId: id });
+    const restarted = (await make(v)).manager;
+    const second = vi.fn(async () => next);
+    await restarted.renewTokens(second, () => 'must-not-generate-another-id');
+    expect(second).toHaveBeenCalledWith(first.mock.calls[0]![0]);
+    expect(v.saved).toEqual({ ...stored, accessToken: 'new-access', refreshToken: 'new-refresh' });
+  });
+
+  it('retries the original request if persisting its successor failed', async () => {
+    const { manager, rt, v } = await make();
+    vi.mocked(v.save).mockImplementationOnce(async (s) => { v.saved = s; }).mockRejectedValueOnce(new Error('disk full'));
+    const rotate = vi.fn(async () => next);
+    await expect(manager.renewTokens(rotate, () => id)).rejects.toThrow('disk full');
+    expect(v.saved).toEqual({ ...stored, refreshRequestId: id });
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: 'old', refresh: 'r0' });
+    await manager.renewTokens(rotate, () => 'must-not-generate-another-id');
+    expect(rotate.mock.calls[1]).toEqual(rotate.mock.calls[0]);
+    expect(v.saved).not.toHaveProperty('refreshRequestId');
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: 'new-access', refresh: 'new-refresh' });
+  });
+
+  it('keeps the recovery identity when the refresh response has missing credentials', async () => {
+    const { manager, rt, v } = await make();
+    await expect(manager.renewTokens(async () => ({ access_token: '', refresh_token: '' }), () => id)).rejects.toThrow();
+    expect(v.saved).toEqual({ ...stored, refreshRequestId: id });
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: 'old', refresh: 'r0' });
+    const retry = vi.fn(async () => next);
+    await manager.renewTokens(retry, () => 'must-not-generate-another-id');
+    expect(retry).toHaveBeenCalledWith({ refresh_token: 'r0', request_id: id });
+  });
+
+  it('coalesces overlapping renewals and changes memory only after the successor save finishes', async () => {
+    const { manager, rt, v } = await make();
+    const saving = deferred<void>();
+    const saved = deferred<void>();
+    vi.mocked(v.save).mockImplementation(async (s) => {
+      if (s.refreshToken === next.refresh_token) { saving.resolve(); await saved.promise; }
+      v.saved = s;
+    });
+    const rotate = vi.fn(async () => next);
+    const generate = vi.fn(() => id);
+    const a = manager.renewTokens(rotate, generate);
+    const b = manager.renewTokens(rotate, generate);
+    await saving.promise;
+    expect(v.saved).toEqual({ ...stored, refreshRequestId: id });
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: 'old', refresh: 'r0' });
+    saved.resolve();
+    await expect(Promise.all([a, b])).resolves.toEqual(['new-access', 'new-access']);
+    expect(rotate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('cannot restore credentials when logout completes during a refresh request', async () => {
+    const { manager, rt, v } = await make();
+    const started = deferred<void>();
+    const response = deferred<typeof next>();
+    const pending = manager.renewTokens(async () => { started.resolve(); return response.promise; }, () => id);
+    await started.promise;
+    await manager.logout();
+    response.resolve(next);
+    await expect(pending).resolves.toBeNull();
+    expect(v.saved).toBeNull();
+    expect(rt.setTokens).toHaveBeenLastCalledWith({ access: null, refresh: null });
+  });
+
+  it('serializes logout behind a pending vault save and sends no stale request', async () => {
+    const { manager, v } = await make();
+    const started = deferred<void>();
+    const finish = deferred<void>();
+    vi.mocked(v.save).mockImplementationOnce(async (s) => { started.resolve(); await finish.promise; v.saved = s; });
+    const rotate = vi.fn(async () => next);
+    const pending = manager.renewTokens(rotate, () => id);
+    await started.promise;
+    const expired = manager.sessionExpired();
+    finish.resolve();
+    await Promise.all([pending, expired]);
+    expect(rotate).not.toHaveBeenCalled();
+    expect(v.saved).toBeNull();
+  });
+});
+
 describe('SessionManager gateway rejection', () => {
   beforeEach(() => useSessionStore.getState().reset());
   afterEach(() => vi.useRealTimers());
