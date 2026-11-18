@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 import { brand } from './brandConfig';
 import { landingOrigin } from './inviteLinks';
 import { ChannelType, type GuildTemplate } from '../contracts/rest';
@@ -72,12 +73,11 @@ export function previewTemplate(template: GuildTemplate): TemplatePreview {
 }
 
 /** One-line summary such as "9 channels, 2 roles". */
-export function templateSummary(template: GuildTemplate): string {
+export function templateSummary(template: GuildTemplate, locale?: string): string {
   const { roles, channelCount } = previewTemplate(template);
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  return `${plural(channelCount, 'channel')}, ${plural(roles.length, 'role')}`;
+  return createI18n(locale).t("template.summary", { channels: channelCount, roles: roles.length });
 }
 
-export function usageLabel(count: number): string {
-  return count === 1 ? 'Used 1 time' : `Used ${count} times`;
+export function usageLabel(count: number, locale?: string): string {
+  return createI18n(locale).t("template.uses", { count });
 }

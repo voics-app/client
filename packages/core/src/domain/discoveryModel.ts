@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Presentation rules for server discovery (api#74). */
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -12,9 +13,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 /** A readable label for a category slug; unknown slugs are title-cased so new server categories still render. */
-export function categoryLabel(slug: string): string {
+export function categoryLabel(slug: string, locale?: string): string {
   const known = CATEGORY_LABELS[slug];
-  if (known) return known;
+  if (known) return createI18n(locale).catalogText(known);
   return slug
     .split('_')
     .filter(Boolean)
@@ -29,8 +30,8 @@ const BLOCKER_MESSAGES: Record<string, string> = {
   NSFW_NOT_ALLOWED: 'Servers with age-restricted channels cannot be listed.',
 };
 
-export function blockerMessage(code: string): string {
-  return BLOCKER_MESSAGES[code] ?? 'This server does not meet the listing requirements.';
+export function blockerMessage(code: string, locale?: string): string {
+  return createI18n(locale).catalogText(BLOCKER_MESSAGES[code] ?? 'This server does not meet the listing requirements.');
 }
 
 /** Splits a comma/space separated tag field into at most `max` normalised tags. */
@@ -44,6 +45,6 @@ export function parseTags(input: string, max = 5): string[] {
 }
 
 /** "1,234 members" / "1 member". */
-export function memberCountLabel(count: number): string {
-  return `${count.toLocaleString('en-US')} ${count === 1 ? 'member' : 'members'}`;
+export function memberCountLabel(count: number, locale?: string): string {
+  return createI18n(locale).t("common.members", { count });
 }

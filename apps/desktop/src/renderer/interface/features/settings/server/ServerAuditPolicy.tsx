@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Permission } from '@discordy/core/contracts/permissions';
@@ -11,6 +12,7 @@ import { Field, Select, SettingRow, Switch } from '../../../shared/ui/Form';
 type Policy = { audit_log_enabled: boolean; audit_log_retention_days: 30 | 90 | 365 };
 
 export function ServerAuditPolicy({ guildId }: { guildId: string }) {
+  const { t: msg } = useI18n();
   const qc = useQueryClient();
   const allowed = can(useGuildPermissions(guildId), Permission.ADMINISTRATOR);
   const key = ['guild', guildId, 'audit-policy'];
@@ -41,23 +43,23 @@ export function ServerAuditPolicy({ guildId }: { guildId: string }) {
     }
   };
 
-  if (guild.isPending) return <p role="status">Loading audit settings…</p>;
-  if (guild.isError) return <div><p className="field-error" role="alert">Could not load audit settings. {errorMessage(guild.error)}</p><Button onClick={() => void guild.refetch()}>Try again</Button></div>;
+  if (guild.isPending) return <p role="status">{msg("settings.serverauditpolicy.loading.audit.settings")}</p>;
+  if (guild.isError) return <div><p className="field-error" role="alert">{msg("settings.serverauditpolicy.could.not.load.audit.settings")} {errorMessage(guild.error)}</p><Button onClick={() => void guild.refetch()}>{msg("common.retry")}</Button></div>;
   return (
-    <section className="overview-section" aria-label="Audit settings">
-      <SettingRow title="Record audit log" description="Record moderation and server changes. Changes to these audit settings are always recorded.">
-        <Switch label="Record audit log" checked={policy.audit_log_enabled} disabled={!allowed || saving} onChange={(on) => change({ audit_log_enabled: on })} />
+    <section className="overview-section" aria-label={msg("settings.serverauditpolicy.audit.settings")}>
+      <SettingRow title={msg("settings.serverauditpolicy.record.audit.log")} description={msg("settings.serverauditpolicy.record.moderation.and.server.changes.changes.to.these.audit")}>
+        <Switch label={msg("settings.serverauditpolicy.record.audit.log")} checked={policy.audit_log_enabled} disabled={!allowed || saving} onChange={(on) => change({ audit_log_enabled: on })} />
       </SettingRow>
-      {!current.audit_log_enabled && <p role="status">Audit logging is off. Earlier entries remain available until their retention period ends.</p>}
-      <Field label="Keep audit entries" hint="Older entries are removed automatically. Shortening this period removes entries outside the new window.">
+      {!current.audit_log_enabled && <p role="status">{msg("settings.serverauditpolicy.audit.logging.is.off.earlier.entries.remain.available.until")}</p>}
+      <Field label={msg("settings.serverauditpolicy.keep.audit.entries")} hint={msg("settings.serverauditpolicy.older.entries.are.removed.automatically.shortening.this.period.removes")}>
         {(id) => <Select id={id} value={policy.audit_log_retention_days} disabled={!allowed || saving} onChange={(e) => change({ audit_log_retention_days: Number(e.target.value) as Policy['audit_log_retention_days'] })}>
-          {[30, 90, 365].map((days) => <option value={days} key={days}>{days} days</option>)}
+          {[30, 90, 365].map((days) => <option value={days} key={days}>{msg("common.days", { count: days })}</option>)}
         </Select>}
       </Field>
-      <p className="field-hint">Roles with View audit log can read entries. Only the owner and administrators can change logging and retention.</p>
+      <p className="field-hint">{msg("settings.serverauditpolicy.roles.with.view.audit.log.can.read.entries.only")}</p>
       {error && <p className="field-error" role="alert">{error}</p>}
-      {allowed && <div className="row"><Button variant="primary" loading={saving} disabled={!dirty} onClick={() => void save()}>Save audit settings</Button>{dirty && <Button variant="ghost" disabled={saving} onClick={() => { setDraft(null); setError(null); }}>Reset</Button>}</div>}
-      {saved && <p role="status">Audit settings saved.</p>}
+      {allowed && <div className="row"><Button variant="primary" loading={saving} disabled={!dirty} onClick={() => void save()}>{msg("settings.serverauditpolicy.save.audit.settings")}</Button>{dirty && <Button variant="ghost" disabled={saving} onClick={() => { setDraft(null); setError(null); }}>{msg("common.reset")}</Button>}</div>}
+      {saved && <p role="status">{msg("settings.serverauditpolicy.audit.settings.saved")}</p>}
     </section>
   );
 }

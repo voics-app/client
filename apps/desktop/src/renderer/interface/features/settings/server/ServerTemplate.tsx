@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { templateShareLink, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
@@ -11,6 +12,7 @@ import { Skeleton } from '../../../shared/ui/Misc';
 
 /** Share this server's structure as a template link (one template per server). */
 export function ServerTemplate({ guildId }: { guildId: string }) {
+  const { t: msg, locale } = useI18n();
   const qc = useQueryClient();
   const apiUrl = useConnectionStore((s) => s.apiUrl);
   const key = ['guild', guildId, 'templates'];
@@ -43,42 +45,42 @@ export function ServerTemplate({ guildId }: { guildId: string }) {
 
   return (
     <div className="settings-page">
-      <h1>Server template</h1>
-      <p className="page-sub">Share this server&apos;s channels and roles. Anyone with the link can start a new server from it; members and messages are never copied.</p>
+      <h1>{msg("settings.servertemplate.server.template")}</h1>
+      <p className="page-sub">{msg("settings.servertemplate.share.this.server.s.channels.and.roles.anyone.with")}</p>
       {templates.isPending ? (
         <Skeleton height={120} radius={12} />
       ) : templates.isError ? (
-        <div><p role="alert">Could not load this server&apos;s template. {errorMessage(templates.error)}</p><Button onClick={() => void templates.refetch()}>Try again</Button></div>
+        <div><p role="alert">{msg("settings.servertemplate.could.not.load.this.server.s.template")} {errorMessage(templates.error)}</p><Button onClick={() => void templates.refetch()}>{msg("common.retry")}</Button></div>
       ) : (
         <div className="stack">
           {template && (
             <>
-              <p className="setting-desc">{templateSummary(template)} · {usageLabel(template.usage_count)}</p>
-              {template.is_dirty && <p role="status">This server has changed. Sync to update the channels and roles in the shared template.</p>}
+              <p className="setting-desc">{templateSummary(template, locale)} · {usageLabel(template.usage_count, locale)}</p>
+              {template.is_dirty && <p role="status">{msg("settings.servertemplate.this.server.has.changed.sync.to.update.the.channels")}</p>}
               <div className="invite-link">
-                <Input readOnly aria-label="Template link" value={link} onFocus={(e) => e.currentTarget.select()} />
-                <Button variant="primary" onClick={() => void copyText(link, 'Template link copied')}>Copy</Button>
+                <Input readOnly aria-label={msg("settings.servertemplate.template.link")} value={link} onFocus={(e) => e.currentTarget.select()} />
+                <Button variant="primary" onClick={() => void copyText(link, msg("settings.servertemplate.template.link.copied"))}>{msg("settings.backupcodeslist.copy")}</Button>
               </div>
             </>
           )}
-          <Field label="Template name">
+          <Field label={msg("settings.servertemplate.template.name")}>
             {(id) => <Input id={id} value={name} maxLength={100} disabled={busy} onChange={(e) => setDraft({ guildId, name: e.target.value, description })} />}
           </Field>
-          <Field label="Description" hint="Up to 120 characters.">
+          <Field label={msg("settings.serveroverview.description")} hint={msg("settings.servertemplate.up.to.120.characters")}>
             {(id) => <Input id={id} value={description} maxLength={120} disabled={busy} onChange={(e) => setDraft({ guildId, name, description: e.target.value })} />}
           </Field>
-          {dirty && <p className="setting-desc" role="status">You have unsaved template changes. Save or reset before leaving.</p>}
+          {dirty && <p className="setting-desc" role="status">{msg("settings.servertemplate.you.have.unsaved.template.changes.save.or.reset.before")}</p>}
           <div className="discovery-actions">
             {template ? (
               <>
-                <Button variant="primary" loading={busy} disabled={name.trim().length === 0} onClick={() => void run(() => api.modifyGuildTemplate(guildId, template.code, { name: name.trim(), description: description.trim() || null }), 'Could not save the template', { resetDraft: true })}>Save</Button>
-                <Button variant="ghost" loading={busy} onClick={() => void run(() => api.syncGuildTemplate(guildId, template.code), 'Could not sync the template')}>Sync with this server</Button>
-                <Button variant="ghost" loading={busy} onClick={() => void run(() => api.deleteGuildTemplate(guildId, template.code).then(() => true), 'Could not delete the template', { resetDraft: true })}>Delete template</Button>
+                <Button variant="primary" loading={busy} disabled={name.trim().length === 0} onClick={() => void run(() => api.modifyGuildTemplate(guildId, template.code, { name: name.trim(), description: description.trim() || null }), msg("settings.servertemplate.could.not.save.the.template"), { resetDraft: true })}>{msg("common.save")}</Button>
+                <Button variant="ghost" loading={busy} onClick={() => void run(() => api.syncGuildTemplate(guildId, template.code), msg("settings.servertemplate.could.not.sync.the.template"))}>{msg("settings.servertemplate.sync.with.this.server")}</Button>
+                <Button variant="ghost" loading={busy} onClick={() => void run(() => api.deleteGuildTemplate(guildId, template.code).then(() => true), msg("settings.servertemplate.could.not.delete.the.template"), { resetDraft: true })}>{msg("settings.servertemplate.delete.template")}</Button>
               </>
             ) : (
-              <Button variant="primary" loading={busy} disabled={name.trim().length === 0} onClick={() => void run(() => api.createGuildTemplate(guildId, { name: name.trim(), description: description.trim() || null }), 'Could not create the template', { resetDraft: true })}>Generate template link</Button>
+              <Button variant="primary" loading={busy} disabled={name.trim().length === 0} onClick={() => void run(() => api.createGuildTemplate(guildId, { name: name.trim(), description: description.trim() || null }), msg("settings.servertemplate.could.not.create.the.template"), { resetDraft: true })}>{msg("settings.servertemplate.generate.template.link")}</Button>
             )}
-            {dirty && <Button variant="ghost" disabled={busy} onClick={() => setDraft(null)}>Reset</Button>}
+            {dirty && <Button variant="ghost" disabled={busy} onClick={() => setDraft(null)}>{msg("common.reset")}</Button>}
           </div>
         </div>
       )}

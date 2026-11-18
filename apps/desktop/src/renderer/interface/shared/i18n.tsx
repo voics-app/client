@@ -23,3 +23,6 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 }
 
 export const useI18n = () => useContext(I18nContext);
+
+/** Read the current account at action time for menus/commands outside React. Never caches a previous account. */
+export const getI18n = () => createI18n(resolveLocale(useSessionStore.getState().settings.locale, navigator.languages));

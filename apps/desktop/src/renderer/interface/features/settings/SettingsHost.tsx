@@ -123,6 +123,7 @@ function UserSettings({ tab, profileGuildId }: { tab: UserSettingsTab; profileGu
 }
 
 function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettingsTab }) {
+  const { t, catalogText } = useI18n();
   const open = useUiStore((s) => s.openSettings);
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -132,10 +133,10 @@ function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettings
   const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
   const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} /> }[selectedTab];
   return (
-    <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
+    <Layout title={t("settings.serverTitle")} nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
       const entries = tabs.filter((entry) => entry.group === group);
-      return entries.length > 0 && <NavGroup key={group} title={group === 'Server' ? guild.name : group}>{entries.map((entry) => <NavItem key={entry.id} active={selectedTab === entry.id} onClick={guarded(() => open({ kind: 'server', guildId, tab: entry.id }))}>{entry.label}</NavItem>)}</NavGroup>;
-    })}</>} footer={guild.owner_id === me ? <div className="settings-group settings-logout"><NavItem active={false} danger onClick={guarded(() => confirmDeleteServer(guildId))}>Delete server</NavItem></div> : undefined}>
+      return entries.length > 0 && <NavGroup key={group} title={group === 'Server' ? guild.name : catalogText(group)}>{entries.map((entry) => <NavItem key={entry.id} active={selectedTab === entry.id} onClick={guarded(() => open({ kind: 'server', guildId, tab: entry.id }))}>{catalogText(entry.label)}</NavItem>)}</NavGroup>;
+    })}</>} footer={guild.owner_id === me ? <div className="settings-group settings-logout"><NavItem active={false} danger onClick={guarded(() => confirmDeleteServer(guildId))}>{t("settings.deleteServer")}</NavItem></div> : undefined}>
       {body}
     </Layout>
   );
