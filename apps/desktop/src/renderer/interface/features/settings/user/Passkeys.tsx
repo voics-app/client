@@ -8,7 +8,7 @@ import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, SettingRow } from '../../../shared/ui/Form';
 import { Modal } from '../../../shared/ui/Modal';
-import { BackupCodesList } from './AccountSecurity';
+import { BackupCodesList } from './BackupCodesList';
 
 type Edit = { kind: 'add' } | { kind: 'rename' | 'remove'; key: Passkey };
 

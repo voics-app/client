@@ -131,4 +131,3 @@ Tests run locally, not in CI. Install [lefthook](https://github.com/evilmartians
 # Passkeys
 
 Desktop account settings support passkey enrollment, naming and removal; password sign-in offers registered passkeys as a second factor. The ceremony uses the system browser at an explicitly configured HTTPS relying-party origin. See [desktop passkeys](docs/passkeys.md) for configuration, recovery, security boundaries, the isolated browser/API test and OS/mobile acceptance limits.
-
