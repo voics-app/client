@@ -12,6 +12,9 @@ uses the public `template.html?code=...` web page so recipients can preview it
 before installing the app. Existing app deep links remain supported. An
 out-of-date snapshot is labelled; load failures offer retry without showing a
 misleading empty form. Requires the paired api#44 and website completion changes.
+Template name and description drafts survive data refreshes and failed saves.
+Unsaved edits block normal settings navigation until saved or reset; in-flight
+template actions keep the fields and navigation guarded until they finish.
 
 ## Layout
 
