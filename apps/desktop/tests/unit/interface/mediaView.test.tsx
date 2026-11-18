@@ -11,7 +11,7 @@ import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
 
 const editMessage = vi.fn(async () => ({}));
-vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { editMessage } }) }));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { editMessage }, interactions: { loadGuildCommands: async () => undefined } }) }));
 
 const G = 'g1';
 const user = (id: string) => ({ id, username: id, global_name: null, avatar: null });
@@ -66,6 +66,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('attachments', () => {
+  it('uses explicit cleared flags even when the immutable filename has a spoiler prefix', () => {
+    renderMessage(message({ attachments: [image('a', { filename: 'SPOILER_a.png', flags: 0 })] }));
+    expect(screen.getByRole('button', { name: 'Open a.png' })).toBeTruthy();
+    expect(screen.queryByText('Spoiler')).toBeNull();
+  });
+
+  it('does not expose other hidden spoilers through the lightbox carousel', () => {
+    renderMessage(message({ attachments: [image('a'), image('b', { flags: 8 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open a.png' }));
+    expect(useLightboxStore.getState().items.map((item) => item.filename)).toEqual(['a.png']);
+  });
+
+  it('requires reveal before a spoiler file download is available', () => {
+    renderMessage(message({ attachments: [{ id: 'p', filename: 'notes.pdf', content_type: 'application/pdf', size: 10, url: 'https://cdn.example/notes.pdf', flags: 8 }] }));
+    expect(screen.queryByRole('link', { name: /notes.pdf/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Spoiler: notes.pdf/ }));
+    expect(screen.getByRole('link', { name: /notes.pdf/ })).toBeTruthy();
+  });
+
+  it('offers metadata editing only to the author of a sent standard message', () => {
+    seed('bob');
+    const { container } = renderMessage(message({ attachments: [image('a')] }));
+    fireEvent.contextMenu(container.querySelector('[data-message-id="m1"]')!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit Attachments' }));
+    expect(screen.getByRole('dialog', { name: 'Edit attachments' })).toBeTruthy();
+  });
   it('blurs spoilers until clicked, then opens the viewer on the next click', () => {
     renderMessage(message({ attachments: [image('a', { filename: 'SPOILER_a.png' })] as never }));
     const tile = screen.getByRole('button', { name: /Spoiler: a\.png/ });

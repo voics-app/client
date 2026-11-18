@@ -5,6 +5,10 @@
  */
 import type { SessionDescription } from '../contracts/voice';
 
+// The SFU forwards encoded frames without transcoding. All shipped platforms
+// must choose the same codec until the protocol negotiates per-source codecs.
+export const DEFAULT_VIDEO_CODEC = 'VP8';
+
 export interface AudioSection {
   mid: string;
   payloadType: number;
@@ -59,8 +63,11 @@ const SUPPORTED_EXTENSIONS = new Set([
   'urn:ietf:params:rtp-hdrext:sdes:mid',
   'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
   'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
-  'urn:3gpp:video-orientation',
 ]);
+
+// The SFU does not carry CVO through its decoded/forwarded packet model. Do not
+// acknowledge that extension: libwebrtc must apply rotation to the frames before
+// encoding, otherwise portrait phone video reaches desktop sideways.
 
 function splitSections(sdp: string): { session: string[]; media: RawSection[] } {
   const lines = sdp.split(/\r?\n/).filter((l) => l.length > 0);
@@ -106,7 +113,7 @@ function extmapsOf(lines: readonly string[]): { id: number; uri: string }[] {
     });
 }
 
-export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): ParsedOffer {
+export function parseLocalOffer(sdp: string, preferredVideoCodec: string = DEFAULT_VIDEO_CODEC): ParsedOffer {
   const { session, media } = splitSections(sdp);
   const audioRaw = media.find((m) => m.kind === 'audio');
   if (!audioRaw) throw new Error('offer has no audio section');
@@ -186,7 +193,9 @@ export function synthesizeRemoteAnswer(offer: ParsedOffer, remote: SessionDescri
     ...(offer.extmaps[mid] ?? [])
       .filter((e) => SUPPORTED_EXTENSIONS.has(e.uri) && !e.uri.includes('transport-wide-cc'))
       .map((e) => `a=extmap:${e.id} ${e.uri}`),
-    'a=sendrecv',
+    // These sections carry only the client's local microphone/camera to the SFU.
+    // Remote publishers get separate MSID-bearing sections in extendAnswer.
+    'a=recvonly',
     'a=rtcp-mux',
   ];
   const candidates = [

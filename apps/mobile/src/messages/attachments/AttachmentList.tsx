@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
@@ -15,19 +15,26 @@ import { MediaViewer } from './MediaViewer';
 /** The attachments of one message: an image and video grid, then audio and file rows; unsent messages show their upload progress with Cancel. */
 export function AttachmentList({ attachments, messageId, sending }: { attachments: Attachment[]; messageId: string; sending: boolean }) {
   const { width } = useWindowDimensions();
-  const [viewing, setViewing] = useState<number | null>(null);
+  const [viewing, setViewing] = useState<{ items: Attachment[]; index: number } | null>(null);
   const inlineMedia = usePrefsStore((s) => s.inlineMedia);
   const split = splitAttachments(attachments);
   // Chat > Display images and videos: when off, they show as file rows instead of inline.
   const media = inlineMedia ? split.media : [];
   const files = inlineMedia ? split.files : attachments;
+  const openMedia = (index: number) => {
+    const selected = media[index];
+    if (!selected) return;
+    // Opening one revealed tile must not reveal its concealed neighbours.
+    const items = media.filter((item) => item.id === selected.id || !isSpoiler(item));
+    setViewing({ items, index: items.findIndex((item) => item.id === selected.id) });
+  };
   const upload = useUploadStore((s) => s.uploads[messageId]);
   // 16 padding each side, 40 avatar and a 12 gap.
   const available = width - 16 * 2 - 40 - 12;
   return (
     <View style={styles.wrap}>
-      {media.length > 0 && <MediaGrid media={media} width={available} onOpen={setViewing} />}
-      {files.map((file) => (previewKind(file) === 'audio' ? <AudioRow key={file.id} attachment={file} /> : <FileRow key={file.id} attachment={file} />))}
+      {media.length > 0 && <MediaGrid media={media} width={available} onOpen={openMedia} />}
+      {files.map((file) => <FileSpoiler key={file.id} attachment={file}>{previewKind(file) === 'audio' ? <AudioRow attachment={file} /> : <FileRow attachment={file} />}</FileSpoiler>)}
       {sending && upload && (
         <View style={styles.progress}>
           <View style={styles.track}>
@@ -39,8 +46,19 @@ export function AttachmentList({ attachments, messageId, sending }: { attachment
           </Pressable>
         </View>
       )}
-      <MediaViewer items={media} index={viewing} onClose={() => setViewing(null)} />
+      <MediaViewer items={viewing?.items ?? []} index={viewing?.index ?? null} onClose={() => setViewing(null)} />
     </View>
+  );
+}
+
+function FileSpoiler({ attachment, children }: { attachment: Attachment; children: ReactNode }) {
+  const [revealed, setRevealed] = useState(false);
+  if (!isSpoiler(attachment) || revealed) return children;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="Spoiler file, tap to reveal" onPress={() => setRevealed(true)} style={styles.file}>
+      <Ionicons name="eye-off-outline" size={24} color={theme.muted} />
+      <Text style={styles.coverText}>SPOILER</Text>
+    </Pressable>
   );
 }
 

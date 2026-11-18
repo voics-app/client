@@ -19,6 +19,7 @@ import type {
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   PushTokenBody,
@@ -429,7 +430,7 @@ export class DiscordyApi implements ApiPort {
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
   }
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }) {
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);
   }
   deleteMessage(channelId: string, messageId: string) {

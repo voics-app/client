@@ -56,6 +56,7 @@ const config: ExpoConfig = {
     'expo-audio',
     // R8 rule for the LiveKit WebRTC release build (see the file).
     './plugins/withAndroidProguard',
+    './plugins/withIosScreenShare',
     ...(qa ? ['./plugins/withQaCleartext.cjs'] : []),
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',

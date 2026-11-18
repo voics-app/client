@@ -72,12 +72,30 @@ Server settings group implemented pages under Server, People and Moderation. The
 
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.
 
+Native iOS builds include a ReplayKit broadcast extension for screen sharing during calls. Its app group, embedded target, EAS signing metadata and consent bridge are generated from source; see the mobile README for build and real-device acceptance checks. Camera and screen streams use the existing encrypted media path, including safe cancellation of late permission results and delayed native SSRC announcements.
+
 Mobile presence becomes Idle when the app enters the background by default. Explicitly choosing
 Online keeps that status on this device; the intent is stored per account across restarts.
 Idle, DND and Invisible remain as selected. Returning to the foreground restores the current
 status after the gateway resumes. Logout clears the live presence, and a cold start stays
 invisible until READY has loaded the account settings. A supporting gateway retains suspended
 mobile availability for a bounded lease (24 hours by default), without keeping the app running.
+
+## Edit attachment descriptions and spoilers
+
+In a Standard chat, open the menu on one of your sent messages and choose **Edit Attachments**
+(right-click on desktop, long-press on mobile). Each existing file has a description and a
+**Mark as spoiler** switch. Save applies only changed fields; Cancel discards the draft. A failed
+save keeps the draft open for retry and leaves the timeline unchanged. Descriptions accept up to
+1,024 Unicode characters; clearing one removes it. Files cannot be replaced, renamed or removed
+through this editor. Pending messages, other authors' messages and private delivery modes do not
+offer this action.
+
+This uses the metadata PATCH contract in contracts#38 and messages#79. Explicit attachment flags
+are authoritative: clearing a spoiler also reveals a file whose immutable name starts with
+`SPOILER_`; filename fallback applies only to older payloads without flags. File and audio rows
+require a reveal too, and opening a different image does not reveal concealed neighbours in the
+viewer. See [docs/attachment-metadata.md](docs/attachment-metadata.md) for validation and QA steps.
 
 ## Test and lint
 

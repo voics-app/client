@@ -24,6 +24,11 @@ import type { Attachment } from '@discordy/core/contracts/rest';
 const file = (filename: string, content_type?: string, size = 100): Attachment => ({ id: filename, filename, content_type, size, url: `http://cdn/${filename}` });
 
 describe('spoilers', () => {
+  it('lets an explicit cleared server flag override the legacy filename prefix', () => {
+    expect(isSpoiler({ filename: 'SPOILER_a.png', flags: 0 })).toBe(false);
+    expect(isSpoiler({ filename: 'SPOILER_a.png', flags: 16 })).toBe(false);
+    expect(isSpoiler({ filename: 'SPOILER_a.png' })).toBe(true);
+  });
   it('come from the flag or the SPOILER_ prefix', () => {
     expect(isSpoiler({ filename: 'a.png', flags: 8 })).toBe(true);
     expect(isSpoiler({ filename: 'SPOILER_a.png' })).toBe(true);

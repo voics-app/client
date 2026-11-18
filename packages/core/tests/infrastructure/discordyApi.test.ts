@@ -20,6 +20,13 @@ describe('DiscordyApi profile customization', () => {
   });
 });
 
+it('sends partial attachment metadata with explicit clear values', async () => {
+  const { http, request } = fakeHttp();
+  const patch = { attachments: [{ id: '7', description: null, flags: 0 }] };
+  await new DiscordyApi(http).editMessage('12', '17', patch);
+  expect(request).toHaveBeenCalledWith('PATCH', '/channels/12/messages/17', { body: patch });
+});
+
 describe('DiscordyApi permanent invitations', () => {
   it('uses the guild vanity route and sends explicit null when removing', async () => {
     const { http, request } = fakeHttp();

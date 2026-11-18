@@ -31,6 +31,7 @@ import { MembersEdgeSwipe } from './MembersEdgeSwipe';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
+import { AttachmentMetadataSheet } from './AttachmentMetadataSheet';
 import { ReportSheet } from '../report/ReportSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { blockUser } from '../friends/friendActions';
@@ -84,6 +85,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
+  const [editingAttachments, setEditingAttachments] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -364,6 +366,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         </View>
         </KeyboardStickyView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
+        <AttachmentMetadataSheet message={editingAttachments} onClose={() => setEditingAttachments(null)} />
         <ReportSheet target={reporting} onClose={() => setReporting(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <SafetyNumberSheet peerId={safetyPeer} onClose={() => setSafetyPeer(null)} />
@@ -385,6 +388,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onEdit={() => {
             if (selected) setMode({ kind: 'edit', messageId: selected.id, content: selected.content });
+            close();
+          }}
+          onEditAttachments={() => {
+            setEditingAttachments(selected);
             close();
           }}
           onDelete={() => {
