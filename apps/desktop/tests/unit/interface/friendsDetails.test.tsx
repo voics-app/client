@@ -43,6 +43,14 @@ it('shows typing only while the remote participant typing marker is live', () =>
   expect(screen.getByRole('status', { name: 'Friend is typing' })).toBeTruthy();
 });
 
+it('closes a group conversation through the same hide action, without leaving the group', () => {
+  useGuildStore.setState({ channels: { group: { id: 'group', type: 3, name: 'Weekend plans', delivery_mode: 'standard', recipients: [] } } });
+  render(<HomeSidebar />);
+  fireEvent.click(screen.getByRole('button', { name: 'Close conversation with Weekend plans' }));
+  expect(calls.close).toHaveBeenCalledWith('group');
+  expect(useUiStore.getState().dialog).toBeNull();
+});
+
 it('joins a known server voice activity and excludes inaccessible DM activities', () => {
   useVoiceStore.setState({ states: { g: { friend: { user_id: 'friend', guild_id: 'g', channel_id: 'voice' } } } as never });
   const { unmount } = render(<FriendsView />);

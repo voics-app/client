@@ -40,7 +40,7 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
-DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a one-to-one DM hides its row; it does not delete its history. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
+DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 

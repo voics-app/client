@@ -92,7 +92,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
         {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
         <Count value={mentions} tone="danger" />
       </button>
-      {!group && <button type="button" className="dm-close" aria-label={`Close conversation with ${name}`} onClick={() => closeDm(c.id)}><X size={16} /></button>}
+      <button type="button" className="dm-close" aria-label={`Close conversation with ${name}`} onClick={() => closeDm(c.id)}><X size={16} /></button>
       <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} />
     </li>
   );
