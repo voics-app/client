@@ -47,8 +47,22 @@ export async function toggleCamera(): Promise<void> {
 }
 
 /** Flips between the front and the back camera. */
-export function switchCamera(): void {
-  getRuntime().voice?.controller.switchCamera();
+export async function switchCamera(): Promise<void> {
+  try {
+    await getRuntime().voice?.controller.switchCamera();
+  } catch (error) {
+    Alert.alert('Camera', errorMessage(error));
+  }
+}
+
+export function toggleScreenShare(): void {
+  const share = getRuntime().voice?.controller.screenShare;
+  if (!share) return;
+  if (share.status !== 'idle') { void share.stop(); return; }
+  Alert.alert('Share your screen', 'People in this call can see everything on your screen, including notifications. iOS will ask you to start the broadcast. Your microphone keeps its current mute setting.', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Continue', onPress: () => { void share.start().catch((error) => Alert.alert('Screen sharing', errorMessage(error))); } },
+  ]);
 }
 
 /** Opens the call screen for a voice channel or a conversation; the screen joins on its own. With `video` the camera turns on once the call is connected. */

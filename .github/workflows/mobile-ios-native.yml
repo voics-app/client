@@ -1,0 +1,91 @@
+name: mobile-ios-native
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/mobile/modules/voics-screen-share/**'
+      - 'apps/mobile/plugins/withIosScreenShare.js'
+      - 'apps/mobile/plugins/broadcast/**'
+      - 'apps/mobile/scripts/verify-ios-broadcast.mjs'
+      - 'apps/mobile/scripts/ios-simulator-smoke.mjs'
+      - 'apps/mobile/e2e/ios-startup.yml'
+      - '.github/workflows/mobile-ios-native.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      # SDK 58's ExpoModulesJSI sources require the newer Swift ownership checker.
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify the native toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Fetch the existing crypto framework
+        working-directory: apps/mobile
+        env:
+          VOICS_CRYPTO_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/fetch-crypto-framework.mjs
+      - name: Generate and verify the native project
+        working-directory: apps/mobile
+        run: |
+          pnpm exec expo prebuild --platform ios --no-install
+          node scripts/verify-ios-broadcast.mjs
+          pnpm exec expo prebuild --platform ios --no-install
+          node scripts/verify-ios-broadcast.mjs
+      - name: Compile ReplayKit extension independently
+        working-directory: apps/mobile
+        run: xcodebuild -project ios/Voics.xcodeproj -target VoicsBroadcast -configuration Release -sdk iphonesimulator ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
+      - name: Install pods
+        working-directory: apps/mobile/ios
+        run: pod install
+      - name: Compile native app and consent module
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/Voics.xcworkspace -scheme Voics -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/voics-ios" build | tee "$RUNNER_TEMP/voics-ios-build.log"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned Maestro CLI
+        run: |
+          curl --fail --location --retry 3 https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.12.1/maestro.zip --output "$RUNNER_TEMP/maestro.zip"
+          echo '54dbb0716425626604973cbb374c585ca30272375d9ce15177a1152765ddd9d7  '"$RUNNER_TEMP/maestro.zip" | shasum --algorithm 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+      - name: Launch app and verify native sign-in screens
+        working-directory: apps/mobile
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: 'true'
+        run: node scripts/ios-simulator-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-native-build-log
+          path: ${{ runner.temp }}/voics-ios-build.log
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-simulator-smoke
+          path: ${{ runner.temp }}/voics-ios-smoke
+          include-hidden-files: true # Maestro stores its hierarchy/logs below .maestro.
+          if-no-files-found: ignore

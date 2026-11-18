@@ -65,6 +65,24 @@ describe('voiceUrl', () => {
 });
 
 describe('VoiceSession protocol', () => {
+  it('announces a camera once native outbound stats become available after replaceTrack', async () => {
+    const session = makeSession();
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    const sender = FakePeerConnection.latest().transceivers[1]!.sender;
+    let framesStarted = false;
+    sender.getStats = async () => new Map(framesStarted ? [['video', { type: 'outbound-rtp', ssrc: 9001 }]] : []);
+    await session.setCameraTrack({ kind: 'video', stop: () => undefined });
+    framesStarted = true;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(socket.sent.filter((f) => f.op === VoiceOp.VIDEO).at(-1)?.d).toMatchObject({ video_ssrc: 9001 });
+    await session.setCameraTrack(null);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(socket.sent.filter((f) => f.op === VoiceOp.VIDEO).at(-1)?.d).toMatchObject({ video_ssrc: 0, streams: [] });
+    session.close();
+  });
+
   it('follows IDENTIFY, SELECT_PROTOCOL and answers SESSION_DESCRIPTION with a synthesized SDP', async () => {
     const session = makeSession();
     const statuses: string[] = [];

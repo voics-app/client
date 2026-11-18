@@ -35,6 +35,12 @@ describe('buildTiles', () => {
     expect(tiles[0]).toMatchObject({ kind: 'camera', hasVideo: true, isSelf: true, stream: mine });
   });
 
+  it('marks your own share without recursively rendering the captured call screen', () => {
+    const tiles = buildTiles({ ...base, rows: [row('me', true)], localScreen: stream('screen') });
+    expect(tiles.find((tile) => tile.key === 'me:screen')).toMatchObject({ kind: 'screen', isSelf: true, watchable: false, stream: null });
+    expect(stageView(tiles, null).mode).toBe('grid');
+  });
+
   it('adds a screen tile for a remote share, without its picture until it is watched', () => {
     const screen = stream('screen');
     const key = tileKey('u2', 'screen');

@@ -3,16 +3,18 @@
  *
  * Safety. The camera track reaches the peer connection only through `VoiceSession.setCameraTrack`, which in an end-to-end encrypted call
  * pauses the camera sender, sets the track, attaches and enables the frame cryptor, and only then resumes it. Nothing here adds a track to the
- * connection by itself, and switching between the front and back camera flips the capture of the same track, so the sender and its cryptor are
- * never replaced. A camera that was on is put back through `setCameraTrack` every time the connection comes up (a reconnect builds new senders).
+ * connection by itself. Switching cameras replaces the capture through that same protected sender; it never replaces the sender or its cryptor.
+ * A camera that was on is put back through `setCameraTrack` every time the connection comes up (a reconnect builds new senders).
  */
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { VoiceSessionPort } from '@discordy/core/application/ports/voice';
 import { VoiceCallController, type VoiceCallDeps } from '@discordy/core/application/voice/voiceCallController';
 import type { CameraFacing, NativeVideoStream } from './nativeVoice';
+import { MobileScreenShare, type ScreenShareDriver } from './mobileScreenShare';
 
 export interface MobileCallDeps extends VoiceCallDeps {
+  screenShare?: ScreenShareDriver;
   openCamera(facing: CameraFacing): Promise<NativeVideoStream>;
   /** Calls the listener when the app goes to the background (not for a permission prompt or Control Center, which only make it inactive). A phone stops capturing then, so the camera is turned off rather than left sending a frozen picture. */
   onBackground(listener: () => void): () => void;
@@ -21,6 +23,7 @@ export interface MobileCallDeps extends VoiceCallDeps {
 const CAMERA_PRESET = presetConstraints('720p30');
 
 export class MobileCallController extends VoiceCallController {
+  readonly screenShare: MobileScreenShare;
   private cameraFacing: CameraFacing = 'front';
   private readonly facingListeners = new Set<() => void>();
   private sessionWatch: (() => void) | null = null;
@@ -28,13 +31,18 @@ export class MobileCallController extends VoiceCallController {
   private videoQueue: Promise<void> = Promise.resolve();
   /** The open camera capture. A failed call resets the store without stopping it, so the controller keeps its own hold to make sure the camera light goes out. */
   private held: NativeVideoStream | null = null;
+  private captureGeneration = 0;
 
   constructor(private readonly mobile: MobileCallDeps) {
     super(mobile);
+    this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState() });
     this.disposers.push(
       mobile.onBackground(() => void this.setVideo(false).catch(() => undefined)),
       useVoiceStore.subscribe((state, previous) => {
-        if (state.call.status !== previous.call.status && (state.call.status === 'idle' || state.call.status === 'failed')) this.releaseCapture();
+        if (state.call.status !== previous.call.status && (state.call.status === 'idle' || state.call.status === 'failed')) {
+          this.releaseCapture();
+          void this.screenShare.stop();
+        }
       }),
     );
   }
@@ -49,20 +57,26 @@ export class MobileCallController extends VoiceCallController {
   };
 
   protected override async releaseLocalMedia(): Promise<void> {
+    this.captureGeneration += 1;
     this.sessionWatch?.();
     this.sessionWatch = null;
-    await this.runVideo(() => this.stopCamera());
+    // A permission sheet must not keep Leave waiting. A late capture result stops itself.
+    await this.stopCamera();
+    if (this.screenShare.status !== 'idle') await this.screenShare.stop();
   }
 
   protected override onSessionStarted(session: VoiceSessionPort): void {
     this.sessionWatch?.();
     this.sessionWatch = session.onStatus((status) => {
-      if (status === 'connected') void this.runVideo(() => this.restoreCamera(session)).catch(() => undefined);
+      if (status === 'connected') void this.runVideo(() => this.restoreCamera(session)).catch(() => this.setVideo(false));
+      if (status === 'connected') void this.screenShare.restore(session);
     });
   }
 
   /** Turns the camera on or off; resolves once the camera is sending (or has stopped). Rejects with the reason when it cannot start, for example CAMERA_DENIED. */
   setVideo(enabled: boolean): Promise<void> {
+    if (!enabled) this.captureGeneration += 1;
+    const generation = this.captureGeneration;
     return this.runVideo(async () => {
       if (!enabled) {
         await this.stopCamera();
@@ -70,22 +84,7 @@ export class MobileCallController extends VoiceCallController {
         return;
       }
       if (this.held) return;
-      const stream = await this.mobile.openCamera(this.cameraFacing);
-      const track = stream.getVideoTracks()[0];
-      if (!track) {
-        stream.getTracks().forEach((t) => t.stop());
-        throw new Error('The camera produced no video');
-      }
-      try {
-        await this.session?.setCameraTrack(track, CAMERA_PRESET);
-      } catch (error) {
-        stream.getTracks().forEach((t) => t.stop());
-        throw error;
-      }
-      this.held = stream;
-      useVoiceStore.getState().setLocalMedia({ localCamera: stream });
-      useVoiceStore.getState().setSelf({ selfVideo: true });
-      this.sendState();
+      await this.startCamera(this.cameraFacing, generation);
     });
   }
 
@@ -94,12 +93,57 @@ export class MobileCallController extends VoiceCallController {
   }
 
   /** Switches between the front and the back camera while sending. */
-  switchCamera(): void {
-    const track = this.held?.getVideoTracks()[0];
-    if (!track) return;
-    track._switchCamera();
-    this.cameraFacing = this.cameraFacing === 'front' ? 'back' : 'front';
+  switchCamera(): Promise<void> {
+    return this.runVideo(async () => {
+      if (!this.held) return;
+      const facing = this.cameraFacing === 'front' ? 'back' : 'front';
+      const generation = this.captureGeneration;
+      // The native deprecated _switchCamera discards applyConstraints' promise,
+      // and Android retains its initial facing constraint. Reopen explicitly and
+      // release the old camera first on devices that cannot open both at once.
+      await this.stopCamera();
+      this.sendState();
+      // stopCamera releases one capture; another increment means Leave/background
+      // cancelled this operation while detaching the previous sender track.
+      if (this.captureGeneration !== generation + 1) return;
+      await this.startCamera(facing, this.captureGeneration);
+      if (this.held && this.cameraFacing !== facing) throw new Error(`The ${facing} camera is not available on this device.`);
+    });
+  }
+
+  private async startCamera(facing: CameraFacing, generation: number): Promise<void> {
+    if (generation !== this.captureGeneration) return;
+    const session = this.session;
+    if (!session || useVoiceStore.getState().call.status !== 'connected') throw new Error('The camera needs a connected call.');
+    const stream = await this.mobile.openCamera(facing);
+    if (generation !== this.captureGeneration || this.session !== session || useVoiceStore.getState().call.status !== 'connected') {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    const track = stream.getVideoTracks()[0];
+    if (!track) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw new Error('The camera produced no video');
+    }
+    try {
+      await session.setCameraTrack(track, CAMERA_PRESET);
+      if (generation !== this.captureGeneration || this.session !== session) {
+        stream.getTracks().forEach((t) => t.stop());
+        await session.setCameraTrack(null);
+        return;
+      }
+    } catch (error) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw error;
+    }
+    this.held = stream;
+    const capturedFacing = track.getSettings?.().facingMode;
+    this.cameraFacing = capturedFacing === 'user' ? 'front' : capturedFacing === 'environment' ? 'back' : facing;
     for (const listener of this.facingListeners) listener();
+    track.onended = () => { void this.setVideo(false).catch(() => undefined); };
+    useVoiceStore.getState().setLocalMedia({ localCamera: stream });
+    useVoiceStore.getState().setSelf({ selfVideo: true });
+    this.sendState();
   }
 
   private runVideo(task: () => Promise<void>): Promise<void> {
@@ -123,6 +167,8 @@ export class MobileCallController extends VoiceCallController {
   }
 
   private releaseCapture(): void {
+    this.captureGeneration += 1;
+    this.held?.getVideoTracks().forEach((track) => { track.onended = null; });
     this.held?.getTracks().forEach((track) => track.stop());
     this.held = null;
     this.cameraFacing = 'front';

@@ -11,7 +11,8 @@ import { GatewayOp } from '@discordy/core/contracts/gateway';
 import { useCallKitStore } from '../../src/voice/callkit/callKitStore';
 import { ChannelType, type Channel, type GuildFull, type User, type VoiceState } from '@discordy/core/contracts/rest';
 
-const mockController = { join: jest.fn(async () => undefined), leave: jest.fn(async () => undefined), toggleMute: jest.fn(), toggleDeaf: jest.fn(), toggleVideo: jest.fn(async () => undefined), switchCamera: jest.fn() };
+const mockScreenShare = { available: false, status: 'idle', subscribe: jest.fn(() => () => undefined), start: jest.fn(async () => undefined), stop: jest.fn(async () => undefined) };
+const mockController = { screenShare: mockScreenShare, join: jest.fn(async () => undefined), leave: jest.fn(async () => undefined), toggleMute: jest.fn(), toggleDeaf: jest.fn(), toggleVideo: jest.fn(async () => undefined), switchCamera: jest.fn() };
 const mockRoute = { current: 'speaker', subscribe: jest.fn(() => () => undefined), toggle: jest.fn() };
 const mockGateway = { state: 'idle', resumeNow: jest.fn(), send: jest.fn() };
 const mockApi = { messages: jest.fn(async () => []), ack: jest.fn(async () => undefined) };
@@ -81,6 +82,8 @@ describe('voice screens', () => {
     useVoiceStore.getState().resetCall();
     useVoiceStore.setState({ states: {}, speaking: {}, selfMute: false, selfDeaf: false, selfVideo: false, localCamera: null, remoteStreams: [], screenSsrcs: {}, watching: [], focusedStream: null });
     mockVoice = { controller: mockController, route: mockRoute };
+    mockScreenShare.available = false;
+    mockScreenShare.status = 'idle';
   });
 
   it('keeps Expo Go working: a voice channel shows the plain note and no Join button', async () => {
@@ -138,6 +141,21 @@ describe('voice screens', () => {
     expect(mockController.toggleMute).toHaveBeenCalledTimes(1);
     expect(mockController.toggleDeaf).toHaveBeenCalledTimes(1);
     expect(mockRoute.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains full-screen visibility before asking iOS for broadcast consent', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    mockScreenShare.available = true;
+    seedGuild();
+    useVoiceStore.getState().setCall({ status: 'connected', channelId: 'lounge', guildId: 'g1' });
+    await renderRouter('./app', { initialUrl: '/servers/g1' });
+    await openLounge();
+    await fireEvent.press(await screen.findByLabelText('Share screen'));
+    expect(alert).toHaveBeenCalledWith('Share your screen', expect.stringContaining('notifications'), expect.any(Array));
+    expect(mockScreenShare.start).not.toHaveBeenCalled();
+    await act(async () => { alert.mock.calls.at(-1)?.[2]?.find((button) => button.text === 'Continue')?.onPress?.(); });
+    expect(mockScreenShare.start).toHaveBeenCalledTimes(1);
+    alert.mockRestore();
   });
 
   it('shows why a call failed', async () => {
