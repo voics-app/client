@@ -65,7 +65,9 @@ test('real browser enrollment, signed login, rename, recovery and removal round-
   const registration = await ceremony(context, 'create', challenge.publicKey as Record<string, unknown>);
   await expect(registration.popup.getByRole('heading', { name: 'Add your passkey' })).toBeVisible();
   // Same-origin impostor tab and a wrong nonce from the real tab cannot complete this request.
-  const nonce = /<script nonce="([^"]+)"/.exec(await registration.parent.content())![1]!;
+  // Browsers hide nonce attribute values in serialized HTML; read the nonce IDL property.
+  const nonce = await registration.parent.locator('script[nonce]').evaluate((element: HTMLScriptElement) => element.nonce);
+  expect(nonce).toHaveLength(43);
   const impostorPromise = registration.parent.waitForEvent('popup');
   await registration.parent.evaluate(url => { window.open(url, '_blank'); }, `${site.origin}/passkeys/index.html`);
   const impostor = await impostorPromise;
