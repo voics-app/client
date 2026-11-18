@@ -103,7 +103,7 @@ export interface ApiPort {
   logoutOtherSessions(): Promise<void>;
 
   me(): Promise<User>;
-  updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color'>>): Promise<User>;
+  updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color' | 'pronouns' | 'theme_colors'>>): Promise<User>;
   user(userId: string): Promise<User>;
   userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
@@ -147,8 +147,9 @@ export interface ApiPort {
   deleteRole(guildId: string, roleId: string): Promise<void>;
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
+  member(guildId: string, userId: string): Promise<GuildMember>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'avatar' | 'banner' | 'bio' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;

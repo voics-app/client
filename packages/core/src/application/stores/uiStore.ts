@@ -10,7 +10,7 @@ export type View =
   | { kind: 'guild'; guildId: string; channelId: string | null };
 
 export type SettingsTarget =
-  | { kind: 'user'; tab: UserSettingsTab }
+  | { kind: 'user'; tab: UserSettingsTab; profileGuildId?: string }
   | { kind: 'server'; guildId: string; tab: ServerSettingsTab }
   | { kind: 'channel'; channelId: string; tab: 'overview' | 'permissions' | 'invites' };
 

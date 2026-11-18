@@ -1,5 +1,7 @@
 /** English is the canonical catalog and fallback. Values use ICU MessageFormat. */
 export const en = {
+  'common.editsRetained': 'Your edits are still here.',
+  'common.saveAgainError': '{error} Try saving again.',
   "settings.cryptoUnavailable": "Encrypted modes are unavailable on this install: {reason}. Nothing is ever sent unencrypted in a private mode.",
   "settings.cryptoMissing": "the native crypto module did not load",
   "settings.pttFallback": "Global key capture is unavailable on this system, so push-to-talk only works while {app} is focused.",

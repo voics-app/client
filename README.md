@@ -58,11 +58,21 @@ Failed saves retain the selection for retry. Authored messages and names stay in
 their original language. See [localization](docs/localization.md) for catalog rules,
 the current extraction scope and the remaining acceptance checks.
 
+User Settings → Profile edits the global profile or a selected server profile with a
+live preview. Global profiles support display name, pronouns, About me, avatar/banner
+uploads, two theme colours and a fallback colour. Server profiles override nickname,
+avatar, banner and bio; clearing an override restores the global value. Changing scope
+is blocked until drafts are saved or reset, and failed saves retain the draft. Editing
+server images/bio needs membership; nickname controls respect Change Nickname.
+The user menu's **Edit Server Profile** action opens the matching profile page. Profile
+dialogs display server overrides, pronouns and theme colours on readable app surfaces.
+These controls require the profile API release (api#43, migration `0054`).
+
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 
-Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
+Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. The unavailable Widget page stays hidden until its API is implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 ## Mobile app
 

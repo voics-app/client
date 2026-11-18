@@ -1,6 +1,8 @@
 import type { MessageId } from './en';
 
 export const nl = {
+  'common.editsRetained': 'Je wijzigingen zijn bewaard.',
+  'common.saveAgainError': '{error} Probeer opnieuw op te slaan.',
   "settings.cryptoUnavailable": "Versleutelde modi zijn niet beschikbaar in deze installatie: {reason}. In een privémodus wordt nooit iets onversleuteld verstuurd.",
   "settings.cryptoMissing": "de ingebouwde cryptografiemodule is niet geladen",
   "settings.pttFallback": "Globale toetsdetectie is niet beschikbaar op dit systeem. Push-to-talk werkt daarom alleen als {app} actief is.",

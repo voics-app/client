@@ -101,12 +101,12 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
   );
 }
 
-function UserSettings({ tab }: { tab: UserSettingsTab }) {
+function UserSettings({ tab, profileGuildId }: { tab: UserSettingsTab; profileGuildId?: string }) {
   const intl = useI18n();
   const { t } = intl;
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, language: <LanguageTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab key={profileGuildId ?? 'global'} initialGuildId={profileGuildId} />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, language: <LanguageTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
   return (
     <Layout
       title={t('settings.user')}
@@ -156,7 +156,7 @@ export function SettingsHost() {
 }
 
 function SettingsRouter({ target }: { target: SettingsTarget }) {
-  if (target.kind === 'user') return <UserSettings tab={target.tab} />;
+  if (target.kind === 'user') return <UserSettings tab={target.tab} profileGuildId={target.profileGuildId} />;
   if (target.kind === 'server') return <ServerSettings guildId={target.guildId} tab={target.tab} />;
   return <ChannelSettings channelId={target.channelId} tab={target.tab} />;
 }

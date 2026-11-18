@@ -1,5 +1,5 @@
 import { useI18n } from '../../../shared/i18n';
-import { Check, DeviceMobile, Laptop, SignOut, Upload } from '@phosphor-icons/react';
+import { Check, DeviceMobile, Laptop, SignOut } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePrefsStore, type AccentId, type ThemeId } from '@discordy/core/application/stores/prefsStore';
@@ -16,7 +16,6 @@ import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
 import { useUpdateStore } from '@discordy/core/application/stores/updateStore';
 import { speak } from '@renderer/infrastructure/tts';
-import { BIO_MAX_LENGTH } from '@discordy/core/domain/profile';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom } from '@discordy/core/domain/appearance';
 import { attempt } from '../../../app/actions';
 import { bridge } from '../../../app/bridge';
@@ -24,11 +23,9 @@ import { getRuntime } from '../../../app/runtime';
 import { displayName } from '../../../shared/hooks/useNames';
 import { Avatar } from '../../../shared/ui/Avatar';
 import { Button } from '../../../shared/ui/Button';
-import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
-import { Field, Input, SettingRow, Segmented, Select, Slider, Switch, TextArea } from '../../../shared/ui/Form';
+import { Field, SettingRow, Segmented, Select, Slider, Switch } from '../../../shared/ui/Form';
 import { ModeBadge } from '../../privacy/ModeBadge';
 import { ConnectionPicker } from '../../auth/ConnectionPicker';
-import { readImageUpload } from '../imageUpload';
 import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
@@ -70,67 +67,6 @@ export function AccountTab() {
         >
           {msg("settings.logout")} </Button>
       </SettingRow>
-    </Page>
-  );
-}
-
-export function ProfileTab() {
-  const user = useSessionStore((s) => s.user);
-  const [globalName, setGlobalName] = useState(user?.global_name ?? '');
-  const [bio, setBio] = useState(user?.bio ?? '');
-  const savedAccent = user?.accent_color ? `#${user.accent_color.toString(16).padStart(6, '0')}` : '#7c6cf0';
-  const [accent, setAccent] = useState(savedAccent);
-  const [avatar, setAvatar] = useState<string | undefined>();
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  if (!user) return null;
-  const dirty = globalName !== (user.global_name ?? '') || bio !== (user.bio ?? '') || accent !== savedAccent || avatar !== undefined;
-  const reset = () => {
-    setGlobalName(user.global_name ?? '');
-    setBio(user.bio ?? '');
-    setAccent(savedAccent);
-    setAvatar(undefined);
-    setAvatarError(null);
-  };
-  const chooseAvatar = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      setAvatar(await readImageUpload(file));
-      setAvatarError(null);
-    } catch (error) {
-      setAvatarError(error instanceof Error ? error.message : 'Could not read the image.');
-    }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const updated = await attempt(() => getRuntime().api.updateMe({ global_name: globalName || null, bio, accent_color: parseInt(accent.slice(1), 16), ...(avatar ? { avatar } : {}) }), 'Could not save profile');
-      if (updated) {
-        useSessionStore.getState().setUser(updated);
-        setAvatar(undefined);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-  return (
-    <Page title="Profile" sub="How you appear to others.">
-      <div className="overview-row">
-        <button type="button" className="icon-upload is-round" onClick={() => fileRef.current?.click()} aria-label="Change avatar">
-          {avatar ? <img src={avatar} alt="" /> : <Avatar id={user.id} name={displayName(user)} avatar={user.avatar} size={96} />}
-          <span><Upload size={18} /> Change</span>
-        </button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => void chooseAvatar(e.target.files?.[0])} />
-        {avatarError && <p className="field-error" role="alert">{avatarError}</p>}
-        <div className="stack grow">
-          <Field label="Display name">{(id) => <Input id={id} value={globalName} maxLength={32} placeholder={user.username} onChange={(e) => setGlobalName(e.target.value)} />}</Field>
-          <Field label="About me">{(id) => <TextArea id={id} value={bio} maxLength={BIO_MAX_LENGTH} onChange={(e) => setBio(e.target.value)} />}</Field>
-          <Field label="Profile colour">{(id) => <input id={id} type="color" className="color-input" value={accent} onChange={(e) => setAccent(e.target.value)} />}</Field>
-        </div>
-      </div>
-      <UnsavedBar dirty={dirty} saving={saving} onReset={reset} onSave={() => void save()} />
     </Page>
   );
 }
@@ -560,3 +496,5 @@ export function AdvancedTab() {
     </Page>
   );
 }
+
+export { ProfileTab } from './ProfileTab';

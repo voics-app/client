@@ -285,7 +285,9 @@ export function UserContextMenu({
         return item('User volume', () => openPanel('volume'));
       case 'nickname':
         return item(self ? 'Edit Server Profile' : 'Change nickname', () =>
-          guildId && useUiStore.getState().openDialog({ kind: 'editNickname', guildId, userId }),
+          guildId && (self
+            ? useUiStore.getState().openSettings({ kind: 'user', tab: 'profile', profileGuildId: guildId })
+            : useUiStore.getState().openDialog({ kind: 'editNickname', guildId, userId })),
         );
       case 'roles':
         return item('Roles', () => openPanel('roles'));

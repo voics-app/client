@@ -18,6 +18,7 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { FriendsSince } from './FriendsSince';
 import { ProfileAvatar } from './ProfileAvatar';
+import { ProfileBanner } from './ProfileBanner';
 import { RolePills } from './RolePills';
 import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { saveUserNote } from '@discordy/core/application/notificationSync';
@@ -112,12 +113,13 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
         <div className="profile-skeleton"><Skeleton height={96} radius={0} /><Skeleton width={160} height={20} /></div>
       ) : (
         <div className="profile">
-          <div className="profile-banner" style={user.accent_color ? { background: `#${user.accent_color.toString(16).padStart(6, '0')}` } : undefined} />
+          <ProfileBanner user={user} member={member} guildId={guildId} />
           <div className="profile-head">
-            <ProfileAvatar user={user} size={84} status={status} />
+            <ProfileAvatar user={user} member={member} guildId={guildId} size={84} status={status} />
             <div className="profile-names">
               <h2>{displayName(user, member?.nick)}</h2>
               <p className="mono">{user.username}</p>
+              {user.pronouns && <p>{user.pronouns}</p>}
               <StatusLine className="profile-status" activities={activities} />
             </div>
           </div>
@@ -137,8 +139,8 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                 <Button variant="ghost" icon={<Flag size={16} />} onClick={report}>Report</Button>
               </div>
             )}
-            {user.bio && (
-              <section className="profile-section"><h4>About me</h4><p className="selectable">{user.bio}</p></section>
+            {(member?.bio || user.bio) && (
+              <section className="profile-section"><h4>About me</h4><p className="selectable">{member?.bio || user.bio}</p></section>
             )}
             {guildId && member && (
               <section className="profile-section">
