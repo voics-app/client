@@ -12,7 +12,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test": "jest",
+    "test": "node --test config/*.test.cjs && jest",
     "eas-build-pre-install": "node scripts/fetch-crypto-framework.mjs"
   },
   "dependencies": {

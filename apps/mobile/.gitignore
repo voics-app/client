@@ -2,3 +2,5 @@
 expo-env.d.ts
 /ios/
 /android/
+/modules/**/android/build/
+/modules/**/android/.cxx/
