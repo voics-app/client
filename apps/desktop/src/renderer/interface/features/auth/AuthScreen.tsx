@@ -1,6 +1,6 @@
 import { ArrowRight, GlobeHemisphereWest, LockKey, Plugs, ShieldCheck } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuthLinkStore } from '@discordy/core/application/stores/authLinkStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { authErrorDisplay } from '@discordy/core/domain/authErrors';
@@ -14,6 +14,7 @@ import { gentle } from '../../shared/ui/motion';
 import { Segmented } from '../../shared/ui/Form';
 import { ConnectionPicker } from './ConnectionPicker';
 import { BRAND } from '@shared/brand';
+import { performPasskey, usePasskeySite } from '../../app/passkeys';
 
 /** Form fields that can show their own error; any other error key goes to the banner. */
 const AUTH_FIELDS = ['email', 'password', 'username', 'code', 'token'];
@@ -50,6 +51,11 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [ticket, setTicket] = useState<string | null>(null);
+  const [methods, setMethods] = useState<string[]>([]);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const passkeyOperation = useRef<AbortController | null>(null);
+  const passkeySite = usePasskeySite();
+  useEffect(() => () => passkeyOperation.current?.abort(), []);
   const [resetToken, setResetToken] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -117,6 +123,8 @@ export function AuthScreen() {
       }
       if (err instanceof ApiError && err.code === MFA_REQUIRED && err.ticket) {
         setTicket(err.ticket);
+        setMethods(err.methods ?? ['totp', 'backup_code']);
+        setPassword('');
         setError(null);
         return;
       }
@@ -124,6 +132,25 @@ export function AuthScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const signInWithPasskey = async () => {
+    if (!ticket || busy) return;
+    const controller = new AbortController();
+    passkeyOperation.current = controller;
+    setBusy(true);
+    setPasskeyBusy(true);
+    setError(null);
+    try {
+      const runtime = getRuntime();
+      const challenge = await runtime.api.startPasskeyLogin(ticket);
+      const credential = await performPasskey('get', challenge.publicKey, controller.signal);
+      controller.signal.throwIfAborted();
+      setPasskeyBusy(false);
+      await runtime.session.loginPasskey({ ticket, challenge_id: challenge.challenge_id, credential });
+    } catch (failure) {
+      setError(controller.signal.aborted ? 'Passkey request cancelled. Try again or enter a backup code.' : errorMessage(failure));
+    } finally { setBusy(false); setPasskeyBusy(false); }
   };
 
   return (
@@ -148,16 +175,21 @@ export function AuthScreen() {
       <main className="auth-panel">
         <div className="auth-card-shell">
           <form className="auth-card" onSubmit={submit} noValidate>
-            <Segmented label="Mode" value={mode} onChange={(m) => { setMode(m); setError(null); setNotice(null); setTicket(null); setCode(''); }} options={[{ value: 'login', label: 'Sign in' }, { value: 'register', label: 'Create account' }]} />
-            <h2>{HEADINGS[mode]}</h2>
+            <Segmented label="Mode" value={mode} onChange={(m) => { if (busy) return; setMode(m); setError(null); setNotice(null); setTicket(null); setCode(''); }} options={[{ value: 'login', label: 'Sign in' }, { value: 'register', label: 'Create account' }]} />
+            <h2>{ticket ? 'Confirm your sign-in' : HEADINGS[mode]}</h2>
             {notice && <p className="auth-notice" role="status">{notice}</p>}
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div key={mode} className="stack" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-                {ticket ? (
+                {ticket ? (<>
+                  {methods.includes('webauthn') && <>
+                    <Button disabled={!passkeySite || busy} onClick={() => void signInWithPasskey()}>Use passkey</Button>
+                    {passkeySite === null && <p className="setting-desc">Passkeys need a configured browser ceremony site for this connection. Use an authenticator or backup code below.</p>}
+                    {passkeyBusy && <><p role="status">Continue in your browser, then return here.</p><Button onClick={() => passkeyOperation.current?.abort()}>Cancel passkey request</Button></>}
+                  </>}
                   <Field label="Authenticator or backup code" error={fieldErrors.code} hint="Open your authenticator app, or enter one of your backup codes.">
-                    {(id) => <Input id={id} autoComplete="one-time-code" data-autofocus value={code} onChange={(e) => setCode(e.target.value)} invalid={Boolean(fieldErrors.code)} />}
+                    {(id) => <Input id={id} autoComplete="one-time-code" data-autofocus value={code} disabled={busy} onChange={(e) => setCode(e.target.value)} invalid={Boolean(fieldErrors.code)} />}
                   </Field>
-                ) : (<>
+                </>) : (<>
                 {mode !== 'reset' && (
                 <Field label="Email" error={fieldErrors.email}>
                   {(id) => <Input id={id} type="email" autoComplete="email" data-autofocus value={email} onChange={(e) => setEmail(e.target.value)} invalid={Boolean(fieldErrors.email)} />}
@@ -182,14 +214,14 @@ export function AuthScreen() {
               </motion.div>
             </AnimatePresence>
             {(error || fatal) && <p className="auth-error" role="alert">{error ?? fatal}</p>}
-            <Button type="submit" variant="primary" size="lg" block loading={busy} trailing={<ArrowRight size={16} weight="bold" />} disabled={!canSubmit}>
+            <Button type="submit" variant="primary" size="lg" block loading={busy} trailing={<ArrowRight size={16} weight="bold" />} disabled={!canSubmit || busy}>
               {SUBMIT[mode]}
             </Button>
             {mode === 'login' && !ticket && <button type="button" className="link-btn" onClick={() => { setMode('forgot'); setError(null); setNotice(null); }}>Forgot password?</button>}
-            {(mode === 'forgot' || mode === 'reset' || ticket) && <button type="button" className="link-btn" onClick={() => { setMode('login'); setTicket(null); setCode(''); setError(null); setNotice(null); }}>Back to sign in</button>}
+            {(mode === 'forgot' || mode === 'reset' || ticket) && <button type="button" className="link-btn" disabled={busy} onClick={() => { setMode('login'); setTicket(null); setCode(''); setError(null); setNotice(null); }}>Back to sign in</button>}
             <p className="auth-foot">
               <ShieldCheck size={14} /> Your session is stored in the OS keychain.
-              <button type="button" className="link-btn" onClick={() => setShowConnection(true)}>Connection</button>
+              <button type="button" className="link-btn" disabled={busy || Boolean(ticket)} onClick={() => setShowConnection(true)}>Connection</button>
             </p>
           </form>
         </div>

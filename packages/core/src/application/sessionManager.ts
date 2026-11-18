@@ -1,5 +1,5 @@
 /** Auth lifecycle: boot from the OS-keychain vault, login/register, device registration, logout. */
-import type { AuthResponse } from '@discordy/core/contracts/rest';
+import type { AuthResponse, PasskeyFinish } from '@discordy/core/contracts/rest';
 import type { StoredSession } from './ports/sessionVault';
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -81,6 +81,12 @@ export class SessionManager {
     this.deps.runtime.setTokens({ access: null, refresh: null });
     const auth = await this.deps.runtime.api.loginMfa(body);
     await this.adopt(auth);
+  }
+
+  /** Adopts only the session returned by server-side WebAuthn verification. */
+  async loginPasskey(body: PasskeyFinish & { ticket: string }): Promise<void> {
+    this.deps.runtime.setTokens({ access: null, refresh: null });
+    await this.adopt(await this.deps.runtime.api.finishPasskeyLogin(body));
   }
 
   async register(body: { email: string; username: string; password: string }): Promise<void> {

@@ -17,6 +17,7 @@ import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, SettingRow } from '../../../shared/ui/Form';
 import { Modal } from '../../../shared/ui/Modal';
+import { Passkeys } from './Passkeys';
 
 /** Field-level message from an API error envelope, falling back to its summary. */
 function fieldMessage(error: unknown, field: string): string {
@@ -211,13 +212,13 @@ function DisableTotpModal({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState('');
   const { busy, error, run } = useAction();
   return (
-    <Modal open onClose={onClose} title="Turn off two-factor authentication" footer={
+    <Modal open onClose={onClose} title="Remove authenticator app" description="Passkeys remain active. Removing your last second factor turns MFA off." footer={
       <><Button onClick={onClose}>Cancel</Button><Button variant="danger" loading={busy} disabled={!password || !looksLikeSecondFactor(code)} onClick={() => void run(async () => {
         const api = getRuntime().api;
         await api.disableTotp(password, code.trim());
         useSessionStore.getState().setUser(await api.me());
         onClose();
-      })}>Turn off</Button></>
+      })}>Remove authenticator</Button></>
     }>
       <div className="stack">
         <PasswordField value={password} onChange={setPassword} />
@@ -292,13 +293,15 @@ export function AccountSecurity({ user }: { user: User }) {
       <SettingRow title="Username" description={user.username}><Button onClick={() => setDialog({ kind: 'edit', field: 'username' })}>Edit</Button></SettingRow>
       <SettingRow title="Email" description={user.email ?? 'No email on this account'}><Button onClick={() => setDialog({ kind: 'edit', field: 'email' })}>Edit</Button></SettingRow>
       <SettingRow title="Password" description="Changing it signs your other sessions out."><Button onClick={() => setDialog({ kind: 'edit', field: 'password' })}>Change</Button></SettingRow>
-      <SettingRow title="Two-factor authentication" description={mfa ? 'On. Sign-in asks for a code from your authenticator app.' : 'Add a second step to sign-in with an authenticator app.'}>
+      <SettingRow title="Two-factor authentication" description={mfa ? 'On. Use a registered passkey, authenticator or backup code after your password.' : 'Add a second step with an authenticator app or passkey.'}>
         {mfa ? (
-          <div className="row"><Button icon={<ShieldCheck size={16} />} onClick={() => setDialog({ kind: 'codes' })}>Backup codes</Button><Button variant="danger" onClick={() => setDialog({ kind: 'disable-totp' })}>Turn off</Button></div>
+          <div className="row"><Button icon={<ShieldCheck size={16} />} onClick={() => setDialog({ kind: 'codes' })}>Backup codes</Button></div>
         ) : (
           <Button variant="primary" onClick={() => setDialog({ kind: 'enable' })}>Turn on</Button>
         )}
       </SettingRow>
+      {mfa && <SettingRow title="Authenticator app" description="Manage an authenticator independently of your passkeys. Existing factors and backup codes are kept when adding another."><div className="row"><Button onClick={() => setDialog({ kind: 'enable' })}>Set up authenticator</Button><Button onClick={() => setDialog({ kind: 'disable-totp' })}>Remove authenticator</Button></div></SettingRow>}
+      <Passkeys user={user} />
       <SettingRow title="Disable account" description="Sign out everywhere and hide your account until you sign in again."><Button variant="danger" onClick={() => setDialog({ kind: 'leave', mode: 'disable' })}>Disable</Button></SettingRow>
       <SettingRow title="Delete account" description="Schedules deletion after 14 days."><Button variant="danger" onClick={() => setDialog({ kind: 'leave', mode: 'delete' })}>Delete</Button></SettingRow>
       {dialog?.kind === 'edit' && <EditCredentialModal kind={dialog.field} user={user} onClose={close} />}

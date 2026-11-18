@@ -631,6 +631,7 @@ export interface ApiErrorBody {
   errors?: Record<string, unknown>;
   /** Login answered 60008: the ticket completes the login with a second factor. */
   ticket?: string;
+  methods?: string[];
   retry_after?: number;
 }
 
@@ -643,6 +644,28 @@ export interface BackupCode {
   /** Plaintext, present only right after generation. */
   code?: string;
   consumed: boolean;
+}
+
+export interface Passkey {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface PasskeyChallenge {
+  challenge_id: string;
+  publicKey: Record<string, unknown>;
+}
+
+export interface PasskeyRegistration {
+  passkey: Passkey;
+  backup_codes?: BackupCode[];
+}
+
+export interface PasskeyFinish {
+  challenge_id: string;
+  credential: Record<string, unknown>;
 }
 
 export interface AccountChange {

@@ -9,6 +9,10 @@ import type {
   AccountChange,
   AuthResponse,
   BackupCode,
+  Passkey,
+  PasskeyChallenge,
+  PasskeyFinish,
+  PasskeyRegistration,
   TotpEnrollment,
   Ban,
   Channel,
@@ -67,6 +71,13 @@ export interface ApiPort {
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
   loginMfa(body: { ticket: string; code: string }): Promise<AuthResponse>;
+  startPasskeyLogin(ticket: string): Promise<PasskeyChallenge>;
+  finishPasskeyLogin(body: PasskeyFinish & { ticket: string }): Promise<AuthResponse>;
+  passkeys(): Promise<Passkey[]>;
+  startPasskeyRegistration(password: string, name: string): Promise<PasskeyChallenge>;
+  finishPasskeyRegistration(body: PasskeyFinish): Promise<PasskeyRegistration>;
+  renamePasskey(id: string, name: string): Promise<Passkey>;
+  removePasskey(id: string, password: string, code: string): Promise<void>;
   forgotPassword(email: string): Promise<void>;
   resetPassword(token: string, password: string): Promise<void>;
   verifyEmail(token: string): Promise<void>;

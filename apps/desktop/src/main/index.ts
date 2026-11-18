@@ -1,6 +1,6 @@
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
-import { app, powerMonitor } from 'electron';
+import { app, powerMonitor, shell } from 'electron';
 import { resolve } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';
@@ -20,6 +20,8 @@ import { Updater, createElectronUpdaterPort } from './updater';
 import { legacyUserDataDir, migrateLegacyUserData } from './userDataMigration';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
+import { passkeySite } from './passkeys/config';
+import { PasskeyBroker } from './passkeys/passkeyBroker';
 
 if (process.env.DISCORDY_USER_DATA_DIR) {
   app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
@@ -63,6 +65,8 @@ function bootstrap(): void {
   let connection: ConnectionProfile = resolveConnection(env, settings.connection);
   const updateFeedUrl = resolveUpdateFeed(env);
   const getWindow = () => mainWindow;
+  const getPasskeySite = () => passkeySite(env, connection);
+  const passkeys = new PasskeyBroker(getPasskeySite, url => shell.openExternal(url));
 
   const info = (): AppInfo => ({
     version: app.getVersion(),
@@ -109,6 +113,8 @@ function bootstrap(): void {
   );
 
   registerIpc({
+    passkeys,
+    passkeySite: getPasskeySite,
     window: getWindow,
     setActivity: (counts) => {
       trayController.setActivity(counts);
@@ -123,6 +129,7 @@ function bootstrap(): void {
     },
     info,
     setConnection: (profile) => {
+      passkeys.cancel();
       connection = profile;
     },
     crypto: new CryptoHost(),
@@ -133,6 +140,7 @@ function bootstrap(): void {
   });
 
   mainWindow = createMainWindow({ startHidden });
+  mainWindow.on('closed', () => passkeys.cancel());
   const sendLock = (locked: boolean) => mainWindow?.webContents.send(IpcChannel.idleLock, locked);
   powerMonitor.on('lock-screen', () => sendLock(true));
   powerMonitor.on('suspend', () => sendLock(true));
@@ -152,6 +160,7 @@ function bootstrap(): void {
   if (!e2e) updater.start();
 
   app.on('before-quit', () => {
+    passkeys.cancel();
     quitting = true;
     updater.stop();
     pushToTalk.dispose();
