@@ -9,7 +9,7 @@ test('release defaults ignore endpoint variables without the QA opt-in', () => {
 test('a QA app has a separate identity and emulator endpoints', () => {
   const config = qaConfig({ VOICS_MOBILE_QA: '1' }, brand);
   assert.equal(config.appId, 'nl.voics.app.qa');
-  assert.equal(config.apiUrl, 'http://10.0.2.2:28100/api/v1');
+  assert.equal(config.apiUrl, 'http://10.0.2.2:28100');
 });
 test('store, preview and published APK builds reject QA opt-in', () => {
   for (const profile of ['production', 'preview', 'apk']) {

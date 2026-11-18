@@ -91,7 +91,7 @@ Full walkthrough: docs repo `runbooks/run-the-mobile-app.md`.
 Set `VOICS_MOBILE_QA=1` before both native generation and Metro startup. This builds
 `Voics QA` (`nl.voics.app.qa`, scheme `voics-qa`) alongside the installed release.
 The defaults target the host through Android's emulator alias:
-`http://10.0.2.2:28100/api/v1`, `ws://10.0.2.2:28100/gateway`, and
+`http://10.0.2.2:28100`, `ws://10.0.2.2:28100/gateway`, and
 `http://10.0.2.2:28100/cdn`. Run an isolated local gitops Compose stack on port 28100
 and seed local test accounts before signing in.
 
@@ -99,7 +99,8 @@ From `apps/mobile`, run `pnpm exec expo prebuild --platform android --no-install
 then `pnpm exec expo run:android --device` and select the existing emulator.
 For an already installed development build, run `pnpm start:dev-client` with the
 same environment. `VOICS_QA_API_URL`, `VOICS_QA_GATEWAY_URL`, and `VOICS_QA_CDN_URL`
-override the three endpoints together when the local stack uses different ports.
+override the three endpoints when the local stack uses different ports. The API
+setting is the origin; the shared HTTP client appends `/api/v1` itself.
 QA alone permits Android cleartext HTTP and omits production Firebase config;
 push delivery requires a separately configured native build and cannot be proven
 by this QA build. Production, preview and published APK EAS profiles reject the

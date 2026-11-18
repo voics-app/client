@@ -6,7 +6,7 @@ function qaConfig(env, brand) {
   if (env.EAS_BUILD_PROFILE && !QA_PROFILES.has(env.EAS_BUILD_PROFILE)) {
     throw new Error('VOICS_MOBILE_QA is restricted to local, development and qa builds');
   }
-  const apiUrl = env.VOICS_QA_API_URL || 'http://10.0.2.2:28100/api/v1';
+  const apiUrl = env.VOICS_QA_API_URL || 'http://10.0.2.2:28100';
   const gatewayUrl = env.VOICS_QA_GATEWAY_URL || 'ws://10.0.2.2:28100/gateway';
   const cdnUrl = env.VOICS_QA_CDN_URL || 'http://10.0.2.2:28100/cdn';
   for (const [name, value, protocols] of [
