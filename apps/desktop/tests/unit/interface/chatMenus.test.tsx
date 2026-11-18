@@ -7,7 +7,8 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { usePrefsStore, DEFAULT_PREFS } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
+import { MessageFlag } from '@discordy/core/contracts/rest';
 import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
 import { MessageItem } from '@renderer/interface/features/chat/MessageItem';
@@ -84,6 +85,25 @@ beforeEach(() => {
   seed();
 });
 afterEach(cleanup);
+
+describe('private bot responses', () => {
+  it('shows the only-you footer and dismisses only that local message', () => {
+    const secret = message({ id: '1001', flags: MessageFlag.EPHEMERAL, interaction_metadata: { id: 'i1', type: 2, user: user('alice') } as never });
+    useMessageStore.getState().reset();
+    useMessageStore.getState().receive(secret);
+    useMessageStore.getState().receive(message({ id: '1002' }));
+    renderMessage(secret);
+    expect(screen.getByText('Only you can see this')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss message' }));
+    expect(useMessageStore.getState().timelines.c1?.byId['1001']).toBeUndefined();
+    expect(useMessageStore.getState().timelines.c1?.byId['1002']).toBeTruthy();
+  });
+
+  it('does not render a private response addressed to somebody else', () => {
+    renderMessage(message({ flags: MessageFlag.EPHEMERAL, interaction_metadata: { id: 'i1', type: 2, user: user('other') } as never }));
+    expect(document.querySelector('.message')).toBeNull();
+  });
+});
 
 describe('message hover toolbar', () => {
   it('is hidden at rest and shows on hover with quick reactions', () => {

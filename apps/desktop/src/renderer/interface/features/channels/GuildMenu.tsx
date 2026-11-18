@@ -1,15 +1,16 @@
-import { BellRinging, BellSlash, CaretDoubleUp, Check, FolderPlus, Gear, Hash, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, CaretDoubleUp, Check, Copy, FolderPlus, Gear, Hash, Shield, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { isGuildMuted, MUTE_DURATIONS, scopeKey } from '@discordy/core/domain/notificationSettings';
-import { canOpenServerSettings } from '@discordy/core/domain/serverSettings';
+import { canOpenServerSettings, serverSettingsTabs } from '@discordy/core/domain/serverSettings';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType } from '@discordy/core/contracts/rest';
-import { attempt, deleteGuild, leaveGuild, markGuildRead } from '../../app/actions';
-import { muteGuild } from '../../app/notificationActions';
+import { attempt, copyText, leaveGuild, markGuildRead } from '../../app/actions';
+import { muteGuild, setGuildToggles } from '../../app/notificationActions';
+import { confirmDeleteServer } from '../settings/server/deleteServer';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Menu, type MenuEntry } from '../../shared/ui/Menu';
 
@@ -37,6 +38,8 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
           entries: MUTE_DURATIONS.map((d) => ({ kind: 'item' as const, label: d.label, onSelect: () => void muteGuild(guildId, d.seconds) })),
         },
     { kind: 'item', label: 'Notification settings', icon: <BellRinging size={16} />, onSelect: () => ui.openDialog({ kind: 'guildNotifications', guildId }) },
+    { kind: 'item', label: 'Hide muted channels', checked: settings?.hide_muted_channels ?? false, onSelect: () => void setGuildToggles(guildId, { hide_muted_channels: !settings?.hide_muted_channels }) },
+    { kind: 'item', label: 'Privacy settings', icon: <Shield size={16} />, onSelect: () => ui.openSettings({ kind: 'user', tab: 'privacy' }) },
     {
       kind: 'item',
       label: 'Collapse all categories',
@@ -54,7 +57,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
   ];
   if (canOpenServerSettings(perms)) {
     entries.push({ kind: 'separator' });
-    entries.push({ kind: 'item', label: 'Server settings', icon: <Gear size={16} />, onSelect: () => ui.openSettings({ kind: 'server', guildId, tab: 'overview' }) });
+    entries.push({ kind: 'item', label: 'Server settings', icon: <Gear size={16} />, onSelect: () => ui.openSettings({ kind: 'server', guildId, tab: serverSettingsTabs(perms).find((tab) => tab.show)?.id ?? 'members' }) });
   }
   if (can(perms, Permission.MANAGE_CHANNELS)) {
     entries.push({ kind: 'item', label: 'Create channel', icon: <Hash size={16} />, onSelect: () => ui.openDialog({ kind: 'createChannel', guildId, parentId: null }) });
@@ -67,15 +70,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
       label: 'Delete server',
       icon: <Trash size={16} />,
       danger: true,
-      onSelect: () =>
-        ui.openDialog({
-          kind: 'confirm',
-          title: `Delete ${guild.name}?`,
-          body: 'This permanently deletes the server, its channels and messages for everyone. This cannot be undone.',
-          confirmLabel: 'Delete server',
-          danger: true,
-          onConfirm: async () => void (await attempt(() => deleteGuild(guildId), 'Could not delete server')),
-        }),
+      onSelect: () => confirmDeleteServer(guildId),
     });
   } else {
     entries.push({
@@ -94,6 +89,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
         }),
     });
   }
+  entries.push({ kind: 'separator' }, { kind: 'item', label: 'Copy server ID', icon: <Copy size={16} />, onSelect: () => void copyText(guildId, 'Server ID copied') });
   return entries;
 }
 

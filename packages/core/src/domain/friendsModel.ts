@@ -1,8 +1,8 @@
 /** Pure view model of the Friends page: tab lists, counts, search and the Active Now column. */
-import { RelationshipType, type Relationship, type VoiceState } from '../contracts/rest';
+import { RelationshipType, type Activity, type Relationship, type VoiceState } from '../contracts/rest';
 
 export type FriendsTab = 'online' | 'all' | 'pending' | 'blocked' | 'add';
-export type PresenceLookup = Record<string, { status: string; activities?: { type: number; name: string }[] } | undefined>;
+export type PresenceLookup = Record<string, { status: string; activities?: Activity[] } | undefined>;
 
 export interface FriendsView {
   friends: Relationship[];
@@ -39,7 +39,7 @@ export function buildFriendsView(all: Relationship[], presence: PresenceLookup, 
 
 export interface ActiveNowEntry {
   rel: Relationship;
-  kind: 'voice' | 'playing';
+  kind: 'voice' | 'playing' | 'status' | 'activity';
   /** Voice channel id or game name. */
   detail: string;
   guildId: string | null;
@@ -57,8 +57,18 @@ export function activeNow(friends: Relationship[], voice: Record<string, Record<
       entries.push({ rel, kind: 'voice', detail: vs.channel_id, guildId: vs.guild_id ?? null, channelId: vs.channel_id });
       continue;
     }
-    const game = presence[rel.id]?.activities?.find((a) => a.type === 0);
-    if (game) entries.push({ rel, kind: 'playing', detail: game.name, guildId: null, channelId: null });
+    const current = presence[rel.id];
+    if (!current || current.status === 'offline' || current.status === 'invisible') continue;
+    const activity = current.activities?.find((a) => a.type !== 4 && a.name.trim())
+      ?? current.activities?.find((a) => a.type === 4 && (a.state?.trim() || a.emoji?.name));
+    if (!activity) continue;
+    const kind = activity.type === 0 ? 'playing' : activity.type === 4 ? 'status' : 'activity';
+    const detail = activity.type === 4 ? (activity.state?.trim() || activity.emoji?.name || '')
+      : activity.type === 2 ? `Listening to ${activity.name}`
+      : activity.type === 3 ? `Watching ${activity.name}`
+      : activity.type === 1 ? `Streaming ${activity.name}`
+      : activity.type === 5 ? `Competing in ${activity.name}` : activity.name;
+    entries.push({ rel, kind, detail, guildId: null, channelId: null });
   }
   return entries.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'voice' ? -1 : 1));
 }

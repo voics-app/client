@@ -335,25 +335,33 @@ function ShortcutsDialog() {
   );
 }
 
-function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
+export function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
   const [busy, setBusy] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const close = useClose();
   return (
     <Modal open onClose={close} title={dialog.title} width={400}>
       <p className="confirm-body">{dialog.body}</p>
+      {dialog.confirmText !== undefined && <Field label={`Type ${dialog.confirmText} to confirm`}>{(id) => <Input id={id} data-autofocus autoComplete="off" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />}</Field>}
+      {error && <p role="alert" className="field-error">{error}</p>}
       <div className="row-end">
         <Button variant="ghost" onClick={close}>Cancel</Button>
         <Button
           variant={dialog.danger ? 'danger' : 'primary'}
           loading={busy}
-          data-autofocus
+          data-autofocus={dialog.confirmText === undefined || undefined}
+          disabled={dialog.confirmText !== undefined && confirmation !== dialog.confirmText}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               await dialog.onConfirm();
+              close();
+            } catch (err) {
+              setError(errorMessage(err));
             } finally {
               setBusy(false);
-              close();
             }
           }}
         >
