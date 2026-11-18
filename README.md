@@ -91,6 +91,21 @@ Users can also switch profile from the sign-in screen or Settings, Connection.
 - Protected (DRM) video captures as black by design. The share picker detects this and offers Watch Together.
 - The session is stored with Electron `safeStorage` (OS keychain). The store key for local private history is wrapped by the same keychain.
 
+Desktop and mobile save a random refresh request UUID before sending a rotation.
+After a lost response or failed successor save, the same token/UUID pair survives
+a restart. Only a successful vault save replaces the runtime tokens and removes
+the pending UUID. Logout serializes its clear after pending writes. The supporting
+API recovers one immediate unused successor for five minutes; it retains strict
+reuse detection for other replays and never restores revoked sessions.
+
+Desktop encrypted files use a flushed temporary file and atomic replacement.
+On Windows, Electron 38.8.6 can encrypt before its first `Local State` key write.
+The first secret save therefore waits for that wrapped key and flushes its file,
+failing after 15 seconds if storage stays unavailable. This may delay a very fast
+first sign-in; refresh is not sent before its recovery identity is durable. This
+guard depends on Electron's Windows profile format and must be revalidated when
+upgrading Electron. It makes no OS power-loss or filesystem durability guarantee.
+
 ## Not in v1
 
 Payments, DRM capture, full-text search, slash-command picker UI, and attachments in private delivery modes.

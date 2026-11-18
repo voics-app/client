@@ -4,4 +4,6 @@ export interface StoredSession {
   refreshToken: string;
   userId: string;
   deviceId: string | null;
+  /** Saved before refresh and kept until the successor credentials are durable. */
+  refreshRequestId?: string;
 }
