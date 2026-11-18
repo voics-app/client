@@ -107,6 +107,7 @@ export class MobileCallController extends VoiceCallController {
       // cancelled this operation while detaching the previous sender track.
       if (this.captureGeneration !== generation + 1) return;
       await this.startCamera(facing, this.captureGeneration);
+      if (this.held && this.cameraFacing !== facing) throw new Error(`The ${facing} camera is not available on this device.`);
     });
   }
 
@@ -136,7 +137,8 @@ export class MobileCallController extends VoiceCallController {
       throw error;
     }
     this.held = stream;
-    this.cameraFacing = facing;
+    const capturedFacing = track.getSettings?.().facingMode;
+    this.cameraFacing = capturedFacing === 'user' ? 'front' : capturedFacing === 'environment' ? 'back' : facing;
     for (const listener of this.facingListeners) listener();
     track.onended = () => { void this.setVideo(false).catch(() => undefined); };
     useVoiceStore.getState().setLocalMedia({ localCamera: stream });

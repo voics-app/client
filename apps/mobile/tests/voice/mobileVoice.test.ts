@@ -96,8 +96,8 @@ function audioTrack(): NativeAudioTrack & { volume: number | null } {
   return t;
 }
 
-function cameraStream() {
-  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn() };
+function cameraStream(facingMode?: 'user' | 'environment') {
+  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn(), getSettings: () => ({ facingMode }) };
   return { track, getTracks: () => [track], getVideoTracks: () => [track], toURL: () => 'stream-url' };
 }
 
@@ -307,6 +307,26 @@ describe('mobile video', () => {
     const { voice, openCamera } = setup();
     await expect(voice.controller.setVideo(true)).rejects.toThrow(/connected call/i);
     expect(openCamera).not.toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('uses the captured camera facing when native capture falls back on a one-camera device', async () => {
+    const { voice, openCamera } = await inCall();
+    openCamera.mockResolvedValueOnce(cameraStream('environment') as unknown as NativeVideoStream);
+    await voice.controller.setVideo(true);
+    expect(openCamera).toHaveBeenCalledWith('front');
+    expect(voice.controller.facing).toBe('back');
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
+    voice.dispose();
+  });
+
+  it('keeps the actual facing and explains an unavailable camera instead of claiming a successful flip', async () => {
+    const { voice, openCamera } = await inCall();
+    openCamera.mockResolvedValue(cameraStream('environment') as unknown as NativeVideoStream);
+    await voice.controller.setVideo(true);
+    await expect(voice.controller.switchCamera()).rejects.toThrow('The front camera is not available on this device.');
+    expect(voice.controller.facing).toBe('back');
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
     voice.dispose();
   });
 

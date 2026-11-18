@@ -24,6 +24,8 @@ export interface NativeVideoTrack extends MediaTrackLike {
   enabled: boolean;
   readonly readyState?: string;
   onended?: (() => void) | null;
+  /** Native capture may fall back when the requested camera does not exist. */
+  getSettings?(): { facingMode?: string };
 }
 
 /** A camera stream: toURL() is what a native video view renders. */
