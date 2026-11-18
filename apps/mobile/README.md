@@ -65,6 +65,25 @@ Native libraries (a development build is needed for a new build; Expo Go bundles
 - **Scales and primitives** (`src/theme.ts`, `src/ui/`): `type` (desktop's 11 to 30 ladder), `space` (4 to 64), `radius` (6, 10, 14, 20), `HIT` (44), `CHROME_FONT_CAP` (1.3: text in fixed-height rows and chips stops growing there, message text grows freely). `Txt` (variant, tone, weight, `chrome`, `caps`), `PressableScale` (0.97 scale, 150 ms), `Button` (44 pt, `size="large"` 48 pt), `Input` and `Field` (accent border on focus), `ListRow` (52 pt), `SectionHeader`, `EmptyState` (icon tile, headline, sentence, one action) and the `Skeleton`, `MessageSkeletons` and `RowSkeletons` loaders that replace spinners and "Loading..." lines. New screens use these instead of their own sizes.
 - **Jest.** Gesture-handler is mocked as chainable no-ops in `tests/setup.ts` and reanimated runs through its Jest resolver (`jest.config.js`), so gestures are tested through their pure models, not by simulated touches.
 
+## Presence across suspension
+
+`runtime/foreground.ts` publishes P7 presence before `AppState` enters the background and after
+READY/RESUMED. A brief `inactive` state (for example Control Centre) does not change presence.
+Normal Online becomes automatic Idle; choosing Online in the status picker persists an explicit
+Online choice in device storage under the authenticated account ID. Other accounts on the same
+phone do not inherit it. Choosing Idle, DND or Invisible clears that explicit Online preference.
+Custom statuses and their expiry still use the shared core rules.
+
+The client sends `background: true` only while backgrounded. The gateway retains the effective
+status across suspension for a bounded lease (24 hours by default), removes it on logout/revocation
+or expiry, and aggregates it with the user's other devices. This cannot distinguish suspension
+from an iOS force-quit. No keepalive audio, background timer or fake heartbeat is used. On cold
+start the client identifies as invisible until READY loads saved account settings, preventing
+an Invisible or DND account from briefly appearing Online. A live socket also receives Invisible
+before local logout closes it if the logout HTTP request failed.
+
+Regression commands: `pnpm --filter @discordy/mobile test --runInBand tests/runtime/foreground.test.ts tests/runtime/createRuntime.test.ts`.
+
 ## Commands
 
 Run from the repo root (`pnpm install` first), or from `apps/mobile` without the `--filter`.
