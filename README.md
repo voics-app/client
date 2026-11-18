@@ -8,13 +8,13 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 |---|---|
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
-| `packages/core` | `@discordy/core`, shared by desktop and (next) mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format) and `src/application` (ports and platform-free zustand stores) and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
+| `packages/core` | `@discordy/core`, shared by desktop and mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format), `src/application` (ports and platform-free zustand stores), `src/infrastructure` (HTTP and gateway clients), and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
 | `apps/desktop/src/shared` | IPC contract and the brand |
 | `apps/desktop/src/renderer/domain` | The few domain modules that still read the brand (`BRAND`); they move once the brand is injected |
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |
 | `apps/desktop/src/renderer/infrastructure` | HTTP and gateway clients, WebRTC, audio, workers |
 | `apps/desktop/src/renderer/interface` | React UI: design system, features, composition root |
-| `apps/mobile` | Expo (React Native) app skeleton: expo-router tabs (Servers, DMs, Notifications, You), name and scheme from `apps/desktop/brand.json`. See [apps/mobile/README.md](apps/mobile/README.md) |
+| `apps/mobile` | Expo (React Native) app: sign-in/2FA, servers, channels, messages, DMs, attachments, settings, push and calls. Name and scheme come from `apps/desktop/brand.json`. See [apps/mobile/README.md](apps/mobile/README.md) |
 | `eslint.base.mjs` | ESLint rules shared by desktop and mobile |
 | `native/crypto` | Rust crypto core (OpenMLS, Ed25519 identity, encrypted local store) with two interface layers: napi-rs for desktop and uniffi for iOS (XCFramework, built by the manual `crypto-ios` workflow) |
 
@@ -41,6 +41,13 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.
 
 Native iOS builds include a ReplayKit broadcast extension for screen sharing during calls. Its app group, embedded target, EAS signing metadata and consent bridge are generated from source; see the mobile README for build and real-device acceptance checks. Camera and screen streams use the existing encrypted media path, including safe cancellation of late permission results and delayed native SSRC announcements.
+
+Mobile presence becomes Idle when the app enters the background by default. Explicitly choosing
+Online keeps that status on this device; the intent is stored per account across restarts.
+Idle, DND and Invisible remain as selected. Returning to the foreground restores the current
+status after the gateway resumes. Logout clears the live presence, and a cold start stays
+invisible until READY has loaded the account settings. A supporting gateway retains suspended
+mobile availability for a bounded lease (24 hours by default), without keeping the app running.
 
 ## Test and lint
 

@@ -1,15 +1,15 @@
 /** Mobile composition root: wires the shared HTTP and gateway clients, the session manager and dispatch routing. */
-import { ALL_INTENTS } from '@discordy/core/contracts/gateway';
+import { ALL_INTENTS, GatewayOp } from '@discordy/core/contracts/gateway';
 import type { AuthResponse, ReadyPayload } from '@discordy/core/contracts/rest';
 import { PrefsSync } from '@discordy/core/application/syncedPrefs';
 import { createDispatchRouter, registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { PrivateMessaging } from '@discordy/core/application/privacy/privateMessaging';
 import { InteractionService } from '@discordy/core/application/interactionService';
-import { currentPresence } from '@discordy/core/application/selfPresence';
 import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair } from '@discordy/core/application/sessionManager';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 import { errorMessage } from '@discordy/core/application/errorMessage';
+import { currentMobilePresence } from './mobilePresence';
 import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import type { IceServer } from '@discordy/core/domain/turn';
 import type { SocketFactory } from '@discordy/core/infrastructure/net/socket';
@@ -100,7 +100,8 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     properties: { os: config.platform, client: 'discordy-mobile', version: config.version },
     socketFactory: config.socketFactory,
     intents: ALL_INTENTS,
-    presence: () => currentPresence(),
+    // On cold start the account's DND/Invisible settings arrive in READY, so stay hidden until they are known.
+    presence: () => useSessionStore.getState().status === 'ready' ? currentMobilePresence() : { status: 'invisible', activities: [], afk: false },
   });
 
   const turn = new TurnCredentials(() => gateway.renewSession());
@@ -159,6 +160,8 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     renewSession: () => http.renewSession(),
     connect: () => gateway.connect(),
     disconnect: () => {
+      // Even if the logout HTTP request failed, a live socket can clear this device's availability.
+      if (gateway.state === 'ready') gateway.send(GatewayOp.PRESENCE_UPDATE, { status: 'invisible', activities: [], afk: false, background: false });
       turn.clear();
       privacy?.stop();
       void voice?.controller.leave();
