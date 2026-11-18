@@ -52,18 +52,22 @@ describe('parseTemplateCode', () => {
     expect(parseTemplateCode('app://template/hTKzmak12345/')).toBe('hTKzmak12345');
     expect(parseTemplateCode('builtin-study-group')).toBe('builtin-study-group');
     expect(parseTemplateCode('https://example.test/template/abc?x=1')).toBe('abc');
+    expect(parseTemplateCode('https://example.test/template.html?code=abc-12')).toBe('abc-12');
   });
 
   it('rejects text that is not a code', () => {
     expect(parseTemplateCode('')).toBeNull();
     expect(parseTemplateCode('a')).toBeNull();
     expect(parseTemplateCode('not a code')).toBeNull();
+    expect(parseTemplateCode('https://example.test/account')).toBeNull();
+    expect(parseTemplateCode('https://example.test/template.html?code=bad%2Fcode')).toBeNull();
+    expect(parseTemplateCode('https://example.test/template/abc/extra')).toBeNull();
   });
 });
 
 describe('template links', () => {
-  it('shares through the brand scheme', () => {
-    expect(templateShareLink('abc')).toBe(`${TEST_BRAND.protocolScheme}://template/abc`);
+  it('shares through the public web page', () => {
+    expect(templateShareLink('abc')).toBe(`${TEST_BRAND.landingUrl}/template.html?code=abc`);
     expect(parseTemplateCode(templateShareLink('abc-12'))).toBe('abc-12');
   });
 
