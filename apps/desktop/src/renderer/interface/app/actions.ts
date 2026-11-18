@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** UI-facing commands: wrap API calls with consistent error toasts. */
 import { deleteGuild as deleteGuildCommand, leaveGuild as leaveGuildCommand, markChannelRead as markChannelReadCommand, markGuildRead as markGuildReadCommand, saveRail as saveRailCommand } from '@discordy/core/application/guildCommands';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -6,14 +7,15 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { forwardMessage as forwardMessageCommand } from '@discordy/core/application/forwardCommands';
 import { idBefore } from '@discordy/core/domain/unread';
 import type { GuildFolder, Message } from '@discordy/core/contracts/rest';
-import { errorMessage } from '@discordy/core/application/errorMessage';
+import { errorMessage as commandErrorMessage } from '@discordy/core/application/errorMessage';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
-export { errorMessage };
+/** Translate known product errors; preserve unfamiliar server details for diagnosis. */
+export const errorMessage = (error: unknown): string => getI18n().catalogText(commandErrorMessage(error));
 
 export function reportError(error: unknown, title = 'Something went wrong'): void {
-  useUiStore.getState().toast({ tone: 'danger', title, body: errorMessage(error) });
+  useUiStore.getState().toast({ tone: 'danger', title: getI18n().catalogText(title), body: errorMessage(error) });
 }
 
 /** Runs an async command; resolves to its value or undefined after toasting the failure. */

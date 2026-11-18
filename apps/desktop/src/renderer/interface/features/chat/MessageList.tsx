@@ -71,6 +71,7 @@ function ThinkingRow({ pending }: { pending: PendingInteraction }) {
 }
 
 export function MessageList({ channelId }: { channelId: string }) {
+  const { t: msg } = useI18n();
   const { t, locale } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const timeline = useMessageStore((s) => s.timelines[channelId]);
@@ -160,11 +161,11 @@ export function MessageList({ channelId }: { channelId: string }) {
       await getRuntime().privacy.sender.loadHistory(channel, oldest);
     } catch (e) {
       pendingPrepend.current = null;
-      reportError(e, 'Could not load older messages');
+      reportError(e, msg("settings.messagelist.could.not.load.older.messages"));
     } finally {
       setLoadingOlder(false);
     }
-  }, [channel, loadingOlder, timeline, virtualizer]);
+  }, [channel, loadingOlder, timeline, virtualizer, msg]);
 
   const loadingNewer = useRef(false);
   const loadNewer = useCallback(async () => {
@@ -173,11 +174,11 @@ export function MessageList({ channelId }: { channelId: string }) {
     try {
       await getRuntime().privacy.sender.loadNewer(channel);
     } catch (e) {
-      reportError(e, 'Could not load newer messages');
+      reportError(e, msg("settings.messagelist.could.not.load.newer.messages"));
     } finally {
       loadingNewer.current = false;
     }
-  }, [channel]);
+  }, [channel, msg]);
 
   /** "Jump to present": reload the latest page when the window is detached, then pin to the bottom. */
   const jumpToPresent = useCallback(async () => {
@@ -205,7 +206,7 @@ export function MessageList({ channelId }: { channelId: string }) {
         try {
           await getRuntime().privacy.sender.loadAround(channel, wanted.messageId);
         } catch (e) {
-          reportError(e, 'Could not load that message');
+          reportError(e, msg("settings.messagelist.could.not.load.that.message"));
         }
         const latestTimeline = useMessageStore.getState().timelines[channelId];
         const found =

@@ -87,6 +87,7 @@ function useSpoilerDisclosure(attachment: Attachment, channelId?: string) {
 }
 
 function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachment: Attachment; onError: () => void; tile?: boolean; siblings?: Attachment[]; channelId?: string }) {
+  const { t: msg } = useI18n();
   const kind = previewKind(attachment);
   const { hidden, open, reveal } = useSpoilerDisclosure(attachment, channelId);
   const src = attachment.proxy_url ?? attachment.url;
@@ -104,7 +105,7 @@ function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachm
     <button
       type="button"
       className={`media-tile${tile ? ' is-cell' : ''}${hidden ? ' is-spoiler' : ''}`}
-      aria-label={hidden ? `Spoiler: ${name}. Click to reveal` : `Open ${name}`}
+      aria-label={hidden ? msg("files.revealSpoiler", { name }) : msg("files.openNamed", { name })}
       onClick={() => (hidden ? reveal() : openViewer())}
       style={{ aspectRatio: aspect }}
     >
@@ -116,21 +117,22 @@ function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachm
           {!hidden && <span className="media-tile-play" aria-hidden="true"><Play size={22} weight="fill" /></span>}
         </>
       )}
-      {hidden && <span className="spoiler-label">Spoiler</span>}
-      {!hidden && attachment.description && <span className="alt-badge" title={attachment.description}>ALT</span>}
+      {hidden && <span className="spoiler-label">{msg("composer.spoiler")}</span>}
+      {!hidden && attachment.description && <span className="alt-badge" title={attachment.description}>{msg("settings.attachmentview.alt")}</span>}
     </button>
   );
 }
 
 /** Spoiler files must not mount text/audio previews or expose download controls before reveal. */
 function FileSpoiler({ attachment, channelId, children }: { attachment: Attachment; channelId?: string; children: ReactNode }) {
+  const { t: msg } = useI18n();
   const { hidden, reveal } = useSpoilerDisclosure(attachment, channelId);
   if (!hidden) return children;
   const name = displayFilename(attachment.filename);
   return (
-    <button type="button" className="attachment-file attachment-spoiler" aria-label={`Spoiler: ${name}. Click to reveal`} onClick={reveal}>
+    <button type="button" className="attachment-file attachment-spoiler" aria-label={msg("files.revealSpoiler", { name })} onClick={reveal}>
       <FileIcon size={28} weight="light" aria-hidden="true" />
-      <span><span className="attachment-name">{name}</span><span className="attachment-size">Spoiler · click to reveal</span></span>
+      <span><span className="attachment-name">{name}</span><span className="attachment-size">{msg("files.reveal")}</span></span>
     </button>
   );
 }
@@ -153,6 +155,7 @@ function FileCard({ attachment, url }: { attachment: Attachment; url: string }) 
 
 /** First lines of a text or code file, inline. Falls back to the plain file card when it cannot be fetched. */
 function TextPreview({ attachment, url }: { attachment: Attachment; url: string }) {
+  const { t: msg } = useI18n();
   const { locale } = useI18n();
   const [text, setText] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -174,9 +177,9 @@ function TextPreview({ attachment, url }: { attachment: Attachment; url: string 
         <a href={url} target="_blank" rel="noreferrer" className="attachment-name">{name}</a>
         <span className="attachment-size">{formatBytes(attachment.size, locale)}</span>
       </div>
-      <pre className={`text-preview-body${expanded ? ' is-expanded' : ''}`}><code>{text === null ? 'Loading' : expanded ? text : shown}</code></pre>
+      <pre className={`text-preview-body${expanded ? ' is-expanded' : ''}`}><code>{text === null ? msg("settings.attachmentview.loading") : expanded ? text : shown}</code></pre>
       {text !== null && truncated && (
-        <button type="button" className="text-preview-more" onClick={() => setExpanded((v) => !v)}>{expanded ? 'Show less' : 'Show more'}</button>
+        <button type="button" className="text-preview-more" onClick={() => setExpanded((v) => !v)}>{expanded ? msg("settings.attachmentview.show.less") : msg("settings.attachmentview.show.more")}</button>
       )}
     </div>
   );
@@ -211,7 +214,7 @@ function MediaAttachment({ attachment: original, channelId, tile, siblings }: It
 
 /** Files from Ephemeral and P2P chats: decrypted on this device, then shown exactly like any other attachment. */
 function PrivateAttachmentView({ attachment, channelId, tile, siblings }: ItemProps & { channelId: string }) {
-  const { locale, number } = useI18n();
+  const { t: msg, locale, number, catalogText } = useI18n();
   const ref = privateRefOf(attachment)!;
   const transfer = useTransferStore((s) => s.transfers[ref.id]);
   const [url, setUrl] = useState<string | null>(() => getRuntime().privacy.attachments.urlFor(ref.id));
@@ -232,15 +235,15 @@ function PrivateAttachmentView({ attachment, channelId, tile, siblings }: ItemPr
     attachments
       .resolve(attachment, channelId)
       .then((resolved) => !cancelled && setUrl(resolved))
-      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : 'Could not open this file.'));
+      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : msg("settings.attachmentview.could.not.open.this.file")));
     return () => {
       cancelled = true;
     };
-  }, [attachment, channelId, ref, done, attempt]);
+  }, [attachment, channelId, ref, done, attempt, msg]);
 
   if (url) return <MediaAttachment attachment={{ ...attachment, url }} tile={tile} siblings={siblings} />;
 
-  const failed = error ?? (transfer?.state === 'error' ? (transfer.error ?? 'Transfer failed.') : null);
+  const failed = error ?? (transfer?.state === 'error' ? (transfer.error ?? msg("settings.attachmentview.transfer.failed")) : null);
   if (failed) {
     return (
       <div className="attachment-file attachment-pending is-failed" role="alert">
@@ -251,14 +254,13 @@ function PrivateAttachmentView({ attachment, channelId, tile, siblings }: ItemPr
         </span>
         {ref.source.kind === 'cdn' && (
           <button type="button" className="attachment-retry" onClick={() => setAttempt((n) => n + 1)}>
-            <ArrowClockwise size={13} /> Retry
-          </button>
+            <ArrowClockwise size={13} /> {msg("chat.retry")} </button>
         )}
       </div>
     );
   }
   const fraction = fractionOf(transfer);
-  const label = STATE_LABEL[transfer?.state ?? 'downloading'];
+  const label = catalogText(STATE_LABEL[transfer?.state ?? 'downloading']);
   return (
     <div className="attachment-file attachment-pending" role="status" aria-label={`${attachment.filename}: ${label}`}>
       <LockSimple size={28} weight="light" />

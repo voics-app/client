@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Turns an API `errors` envelope into per-field messages for the auth form plus one message for the banner. */
 /**
  * The only message a failed sign-in ever shows. Deliberately vague: it never says whether the account exists or
@@ -14,15 +15,16 @@ export interface AuthErrorDisplay {
   general: string | null;
 }
 
-export function authErrorDisplay(errors: Record<string, unknown> | undefined, visibleFields: readonly string[]): AuthErrorDisplay {
+export function authErrorDisplay(errors: Record<string, unknown> | undefined, visibleFields: readonly string[], locale?: string): AuthErrorDisplay {
+  const { catalogText } = createI18n(locale);
   const fields: Record<string, string> = {};
   let general: string | null = null;
   for (const [key, value] of Object.entries(errors ?? {})) {
     const message = (value as { _errors?: { message?: string }[] } | null)?._errors?.[0]?.message;
     if (!message) continue;
-    if (CREDENTIAL_KEYS.includes(key)) general = SIGN_IN_FAILED;
-    else if (visibleFields.includes(key)) fields[key] = message;
-    else general ??= message;
+    if (CREDENTIAL_KEYS.includes(key)) general = catalogText(SIGN_IN_FAILED);
+    else if (visibleFields.includes(key)) fields[key] = catalogText(message);
+    else general ??= catalogText(message);
   }
   return { fields, general };
 }

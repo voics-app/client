@@ -76,6 +76,7 @@ function HeaderTime({ iso }: { iso: string }) {
 }
 
 function InteractionHeader({ message }: { message: ChatMessage }) {
+  const { t } = useI18n();
   const meta = message.interaction_metadata;
   if (!meta) return null;
   return (
@@ -83,7 +84,7 @@ function InteractionHeader({ message }: { message: ChatMessage }) {
       <span className="reply-hook" aria-hidden="true" />
       <Avatar id={meta.user.id} name={displayName(meta.user)} avatar={meta.user.avatar} size={16} />
       <span className="reply-name">{displayName(meta.user)}</span>
-      <span className="reply-text">used {meta.name ? <strong>/{meta.name}</strong> : 'a command'}</span>
+      <span className="reply-text">{t("chat.usedCommand", { command: meta.name ? `/${meta.name}` : t("chat.aCommand") })}</span>
     </div>
   );
 }
@@ -91,6 +92,7 @@ function InteractionHeader({ message }: { message: ChatMessage }) {
 const LONG_PRESS_MS = 500;
 
 function ReactionChip({ message, reaction, canReact, canManage }: { message: ChatMessage; reaction: Reaction; canReact: boolean; canManage: boolean }) {
+  const { t: msg, locale, number } = useI18n();
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const menu = useMenu();
   const [names, setNames] = useState<{ names: string[]; count: number } | null>(null);
@@ -125,20 +127,20 @@ function ReactionChip({ message, reaction, canReact, canManage }: { message: Cha
       case 'removeEmoji':
         return useUiStore.getState().openDialog({
           kind: 'confirm',
-          title: 'Remove reactions',
-          body: `Remove every ${label} reaction from this message?`,
-          confirmLabel: 'Remove',
+          title: msg("settings.messageitem.remove.reactions"),
+          body: msg("reactions.removeNamed", { emoji: label }),
+          confirmLabel: msg("common.remove"),
           danger: true,
-          onConfirm: async () => void (await attempt(() => api.removeEmojiReactions(message.channel_id, message.id, key), 'Could not remove reactions')),
+          onConfirm: async () => void (await attempt(() => api.removeEmojiReactions(message.channel_id, message.id, key), msg("settings.messageitem.could.not.remove.reactions"))),
         });
       case 'removeAll':
         return useUiStore.getState().openDialog({
           kind: 'confirm',
-          title: 'Remove all reactions',
-          body: 'Remove every reaction from this message?',
-          confirmLabel: 'Remove all',
+          title: msg("settings.messageitem.remove.all.reactions"),
+          body: msg("settings.messageitem.remove.every.reaction.from.this.message"),
+          confirmLabel: msg("settings.messageitem.remove.all"),
           danger: true,
-          onConfirm: async () => void (await attempt(() => api.removeAllReactions(message.channel_id, message.id), 'Could not remove reactions')),
+          onConfirm: async () => void (await attempt(() => api.removeAllReactions(message.channel_id, message.id), msg("settings.messageitem.could.not.remove.reactions"))),
         });
     }
   };
@@ -146,13 +148,13 @@ function ReactionChip({ message, reaction, canReact, canManage }: { message: Cha
 
   return (
     <>
-      <Tooltip label={names ? reactionSummary(names.names, names.count, label) : `Reacted with ${label}`}>
+      <Tooltip label={names ? reactionSummary(names.names, names.count, label, locale) : msg("reactions.withEmoji", { emoji: label })}>
         <button
           type="button"
           className={`reaction${reaction.me ? ' is-me' : ''}`}
           disabled={!canReact && !reaction.me}
           aria-pressed={reaction.me}
-          aria-label={`${reaction.emoji.name} ${reaction.count}`}
+          aria-label={msg("reactions.countLabel", { emoji: reaction.emoji.name ?? "", count: reaction.count })}
           onMouseEnter={loadNames}
           onFocus={loadNames}
           onContextMenu={(e) => {
@@ -178,7 +180,7 @@ function ReactionChip({ message, reaction, canReact, canManage }: { message: Cha
           }}
         >
           {reaction.emoji.id ? <img src={`${cdn}/emojis/${reaction.emoji.id}.${reaction.emoji.animated ? 'gif' : 'png'}`} alt={reaction.emoji.name ?? ''} /> : <span>{reaction.emoji.name}</span>}
-          <span className="tnum">{reaction.count}</span>
+          <span className="tnum">{number(reaction.count)}</span>
         </button>
       </Tooltip>
       <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} minWidth={200} />

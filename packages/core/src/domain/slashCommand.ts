@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Pure parsing, search, validation and payload building for application (slash) commands. */
 import {
   CommandOptionType as OptionType,
@@ -64,27 +65,28 @@ export function searchEntries(entries: SlashEntry[], query: string, limit = 25):
   return [...starts, ...contains].slice(0, limit);
 }
 
-export function validateValues(options: ApplicationCommandOption[], values: OptionValues): Record<string, string> {
+export function validateValues(options: ApplicationCommandOption[], values: OptionValues, locale?: string): Record<string, string> {
+  const { t, catalogText } = createI18n(locale);
   const errors: Record<string, string> = {};
   for (const o of options) {
     const raw = values[o.name] ?? '';
     if (raw === '') {
-      if (o.required) errors[o.name] = 'Required';
+      if (o.required) errors[o.name] = catalogText("Required");
       continue;
     }
     if (o.choices && o.choices.length > 0 && !o.choices.some((c) => String(c.value) === raw)) {
-      errors[o.name] = 'Pick one of the choices';
+      errors[o.name] = catalogText("Pick one of the choices");
       continue;
     }
     if (o.type === OptionType.INTEGER || o.type === OptionType.NUMBER) {
       const n = Number(raw);
       if (!Number.isFinite(n) || (o.type === OptionType.INTEGER && !Number.isInteger(n))) {
-        errors[o.name] = o.type === OptionType.INTEGER ? 'Must be a whole number' : 'Must be a number';
-      } else if (o.min_value !== undefined && n < o.min_value) errors[o.name] = `Must be at least ${o.min_value}`;
-      else if (o.max_value !== undefined && n > o.max_value) errors[o.name] = `Must be at most ${o.max_value}`;
+        errors[o.name] = o.type === OptionType.INTEGER ? catalogText("Must be a whole number") : catalogText("Must be a number");
+      } else if (o.min_value !== undefined && n < o.min_value) errors[o.name] = t("validation.minimumNumber", { count: o.min_value });
+      else if (o.max_value !== undefined && n > o.max_value) errors[o.name] = t("validation.maximumNumber", { count: o.max_value });
     } else if (o.type === OptionType.STRING) {
-      if (o.min_length !== undefined && raw.length < o.min_length) errors[o.name] = `At least ${o.min_length} characters`;
-      else if (o.max_length !== undefined && raw.length > o.max_length) errors[o.name] = `At most ${o.max_length} characters`;
+      if (o.min_length !== undefined && raw.length < o.min_length) errors[o.name] = t("validation.minCharacters", { count: o.min_length });
+      else if (o.max_length !== undefined && raw.length > o.max_length) errors[o.name] = t("validation.maxCharacters", { count: o.max_length });
     }
   }
   return errors;

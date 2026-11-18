@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Play, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
@@ -22,10 +23,11 @@ function openInLightbox(media: EmbedMedia, src: string): void {
 }
 
 function EmbedImage({ media, className }: { media: EmbedMedia; className: string }) {
+  const { t: msg } = useI18n();
   const src = embedMediaSrc(media);
   if (!src) return null;
   return (
-    <button type="button" className={`embed-media-button ${className}`} aria-label="View image" onClick={() => openInLightbox(media, src)}>
+    <button type="button" className={`embed-media-button ${className}`} aria-label={msg("settings.embedview.view.image")} onClick={() => openInLightbox(media, src)}>
       <AnimatedImage kind="gif" animated={looksAnimated(src) || looksAnimated(media.url)} data-ctx="image" data-src={src} data-open={media.url} data-filename={filenameOf(media)} src={src} alt="" loading="lazy" draggable={false} style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : undefined }} />
     </button>
   );
@@ -33,6 +35,7 @@ function EmbedImage({ media, className }: { media: EmbedMedia; className: string
 
 /** Player of an embed: allow-listed iframe players load only after a click; other video plays through the proxy. */
 function EmbedVideo({ embed }: { embed: Embed }) {
+  const { t: msg } = useI18n();
   const [playing, setPlaying] = useState(false);
   const playback = embedPlayback(embed);
   if (!playback) return null;
@@ -49,7 +52,7 @@ function EmbedVideo({ embed }: { embed: Embed }) {
     <div className="embed-video" style={{ aspectRatio: aspect }}>
       {playing ? (
         <iframe
-          title={embed.title ?? 'Video player'}
+          title={embed.title ?? msg("settings.embedview.video.player")}
           src={playback.src}
           sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
@@ -57,7 +60,7 @@ function EmbedVideo({ embed }: { embed: Embed }) {
           allowFullScreen
         />
       ) : (
-        <button type="button" className="embed-video-poster" aria-label={`Play ${embed.title ?? 'video'}`} onClick={() => setPlaying(true)}>
+        <button type="button" className="embed-video-poster" aria-label={msg("media.playNamed", { name: embed.title ?? msg("media.video") })} onClick={() => setPlaying(true)}>
           {poster && <img src={poster} alt="" loading="lazy" draggable={false} />}
           <span className="embed-video-play"><Play size={26} weight="fill" /></span>
         </button>
@@ -124,6 +127,7 @@ function EmbedItem({ embed }: { embed: Embed }) {
 
 /** The embeds of a message. Link previews can be hidden in settings, and removed with the hover "x" by the author or a moderator. */
 export function MessageEmbeds({ message }: { message: ChatMessage }) {
+  const { t: msg } = useI18n();
   const showPreviews = usePrefsStore((s) => s.linkPreviews);
   const showEmbeds = usePrefsStore((s) => s.inlineEmbeds);
   const me = useSessionStore((s) => s.user?.id);
@@ -137,7 +141,7 @@ export function MessageEmbeds({ message }: { message: ChatMessage }) {
     <div className="embeds">
       {visible.map((embed, i) => <EmbedItem key={i} embed={embed} />)}
       {removable && (
-        <button type="button" className="embed-remove" aria-label="Remove all link previews from this message" title="Remove previews" onClick={() => void suppressEmbeds(message)}>
+        <button type="button" className="embed-remove" aria-label={msg("settings.embedview.remove.all.link.previews.from.this.message")} title={msg("settings.embedview.remove.previews")} onClick={() => void suppressEmbeds(message)}>
           <X size={12} weight="bold" />
         </button>
       )}

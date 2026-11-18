@@ -70,6 +70,7 @@ function initialDraft(channelId: string, standard: boolean) {
 }
 
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const { t: msg } = useI18n();
   const { t, number } = useI18n();
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
@@ -227,10 +228,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       const roles = (guild?.roles ?? [])
         .filter((r) => r.mentionable && r.id !== guild?.id && r.name.toLowerCase().includes(token.query))
         .slice(0, 4)
-        .map<Suggestion>((r) => ({ kind: 'role', key: r.id, label: r.name, detail: 'Role', insert: `@${r.name}`, mention: { token: `@${r.name}`, wire: `<@&${r.id}>` } }));
-      const everyone = can(perms, Permission.MENTION_EVERYONE) && 'everyone'.startsWith(token.query) ? [{ kind: 'role', key: 'everyone', label: 'everyone', detail: 'Notify everyone', insert: '@everyone' } satisfies Suggestion] : [];
-      const here = can(perms, Permission.MENTION_EVERYONE) && 'here'.startsWith(token.query) ? [{ kind: 'role', key: 'here', label: 'here', detail: 'Notify everyone', insert: '@here' } satisfies Suggestion] : [];
-      const time = timeTriggerMatches(token.query) ? [{ kind: 'timestamp', key: 'time', label: 'time', detail: 'Insert a timestamp', insert: '' } satisfies Suggestion] : [];
+        .map<Suggestion>((r) => ({ kind: 'role', key: r.id, label: r.name, detail: msg("settings.composer.role"), insert: `@${r.name}`, mention: { token: `@${r.name}`, wire: `<@&${r.id}>` } }));
+      const everyone = can(perms, Permission.MENTION_EVERYONE) && 'everyone'.startsWith(token.query) ? [{ kind: 'role', key: 'everyone', label: 'everyone', detail: msg("settings.composer.notify.everyone"), insert: '@everyone' } satisfies Suggestion] : [];
+      const here = can(perms, Permission.MENTION_EVERYONE) && 'here'.startsWith(token.query) ? [{ kind: 'role', key: 'here', label: 'here', detail: msg("settings.composer.notify.everyone"), insert: '@here' } satisfies Suggestion] : [];
+      const time = timeTriggerMatches(token.query) ? [{ kind: 'timestamp', key: 'time', label: 'time', detail: msg("timestamp.title"), insert: '' } satisfies Suggestion] : [];
       return [...users, ...roles, ...everyone, ...here, ...time].slice(0, 8);
     }
     if (token.trigger === '#') {
@@ -245,7 +246,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       .map<Suggestion>((e) => ({ kind: 'emoji', key: e.id!, label: `:${e.name}:`, insert: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>` }));
     const unicode = searchShortcodes(token.query, 8).map<Suggestion>((m) => ({ kind: 'emoji', key: `u:${m.name}`, label: `${m.emoji} :${m.name}:`, insert: m.emoji }));
     return [...custom, ...unicode].slice(0, 8);
-  }, [token, members, guild, channels, channel.guild_id, perms, commandSearch, catalogue, appNames]);
+  }, [token, members, guild, channels, channel.guild_id, perms, commandSearch, catalogue, appNames, msg]);
 
   useEffect(() => setSelected(0), [token?.trigger, token?.query, commandSearch]);
 
@@ -280,15 +281,15 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const addFiles = useCallback(
     (incoming: File[]) => {
       if (!canAttach) {
-        reportError(new Error('You do not have permission to attach files here.'), 'Cannot attach files');
+        reportError(new Error(msg("settings.composer.you.do.not.have.permission.to.attach.files.here")), msg("settings.composer.cannot.attach.files"));
         return;
       }
       const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
       const { accepted, problems } = acceptFiles(files, incoming, limit, mode === 'standard');
-      if (problems.length > 0) reportError(new Error(problems.join(' ')), 'File not attached');
+      if (problems.length > 0) reportError(new Error(problems.join(' ')), msg("settings.composer.file.not.attached"));
       if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
     },
-    [canAttach, mode, files],
+    [canAttach, mode, files, msg],
   );
 
   const runCommand = async () => {
@@ -300,7 +301,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       setCommandValues({});
       requestAnimationFrame(() => ref.current?.focus());
     } catch (e) {
-      reportError(e, 'Command failed');
+      reportError(e, msg("settings.composer.command.failed"));
     } finally {
       setRunning(false);
     }
@@ -314,11 +315,11 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     let tts = false;
     if (content.toLowerCase().startsWith('/tts ') && ttsText) {
       if (!standard || !ttsAllowed) {
-        reportError(new Error(!ttsAllowed ? 'You do not have permission to send text-to-speech messages here.' : 'Text-to-speech messages need a standard chat.'), 'Cannot send /tts');
+        reportError(new Error(!ttsAllowed ? msg("settings.composer.you.do.not.have.permission.to.send.text.to") : msg("settings.composer.text.to.speech.messages.need.a.standard.chat")), msg("settings.composer.cannot.send.tts"));
         return;
       }
       if (!prefs.ttsReadAloud) {
-        reportError(new Error('Turn on text-to-speech in Settings, Accessibility, to use /tts.'), 'Text-to-speech is off');
+        reportError(new Error(msg("settings.composer.turn.on.text.to.speech.in.settings.accessibility.to")), msg("settings.composer.text.to.speech.is.off"));
         return;
       }
       content = ttsText;
@@ -332,7 +333,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     }
     if (!content && files.length === 0) return;
     if (tooLong) {
-      reportError(new Error(`Messages are limited to ${MAX_MESSAGE_LENGTH} characters. Remove ${-remainingChars} to send.`), 'Message too long');
+      reportError(new Error(msg("composer.tooLongError", { limit: MAX_MESSAGE_LENGTH, count: -remainingChars })), msg("settings.composer.message.too.long"));
       return;
     }
     if (slowmodeLeft > 0) return;
@@ -360,7 +361,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     } catch (e) {
       if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
       const cancelled = e instanceof Error && e.name === 'UploadCancelled';
-      if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
+      if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, msg("settings.composer.message.not.sent"));
       setText((current) => current || draft.text);
       setFiles((current) => (current.length > 0 ? current : draft.files));
       setDescriptions((current) => (current.size > 0 ? current : draft.descriptions));
@@ -415,7 +416,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
 
   const plusEntries: MenuEntry[] = plusMenuEntries().map((id): MenuEntry => {
     if (id === 'upload') return { kind: 'item', label: t('composer.upload'), icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : t('composer.noAttachments'), onSelect: () => fileInput.current?.click() };
-    const label = id === 'thread' ? 'Create thread' : id === 'poll' ? 'Create poll' : 'Use apps';
+    const label = id === 'thread' ? msg("settings.composer.create.thread") : id === 'poll' ? msg("settings.composer.create.poll") : msg("settings.composer.use.apps");
     return { kind: 'item', label, disabled: true, onSelect: () => undefined };
   });
   const FORMATS: { kind: FormatKind; label: string; icon: ReactNode }[] = [
@@ -431,7 +432,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const replyName = replyTo ? displayName(replyTo.author) : '';
 
   return (
-    <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+    <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(msg("settings.composer.files"))) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={t(commandSearch !== null ? 'composer.commands' : 'composer.suggestions')}>
@@ -537,7 +538,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           </IconButton>
         </div>
         {!standard && (
-          <p className="composer-note"><LockSimple size={12} weight="fill" /> {mode === 'ephemeral' ? 'End-to-end encrypted with MLS. Kept only on your devices.' : 'Sent directly to your peer. Kept only on your devices.'}</p>
+          <p className="composer-note"><LockSimple size={12} weight="fill" /> {mode === 'ephemeral' ? msg("settings.composer.end.to.end.encrypted.with.mls.kept.only.on") : msg("settings.composer.sent.directly.to.your.peer.kept.only.on.your")}</p>
         )}
         {dragging && <div className="drop-overlay">{t('composer.drop')}</div>}
       </div>

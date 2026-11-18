@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { CornersOut, Pause, Play, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -23,6 +24,7 @@ interface Props {
  * remembered in the preferences, so a quiet clip stays quiet in the next message.
  */
 export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onError }: Props) {
+  const { t: msg } = useI18n();
   const media = useRef<HTMLMediaElement | null>(null);
   const volume = usePrefsStore((s) => s.mediaVolume);
   const muted = usePrefsStore((s) => s.mediaMuted);
@@ -60,8 +62,8 @@ export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onE
   return (
     <div className={`media-player is-${kind}`}>
       {kind === 'video' ? <video {...common} className="media-player-video" onClick={toggle} playsInline /> : <audio {...common} />}
-      <div className="media-player-bar" role="group" aria-label={`Player for ${label}`}>
-        <button type="button" className="media-player-btn" aria-label={playing ? 'Pause' : 'Play'} onClick={toggle}>
+      <div className="media-player-bar" role="group" aria-label={msg("media.playerFor", { name: label })}>
+        <button type="button" className="media-player-btn" aria-label={playing ? msg("settings.mediaplayer.pause") : msg("settings.mediaplayer.play")} onClick={toggle}>
           {playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" />}
         </button>
         <span className="media-player-time tnum">{clock(time)}</span>
@@ -72,7 +74,7 @@ export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onE
           max={duration || 0}
           step={0.1}
           value={Math.min(time, duration || 0)}
-          aria-label="Seek"
+          aria-label={msg("settings.mediaplayer.seek")}
           onChange={(e) => {
             const el = media.current;
             if (el) el.currentTime = Number(e.target.value);
@@ -80,7 +82,7 @@ export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onE
           }}
         />
         <span className="media-player-time tnum">{clock(duration)}</span>
-        <button type="button" className="media-player-btn" aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setPref('mediaMuted', !muted)}>
+        <button type="button" className="media-player-btn" aria-label={muted ? msg("media.unmute") : msg("media.mute")} onClick={() => setPref('mediaMuted', !muted)}>
           {muted || volume === 0 ? <SpeakerSlash size={16} /> : <SpeakerHigh size={16} />}
         </button>
         <input
@@ -90,7 +92,7 @@ export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onE
           max={1}
           step={0.05}
           value={muted ? 0 : volume}
-          aria-label="Volume"
+          aria-label={msg("settings.mediaplayer.volume")}
           onChange={(e) => {
             const next = Number(e.target.value);
             setPref('mediaVolume', next);
@@ -98,7 +100,7 @@ export function MediaPlayer({ kind, src, label, autoPlay, fullscreen = true, onE
           }}
         />
         {kind === 'video' && fullscreen && (
-          <button type="button" className="media-player-btn" aria-label="Fullscreen" onClick={() => void media.current?.requestFullscreen?.().catch(() => undefined)}>
+          <button type="button" className="media-player-btn" aria-label={msg("settings.mediaplayer.fullscreen")} onClick={() => void media.current?.requestFullscreen?.().catch(() => undefined)}>
             <CornersOut size={16} />
           </button>
         )}

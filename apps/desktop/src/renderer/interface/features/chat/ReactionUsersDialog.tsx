@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useEffect, useState } from 'react';
 import { reactionKey, useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -15,6 +16,7 @@ type Who = { id: string; username?: string; global_name?: string | null; avatar?
 
 /** Everyone who reacted, one tab per emoji of the message. Moderators can remove single reactions. */
 export function ReactionUsersDialog({ channelId, messageId, emoji: initial }: { channelId: string; messageId: string; emoji: string }) {
+  const { t: msg, number } = useI18n();
   const [current, setCurrent] = useState(initial);
   const [users, setUsers] = useState<Who[] | null>(null);
   const reactions = useMessageStore((s) => s.timelines[channelId]?.byId[messageId]?.reactions) ?? [];
@@ -26,28 +28,28 @@ export function ReactionUsersDialog({ channelId, messageId, emoji: initial }: { 
   useEffect(() => {
     let live = true;
     setUsers(null);
-    void attempt(() => getRuntime().api.reactionUsers(channelId, messageId, current), 'Could not load reactions').then((r) => live && setUsers(r ?? []));
+    void attempt(() => getRuntime().api.reactionUsers(channelId, messageId, current), msg("settings.reactionusersdialog.could.not.load.reactions")).then((r) => live && setUsers(r ?? []));
     return () => {
       live = false;
     };
-  }, [channelId, messageId, current, count]);
+  }, [channelId, messageId, current, count, msg]);
 
   return (
-    <Modal open onClose={close} title="Reactions" width={400}>
+    <Modal open onClose={close} title={msg("settings.reactionusersdialog.reactions")} width={400}>
       <div className="reaction-tabs" role="tablist">
         {reactions.map((r) => {
           const key = reactionKey(r.emoji);
           return (
             <button key={key} type="button" role="tab" aria-selected={key === current} className={key === current ? 'is-on' : undefined} onClick={() => setCurrent(key)}>
               {r.emoji.id ? <img src={`${cdn}/emojis/${r.emoji.id}.${r.emoji.animated ? 'gif' : 'png'}`} alt={r.emoji.name ?? ''} /> : <span>{r.emoji.name}</span>}
-              <span className="tnum">{r.count}</span>
+              <span className="tnum">{number(r.count)}</span>
             </button>
           );
         })}
       </div>
       <div className="reaction-list">
-        {users === null && <p className="emoji-none">Loading…</p>}
-        {users?.length === 0 && <p className="emoji-none">No reactions.</p>}
+        {users === null && <p className="emoji-none">{msg("common.loading")}</p>}
+        {users?.length === 0 && <p className="emoji-none">{msg("settings.reactionusersdialog.no.reactions")}</p>}
         {users?.map((u) => {
           const name = displayName({ username: u.username ?? '', global_name: u.global_name ?? null });
           return (
@@ -59,11 +61,10 @@ export function ReactionUsersDialog({ channelId, messageId, emoji: initial }: { 
                   variant="ghost"
                   onClick={() => {
                     setUsers((l) => l?.filter((x) => x.id !== u.id) ?? l);
-                    void attempt(() => getRuntime().api.removeUserReaction(channelId, messageId, current, u.id), 'Could not remove reaction');
+                    void attempt(() => getRuntime().api.removeUserReaction(channelId, messageId, current, u.id), msg("settings.reactionusersdialog.could.not.remove.reaction"));
                   }}
                 >
-                  Remove
-                </Button>
+                  {msg("common.remove")} </Button>
               )}
             </div>
           );

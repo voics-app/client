@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowRight, GlobeHemisphereWest, LockKey, Plugs, ShieldCheck } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -45,6 +46,7 @@ const SUBMIT: Record<Mode, string> = {
 };
 
 export function AuthScreen() {
+  const { t: msg, locale, catalogText } = useI18n();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -73,19 +75,19 @@ export function AuthScreen() {
     setError(null);
     if (link.kind === 'reset-password') {
       setResetToken(link.token);
-      setNotice('Choose a new password.');
+      setNotice(msg("settings.authscreen.choose.a.new.password"));
       setMode('reset');
       return;
     }
-    setNotice('Verifying your email address...');
+    setNotice(msg("settings.authscreen.verifying.your.email.address"));
     getRuntime()
       .api.verifyEmail(link.token)
-      .then(() => setNotice('Email verified. Sign in to continue.'))
+      .then(() => setNotice(msg("settings.authscreen.email.verified.sign.in.to.continue")))
       .catch((err: unknown) => {
         setNotice(null);
         setError(errorMessage(err));
       });
-  }, [waiting]);
+  }, [waiting, msg]);
 
   const canSubmit = ticket
     ? Boolean(code.trim())
@@ -104,12 +106,12 @@ export function AuthScreen() {
     try {
       if (mode === 'forgot') {
         await getRuntime().api.forgotPassword(email.trim());
-        setNotice('If that address has an account, a reset code is on its way. Paste it below.');
+        setNotice(msg("settings.authscreen.if.that.address.has.an.account.a.reset.code"));
         setMode('reset');
       } else if (mode === 'reset') {
         await getRuntime().api.resetPassword(resetToken.trim(), password);
         setPassword('');
-        setNotice('Password changed. Sign in with the new one.');
+        setNotice(msg("settings.authscreen.password.changed.sign.in.with.the.new.one"));
         setMode('login');
       } else if (mode === 'login' && ticket) await session.loginMfa({ ticket, code: code.trim() });
       else if (mode === 'login') await session.login({ email: email.trim(), password });
@@ -117,7 +119,7 @@ export function AuthScreen() {
     } catch (err) {
       let general: string | null = null;
       if (err instanceof ApiError && err.errors) {
-        const shown = authErrorDisplay(err.errors, AUTH_FIELDS);
+        const shown = authErrorDisplay(err.errors, AUTH_FIELDS, locale);
         setFieldErrors(shown.fields);
         general = shown.general;
       }
@@ -149,7 +151,7 @@ export function AuthScreen() {
       setPasskeyBusy(false);
       await runtime.session.loginPasskey({ ticket, challenge_id: challenge.challenge_id, credential });
     } catch (failure) {
-      setError(controller.signal.aborted ? 'Passkey request cancelled. Try again or enter a backup code.' : errorMessage(failure));
+      setError(controller.signal.aborted ? msg("settings.authscreen.passkey.request.cancelled.try.again.or.enter.a.backup") : errorMessage(failure));
     } finally { setBusy(false); setPasskeyBusy(false); }
   };
 
@@ -160,13 +162,13 @@ export function AuthScreen() {
         <div className="orb orb-a" /><div className="orb orb-b" />
         <div className="auth-hero-inner">
           <Eyebrow>{BRAND.displayName}</Eyebrow>
-          <h1>Talk the way you want to be heard.</h1>
-          <p>Chat, voice, video and screen share with three delivery modes. The mode is always visible, never hidden.</p>
+          <h1>{msg("settings.authscreen.talk.the.way.you.want.to.be.heard")}</h1>
+          <p>{msg("settings.authscreen.chat.voice.video.and.screen.share.with.three.delivery")}</p>
           <ul className="auth-points">
             {POINTS.map((p, i) => (
               <motion.li key={p.title} className={`auth-point mode-${p.tone}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...gentle, delay: 0.15 + i * 0.08 }}>
                 <span className="auth-point-icon"><p.icon size={20} weight={p.tone === 'standard' ? 'regular' : 'fill'} /></span>
-                <span><strong>{p.title}</strong><span>{p.body}</span></span>
+                <span><strong>{catalogText(p.title)}</strong><span>{catalogText(p.body)}</span></span>
               </motion.li>
             ))}
           </ul>
@@ -175,53 +177,52 @@ export function AuthScreen() {
       <main className="auth-panel">
         <div className="auth-card-shell">
           <form className="auth-card" onSubmit={submit} noValidate>
-            <Segmented label="Mode" value={mode} onChange={(m) => { if (busy) return; setMode(m); setError(null); setNotice(null); setTicket(null); setCode(''); }} options={[{ value: 'login', label: 'Sign in' }, { value: 'register', label: 'Create account' }]} />
-            <h2>{ticket ? 'Confirm your sign-in' : HEADINGS[mode]}</h2>
+            <Segmented label={msg("settings.authscreen.mode")} value={mode} onChange={(m) => { if (busy) return; setMode(m); setError(null); setNotice(null); setTicket(null); setCode(''); }} options={[{ value: 'login', label: msg("settings.authscreen.sign.in") }, { value: 'register', label: msg("settings.authscreen.create.account") }]} />
+            <h2>{ticket ? msg("settings.authscreen.confirm.your.sign.in") : catalogText(HEADINGS[mode])}</h2>
             {notice && <p className="auth-notice" role="status">{notice}</p>}
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div key={mode} className="stack" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
                 {ticket ? (<>
                   {methods.includes('webauthn') && <>
-                    <Button disabled={!passkeySite || busy} onClick={() => void signInWithPasskey()}>Use passkey</Button>
-                    {passkeySite === null && <p className="setting-desc">Passkeys need a configured browser ceremony site for this connection. Use an authenticator or backup code below.</p>}
-                    {passkeyBusy && <><p role="status">Continue in your browser, then return here.</p><Button onClick={() => passkeyOperation.current?.abort()}>Cancel passkey request</Button></>}
+                    <Button disabled={!passkeySite || busy} onClick={() => void signInWithPasskey()}>{msg("settings.authscreen.use.passkey")}</Button>
+                    {passkeySite === null && <p className="setting-desc">{msg("settings.authscreen.passkeys.need.a.configured.browser.ceremony.site.for.this")}</p>}
+                    {passkeyBusy && <><p role="status">{msg("settings.authscreen.continue.in.your.browser.then.return.here")}</p><Button onClick={() => passkeyOperation.current?.abort()}>{msg("settings.authscreen.cancel.passkey.request")}</Button></>}
                   </>}
-                  <Field label="Authenticator or backup code" error={fieldErrors.code} hint="Open your authenticator app, or enter one of your backup codes.">
+                  <Field label={msg("settings.accountsecurity.authenticator.or.backup.code")} error={fieldErrors.code} hint={msg("settings.authscreen.open.your.authenticator.app.or.enter.one.of.your")}>
                     {(id) => <Input id={id} autoComplete="one-time-code" data-autofocus value={code} disabled={busy} onChange={(e) => setCode(e.target.value)} invalid={Boolean(fieldErrors.code)} />}
                   </Field>
                 </>) : (<>
                 {mode !== 'reset' && (
-                <Field label="Email" error={fieldErrors.email}>
+                <Field label={msg("settings.accountsecurity.email")} error={fieldErrors.email}>
                   {(id) => <Input id={id} type="email" autoComplete="email" data-autofocus value={email} onChange={(e) => setEmail(e.target.value)} invalid={Boolean(fieldErrors.email)} />}
                 </Field>
                 )}
                 {mode === 'reset' && (
-                  <Field label="Reset code" error={fieldErrors.token} hint="From the email we sent you.">
+                  <Field label={msg("settings.authscreen.reset.code")} error={fieldErrors.token} hint={msg("settings.authscreen.from.the.email.we.sent.you")}>
                     {(id) => <Input id={id} autoComplete="off" data-autofocus value={resetToken} onChange={(e) => setResetToken(e.target.value)} invalid={Boolean(fieldErrors.token)} />}
                   </Field>
                 )}
                 {mode === 'register' && (
-                  <Field label="Username" error={fieldErrors.username} hint="Lowercase letters, numbers, dots and underscores.">
+                  <Field label={msg("common.username")} error={fieldErrors.username} hint={msg("settings.authscreen.lowercase.letters.numbers.dots.and.underscores")}>
                     {(id) => <Input id={id} autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} invalid={Boolean(fieldErrors.username)} />}
                   </Field>
                 )}
                 {mode !== 'forgot' && (
-                <Field label={mode === 'reset' ? 'New password' : 'Password'} error={fieldErrors.password} hint={mode === 'login' ? undefined : 'At least 8 characters.'}>
+                <Field label={mode === 'reset' ? msg("settings.accountsecurity.new.password") : msg("settings.accountsecurity.password")} error={fieldErrors.password} hint={mode === 'login' ? undefined : msg("settings.authscreen.at.least.8.characters")}>
                   {(id) => <Input id={id} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} invalid={Boolean(fieldErrors.password)} />}
                 </Field>
                 )}
                 </>)}
               </motion.div>
             </AnimatePresence>
-            {(error || fatal) && <p className="auth-error" role="alert">{error ?? fatal}</p>}
+            {(error || fatal) && <p className="auth-error" role="alert">{error ?? (fatal ? catalogText(fatal) : null)}</p>}
             <Button type="submit" variant="primary" size="lg" block loading={busy} trailing={<ArrowRight size={16} weight="bold" />} disabled={!canSubmit || busy}>
-              {SUBMIT[mode]}
+              {catalogText(SUBMIT[mode])}
             </Button>
-            {mode === 'login' && !ticket && <button type="button" className="link-btn" onClick={() => { setMode('forgot'); setError(null); setNotice(null); }}>Forgot password?</button>}
-            {(mode === 'forgot' || mode === 'reset' || ticket) && <button type="button" className="link-btn" disabled={busy} onClick={() => { setMode('login'); setTicket(null); setCode(''); setError(null); setNotice(null); }}>Back to sign in</button>}
+            {mode === 'login' && !ticket && <button type="button" className="link-btn" onClick={() => { setMode('forgot'); setError(null); setNotice(null); }}>{msg("settings.authscreen.forgot.password")}</button>}
+            {(mode === 'forgot' || mode === 'reset' || ticket) && <button type="button" className="link-btn" disabled={busy} onClick={() => { setMode('login'); setTicket(null); setCode(''); setError(null); setNotice(null); }}>{msg("settings.authscreen.back.to.sign.in")}</button>}
             <p className="auth-foot">
-              <ShieldCheck size={14} /> Your session is stored in the OS keychain.
-              <button type="button" className="link-btn" disabled={busy || Boolean(ticket)} onClick={() => setShowConnection(true)}>Connection</button>
+              <ShieldCheck size={14} /> {msg("settings.authscreen.your.session.is.stored.in.the.os.keychain")} <button type="button" className="link-btn" disabled={busy || Boolean(ticket)} onClick={() => setShowConnection(true)}>{msg("settings.connection")}</button>
             </p>
           </form>
         </div>

@@ -54,7 +54,7 @@ it('validates character count and cancels without a request', () => {
   render(<AttachmentMetadataDialog message={message} onClose={close} />);
   fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'x'.repeat(1025) } });
   expect(save().disabled).toBe(true);
-  expect(screen.getByRole('alert').textContent).toContain('1024');
+  expect(screen.getByRole('alert').textContent).toContain('1,024');
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(close).toHaveBeenCalledOnce();
   expect(editMessage).not.toHaveBeenCalled();

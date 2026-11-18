@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Pure layout logic for the server rail: ordered entries that are either a single server or a folder of servers (client#58). */
 import type { GuildFolder } from '../contracts/rest';
 
@@ -112,8 +113,8 @@ export function collapseSingletons(rail: GuildFolder[]): GuildFolder[] {
   return rail.map((e) => (isFolder(e) && e.guild_ids.length === 1 ? single(e.guild_ids[0]!) : e));
 }
 
-export function folderLabel(folder: GuildFolder, guildName: (id: string) => string | undefined): string {
-  return folder.name || folder.guild_ids.map(guildName).filter(Boolean).join(', ') || 'Folder';
+export function folderLabel(folder: GuildFolder, guildName: (id: string) => string | undefined, locale?: string): string {
+  return folder.name || folder.guild_ids.map(guildName).filter(Boolean).join(', ') || createI18n(locale).catalogText('Folder');
 }
 
 export type DragItem = { kind: 'guild'; id: string } | { kind: 'folder'; id: number };

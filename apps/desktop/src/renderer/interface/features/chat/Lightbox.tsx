@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowSquareOut, CaretLeft, CaretRight, Copy, DownloadSimple, Minus, Plus, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,6 +21,7 @@ const RESET: View = { zoom: MIN_ZOOM, x: 0, y: 0 };
 
 /** Full-screen viewer for the images and videos of one message: zoom and pan, arrow navigation, original, save, copy. */
 export function Lightbox() {
+  const { t: msg } = useI18n();
   const items = useLightboxStore((s) => s.items);
   const index = useLightboxStore((s) => s.index);
   const step = useLightboxStore((s) => s.step);
@@ -86,28 +88,28 @@ export function Lightbox() {
   const name = displayFilename(item.filename);
 
   return createPortal(
-    <div className="lightbox" role="dialog" aria-modal="true" aria-label={`Viewing ${name}`}>
+    <div className="lightbox" role="dialog" aria-modal="true" aria-label={msg("media.viewing", { name })}>
       <div className="lightbox-backdrop" onClick={close} />
       <div className="lightbox-bar">
-        <span className="lightbox-title">{name}{items.length > 1 ? <span className="lightbox-count tnum"> · {index + 1} of {items.length}</span> : null}</span>
+        <span className="lightbox-title">{name}{items.length > 1 ? <span className="lightbox-count tnum"> · {msg("media.position", { index: index + 1, count: items.length })}</span> : null}</span>
         <div className="lightbox-actions">
           {item.kind === 'image' && (
             <>
-              <IconButton label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)} disabled={view.zoom === MIN_ZOOM}><Minus size={18} /></IconButton>
+              <IconButton label={msg("settings.lightbox.zoom.out")} onClick={() => zoomBy(1 / ZOOM_STEP)} disabled={view.zoom === MIN_ZOOM}><Minus size={18} /></IconButton>
               <span className="lightbox-zoom tnum" aria-live="polite">{Math.round(view.zoom * 100)}%</span>
-              <IconButton label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}><Plus size={18} /></IconButton>
-              <IconButton label="Copy image" onClick={() => void copyImage(item.src)}><Copy size={18} /></IconButton>
+              <IconButton label={msg("settings.lightbox.zoom.in")} onClick={() => zoomBy(ZOOM_STEP)}><Plus size={18} /></IconButton>
+              <IconButton label={msg("settings.lightbox.copy.image")} onClick={() => void copyImage(item.src)}><Copy size={18} /></IconButton>
             </>
           )}
-          <IconButton label="Save as" onClick={() => void saveImage(item.src, name)}><DownloadSimple size={18} /></IconButton>
-          <IconButton label="Open original" onClick={() => window.open(item.original, '_blank', 'noopener,noreferrer')}><ArrowSquareOut size={18} /></IconButton>
-          <IconButton label="Close" onClick={close}><X size={18} /></IconButton>
+          <IconButton label={msg("settings.lightbox.save.as")} onClick={() => void saveImage(item.src, name)}><DownloadSimple size={18} /></IconButton>
+          <IconButton label={msg("settings.lightbox.open.original")} onClick={() => window.open(item.original, '_blank', 'noopener,noreferrer')}><ArrowSquareOut size={18} /></IconButton>
+          <IconButton label={msg("common.close")} onClick={close}><X size={18} /></IconButton>
         </div>
       </div>
       {items.length > 1 && (
         <>
-          <button type="button" className="lightbox-nav is-prev" aria-label="Previous" onClick={() => step(-1)}><CaretLeft size={28} /></button>
-          <button type="button" className="lightbox-nav is-next" aria-label="Next" onClick={() => step(1)}><CaretRight size={28} /></button>
+          <button type="button" className="lightbox-nav is-prev" aria-label={msg("search.previous")} onClick={() => step(-1)}><CaretLeft size={28} /></button>
+          <button type="button" className="lightbox-nav is-next" aria-label={msg("search.next")} onClick={() => step(1)}><CaretRight size={28} /></button>
         </>
       )}
       <div ref={stage} className="lightbox-stage" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={endDrag} onClick={(e) => e.target === e.currentTarget && close()} onDoubleClick={() => (view.zoom === MIN_ZOOM ? zoomBy(2.5) : setView(RESET))}>

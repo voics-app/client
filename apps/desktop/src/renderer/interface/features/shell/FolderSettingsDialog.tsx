@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useState, type FormEvent } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -11,6 +12,7 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
 
 /** Name and colour of a server folder; saved with the rest of the rail layout so every device sees it. */
 export function FolderSettingsDialog({ folderId }: { folderId: number }) {
+  const { t: msg } = useI18n();
   const folder = useGuildStore((s) => s.rail.find((e) => e.id === folderId));
   const [name, setName] = useState(folder?.name ?? '');
   const [color, setColor] = useState<number | null>(folder?.color ?? FOLDER_COLORS[0]);
@@ -24,12 +26,12 @@ export function FolderSettingsDialog({ folderId }: { folderId: number }) {
   };
 
   return (
-    <Modal open onClose={close} title="Folder settings" width={400}>
+    <Modal open onClose={close} title={msg("settings.foldersettingsdialog.folder.settings")} width={400}>
       <form onSubmit={submit}>
-        <Field label="Folder name" hint="Leave empty to list the server names.">
+        <Field label={msg("settings.foldersettingsdialog.folder.name")} hint={msg("settings.foldersettingsdialog.leave.empty.to.list.the.server.names")}>
           {(id) => <Input id={id} value={name} maxLength={MAX_FOLDER_NAME} onChange={(e) => setName(e.target.value)} data-autofocus />}
         </Field>
-        <div role="radiogroup" aria-label="Folder colour" className="folder-colors">
+        <div role="radiogroup" aria-label={msg("settings.foldersettingsdialog.folder.colour")} className="folder-colors">
           {FOLDER_COLORS.map((c) => (
             <button
               key={c}
@@ -45,11 +47,9 @@ export function FolderSettingsDialog({ folderId }: { folderId: number }) {
         </div>
         <div className="row-end">
           <Button variant="ghost" type="button" onClick={close}>
-            Cancel
-          </Button>
+            {msg("common.cancel")} </Button>
           <Button variant="primary" type="submit">
-            Save
-          </Button>
+            {msg("common.save")} </Button>
         </div>
       </form>
     </Modal>

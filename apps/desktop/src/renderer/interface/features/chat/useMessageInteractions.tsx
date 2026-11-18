@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { threadNameFor } from '@discordy/core/domain/threads';
 import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
@@ -82,6 +83,7 @@ export interface MessageInteractions {
 
 /** Hover/focus toolbar and per-target right-click menu of one message. */
 export function useMessageInteractions(message: ChatMessage, guildId: string | null | undefined, opts: { me: string | undefined; editing: boolean; blocked: boolean }): MessageInteractions {
+  const { t: msg, catalogText } = useI18n();
   const perms = useChannelPermissions(message.channel_id);
   const guildPerms = useGuildPermissions(guildId);
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
@@ -135,17 +137,17 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
 
   const removeNow = () => {
     if (!channel) return;
-    void attempt(() => getRuntime().privacy.sender.remove(channel, message.id), 'Could not delete message');
+    void attempt(() => getRuntime().privacy.sender.remove(channel, message.id), msg("settings.usemessageinteractions.could.not.delete.message"));
   };
   const confirmRemove = () =>
     openDialog({
       kind: 'confirm',
-      title: 'Delete message',
-      body: standard ? 'This cannot be undone.' : DELETE_PRIVATE_NOTE,
-      confirmLabel: standard ? 'Delete' : 'Delete for everyone',
+      title: msg("settings.usemessageinteractions.delete.message"),
+      body: standard ? msg("settings.usemessageinteractions.this.cannot.be.undone") : catalogText(DELETE_PRIVATE_NOTE),
+      confirmLabel: standard ? msg("settings.accountsecurity.delete") : msg("settings.usemessageinteractions.delete.for.everyone"),
       danger: true,
       onConfirm: async () => {
-        if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), 'Could not delete message');
+        if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), msg("settings.usemessageinteractions.could.not.delete.message"));
       },
     });
 
@@ -163,19 +165,19 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       case 'editAttachments': return canEditAttachments(message, opts.me) && setEditingAttachments(true);
       case 'pin':
       case 'unpin':
-        return void attempt(() => (id === 'unpin' ? getRuntime().api.unpin(message.channel_id, message.id) : getRuntime().api.pin(message.channel_id, message.id)), 'Could not update pin');
+        return void attempt(() => (id === 'unpin' ? getRuntime().api.unpin(message.channel_id, message.id) : getRuntime().api.pin(message.channel_id, message.id)), msg("settings.usemessageinteractions.could.not.update.pin"));
       case 'thread':
         return void attempt(async () => {
           const t = await getRuntime().api.createThread(message.channel_id, { name: threadNameFor(message.content), message_id: message.id });
           useGuildStore.getState().upsertChannel(t);
           setSidePanel({ kind: 'thread', threadId: t.id });
-        }, 'Could not create thread');
-      case 'copyText': return void copyText(message.content, 'Message copied');
-      case 'copyId': return void copyText(message.id, 'Message ID copied');
-      case 'copySelection': return void copyText(selectionRef.current, 'Copied');
+        }, msg("settings.usemessageinteractions.could.not.create.thread"));
+      case 'copyText': return void copyText(message.content, msg("settings.usemessageinteractions.message.copied"));
+      case 'copyId': return void copyText(message.id, msg("settings.usemessageinteractions.message.id.copied"));
+      case 'copySelection': return void copyText(selectionRef.current, msg("settings.usemessageinteractions.copied"));
       case 'searchGoogle': return arg && searchGoogle(arg);
       case 'markUnread': return markUnreadFrom(message.channel_id, message.id);
-      case 'copyMessageLink': return void copyText(channelLink(guildId, message.channel_id, message.id), 'Message link copied');
+      case 'copyMessageLink': return void copyText(channelLink(guildId, message.channel_id, message.id), msg("settings.usemessageinteractions.message.link.copied"));
       case 'speak': return speakText(message.content);
       case 'delete': return confirmRemove();
       case 'report':
@@ -184,7 +186,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
           target: { kind: 'message', channelId: message.channel_id, messageId: message.id, authorId: message.author.id, authorName: displayName(message.author), content: message.content, mode: message.deliveryMode ?? 'standard' },
         });
       case 'openLink': return arg && openExternalUrl(arg);
-      case 'copyLink': return arg && void copyText(arg, 'Link copied');
+      case 'copyLink': return arg && void copyText(arg, msg("settings.usemessageinteractions.link.copied"));
       case 'copyImage': return arg && void copyImage(arg);
       case 'saveImage': return arg && void saveImage(arg, target.kind === 'image' ? target.filename : 'image');
       case 'appCommand': return runContextCommand(channel, appCommands?.find((c) => c.id === arg), message.id);
@@ -218,39 +220,40 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   );
   const entries = toMenuEntries(model, (it: MenuItemModel) => run(it.id, it.arg), ICONS);
   // Unicode quick reactions are their own label; custom ones also need their image.
-  for (const e of entries) {
-    if (e.kind === 'submenu' && e.label === 'Add Reaction') e.entries.forEach((sub, i) => { if (sub.kind === 'item' && i < quick.length && quick[i]!.id) sub.icon = <EmojiGlyph emoji={quick[i]!} />; });
+  for (const [index, e] of entries.entries()) {
+    const source = model[index];
+    if (e.kind === 'submenu' && source?.kind === 'submenu' && source.id === 'addReaction') e.entries.forEach((sub, i) => { if (sub.kind === 'item' && i < quick.length && quick[i]!.id) sub.icon = <EmojiGlyph emoji={quick[i]!} />; });
   }
 
   const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift, developerMode });
   const toolbar = visible ? (
-    <div className="message-toolbar glass" role="toolbar" aria-label="Message actions" data-shift={shift || undefined}>
+    <div className="message-toolbar glass" role="toolbar" aria-label={msg("settings.usemessageinteractions.message.actions")} data-shift={shift || undefined}>
       {toolbarActions.map((a, i) => {
         const key = `${a.id}-${i}`;
         switch (a.id) {
           case 'react': {
             const e = parseApiEmoji(a.arg);
             return (
-              <IconButton key={key} label={a.label} size="sm" onClick={() => react(a.arg)}>
+              <IconButton key={key} label={msg('reactions.reactWith', { emoji: parseApiEmoji(a.arg).name })} size="sm" onClick={() => react(a.arg)}>
                 <EmojiGlyph emoji={e} />
               </IconButton>
             );
           }
           case 'more':
             return (
-              <IconButton key={key} label={a.label} size="sm" onClick={(e) => { anchorRef.current = null; setTarget({ kind: 'message' }); selectionRef.current = ''; menu.openBelow(e); }}>
+              <IconButton key={key} label={catalogText(a.label)} size="sm" onClick={(e) => { anchorRef.current = null; setTarget({ kind: 'message' }); selectionRef.current = ''; menu.openBelow(e); }}>
                 <DotsThree size={18} weight="bold" />
               </IconButton>
             );
           case 'delete':
             return (
-              <IconButton key={key} label={a.label} size="sm" onClick={(e) => (e.shiftKey ? removeNow() : confirmRemove())}>
+              <IconButton key={key} label={catalogText(a.label)} size="sm" onClick={(e) => (e.shiftKey ? removeNow() : confirmRemove())}>
                 <Trash size={18} />
               </IconButton>
             );
           default:
             return (
-              <IconButton key={key} label={a.label} size="sm" onClick={(e) => { anchorRef.current = e.currentTarget; run(a.id, undefined); }}>
+              <IconButton key={key} label={catalogText(a.label)} size="sm" onClick={(e) => { anchorRef.current = e.currentTarget; run(a.id, undefined); }}>
                 {ICONS[a.id === 'reactMore' ? 'addReaction' : a.id]}
               </IconButton>
             );

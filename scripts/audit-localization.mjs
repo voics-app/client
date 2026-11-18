@@ -20,20 +20,28 @@ function walk(path) {
 paths.forEach(walk);
 const candidates = [];
 const attrs = new Set(['title', 'label', 'placeholder', 'description', 'hint', 'sub', 'alt', 'aria-label', 'body']);
+const decodeJsx = (text) => text.replace(/&(amp|apos|quot|lt|gt|nbsp);/g, (_, entity) => ({ amp: '&', apos: "'", quot: '"', lt: '<', gt: '>', nbsp: '\u00a0' })[entity]);
 for (const file of files.sort()) {
   const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, extname(file) === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   function visit(node) {
     let value;
     let kind;
-    if (ts.isJsxText(node) && /[A-Za-z]/.test(node.text)) { value = node.text.replace(/\s+/g, ' ').trim(); kind = 'visible text'; }
+    if (ts.isJsxText(node) && /[A-Za-z]/.test(node.text)) { value = decodeJsx(node.text.replace(/\s+/g, ' ').trim()); kind = 'visible text'; }
     else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       const parent = node.parent;
       if (ts.isJsxAttribute(parent) && parent.name.text === 'searchKey') return;
+      if (ts.isCallExpression(parent) && /^(t|msg|catalogText)$|\.(t|catalogText)$/.test(parent.expression.getText(source))) return;
+      if (ts.isLiteralTypeNode(parent) || ts.isCaseClause(parent) || (ts.isBinaryExpression(parent) && ['===', '!==', '==', '!='].includes(parent.operatorToken.getText(source)))) return;
       if (ts.isJsxAttribute(parent) && attrs.has(parent.name.text) && /[A-Za-z]/.test(node.text)) { value = node.text; kind = 'label'; }
       else if (ts.isPropertyAssignment(parent) && ['label', 'title', 'description', 'body', 'hint'].includes(parent.name.getText(source)) && /[A-Za-z]/.test(node.text)) { value = node.text; kind = 'copy object'; }
-      else if (/^[A-Z][a-z]+(?:[ -][A-Za-z])/.test(node.text) && !ts.isImportDeclaration(parent) && !(ts.isCallExpression(parent) && /^(t|msg)$|\.t$/.test(parent.expression.getText(source)))) { value = node.text; kind = 'possible message'; }
+      else if (/^[A-Z][a-z]+(?:$|[ -][A-Za-z])/.test(node.text) && !ts.isImportDeclaration(parent)) { value = node.text; kind = 'possible message'; }
     }
-    else if (ts.isTemplateExpression(node) && /[A-Za-z]{3}/.test(node.head.text)) { value = node.getText(source); kind = 'dynamic copy candidate'; }
+    else if (ts.isTemplateExpression(node) && /[A-Za-z]{3}/.test(node.head.text)) {
+      const expression = ts.isJsxExpression(node.parent) ? node.parent.parent : node.parent;
+      if (ts.isJsxAttribute(expression) && ['className', 'style', 'key', 'src', 'data-testid', 'href'].includes(expression.name.text)) return;
+      if (ts.isCallExpression(node.parent) && /^(t|msg)$|\.t$/.test(node.parent.expression.getText(source))) return;
+      value = node.getText(source); kind = 'dynamic copy candidate';
+    }
     if (value) candidates.push({ file: relative(root, file).replaceAll('\\', '/'), line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, kind, text: value });
     ts.forEachChild(node, visit);
   }
