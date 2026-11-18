@@ -56,6 +56,8 @@ pnpm lint           # eslint, max-warnings 0
 pnpm test:e2e       # builds, then Playwright drives the real Electron app against an in-process fake backend
 ```
 
+Media-worker tests wait for the output stream to close before asserting on frames. They do not assume WebCrypto finishes within a fixed number of milliseconds on a busy runner.
+
 ## Package
 
 ```
