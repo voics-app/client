@@ -200,13 +200,15 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     MESSAGE_REACTION_REMOVE: (d: ReactionEvent) => messages().reactionRemove(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE_ALL: (d: { channel_id: string; message_id: string }) => messages().reactionClear(d.channel_id, d.message_id),
     MESSAGE_ACK: (d: MessageAck) => {
-      if (useReadStateStore.getState().versioned) {
-        if (!privateReadState(d.channel_id) && d.mention_count !== undefined) {
+      if (useReadStateStore.getState().versioned && !privateReadState(d.channel_id)) {
+        if (d.mention_count !== undefined) {
           useReadStateStore.getState().applySnapshot({ id: d.channel_id, last_message_id: d.message_id, mention_count: d.mention_count, read_state_version: d.read_state_version });
         }
         return;
       }
-      // The server echoes the resulting marker; with a mention count it is authoritative (it may be a backwards Mark Unread).
+      // Private ACKs still carry the user's explicit cross-device read intent.
+      // Only Standard snapshots own server-computed counts; legacy/private ACK
+      // retains its existing marker and manual-unread semantics.
       if (d.mention_count !== undefined) useReadStateStore.getState().setPosition(d.channel_id, d.message_id, d.mention_count);
       else useReadStateStore.getState().markRead(d.channel_id, d.message_id);
     },

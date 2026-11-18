@@ -211,12 +211,26 @@ describe('dispatchRouter', () => {
     expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '400', mentionCount: 1 });
   });
 
-  it('keeps private decrypted counts local through authoritative sync and ACK', () => {
+  it('keeps private decrypted counts local through authoritative sync', () => {
     const { route } = setup({ read_state_versioned: true, read_state: [] });
     registerIncoming({ ...message('700', { channel_id: '300', guild_id: undefined }), deliveryMode: 'p2p' }, vi.fn());
     route('READ_STATE_SYNC', { read_state_versioned: true, read_state: [{ id: '300', last_message_id: '500', mention_count: 0, read_state_version: '1' }] });
-    route('MESSAGE_ACK', { channel_id: '300', message_id: '500', mention_count: 0, read_state_version: '1' });
+    route('READ_STATE_UPDATE', { channel_id: '300', last_message_id: '500', mention_count: 0, read_state_version: '1' });
     expect(useReadStateStore.getState().byChannel['300']?.mentionCount).toBe(1);
+  });
+
+  it('preserves private explicit cross-device ACK and backwards manual unread', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    for (const id of ['700', '701']) {
+      registerIncoming({ ...message(id, { channel_id: '300', guild_id: undefined }), deliveryMode: 'p2p' }, vi.fn());
+    }
+    expect(useReadStateStore.getState().byChannel['300']?.mentionCount).toBe(2);
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '701', mention_count: 0, read_state_version: '1' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '701', mentionCount: 0 });
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '699', mention_count: 2, read_state_version: '2' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '699', mentionCount: 2 });
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '701' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '701', mentionCount: 0 });
   });
 
   it('ignores malformed snapshots rather than rounding or accepting invalid counts', () => {

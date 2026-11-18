@@ -9,7 +9,8 @@ Standard mention counts use authoritative versioned snapshots when READY certifi
 channel versions; CREATE does not increment an already-included count. READ_STATE_SYNC after
 resume repairs missed updates and local optimistic ACKs that never committed, without replacing
 a newer replayed snapshot. Fresh READY resets the version history. Older gateways retain legacy
-counting and private decrypted traffic stays local. Notifications and the local mention inbox
+counting and private decrypted traffic stays local; private explicit MESSAGE_ACK still syncs
+read markers and manual unread using its existing behavior. Notifications and the local mention inbox
 continue to consume messages independently; this does not claim durable accounting or delivery.
 
 Server Settings → Overview includes a **Permanent invite** field. Members with
