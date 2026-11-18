@@ -4,6 +4,14 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Desktop and mobile share gateway recovery in `packages/core`. Each socket has
+10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
+ACKs and duplicate HELLOs do not extend authentication. A failed connection to the
+advertised resume endpoint falls back to the configured gateway with the existing reconnect backoff, retaining
+the session, sequence and current token. The failed address is ignored until a
+fresh READY supplies one. Fatal authentication/intent errors still stop retries;
+manual disconnect cancels pending recovery. No extra origins are added to CSP.
+
 Standard mention counts use authoritative versioned snapshots when READY certifies
 `read_state_versioned` (contracts#48 / docs ADR0027). ACK and READ_STATE_UPDATE apply only newer
 channel versions; CREATE does not increment an already-included count. READ_STATE_SYNC after
