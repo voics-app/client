@@ -465,7 +465,11 @@ export class VoiceSession implements VoiceSessionPort {
   private async setSenderActive(sender: RtpSenderLike, active: boolean): Promise<void> {
     const params = sender.getParameters();
     const encodings = (params.encodings && params.encodings.length > 0 ? params.encodings : [{}]) as RtpEncodingLike[];
-    await sender.setParameters({ ...params, encodings: encodings.map((encoding) => ({ ...encoding, active })) });
+    // Native parameters and encodings have toJSON serializers. Spreading either
+    // loses enum normalization and encoding fields at the Java/ObjC bridge.
+    for (const encoding of encodings) encoding.active = active;
+    params.encodings = encodings;
+    await sender.setParameters(params);
   }
 
   private bypassSenders(): void {
@@ -702,7 +706,8 @@ export class VoiceSession implements VoiceSessionPort {
     const first = encodings[0] as RtpEncodingLike;
     first.maxBitrate = constraints.maxBitrateKbps * 1000;
     if (constraints.frameRate !== undefined) first.maxFramerate = constraints.frameRate;
-    await sender.setParameters({ ...params, encodings });
+    params.encodings = encodings;
+    await sender.setParameters(params);
   }
 
   /** Reads the real outbound ssrcs from stats (the browser, not the node, picks them) and tells the node. */

@@ -49,7 +49,7 @@ try {
   url.searchParams.set('__expo_url', 'http://127.0.0.1:8081');
   for (const flag of ['onboarding', 'fab', 'auto_launch']) url.searchParams.set(`__expo_disable_${flag}`, '1');
   simctl('openurl', device.udid, url.href);
-  execFileSync('maestro', ['--device', device.udid, 'test', '--debug-output', path.join(output, 'maestro'), '-e', `SMOKE_OUTPUT=${output}`, 'e2e/ios-startup.yml'], { stdio: 'inherit', timeout: 300_000 });
+  execFileSync('maestro', ['--device', device.udid, 'test', '--debug-output', path.join(output, 'maestro'), '--test-output-dir', path.join(output, 'screenshots'), 'e2e/ios-startup.yml'], { stdio: 'inherit', timeout: 300_000 });
   console.log('Native iOS app startup and sign-in/register/reset navigation passed.');
 } finally {
   try { simctl('io', device.udid, 'screenshot', path.join(output, 'final.png')); } catch { /* Keep the primary failure. */ }
