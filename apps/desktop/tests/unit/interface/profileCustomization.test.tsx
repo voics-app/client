@@ -9,6 +9,7 @@ import type { GuildMember, User } from '@discordy/core/contracts/rest';
 import { useConnectionStore } from '@renderer/interface/app/connectionStore';
 import { ProfileTab } from '@renderer/interface/features/settings/user/ProfileTab';
 import { ProfileDialog } from '@renderer/interface/features/members/ProfileDialog';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
 
 const f = vi.hoisted(() => ({ permissions: 0n, api: { updateMe: vi.fn(), updateMember: vi.fn(), member: vi.fn(), user: vi.fn() } }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: f.api }) }));
@@ -35,6 +36,22 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('profile customization', () => {
+  it('keeps a Dutch profile draft and authored Unicode through a save failure and retry', async () => {
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    f.api.updateMe.mockRejectedValueOnce(new Error('Connection lost.'));
+    mount(<LocaleProvider><ProfileTab /></LocaleProvider>);
+    const bio = screen.getByLabelText('Over mij') as HTMLTextAreaElement;
+    fireEvent.change(bio, { target: { value: 'Original hello مرحبا 🌱' } });
+    expect(within(screen.getByRole('region', { name: 'Direct profielvoorbeeld' })).getByText('Original hello مرحبا 🌱')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Profiel om te bewerken'), { target: { value: '9' } });
+    expect((screen.getByLabelText('Profiel om te bewerken') as HTMLSelectElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Wijzigingen opslaan' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Probeer opnieuw op te slaan.');
+    expect(bio.value).toBe('Original hello مرحبا 🌱');
+    fireEvent.click(screen.getByRole('button', { name: 'Wijzigingen opslaan' }));
+    await screen.findByText('Profiel opgeslagen.');
+    expect(f.api.updateMe).toHaveBeenLastCalledWith({ bio: 'Original hello مرحبا 🌱' });
+  });
   it('counts Unicode characters consistently with the API limits', async () => {
     mount();
     const pronouns = screen.getByLabelText('Pronouns') as HTMLInputElement;

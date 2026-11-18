@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { DeviceMobile, Laptop, SignOut } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ function isMobile(session: AuthSession): boolean {
 
 /** Login sessions of the account: this device first, then a Log out per other device. */
 export function SessionsList() {
+  const { t: msg, locale } = useI18n();
   const queryClient = useQueryClient();
   const sessions = useQuery({ queryKey: QUERY_KEY, queryFn: () => getRuntime().api.listSessions() });
   const [busy, setBusy] = useState<string | null>(null);
@@ -31,42 +33,41 @@ export function SessionsList() {
   };
 
   const logoutOne = (session: AuthSession) =>
-    run(session.id, () => getRuntime().api.revokeSession(session.id), 'Could not log out that device');
+    run(session.id, () => getRuntime().api.revokeSession(session.id), msg("settings.sessionslist.could.not.log.out.that.device"));
 
   const confirmLogoutAll = () =>
     useUiStore.getState().openDialog({
       kind: 'confirm',
-      title: 'Log out all known devices?',
-      body: 'Every device except this one will be signed out right away and will need to log in again.',
-      confirmLabel: 'Log out all',
+      title: msg("settings.sessionslist.log.out.all.known.devices"),
+      body: msg("settings.sessionslist.every.device.except.this.one.will.be.signed.out"),
+      confirmLabel: msg("settings.sessionslist.log.out.all"),
       danger: true,
-      onConfirm: () => run('all', () => getRuntime().api.logoutOtherSessions(), 'Could not log out your other devices'),
+      onConfirm: () => run('all', () => getRuntime().api.logoutOtherSessions(), msg("settings.sessionslist.could.not.log.out.your.other.devices")),
     });
 
   return (
     <section aria-labelledby="sessions-heading" className="stack">
-      <h2 id="sessions-heading">Logged-in devices</h2>
-      {sessions.isError && <p className="field-error" role="alert">Could not load your devices.</p>}
+      <h2 id="sessions-heading">{msg("settings.sessionslist.logged.in.devices")}</h2>
+      {sessions.isError && <p className="field-error" role="alert">{msg("settings.sessionslist.could.not.load.your.devices")}</p>}
       <ul className="manage-list">
         {ordered.map((session) => (
           <li key={session.id} data-testid={`session-${session.id}`}>
             {isMobile(session) ? <DeviceMobile size={26} weight="duotone" /> : <Laptop size={26} weight="duotone" />}
             <div className="manage-copy">
-              <strong>{sessionTitle(session)}{session.current && ' (this device)'}</strong>
-              <span>{sessionDetail(session, now)}</span>
+              <strong>{sessionTitle(session, locale)}{session.current && msg("settings.sessionslist.this.device")}</strong>
+              <span>{sessionDetail(session, now, locale)}</span>
             </div>
             {!session.current && (
-              <Button size="sm" icon={<SignOut size={14} />} loading={busy === session.id} disabled={busy !== null} aria-label={`Log out ${sessionTitle(session)}`} onClick={() => void logoutOne(session)}>
-                Log out
-              </Button>
+              <Button size="sm" icon={<SignOut size={14} />} loading={busy === session.id} disabled={busy !== null} aria-label={msg('sessions.logout', { name: sessionTitle(session, locale) })} onClick={() => void logoutOne(session)}>
+                {msg("settings.logout")} </Button>
             )}
           </li>
         ))}
-        {sessions.data?.length === 0 && <li className="pick-empty">No active sessions.</li>}
+        {sessions.data?.length === 0 && <li className="pick-empty">{msg("settings.sessionslist.no.active.sessions")}</li>}
       </ul>
       {others.length > 0 && (
         <div className="row">
-          <Button variant="danger" loading={busy === 'all'} disabled={busy !== null} onClick={confirmLogoutAll}>Log out all known devices</Button>
+          <Button variant="danger" loading={busy === 'all'} disabled={busy !== null} onClick={confirmLogoutAll}>{msg("settings.sessionslist.log.out.all.known.devices.99c2fac")}</Button>
         </div>
       )}
     </section>

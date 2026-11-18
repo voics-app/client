@@ -26,6 +26,7 @@ import { Modal } from '../../shared/ui/Modal';
 import { Skeleton } from '../../shared/ui/Misc';
 
 function SafetyNumber({ userId }: { userId: string }) {
+  const { t: msg } = useI18n();
   const [groups, setGroups] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -35,44 +36,45 @@ function SafetyNumber({ userId }: { userId: string }) {
       .listUserDevices(userId)
       .then((devices) => {
         const first = devices[0];
-        if (!first) throw new Error('This person has no encryption-capable device yet.');
+        if (!first) throw new Error(msg("settings.profiledialog.this.person.has.no.encryption.capable.device.yet"));
         return rt.privacy.p2p.safetyNumber(userId, first.device_id);
       })
       .then((g) => alive && setGroups(g))
-      .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : 'Unavailable'));
+      .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : msg("settings.profiledialog.unavailable")));
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, msg]);
   return (
     <section className="profile-section">
-      <h4><Fingerprint size={14} /> Safety number</h4>
+      <h4><Fingerprint size={14} /> {msg("settings.profiledialog.safety.number")}</h4>
       {groups ? (
         <p className="safety-number mono selectable">{groups.map((g, i) => <span key={i}>{g}</span>)}</p>
       ) : (
-        <p className="setting-desc">{error ?? 'Computing'}</p>
+        <p className="setting-desc">{error ?? msg("settings.profiledialog.computing")}</p>
       )}
-      <p className="setting-desc">Compare this number with theirs over another channel. If it matches, no one is intercepting your encrypted chats.</p>
+      <p className="setting-desc">{msg("settings.profiledialog.compare.this.number.with.theirs.over.another.channel.if")}</p>
     </section>
   );
 }
 
 function Mutuals({ userId }: { userId: string }) {
+  const { t: msg } = useI18n();
   const query = useQuery({ queryKey: ['user-profile', userId], queryFn: () => getRuntime().api.userProfile(userId), staleTime: 60_000 });
   const guilds = useGuildStore((s) => s.guilds);
   if (!query.data) return null;
   const { mutual_guilds: servers, mutual_friends: friends } = query.data;
   return (
     <>
-      <section className="profile-section" aria-label="Mutual servers">
-        <h4>Mutual servers — {servers.length}</h4>
-        {servers.length === 0 ? <p className="setting-desc">No servers in common.</p> : (
-          <ul className="mutual-list">{servers.map((g) => <li key={g.id}>{guilds[g.id]?.name ?? 'Server'}{g.nick ? <span className="setting-desc"> as {g.nick}</span> : null}</li>)}</ul>
+      <section className="profile-section" aria-label={msg("settings.profiledialog.mutual.servers")}>
+        <h4>{msg('profile.mutualServers', { count: servers.length })}</h4>
+        {servers.length === 0 ? <p className="setting-desc">{msg("settings.profiledialog.no.servers.in.common")}</p> : (
+          <ul className="mutual-list">{servers.map((g) => <li key={g.id}>{guilds[g.id]?.name ?? msg("settings.profiledialog.server")}{g.nick ? <span className="setting-desc"> {msg('profile.asNickname', { name: g.nick })}</span> : null}</li>)}</ul>
         )}
       </section>
-      <section className="profile-section" aria-label="Mutual friends">
-        <h4>Mutual friends — {friends.length}</h4>
-        {friends.length === 0 ? <p className="setting-desc">No friends in common.</p> : (
+      <section className="profile-section" aria-label={msg("settings.profiledialog.mutual.friends")}>
+        <h4>{msg('profile.mutualFriends', { count: friends.length })}</h4>
+        {friends.length === 0 ? <p className="setting-desc">{msg("settings.profiledialog.no.friends.in.common")}</p> : (
           <ul className="mutual-list">{friends.map((f) => <li key={f.id}><Avatar id={f.id} name={displayName(f)} avatar={f.avatar} size={20} /> {displayName(f)}</li>)}</ul>
         )}
       </section>
@@ -81,6 +83,7 @@ function Mutuals({ userId }: { userId: string }) {
 }
 
 export function ProfileDialog({ userId, guildId }: { userId: string; guildId: string | null }) {
+  const { t: msg } = useI18n();
   const { locale } = useI18n();
   const close = () => useUiStore.getState().openDialog(null);
   const me = useSessionStore((s) => s.user);
@@ -95,17 +98,17 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
   const note = useUserNotesStore((s) => s.byUser[userId] ?? '');
 
   const message = async () => {
-    const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
+    const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), msg("friends.openFailed"));
     if (channel) {
       useGuildStore.getState().upsertChannel(channel);
       close();
       openChannel(channel.id);
     }
   };
-  const addFriend = () => user && void attempt(() => getRuntime().api.putRelationship(userId, user.username ? { username: user.username } : undefined), 'Could not send request');
-  const block = () => void attempt(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), 'Could not block');
-  const report = () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: user ? displayName(user, member?.nick) : 'this user' } });
-  const removeFriend = () => void attempt(() => getRuntime().api.deleteRelationship(userId), 'Could not update');
+  const addFriend = () => user && void attempt(() => getRuntime().api.putRelationship(userId, user.username ? { username: user.username } : undefined), msg("settings.profiledialog.could.not.send.request"));
+  const block = () => void attempt(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), msg("settings.profiledialog.could.not.block"));
+  const report = () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: user ? displayName(user, member?.nick) : msg("settings.profiledialog.this.user") } });
+  const removeFriend = () => void attempt(() => getRuntime().api.deleteRelationship(userId), msg("friends.updateFailed"));
 
   return (
     <Modal open onClose={close} bare width={480}>
@@ -126,39 +129,39 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
           <div className="profile-body">
             {!isMe && (
               <div className="profile-actions">
-                <Button variant="primary" icon={<Chat size={16} weight="fill" />} onClick={() => void message()}>Message</Button>
-                <Button icon={<Phone size={16} weight="fill" />} onClick={() => { close(); void callUser(userId); }}>Call</Button>
+                <Button variant="primary" icon={<Chat size={16} weight="fill" />} onClick={() => void message()}>{msg("common.message")}</Button>
+                <Button icon={<Phone size={16} weight="fill" />} onClick={() => { close(); void callUser(userId); }}>{msg("settings.profiledialog.call")}</Button>
                 {relationship?.type === RelationshipType.FRIEND ? (
-                  <Button icon={<UserMinus size={16} />} onClick={removeFriend}>Remove friend</Button>
+                  <Button icon={<UserMinus size={16} />} onClick={removeFriend}>{msg("friends.remove")}</Button>
                 ) : relationship?.type === RelationshipType.OUTGOING ? (
-                  <Button disabled>Request sent</Button>
+                  <Button disabled>{msg("settings.profiledialog.request.sent")}</Button>
                 ) : (
-                  <Button icon={<UserPlus size={16} />} onClick={addFriend}>Add friend</Button>
+                  <Button icon={<UserPlus size={16} />} onClick={addFriend}>{msg("friends.add")}</Button>
                 )}
-                <Button variant="ghost" icon={<Prohibit size={16} />} onClick={relationship?.type === RelationshipType.BLOCKED ? removeFriend : block}>{relationship?.type === RelationshipType.BLOCKED ? 'Unblock' : 'Block'}</Button>
-                <Button variant="ghost" icon={<Flag size={16} />} onClick={report}>Report</Button>
+                <Button variant="ghost" icon={<Prohibit size={16} />} onClick={relationship?.type === RelationshipType.BLOCKED ? removeFriend : block}>{relationship?.type === RelationshipType.BLOCKED ? msg("friends.unblock") : msg("settings.profiledialog.block")}</Button>
+                <Button variant="ghost" icon={<Flag size={16} />} onClick={report}>{msg("settings.profiledialog.report")}</Button>
               </div>
             )}
             {(member?.bio || user.bio) && (
-              <section className="profile-section"><h4>About me</h4><p className="selectable">{member?.bio || user.bio}</p></section>
+              <section className="profile-section"><h4>{msg("settings.profileeditor.about.me")}</h4><p className="selectable">{member?.bio || user.bio}</p></section>
             )}
             {guildId && member && (
               <section className="profile-section">
-                <h4>Roles</h4>
+                <h4>{msg("settings.profiledialog.roles")}</h4>
                 <RolePills guildId={guildId} userId={userId} editable />
               </section>
             )}
             {!isMe && (
               <section className="profile-section">
-                <h4>Note</h4>
-                <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))} />
+                <h4>{msg("settings.profiledialog.note")}</h4>
+                <textarea className="input" aria-label={msg("settings.profiledialog.note")} rows={2} maxLength={256} defaultValue={note} placeholder={msg("settings.profiledialog.click.to.add.a.note.only.visible.to.you")} onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, msg("settings.profiledialog.could.not.save.note")))} />
               </section>
             )}
             {!isMe && !user.bot && <Mutuals userId={userId} />}
             {!isMe && <FriendsSince userId={userId} />}
-            {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString(locale, { dateStyle: 'long' })}</p></section>}
+            {member?.joined_at && <section className="profile-section"><h4>{msg("settings.profiledialog.member.since")}</h4><p>{new Date(member.joined_at).toLocaleDateString(locale, { dateStyle: 'long' })}</p></section>}
             {!isMe && <SafetyNumber userId={userId} />}
-            {developerMode && <button type="button" className="link-btn" onClick={() => void copyText(user.id, 'User ID copied')}><Copy size={13} /> Copy user ID</button>}
+            {developerMode && <button type="button" className="link-btn" onClick={() => void copyText(user.id, msg("settings.profiledialog.user.id.copied"))}><Copy size={13} /> {msg("settings.profiledialog.copy.user.id")}</button>}
           </div>
         </div>
       )}

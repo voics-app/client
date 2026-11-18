@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { useEffect, useState } from 'react';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -13,6 +14,7 @@ const GROUPS = ['Voice', 'Calls', 'Navigation', 'General'] as const;
 
 /** Rebindable actions: record a combination, Global (system-wide) scope, per-action and full reset, conflict warnings. Device-local. */
 export function KeybindsEditor() {
+  const { t: msg, catalogText, list } = useI18n();
   const keybinds = usePrefsStore((s) => s.keybinds);
   const pttLabel = usePrefsStore((s) => s.pttLabel);
   const patch = usePrefsStore((s) => s.patch);
@@ -39,11 +41,11 @@ export function KeybindsEditor() {
   return (
     <>
       {GROUPS.map((group) => (
-        <section key={group} aria-label={group}>
-          <h3>{group}</h3>
+        <section key={group} aria-label={catalogText(group)}>
+          <h3>{catalogText(group)}</h3>
           {group === 'Voice' && (
-            <SettingRow title="Push to talk" description={pttLabel ? `Bound to ${pttLabel}. Works system-wide.` : 'Not set.'}>
-              <Button onClick={() => openSettings({ kind: 'user', tab: 'voice' })}>Set under Voice and video</Button>
+            <SettingRow title={msg("settings.usertabs.push.to.talk")} description={pttLabel ? msg('keybind.bound', { keys: pttLabel }) : msg("settings.keybindseditor.not.set")}>
+              <Button onClick={() => openSettings({ kind: 'user', tab: 'voice' })}>{msg("settings.keybindseditor.set.under.voice.and.video")}</Button>
             </SettingRow>
           )}
           {ACTION_CATALOG.filter((i) => i.group === group).map((info) => {
@@ -51,16 +53,16 @@ export function KeybindsEditor() {
             if (!k) return null;
             const conflicts = conflictsFor(keybinds, k.id, FIXED);
             return (
-              <SettingRow key={k.id} title={info.label} description={conflicts.length > 0 ? <span role="alert">Conflicts with {conflicts.join(', ')}</span> : undefined}>
+              <SettingRow key={k.id} title={catalogText(info.label)} description={conflicts.length > 0 ? <span role="alert">{msg('keybind.conflict', { names: list(conflicts.map(catalogText)) })}</span> : undefined}>
                 <div className="setting-inline">
-                  <Button onClick={() => setRecording(k.id)} aria-label={`Change shortcut for ${info.label}`}>
-                    <kbd className="kbd">{recording === k.id ? 'Press keys' : k.keys || 'Not bound'}</kbd>
+                  <Button onClick={() => setRecording(k.id)} aria-label={msg('keybind.change', { name: catalogText(info.label) })}>
+                    <kbd className="kbd">{recording === k.id ? msg("settings.keybindseditor.press.keys") : k.keys || msg("settings.keybindseditor.not.bound")}</kbd>
                   </Button>
                   {globalOk && infoFor(k.action).globalCapable && (
-                    <Switch label={`Global shortcut for ${info.label}`} checked={Boolean(k.global)} disabled={!k.keys} onChange={(v) => update(setKeybindGlobal(keybinds, k.id, v))} />
+                    <Switch label={msg('keybind.global', { name: catalogText(info.label) })} checked={Boolean(k.global)} disabled={!k.keys} onChange={(v) => update(setKeybindGlobal(keybinds, k.id, v))} />
                   )}
-                  {k.keys && <Button variant="ghost" aria-label={`Clear shortcut for ${info.label}`} onClick={() => update(setKeybindKeys(keybinds, k.id, ''))}>Clear</Button>}
-                  {!isDefault(k) && <Button variant="ghost" aria-label={`Reset shortcut for ${info.label}`} onClick={() => update(resetKeybind(keybinds, k.id))}>Reset</Button>}
+                  {k.keys && <Button variant="ghost" aria-label={msg('keybind.clear', { name: catalogText(info.label) })} onClick={() => update(setKeybindKeys(keybinds, k.id, ''))}>{msg("settings.usertabs.clear")}</Button>}
+                  {!isDefault(k) && <Button variant="ghost" aria-label={msg('keybind.reset', { name: catalogText(info.label) })} onClick={() => update(resetKeybind(keybinds, k.id))}>{msg("common.reset")}</Button>}
                 </div>
               </SettingRow>
             );
@@ -68,7 +70,7 @@ export function KeybindsEditor() {
         </section>
       ))}
       <div className="row-end">
-        <Button variant="ghost" onClick={() => update(DEFAULT_KEYBINDS.map((k) => ({ ...k })))}>Reset all to defaults</Button>
+        <Button variant="ghost" onClick={() => update(DEFAULT_KEYBINDS.map((k) => ({ ...k })))}>{msg("settings.keybindseditor.reset.all.to.defaults")}</Button>
       </div>
     </>
   );
