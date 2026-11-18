@@ -22,8 +22,6 @@ export interface NativeAudioStream extends MediaStreamLike {
 
 export interface NativeVideoTrack extends MediaTrackLike {
   enabled: boolean;
-  /** @livekit/react-native-webrtc: flips between the front and the back camera on the same track, so the sender keeps its track and its cryptor. */
-  _switchCamera(): void;
   readonly readyState?: string;
   onended?: (() => void) | null;
 }

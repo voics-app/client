@@ -5,6 +5,10 @@
  */
 import type { SessionDescription } from '../contracts/voice';
 
+// The SFU forwards encoded frames without transcoding. All shipped platforms
+// must choose the same codec until the protocol negotiates per-source codecs.
+export const DEFAULT_VIDEO_CODEC = 'VP8';
+
 export interface AudioSection {
   mid: string;
   payloadType: number;
@@ -106,7 +110,7 @@ function extmapsOf(lines: readonly string[]): { id: number; uri: string }[] {
     });
 }
 
-export function parseLocalOffer(sdp: string, preferredVideoCodec = 'VP9'): ParsedOffer {
+export function parseLocalOffer(sdp: string, preferredVideoCodec: string = DEFAULT_VIDEO_CODEC): ParsedOffer {
   const { session, media } = splitSections(sdp);
   const audioRaw = media.find((m) => m.kind === 'audio');
   if (!audioRaw) throw new Error('offer has no audio section');

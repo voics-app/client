@@ -3,8 +3,8 @@
  *
  * Safety. The camera track reaches the peer connection only through `VoiceSession.setCameraTrack`, which in an end-to-end encrypted call
  * pauses the camera sender, sets the track, attaches and enables the frame cryptor, and only then resumes it. Nothing here adds a track to the
- * connection by itself, and switching between the front and back camera flips the capture of the same track, so the sender and its cryptor are
- * never replaced. A camera that was on is put back through `setCameraTrack` every time the connection comes up (a reconnect builds new senders).
+ * connection by itself. Switching cameras replaces the capture through that same protected sender; it never replaces the sender or its cryptor.
+ * A camera that was on is put back through `setCameraTrack` every time the connection comes up (a reconnect builds new senders).
  */
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -84,34 +84,7 @@ export class MobileCallController extends VoiceCallController {
         return;
       }
       if (this.held) return;
-      const session = this.session;
-      if (!session || useVoiceStore.getState().call.status !== 'connected') throw new Error('The camera needs a connected call.');
-      const stream = await this.mobile.openCamera(this.cameraFacing);
-      if (generation !== this.captureGeneration || this.session !== session || useVoiceStore.getState().call.status !== 'connected') {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      const track = stream.getVideoTracks()[0];
-      if (!track) {
-        stream.getTracks().forEach((t) => t.stop());
-        throw new Error('The camera produced no video');
-      }
-      try {
-        await session.setCameraTrack(track, CAMERA_PRESET);
-        if (generation !== this.captureGeneration || this.session !== session) {
-          stream.getTracks().forEach((t) => t.stop());
-          await session.setCameraTrack(null);
-          return;
-        }
-      } catch (error) {
-        stream.getTracks().forEach((t) => t.stop());
-        throw error;
-      }
-      this.held = stream;
-      track.onended = () => { void this.setVideo(false); };
-      useVoiceStore.getState().setLocalMedia({ localCamera: stream });
-      useVoiceStore.getState().setSelf({ selfVideo: true });
-      this.sendState();
+      await this.startCamera(this.cameraFacing, generation);
     });
   }
 
@@ -120,12 +93,55 @@ export class MobileCallController extends VoiceCallController {
   }
 
   /** Switches between the front and the back camera while sending. */
-  switchCamera(): void {
-    const track = this.held?.getVideoTracks()[0];
-    if (!track) return;
-    track._switchCamera();
-    this.cameraFacing = this.cameraFacing === 'front' ? 'back' : 'front';
+  switchCamera(): Promise<void> {
+    return this.runVideo(async () => {
+      if (!this.held) return;
+      const facing = this.cameraFacing === 'front' ? 'back' : 'front';
+      const generation = this.captureGeneration;
+      // The native deprecated _switchCamera discards applyConstraints' promise,
+      // and Android retains its initial facing constraint. Reopen explicitly and
+      // release the old camera first on devices that cannot open both at once.
+      await this.stopCamera();
+      this.sendState();
+      // stopCamera releases one capture; another increment means Leave/background
+      // cancelled this operation while detaching the previous sender track.
+      if (this.captureGeneration !== generation + 1) return;
+      await this.startCamera(facing, this.captureGeneration);
+    });
+  }
+
+  private async startCamera(facing: CameraFacing, generation: number): Promise<void> {
+    if (generation !== this.captureGeneration) return;
+    const session = this.session;
+    if (!session || useVoiceStore.getState().call.status !== 'connected') throw new Error('The camera needs a connected call.');
+    const stream = await this.mobile.openCamera(facing);
+    if (generation !== this.captureGeneration || this.session !== session || useVoiceStore.getState().call.status !== 'connected') {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    const track = stream.getVideoTracks()[0];
+    if (!track) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw new Error('The camera produced no video');
+    }
+    try {
+      await session.setCameraTrack(track, CAMERA_PRESET);
+      if (generation !== this.captureGeneration || this.session !== session) {
+        stream.getTracks().forEach((t) => t.stop());
+        await session.setCameraTrack(null);
+        return;
+      }
+    } catch (error) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw error;
+    }
+    this.held = stream;
+    this.cameraFacing = facing;
     for (const listener of this.facingListeners) listener();
+    track.onended = () => { void this.setVideo(false).catch(() => undefined); };
+    useVoiceStore.getState().setLocalMedia({ localCamera: stream });
+    useVoiceStore.getState().setSelf({ selfVideo: true });
+    this.sendState();
   }
 
   private runVideo(task: () => Promise<void>): Promise<void> {

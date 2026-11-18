@@ -17,6 +17,7 @@ import {
   type Speaking,
   type StreamViewers,
   type VideoPayload,
+  type VideoCodecName,
   type VoiceFrame,
   type VoiceHello,
   type VoiceIdentify,
@@ -24,7 +25,7 @@ import {
 } from '../../contracts/voice';
 import { reconnectDelay } from '../../domain/backoff';
 import { E2EE_PROTOCOL_VERSION, isE2eeVideoCodec } from '../../domain/frameFormat';
-import { parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '../../domain/sdp';
+import { DEFAULT_VIDEO_CODEC, parseLocalOffer, synthesizeRemoteAnswer, type ParsedOffer } from '../../domain/sdp';
 import { presetConstraints, type CaptureConstraints } from '../../domain/videoPresets';
 import type {
   MediaPeerConnection,
@@ -332,12 +333,12 @@ export class VoiceSession implements VoiceSessionPort {
     this.plans = [];
     if (this.screenTransceiver.mid) this.plans.push({ mid: this.screenTransceiver.mid, role: 'local-screen' });
 
-    const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? 'VP9');
+    const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.parsedOffer = parsed;
     const codecs: CodecDescriptor[] = [{ name: 'opus', type: 'audio', priority: 1000, payload_type: parsed.audio.payloadType }];
     if (parsed.video) {
       codecs.push({
-        name: parsed.video.codec as 'VP9' | 'AV1' | 'H264',
+        name: parsed.video.codec as VideoCodecName,
         type: 'video',
         priority: 1000,
         payload_type: parsed.video.payloadType,
@@ -400,7 +401,7 @@ export class VoiceSession implements VoiceSessionPort {
   // ---- end-to-end encryption -------------------------------------------
 
   private codecName(): string {
-    return this.description?.video_codec ?? 'VP9';
+    return this.description?.video_codec ?? this.parsedOffer?.video?.codec ?? DEFAULT_VIDEO_CODEC;
   }
 
   /** Why this client must not join an E2EE call, or null. Nothing is sent or played in clear instead. */
@@ -426,7 +427,7 @@ export class VoiceSession implements VoiceSessionPort {
   private async protectSenders(description: SessionDescription): Promise<void> {
     const cryptor = this.options.cryptor;
     if (!cryptor) return;
-    const codec = description.video_codec ?? 'VP9';
+    const codec = description.video_codec ?? this.codecName();
     const senders: [TransceiverLike | null, 'audio' | 'video', string, boolean][] = [
       [this.audioTransceiver, 'audio', 'opus', this.micTrack !== null],
       [this.cameraTransceiver, 'video', codec, this.cameraTrack !== null],
@@ -649,7 +650,7 @@ export class VoiceSession implements VoiceSessionPort {
       const source = this.sources.get(key);
       if (source && transceiver.mid) this.plans.push({ mid: transceiver.mid, role: 'remote', source });
     }
-    const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? 'VP9');
+    const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.offerSdp = sdp;
     this.parsedOffer = parsed;
     await this.applyAnswer(sdp, parsed, description);

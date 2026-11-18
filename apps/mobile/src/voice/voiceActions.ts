@@ -47,8 +47,12 @@ export async function toggleCamera(): Promise<void> {
 }
 
 /** Flips between the front and the back camera. */
-export function switchCamera(): void {
-  getRuntime().voice?.controller.switchCamera();
+export async function switchCamera(): Promise<void> {
+  try {
+    await getRuntime().voice?.controller.switchCamera();
+  } catch (error) {
+    Alert.alert('Camera', errorMessage(error));
+  }
 }
 
 export function toggleScreenShare(): void {

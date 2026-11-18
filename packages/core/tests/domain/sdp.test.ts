@@ -34,6 +34,11 @@ const OFFER = [
 ].join('\r\n');
 
 describe('parseLocalOffer', () => {
+  it('chooses the mobile-compatible VP8 codec from a desktop offer that also contains VP9', () => {
+    const desktop = OFFER.replace('a=rtpmap:98 VP9/90000', 'a=rtpmap:98 VP9/90000\r\na=rtpmap:96 VP8/90000\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96');
+    expect(parseLocalOffer(desktop).video).toMatchObject({ codec: 'VP8', payloadType: 96, rtxPayloadType: 97 });
+  });
+
   it('extracts ICE credentials, fingerprint and payload types', () => {
     const parsed = parseLocalOffer(OFFER);
     expect(parsed.iceUfrag).toBe('LoCa');

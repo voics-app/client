@@ -4,7 +4,7 @@ import { createIosScreenShare } from '../../src/voice/nativeScreenShare';
 import type { NativeVideoStream, NativeVideoTrack } from '../../src/voice/nativeVoice';
 
 function fixture() {
-  const track: NativeVideoTrack = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn(), onended: null };
+  const track: NativeVideoTrack = { kind: 'video', enabled: true, stop: jest.fn(), onended: null };
   const stream: NativeVideoStream = { getVideoTracks: () => [track], getTracks: () => [track], toURL: () => 'screen' };
   const session = { setScreenTrack: jest.fn(async () => undefined) };
   const driver = { open: jest.fn<Promise<NativeVideoStream | null>, []>(async () => stream), cancel: jest.fn() };

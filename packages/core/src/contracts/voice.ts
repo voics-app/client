@@ -59,7 +59,7 @@ export interface VoiceReady {
   streams: VoiceStreamDescriptor[];
 }
 
-export type VideoCodecName = 'VP9' | 'AV1' | 'H264';
+export type VideoCodecName = 'VP8' | 'VP9' | 'AV1' | 'H264';
 
 export interface CodecDescriptor {
   name: 'opus' | VideoCodecName;
