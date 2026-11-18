@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
+import { createDispatchRouter, registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { usePresenceStore, useReadStateStore, useRelationshipStore, useTypingStore } from '@discordy/core/application/stores/peopleStores';
@@ -41,7 +41,7 @@ const message = (id: string, extra: Partial<Message> = {}): Message => ({
   ...extra,
 });
 
-function setup() {
+function setup(readyOverrides: Record<string, unknown> = {}) {
   const ctx = { onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate: vi.fn() };
   const route = createDispatchRouter(ctx);
   route('READY', {
@@ -53,6 +53,7 @@ function setup() {
     relationships: [{ id: '2', type: 1, user: friend }],
     user_settings: { default_delivery_mode: 'ephemeral' },
     read_state: [{ id: '200', last_message_id: null, mention_count: 0 }],
+    ...readyOverrides,
   });
   return { route, ctx };
 }
@@ -137,6 +138,108 @@ describe('dispatchRouter', () => {
     expect(Object.keys(useTypingStore.getState().byChannel['200'] ?? {})).toEqual(['2']);
     route('MESSAGE_CREATE', message('503'));
     expect(useTypingStore.getState().byChannel['200']?.['2']).toBeUndefined();
+  });
+
+  it('keeps an ACK snapshot count when its included create arrives afterwards', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    // The backend already counted502 before publishing this ACK for500.
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '500', mention_count: 1, read_state_version: '2' });
+    route('MESSAGE_CREATE', message('502', { mentions: [me] }));
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount).toBe(1);
+  });
+
+  it('keeps the same included count when create delivery precedes its ACK snapshot', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    route('MESSAGE_CREATE', message('502', { mentions: [me] }));
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '500', mention_count: 1, read_state_version: '2' });
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount).toBe(1);
+  });
+
+  it('counts a genuinely new create through its later authoritative snapshot', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '500', mention_count: 1, read_state_version: '2' });
+    route('MESSAGE_CREATE', message('502', { mentions: [me] }));
+    route('READ_STATE_UPDATE', { channel_id: '200', last_message_id: '500', mention_count: 2, read_state_version: '3' });
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount).toBe(2);
+  });
+
+  it('ignores duplicates, stale snapshots and unversioned ACK after certified READY', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    const newer = { channel_id: '200', last_message_id: '510', mention_count: 2, read_state_version: '9007199254740993' };
+    route('READ_STATE_UPDATE', newer);
+    route('READ_STATE_UPDATE', newer);
+    route('READ_STATE_UPDATE', { ...newer, mention_count: 99, read_state_version: '9007199254740992' });
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '900', mention_count: 0 });
+    route('MESSAGE_CREATE', message('502', { mentions: [me] }));
+    route('MESSAGE_CREATE', message('502', { mentions: [me] }));
+    expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '510', mentionCount: 2 });
+  });
+
+  it('accepts backwards manual unread only at a newer version', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '900', mention_count: 0, read_state_version: '8' });
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '500', mention_count: 3, read_state_version: '9' });
+    route('MESSAGE_ACK', { channel_id: '200', message_id: '900', mention_count: 0, read_state_version: '8' });
+    expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '500', mentionCount: 3 });
+  });
+
+  it('repairs lost publication on resume without overwriting a newer replayed snapshot', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    route('READ_STATE_UPDATE', { channel_id: '200', last_message_id: '500', mention_count: 2, read_state_version: '4' });
+    route('READ_STATE_SYNC', { read_state_versioned: true, read_state: [
+      { id: '200', last_message_id: '500', mention_count: 1, read_state_version: '3' },
+      { id: '201', last_message_id: null, mention_count: 7, read_state_version: '7' },
+    ] });
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount).toBe(2);
+    expect(useReadStateStore.getState().byChannel['201']?.mentionCount).toBe(7);
+    route('READ_STATE_SYNC', { read_state_versioned: true, read_state: [] });
+    expect(useReadStateStore.getState().byChannel['201']?.mentionCount).toBe(7);
+  });
+
+  it('repairs an optimistic ACK that never committed when resume returns the same version', () => {
+    const entry = { id: '200', last_message_id: '500', mention_count: 2, read_state_version: '4' };
+    const { route } = setup({ read_state_versioned: true, read_state: [entry] });
+    useReadStateStore.getState().markRead('200', '700');
+    route('READ_STATE_SYNC', { read_state_versioned: true, read_state: [entry] });
+    expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '500', mentionCount: 2 });
+  });
+
+  it('starts a fresh version history on READY after restored database versions move backwards', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [{ id: '200', last_message_id: '500', mention_count: 2, read_state_version: '99' }] });
+    route('READY', { v: 1, user: me, session_id: 'new', guilds: [guild], private_channels: [], relationships: [], user_settings: {},
+      read_state_versioned: true, read_state: [{ id: '200', last_message_id: '400', mention_count: 1, read_state_version: '4' }] });
+    expect(useReadStateStore.getState().byChannel['200']).toEqual({ lastReadId: '400', mentionCount: 1 });
+  });
+
+  it('keeps private decrypted counts local through authoritative sync', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    registerIncoming({ ...message('700', { channel_id: '300', guild_id: undefined }), deliveryMode: 'p2p' }, vi.fn());
+    route('READ_STATE_SYNC', { read_state_versioned: true, read_state: [{ id: '300', last_message_id: '500', mention_count: 0, read_state_version: '1' }] });
+    route('READ_STATE_UPDATE', { channel_id: '300', last_message_id: '500', mention_count: 0, read_state_version: '1' });
+    expect(useReadStateStore.getState().byChannel['300']?.mentionCount).toBe(1);
+  });
+
+  it('preserves private explicit cross-device ACK and backwards manual unread', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    for (const id of ['700', '701']) {
+      registerIncoming({ ...message(id, { channel_id: '300', guild_id: undefined }), deliveryMode: 'p2p' }, vi.fn());
+    }
+    expect(useReadStateStore.getState().byChannel['300']?.mentionCount).toBe(2);
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '701', mention_count: 0, read_state_version: '1' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '701', mentionCount: 0 });
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '699', mention_count: 2, read_state_version: '2' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '699', mentionCount: 2 });
+    route('MESSAGE_ACK', { channel_id: '300', message_id: '701' });
+    expect(useReadStateStore.getState().byChannel['300']).toEqual({ lastReadId: '701', mentionCount: 0 });
+  });
+
+  it('ignores malformed snapshots rather than rounding or accepting invalid counts', () => {
+    const { route } = setup({ read_state_versioned: true, read_state: [] });
+    for (const version of ['01', '-1', '9223372036854775808', 3]) {
+      route('READ_STATE_UPDATE', { channel_id: '200', last_message_id: null, mention_count: 1, read_state_version: version });
+    }
+    route('READ_STATE_UPDATE', { channel_id: '200', last_message_id: null, mention_count: -1, read_state_version: '1' });
+    expect(useReadStateStore.getState().byChannel['200']).toBeUndefined();
   });
 
   it('applies updates, deletes and reactions', () => {
