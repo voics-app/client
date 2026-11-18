@@ -51,7 +51,7 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
   return <Modal open onClose={close} title="Authorize application" width={520}>
     <div className="integration-stack">
       {query.isPending ? <p role="status">Loading application…</p> : query.isError ? <div><p role="alert" className="field-error">Could not load this application. {errorMessage(query.error)}</p><Button onClick={() => void query.refetch()}>Try again</Button></div> : info && <>
-        <div className="integration-identity"><Avatar id={info.application.id} avatar={info.application.icon} name={info.application.name} kind="icons" size={48} square /><div><h3>{info.application.name}</h3><p>{info.application.description || 'An application bot for your server.'}</p></div></div>
+        <div className="integration-identity"><Avatar id={info.application.id} avatar={info.application.icon} name={info.application.name} kind="app-icons" size={48} square /><div><h3>{info.application.name}</h3><p>{info.application.description || 'An application bot for your server.'}</p></div></div>
         <ul className="integration-permissions" aria-label="Requested scopes">
           <li><Check size={16} aria-hidden="true" />Add a bot to a server you manage</li>
           {info.scopes.includes('applications.commands') && <li><Check size={16} aria-hidden="true" />Use application commands in that server</li>}

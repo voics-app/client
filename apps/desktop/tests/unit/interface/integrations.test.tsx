@@ -12,6 +12,7 @@ import { BotAuthorizeDialog } from '@renderer/interface/features/integrations/Bo
 import { AuthorizedApps } from '@renderer/interface/features/integrations/AuthorizedApps';
 import { WebhookEditor } from '@renderer/interface/features/integrations/WebhookEditor';
 import { ServerIntegrations } from '@renderer/interface/features/integrations/ServerIntegrations';
+import { useConnectionStore } from '@renderer/interface/app/connectionStore';
 
 const fixture = vi.hoisted(() => ({ permissions: 0n, api: {
   botAuthorizationInfo: vi.fn(), authorizeBot: vi.fn(), applicationAuthorizations: vi.fn(), revokeApplicationAuthorization: vi.fn(), applications: vi.fn(),
@@ -40,12 +41,23 @@ beforeEach(() => {
   useGuildStore.getState().reset();
   useSessionStore.setState({ user: { id: '7', username: 'Sam' } as User });
   useUiStore.setState({ dialog: null, settings: null });
+  useConnectionStore.setState({ cdnUrl: 'https://cdn.example.invalid' });
   fixture.api.botAuthorizationInfo.mockResolvedValue(info);
   fixture.api.authorizeBot.mockResolvedValue({ location: '/channels/1' });
   fixture.api.applicationAuthorizations.mockResolvedValue([grant]);
   fixture.api.guildIntegrations.mockResolvedValue([]); fixture.api.guildWebhooks.mockResolvedValue([]);
 });
 afterEach(cleanup);
+
+it.each(['consent', 'installed', 'authorized'] as const)('loads the application icon from its own namespace in %s applications', async (surface) => {
+  const application = { ...app, icon: 'app-icon-hash' };
+  fixture.permissions = Permission.MANAGE_GUILD;
+  fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, application });
+  fixture.api.guildIntegrations.mockResolvedValue([{ application, permissions: '2048', installed_at: '2026-11-18T00:00:00Z' }]);
+  fixture.api.applicationAuthorizations.mockResolvedValue([{ ...grant, application }]);
+  const { baseElement } = mount(surface === 'consent' ? <BotAuthorizeDialog request={invite} /> : surface === 'installed' ? <ServerIntegrations guildId="1" /> : <AuthorizedApps />);
+  await waitFor(() => expect(baseElement.querySelector('.integration-identity img')?.getAttribute('src')).toBe('https://cdn.example.invalid/app-icons/11/app-icon-hash.png?size=128'));
+});
 
 describe('bot consent', () => {
   it('requires explicit review, retains the server after failure and authorizes on retry', async () => {

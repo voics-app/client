@@ -10,6 +10,8 @@ User Settings → Authorized apps is a separate list of the user's recorded cons
 
 Use production Inter, Nightglass spacing and surface tokens, standard Avatar, Button, Form, Modal and UnsavedBar primitives. Page, section and identity headings follow the incumbent hierarchy. The settings body is opaque; the shared modal provides the protected-focus treatment for consent and destructive confirmation. No new palette, imagery, decorative motion or custom control system is introduced.
 
+Application identities in consent, installed applications and personal authorizations load icons from `/app-icons/{application_id}/{hash}`. This matches application uploads; guild icons use the separate `/icons` namespace. Webhook avatars retain their `/avatars/{webhook_id}/{hash}` path.
+
 The shipped desktop minimum is 980×600, with 1366×768 laptop and 1440×1000 wide reference captures. The existing settings content scrolls at the minimum size; identity rows can wrap. Consent uses the standard 520-pixel modal width and must keep the server, permission review and primary action reachable. This feature does not add a native mobile settings surface.
 
 ## Consent
