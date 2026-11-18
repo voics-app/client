@@ -15,6 +15,7 @@ import type {
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   Device,
@@ -179,7 +180,7 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }): Promise<Message>;
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
   removeReaction(channelId: string, messageId: string, emoji: string): Promise<void>;

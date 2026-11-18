@@ -61,6 +61,7 @@ export function dmAccess(channel: Channel): ChannelAccess {
 export interface MessageActions {
   reply: boolean;
   edit: boolean;
+  editAttachments: boolean;
   delete: boolean;
   react: boolean;
   /** Copy Text and Select Text: only for messages that have text. */
@@ -80,7 +81,7 @@ export interface MessageActions {
   report: boolean;
 }
 
-const NONE: MessageActions = { reply: false, edit: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false };
+const NONE: MessageActions = { reply: false, edit: false, editAttachments: false, delete: false, react: false, copyText: false, copyLink: false, markUnread: false, pin: false, unpin: false, thread: false, blockAuthor: false, forward: false, report: false };
 
 /** The actions to offer on one message, read from core's message menu so mobile and desktop agree. */
 export function messageActions(message: ChatMessage, access: ChannelAccess, userId: string, authorBlocked = false): MessageActions {
@@ -98,6 +99,7 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
           forwardSupported: true,
           canSpeak: false,
           hasText,
+          hasEditableAttachments: Boolean(message.attachments?.length),
           pinned: message.pinned,
           selection: '',
           canAddEmoji: false,
@@ -107,5 +109,5 @@ export function messageActions(message: ChatMessage, access: ChannelAccess, user
       ),
     ),
   );
-  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread'), blockAuthor: message.author.id !== userId && !message.author.bot && !authorBlocked, forward: access.standard && ids.has('forward') && canForward(message, 'standard'), report: ids.has('report') };
+  return { reply: access.canSend && ids.has('reply'), edit: ids.has('edit'), editAttachments: ids.has('editAttachments'), delete: ids.has('delete'), react: ids.has('addReaction'), copyText: ids.has('copyText'), copyLink: ids.has('copyMessageLink'), markUnread: ids.has('markUnread'), pin: ids.has('pin'), unpin: ids.has('unpin'), thread: ids.has('thread'), blockAuthor: message.author.id !== userId && !message.author.bot && !authorBlocked, forward: access.standard && ids.has('forward') && canForward(message, 'standard'), report: ids.has('report') };
 }

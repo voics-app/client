@@ -58,6 +58,14 @@ What each device-only risk needs: see the PR description of client#275 (micropho
 
 ## Motion and design (client#305)
 
+**Attachment metadata.** Long-press your sent message in a Standard chat and choose **Edit
+Attachments** to change descriptions and spoiler settings without uploading again. Save waits for
+the service, failed saves keep the draft, and Cancel discards it. File/audio spoilers require a
+reveal, and the image viewer excludes other concealed attachments. This requires messages#79;
+see [the metadata guide](../../docs/attachment-metadata.md) for the contract, regression commands
+and remaining native device checks. The editor is covered by React Native component tests, not
+by a device/keyboard verification claim.
+
 Native libraries (a development build is needed for a new build; Expo Go bundles all four at these versions): `react-native-reanimated` 4.7.1, `react-native-worklets` 0.13.0, `react-native-gesture-handler` 3.3.0 and `react-native-keyboard-controller` 1.22.7. `app/_layout.tsx` wraps the app in `GestureHandlerRootView` and `KeyboardProvider`; the babel preset adds the worklets plugin by itself.
 
 - **Keyboard.** The chat list is a `KeyboardChatScrollView` (inverted, `keyboardLiftBehavior="always"`, interactive dismissal) inside a `KeyboardGestureArea`; the composer dock is a `KeyboardStickyView` floating over the list, whose measured height is the list's `extraContentPadding`. Everything follows the keyboard frame on the UI thread, the list stays pinned to the newest message, dragging the list down closes the keyboard, and the dock drops its home-indicator padding by the sticky view's `opened` offset. There is no `KeyboardAvoidingView` any more; the sign-in form uses `KeyboardAwareScrollView`.

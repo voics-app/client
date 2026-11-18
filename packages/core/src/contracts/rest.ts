@@ -678,6 +678,20 @@ export interface AttachmentUploadSlot {
   upload_filename: string;
 }
 
+/** Partial metadata edits of existing attachments. Files and filenames are immutable. */
+export interface AttachmentMetadataEdit {
+  id: Snowflake;
+  description?: string | null;
+  /** Only IS_SPOILER may be changed; zero explicitly clears it. */
+  flags?: number;
+}
+
+export interface EditMessageBody {
+  content?: string;
+  flags?: number;
+  attachments?: AttachmentMetadataEdit[];
+}
+
 /** Short-lived coturn REST credentials minted by the gateway (P2 TURN_URLS / TURN_STATIC_AUTH_SECRET). */
 export interface TurnCredentials {
   urls: string[];
