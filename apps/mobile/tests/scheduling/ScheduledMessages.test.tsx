@@ -146,3 +146,13 @@ it('never presents an uncertain delivery as sent or offers a retry', async () =>
   expect(jump).not.toHaveBeenCalled();
   expect(mockApi.createScheduledMessage).not.toHaveBeenCalled();
 });
+
+it('closes the old account’s open form without exposing its composer snapshot to the next account', async () => {
+  const close = jest.fn();
+  await render(wrap(<ScheduledMessagesSheet request={request('create')} context={context} canSend onAccepted={jest.fn()} onClose={close} />));
+  expect(screen.getByLabelText('Message')).toHaveProp('value', 'Composer draft');
+  await act(async () => useSessionStore.setState({ user: { id: '8', username: 'another', global_name: null, avatar: null } as User }));
+  expect(screen.queryByLabelText('Message')).toBeNull();
+  expect(close).toHaveBeenCalled();
+  expect(mockApi.createScheduledMessage).not.toHaveBeenCalled();
+});

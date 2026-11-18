@@ -4,6 +4,14 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Standard text messages can be scheduled from the composer’s **Send later** action
+(mobile also supports holding Send). **Scheduled messages** lists your channel’s
+requests with explicit local time, edit/cancel while pending and safe confirmation
+retries after a lost response. Uncertain delivery offers inspection without
+automatic resend. Attachments and private delivery cannot be scheduled. This
+requires the enabled messages scheduling backend; see [the client behavior and
+contract notes](docs/scheduled-messages.md).
+
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
 10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
 ACKs and duplicate HELLOs do not extend authentication. A failed connection to the

@@ -34,7 +34,11 @@ export interface ScheduledMessagesDialogProps {
 export function ScheduledMessagesDialog(props: ScheduledMessagesDialogProps) {
   const authorId = useSessionStore((state) => state.user?.id);
   const instance = useConnectionStore((state) => state.apiUrl);
-  return authorId ? <Content key={`${instance}:${authorId}:${props.channelId}`} {...props} authorId={authorId} instance={instance} /> : null;
+  const [owner] = useState({ authorId, instance });
+  const { onClose } = props;
+  const ownerChanged = authorId !== owner.authorId || instance !== owner.instance;
+  useEffect(() => { if (ownerChanged) onClose(); }, [ownerChanged, onClose]);
+  return authorId && !ownerChanged ? <Content key={`${instance}:${authorId}:${props.channelId}`} {...props} authorId={authorId} instance={instance} /> : null;
 }
 
 function Content(props: ScheduledMessagesDialogProps & { authorId: string; instance: string }) {
@@ -49,6 +53,8 @@ function Content(props: ScheduledMessagesDialogProps & { authorId: string; insta
   const list = useScheduledMessages(manager, props.channelId, foreground && editing === null);
   const { refresh } = list;
   const { onClose } = props;
+  const closeState = useRef({ busy, onClose });
+  closeState.current = { busy, onClose };
   useEffect(() => {
     const update = () => setForeground(document.visibilityState !== 'hidden');
     const focus = () => { setForeground(true); setRefreshKey((value) => value + 1); if (!editing) void refresh(); };
@@ -56,7 +62,7 @@ function Content(props: ScheduledMessagesDialogProps & { authorId: string; insta
     return () => { document.removeEventListener('visibilitychange', update); window.removeEventListener('focus', focus); };
   }, [refresh, editing]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const close = useCallback(() => { if (!busy) onClose(); }, [busy, onClose]);
+  const close = useCallback(() => { if (!closeState.current.busy) closeState.current.onClose(); }, []);
   let pending = false;
   let journalError: string | null = null;
   try { pending = manager.pending(props.channelId) !== null; } catch (failure) { journalError = errorMessage(failure); }

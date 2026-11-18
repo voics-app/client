@@ -8,6 +8,8 @@ The first view groups the message preview, date/time choice and explicit schedul
 
 The shared create journal saves the lowercase UUIDv4 request ID and exact original body before POST, scoped to API instance, author and channel. A lost/unavailable response keeps that request across dismissal or restart; Retry confirmation reuses it. A definite rejection permits correction. A chat that has become private resolves a previous request with exact GET only. Composer text is cleared only after acknowledgment and only if the original source draft still matches.
 
+Opening a dialog binds its composer snapshot to that account; switching accounts closes the old form immediately. Desktop also binds the active API instance. Completing an earlier request does not clear a newer draft, an edit, private text or the caption of newly attached files. Shared form/list hooks live in `@discordy/react`; the core journal and API logic have no React dependency.
+
 Views refresh on entry, foreground and every 15 seconds while visible. Resource revisions cannot decrease; an old response cannot restore cleared terminal content. Empty filtered pages retain and follow their cursor. The server keeps terminal list records for seven days.
 
 Delivery could not be confirmed is an explicit state with an Inspect channel action. Its chosen message ID is not evidence of delivery and there is no automatic resend. Sent means the server stored the message, not that every recipient device received it. Attachments, forwarding, embeds, components, application commands and non-Standard drafts are not scheduled or silently discarded.

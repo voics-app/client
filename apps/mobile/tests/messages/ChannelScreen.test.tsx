@@ -508,7 +508,7 @@ describe('channel screen', () => {
     expect(screen.queryByLabelText('Send')).toBeNull();
     await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
     expect(screen.getByLabelText('Send')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('Add attachment'));
+    await fireEvent.press(screen.getByLabelText('Message actions'));
     expect(await screen.findByText('Photo library')).toBeTruthy();
     expect(screen.getByText('Take photo or video')).toBeTruthy();
     expect(screen.getByText('Files')).toBeTruthy();

@@ -26,9 +26,12 @@ interface Props { request: ScheduleOpening | null; context: SchedulingContext; c
 export function ScheduledMessagesSheet(props: Props) {
   const authorId = useSessionStore((state) => state.user?.id);
   const retained = useLastValue(props.request);
-  const [opening, setOpening] = useState({ visible: props.request !== null, version: 0 });
-  if (opening.visible !== (props.request !== null)) setOpening({ visible: props.request !== null, version: opening.version + (props.request ? 1 : 0) });
-  return retained && authorId ? <Content key={`${authorId}:${props.context.channelId}:${opening.version}`} {...props} request={retained} visible={props.request !== null} authorId={authorId} /> : null;
+  const [opening, setOpening] = useState({ request: props.request, authorId, version: 0 });
+  if (opening.request !== props.request) setOpening({ request: props.request, authorId, version: opening.version + (props.request ? 1 : 0) });
+  const { onClose } = props;
+  const ownerChanged = props.request !== null && authorId !== opening.authorId;
+  useEffect(() => { if (ownerChanged) onClose(); }, [ownerChanged, onClose]);
+  return retained && authorId && !ownerChanged ? <Content key={`${authorId}:${props.context.channelId}:${opening.version}`} {...props} request={retained} visible={props.request !== null} authorId={authorId} /> : null;
 }
 
 function Content(props: Omit<Props, 'request'> & { request: ScheduleOpening; visible: boolean; authorId: string }) {

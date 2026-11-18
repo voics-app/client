@@ -180,6 +180,7 @@ describe('desktop scheduled-message list', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Schedule message' }));
     await screen.findByRole('button', { name: 'Retry confirmation' });
     await act(async () => useSessionStore.setState({ user: user('8') }));
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Retry confirmation' })).toBeNull();
     expect(api.createScheduledMessage).toHaveBeenCalledTimes(1);
   });

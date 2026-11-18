@@ -11,7 +11,7 @@ export function ScheduleEditor({ options, onBack, onBusy }: { options: ScheduleE
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return <form className="schedule-form" onSubmit={(event) => { event.preventDefault(); void form.save(); }}>
     {form.pending && <p className="schedule-notice" role="status">A previous request is waiting for confirmation. Retry checks the same request; it does not schedule another copy. Your composer draft stays here until confirmation.</p>}
-    <Field label="Message">{(id) => <TextArea id={id} value={form.message.content} rows={4} maxLength={4000} disabled={form.fieldsDisabled} onChange={(event) => form.setMessage({ ...form.message, content: event.target.value })} />}</Field>
+    <Field label="Message">{(id) => <TextArea id={id} autoFocus={!form.fieldsDisabled} data-autofocus={form.fieldsDisabled ? undefined : ''} value={form.message.content} rows={4} maxLength={4000} disabled={form.fieldsDisabled} onChange={(event) => form.setMessage({ ...form.message, content: event.target.value })} />}</Field>
     <Field label="Send on" hint={`Local time · ${zone}. Choose between one minute and 30 days from now.`}>{(id) => <Input id={id} type="datetime-local" value={form.localTime} disabled={form.fieldsDisabled} onChange={(event) => form.setLocalTime(event.target.value)} />}</Field>
     {form.instant && <p className="schedule-time" role="status">{scheduleTimeLabel(form.instant)}</p>}
     <div className="schedule-options">
@@ -27,6 +27,6 @@ export function ScheduleEditor({ options, onBack, onBusy }: { options: ScheduleE
       {form.conflict.status === 'pending' && <Button onClick={form.useLatest}>Load latest version</Button>}
     </section>}
     <p className="field-hint">The server sends this while your devices are offline. Service interruptions can delay delivery.</p>
-    <div className="row-end"><Button variant="ghost" disabled={form.busy} onClick={onBack}>Back</Button><Button type="submit" variant="primary" loading={form.busy} disabled={!form.canSave}>{form.pending ? options.mode === 'standard' ? 'Retry confirmation' : 'Check confirmation' : form.isEditing ? 'Save changes' : 'Schedule message'}</Button></div>
+    <div className="row-end"><Button variant="ghost" disabled={form.busy} onClick={onBack}>Back</Button><Button type="submit" variant="primary" data-autofocus={form.pending ? '' : undefined} loading={form.busy} disabled={!form.canSave}>{form.pending ? options.mode === 'standard' ? 'Retry confirmation' : 'Check confirmation' : form.isEditing ? 'Save changes' : 'Schedule message'}</Button></div>
   </form>;
 }
