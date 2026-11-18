@@ -109,7 +109,7 @@ describe('synthesizeRemoteAnswer', () => {
     expect(answer).toContain('a=end-of-candidates');
   });
 
-  it('mirrors the offer payload types and directions', () => {
+  it('accepts the offered payload types', () => {
     expect(answer).toContain('m=audio 50000 UDP/TLS/RTP/SAVPF 111');
     expect(answer).toContain('a=rtpmap:111 opus/48000/2');
     expect(answer).toContain('a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1');
@@ -117,7 +117,14 @@ describe('synthesizeRemoteAnswer', () => {
     expect(answer).toContain('a=fmtp:99 apt=98');
     expect(answer).toContain('a=rtcp-fb:98 nack pli');
     expect(answer).toContain('a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level');
-    expect(answer.match(/a=sendrecv/g)).toHaveLength(2);
+  });
+
+  it('does not announce anonymous remote tracks on the local microphone and camera uplinks', () => {
+    // Real remote sources have their own sendonly sections with an MSID. An anonymous
+    // sendrecv uplink creates WebRTC's fallback stream, which can be removed twice
+    // when the last peer leaves and rejoins (native OnRemoveStream abort).
+    expect(answer.match(/^a=(?:sendrecv|sendonly|recvonly|inactive)$/gm)).toEqual(['a=recvonly', 'a=recvonly']);
+    expect(answer).not.toMatch(/^a=msid:/m);
   });
 
   it('omits the video section when the offer has none', () => {

@@ -193,7 +193,9 @@ export function synthesizeRemoteAnswer(offer: ParsedOffer, remote: SessionDescri
     ...(offer.extmaps[mid] ?? [])
       .filter((e) => SUPPORTED_EXTENSIONS.has(e.uri) && !e.uri.includes('transport-wide-cc'))
       .map((e) => `a=extmap:${e.id} ${e.uri}`),
-    'a=sendrecv',
+    // These sections carry only the client's local microphone/camera to the SFU.
+    // Remote publishers get separate MSID-bearing sections in extendAnswer.
+    'a=recvonly',
     'a=rtcp-mux',
   ];
   const candidates = [
