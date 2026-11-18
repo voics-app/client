@@ -11,7 +11,7 @@ export function ScheduleEditor({ options, onBack, onBusy }: { options: ScheduleE
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return <form className="schedule-form" onSubmit={(event) => { event.preventDefault(); void form.save(); }}>
     {form.pending && <p className="schedule-notice" role="status">A previous request is waiting for confirmation. Retry checks the same request; it does not schedule another copy. Your composer draft stays here until confirmation.</p>}
-    <Field label="Message">{(id) => <TextArea id={id} autoFocus={!form.fieldsDisabled} data-autofocus={form.fieldsDisabled ? undefined : ''} value={form.message.content} rows={4} maxLength={4000} disabled={form.fieldsDisabled} onChange={(event) => form.setMessage({ ...form.message, content: event.target.value })} />}</Field>
+    <Field label="Message">{(id) => <TextArea id={id} autoFocus={!form.fieldsDisabled} data-autofocus={form.fieldsDisabled ? undefined : ''} value={form.message.content} rows={4} maxLength={4000} disabled={form.busy || form.pending !== null} readOnly={form.conflict !== null} onChange={(event) => { if (!form.fieldsDisabled) form.setMessage({ ...form.message, content: event.target.value }); }} />}</Field>
     <Field label="Send on" hint={`Local time · ${zone}. Choose between one minute and 30 days from now.`}>{(id) => <Input id={id} type="datetime-local" value={form.localTime} disabled={form.fieldsDisabled} onChange={(event) => form.setLocalTime(event.target.value)} />}</Field>
     {form.instant && <p className="schedule-time" role="status">{scheduleTimeLabel(form.instant)}</p>}
     <div className="schedule-options">

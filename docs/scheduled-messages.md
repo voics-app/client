@@ -12,6 +12,8 @@ Opening a dialog binds its composer snapshot to that account; switching accounts
 
 Views refresh on entry, foreground and every 15 seconds while visible. Resource revisions cannot decrease; an old response cannot restore cleared terminal content. Empty filtered pages retain and follow their cursor. The server keeps terminal list records for seven days.
 
+Background refresh covers the pages already loaded and preserves visible entries displaced by new inserts. Load more continues from the refreshed range's final cursor. Desktop conflict text remains read-only and keyboard-selectable so the author can copy local edits before choosing Load latest version; uncertain create requests and in-flight mutations remain locked.
+
 Delivery could not be confirmed is an explicit state with an Inspect channel action. Its chosen message ID is not evidence of delivery and there is no automatic resend. Sent means the server stored the message, not that every recipient device received it. Attachments, forwarding, embeds, components, application commands and non-Standard drafts are not scheduled or silently discarded.
 
 Wire authority: contracts #50 (`0de0e52c7cce04aad1b7f5a3e46677bcbb15848f`), docs #182 / ADR 0028 and the scheduled-message specification. Backend, client and native/runtime acceptance are separate gates; source or component fixtures are not evidence of deployed scheduling.

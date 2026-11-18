@@ -11,6 +11,7 @@ export function useScheduledMessages(manager: ScheduledMessages, channelId: stri
   const generation = useRef(0);
   const busy = useRef(false);
   const pinned = useRef(new Set<string>());
+  const loadedPages = useRef(1);
 
   const load = useCallback(async (after?: string, append = false) => {
     const request = ++generation.current;
@@ -18,6 +19,9 @@ export function useScheduledMessages(manager: ScheduledMessages, channelId: stri
     setPage((current) => ({ ...current, busy: true, error: null }));
     try {
       const visited = new Set<string>();
+      const ids: string[] = [];
+      const pagesToRefresh = append ? 1 : loadedPages.current;
+      let pagesRead = 0;
       let cursor = after;
       let result;
       do {
@@ -25,9 +29,13 @@ export function useScheduledMessages(manager: ScheduledMessages, channelId: stri
         visited.add(cursor ?? '');
         result = await manager.page(channelId, cursor);
         if (request !== generation.current) return;
+        ids.push(...result.items.map((item) => item.id));
+        if (result.items.length > 0 || result.next_after === null) pagesRead += 1;
         cursor = result.next_after ?? undefined;
-      } while (result.items.length === 0 && result.next_after !== null);
-      setPage((current) => ({ ids: [...new Set([...(append ? current.ids : []), ...result.items.map((item) => item.id), ...pinned.current])], next: result.next_after, busy: false, error: null }));
+      } while (result.next_after !== null && pagesRead < pagesToRefresh);
+      if (append) loadedPages.current += 1;
+      // Refresh the loaded range, preserving rows displaced by inserts and the cursor at that range's end.
+      setPage((current) => ({ ids: [...new Set([...current.ids, ...ids, ...pinned.current])], next: result.next_after, busy: false, error: null }));
     } catch (error) {
       if (request === generation.current) setPage((current) => ({ ...current, busy: false, error: errorMessage(error) }));
     } finally { if (request === generation.current) busy.current = false; }

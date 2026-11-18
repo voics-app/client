@@ -99,7 +99,14 @@ describe('desktop scheduled-message composer', () => {
     fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'My local edit' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByRole('button', { name: 'Load latest version' });
-    expect((screen.getByLabelText('Message') as HTMLTextAreaElement).value).toBe('My local edit');
+    const retained = screen.getByLabelText('Message') as HTMLTextAreaElement;
+    expect(retained.value).toBe('My local edit');
+    expect(retained.disabled).toBe(false);
+    expect(retained.readOnly).toBe(true);
+    retained.focus();
+    expect(document.activeElement).toBe(retained);
+    retained.select();
+    expect(retained.value.slice(retained.selectionStart, retained.selectionEnd)).toBe('My local edit');
     expect(api.editScheduledMessage).toHaveBeenCalledExactlyOnceWith('10', id, { expected_revision: 1, message: { content: 'My local edit', tts: false, silent: false, replied_user: true, reply_to: null } });
     expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Load latest version' }));
