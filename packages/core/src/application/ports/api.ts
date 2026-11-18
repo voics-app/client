@@ -21,6 +21,7 @@ import type {
   Device,
   Emoji,
   Guild,
+  VanityUrl,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   DiscoveryPage,
@@ -124,6 +125,8 @@ export interface ApiPort {
   deleteGuildTemplate(guildId: string, code: string): Promise<void>;
   guild(guildId: string): Promise<Guild>;
   updateGuild(guildId: string, patch: Partial<Guild>): Promise<Guild>;
+  guildVanityUrl(guildId: string): Promise<VanityUrl>;
+  updateGuildVanityUrl(guildId: string, code: string | null): Promise<VanityUrl>;
   deleteGuild(guildId: string): Promise<void>;
   createChannel(guildId: string, body: CreateChannelBody): Promise<Channel>;
   reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null; lock_permissions?: boolean }[]): Promise<void>;

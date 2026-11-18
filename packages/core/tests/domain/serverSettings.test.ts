@@ -17,6 +17,10 @@ describe('serverSettingsTabs', () => {
 });
 
 describe('canOpenServerSettings', () => {
+  it('lets an audit-only role reach the log without exposing management tabs', () => {
+    expect(canOpenServerSettings(Permission.VIEW_AUDIT_LOG)).toBe(true);
+    expect(shown(Permission.VIEW_AUDIT_LOG)).toEqual(['members', 'audit']);
+  });
   it('needs one of manage server, roles or channels', () => {
     expect(canOpenServerSettings(0n)).toBe(false);
     expect(canOpenServerSettings(Permission.KICK_MEMBERS)).toBe(false);

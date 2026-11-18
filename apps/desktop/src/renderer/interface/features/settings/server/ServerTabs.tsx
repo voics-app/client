@@ -19,6 +19,7 @@ import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
 import { readAsDataUrl } from '../imageUpload';
 import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
+import { ServerAuditPolicy } from './ServerAuditPolicy';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -198,6 +199,7 @@ export function ServerBans({ guildId }: { guildId: string }) {
 }
 
 export function ServerAudit({ guildId }: { guildId: string }) {
+  const auditEnabled = useGuildStore((s) => s.guilds[guildId]?.audit_log_enabled ?? true);
   const [actionType, setActionType] = useState('');
   const [actorId, setActorId] = useState('');
   const query = { limit: 100, ...(actionType ? { action_type: Number(actionType) } : {}), ...(actorId ? { user_id: actorId } : {}) };
@@ -214,6 +216,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
   const moderators = Object.values(members ?? {});
   return (
     <Page title="Audit log" sub="Moderation and configuration actions, newest first.">
+      <ServerAuditPolicy key={guildId} guildId={guildId} />
       <div className="member-filters row">
         <Select aria-label="Filter by action" value={actionType} onChange={(e) => setActionType(e.target.value)}>
           <option value="">All actions</option>
@@ -224,7 +227,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
           {moderators.map((m) => <option key={m.user.id} value={m.user.id}>{displayName(m.user, m.nick)}</option>)}
         </Select>
       </div>
-      {log.isLoading ? <Loading /> : entries.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title="Nothing logged yet" /> : (
+      {log.isLoading ? <Loading /> : log.isError ? <div><p className="field-error" role="alert">Could not load audit entries.</p><Button onClick={() => void log.refetch()}>Try again</Button></div> : entries.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title={auditEnabled ? 'No matching audit entries' : 'No retained audit entries'} body={auditEnabled ? 'New actions appear here when they match your filters.' : 'Logging is off. Changes to audit settings are still recorded.'} /> : (
         <ul className="manage-list audit">
           {entries.map((e) => {
             const actor = e.user_id ? users.get(e.user_id) : undefined;

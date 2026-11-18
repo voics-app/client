@@ -4,6 +4,20 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Server Settings → Overview includes a **Permanent invite** field. Members with
+Manage Server can set a 2–32-character code, copy its invite link, rename it or
+remove it. Codes ignore case; renaming resets the join count. The server needs a
+text channel visible to everyone. The API validates uniqueness and still checks
+bans when someone joins.
+
+Server Settings → Audit log includes **Record audit log** and **Keep audit
+entries** (30, 90 or 365 days). Only owners and administrators can change these.
+Disabling logging preserves retained entries; policy changes always remain
+recorded. Shorter retention removes older entries automatically. A role with
+View Audit Log can open this page and read entries without changing the policy.
+Both controls display server errors and retain unsaved input for correction.
+These controls require the API vanity/audit-policy release (api#96 and api#85).
+
 | Path | Purpose |
 |---|---|
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
@@ -35,6 +49,14 @@ Run these from this `client` folder (the parent `voics` folder is not a pnpm pro
 **Dev clients and production:** production's CORS list only allows the packaged app (`null` origin). So in dev builds only, the main process rewrites `Access-Control-Allow-Origin` on cross-origin responses to the dev server origin (`withDevServerCors` in `src/main/window.ts`). Without that, every request fails with status 0 and the client shows "You appear to be offline". The **Local** connection needs the local backend running (docs `runbooks/local-development.md`).
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
+
+## Desktop navigation and safety
+
+Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
+
+DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
+
+Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 ## Mobile app
 
@@ -71,6 +93,8 @@ pnpm typecheck      # tsc --noEmit for main and renderer
 pnpm lint           # eslint, max-warnings 0
 pnpm test:e2e       # builds, then Playwright drives the real Electron app against an in-process fake backend
 ```
+
+Media-worker tests wait for the output stream to close before asserting on frames. They do not assume WebCrypto finishes within a fixed number of milliseconds on a busy runner.
 
 ## Package
 

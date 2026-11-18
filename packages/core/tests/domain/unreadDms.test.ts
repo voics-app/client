@@ -27,5 +27,6 @@ describe('unreadDms', () => {
     const channels = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [String(i + 1), dm(String(i + 1), String(100 + i), ChannelType.GROUP_DM)]));
     const reads = Object.fromEntries(Object.keys(channels).map((id) => [id, { lastReadId: '1', mentionCount: 1 }]));
     expect(unreadDms(channels, reads, notMuted)).toHaveLength(MAX_RAIL_DMS);
+    expect(unreadDms(channels, reads, notMuted, Infinity)).toHaveLength(12);
   });
 });
