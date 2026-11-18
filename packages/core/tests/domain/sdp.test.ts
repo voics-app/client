@@ -26,6 +26,7 @@ const OFFER = [
   'm=video 9 UDP/TLS/RTP/SAVPF 98 99',
   'c=IN IP4 0.0.0.0',
   'a=mid:1',
+  'a=extmap:13 urn:3gpp:video-orientation',
   'a=sendrecv',
   'a=rtpmap:98 VP9/90000',
   'a=rtpmap:99 rtx/90000',
@@ -96,6 +97,11 @@ describe('synthesizeRemoteAnswer', () => {
     expect(answer).not.toContain('transport-cc');
     expect(answer).not.toContain('transport-wide-cc');
     expect(answer).toMatch(/a=fmtp:[0-9]+ x-google-start-bitrate=1500;x-google-min-bitrate=600;x-google-max-bitrate=4500/);
+  });
+
+  it('requires sender-side rotation because the SFU does not forward orientation metadata', () => {
+    expect(parseLocalOffer(OFFER).extmaps['1']).toContainEqual({ id: 13, uri: 'urn:3gpp:video-orientation' });
+    expect(answer).not.toContain('urn:3gpp:video-orientation');
   });
 
   it('emits host candidates from the payload', () => {

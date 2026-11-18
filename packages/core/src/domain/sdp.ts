@@ -63,8 +63,11 @@ const SUPPORTED_EXTENSIONS = new Set([
   'urn:ietf:params:rtp-hdrext:sdes:mid',
   'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
   'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
-  'urn:3gpp:video-orientation',
 ]);
+
+// The SFU does not carry CVO through its decoded/forwarded packet model. Do not
+// acknowledge that extension: libwebrtc must apply rotation to the frames before
+// encoding, otherwise portrait phone video reaches desktop sideways.
 
 function splitSections(sdp: string): { session: string[]; media: RawSection[] } {
   const lines = sdp.split(/\r?\n/).filter((l) => l.length > 0);
