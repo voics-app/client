@@ -24,7 +24,7 @@ vi.mock('@renderer/interface/shared/hooks/usePermissions', () => ({ useGuildPerm
 vi.mock('@renderer/interface/features/settings/imageUpload', () => ({ readImageUpload: fixture.readImageUpload }));
 
 const app = { id: '11', name: 'Study helper', icon: null, description: 'Study reminders' };
-const info: BotAuthorizationInfo = { application: app, user: { id: '7', username: 'Sam' } as User, guilds: [{ id: '1', name: 'Study club', icon: null, permissions: '8', bot_permissions: null }], scopes: ['bot', 'applications.commands'], permissions: '2048' };
+const info: BotAuthorizationInfo = { application: app, user: { id: '7', username: 'Sam' } as User, guilds: [{ id: '1', name: 'Study club', icon: null, permissions: '8', bot_permissions: null, installation_revision: 'absent:0' }], scopes: ['bot', 'applications.commands'], permissions: '2048' };
 const invite = { client_id: '11', scope: 'bot applications.commands', permissions: '2048', guild_id: '1' };
 const hook: Webhook = { id: '21', type: 1, guild_id: '1', channel_id: '2', name: 'Reminders', avatar: null, application_id: null };
 const channels = [{ id: '2', guild_id: '1', name: 'general', type: 0 }] as Channel[];
@@ -59,10 +59,10 @@ describe('bot consent', () => {
     await waitFor(() => expect(fixture.api.botAuthorizationInfo).toHaveBeenCalledTimes(2));
     fireEvent.click(confirm); fireEvent.click(screen.getByRole('button', { name: 'Authorize' }));
     await waitFor(() => expect(fixture.openGuild).toHaveBeenCalledWith('1'));
-    expect(fixture.api.authorizeBot).toHaveBeenLastCalledWith(invite);
+    expect(fixture.api.authorizeBot).toHaveBeenLastCalledWith({ ...invite, installation_revision: 'absent:0' });
   });
   it('shows existing effective permissions and cancelling never authorizes', async () => {
-    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: '8' }] });
+    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: '8', installation_revision: 'installed:41' }] });
     mount(<BotAuthorizeDialog request={invite} />);
     expect(await screen.findByText('Administrator — all permissions, bypassing channel restrictions')).toBeTruthy();
     expect(screen.getByText(/already installed/)).toBeTruthy();
@@ -70,14 +70,14 @@ describe('bot consent', () => {
     expect(fixture.api.authorizeBot).not.toHaveBeenCalled();
   });
   it('submits the effective permissions the user reviewed for an installed bot', async () => {
-    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: '8' }] });
+    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: '8', installation_revision: 'installed:41' }] });
     mount(<BotAuthorizeDialog request={invite} />);
     fireEvent.click(await screen.findByRole('checkbox', { name: 'I have reviewed these permissions.' }));
     fireEvent.click(screen.getByRole('button', { name: 'Record consent' }));
-    await waitFor(() => expect(fixture.api.authorizeBot).toHaveBeenCalledWith({ ...invite, permissions: '8' }));
+    await waitFor(() => expect(fixture.api.authorizeBot).toHaveBeenCalledWith({ ...invite, permissions: '8', installation_revision: 'installed:41' }));
   });
   it('requires a new review if a consent-only preview changes into a new installation', async () => {
-    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: info.permissions }] });
+    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: info.permissions, installation_revision: 'installed:41' }] });
     const mounted = mount(<BotAuthorizeDialog request={invite} />);
     fireEvent.click(await screen.findByRole('checkbox', { name: 'I have reviewed these permissions.' }));
     expect((screen.getByRole('button', { name: 'Record consent' }) as HTMLButtonElement).disabled).toBe(false);
@@ -93,6 +93,27 @@ describe('bot consent', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('Application unavailable');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('checkbox')).toBeTruthy();
+  });
+  it('invalidates review when the installation revision changes even with identical permissions', async () => {
+    const installed = { ...info, guilds: [{ ...info.guilds[0]!, bot_permissions: info.permissions, installation_revision: 'installed:41' }] };
+    fixture.api.botAuthorizationInfo.mockResolvedValue(installed);
+    const mounted = mount(<BotAuthorizeDialog request={invite} />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'I have reviewed these permissions.' }));
+    const replaced = { ...installed, guilds: [{ ...installed.guilds[0]!, installation_revision: 'installed:42' }] };
+    fixture.api.botAuthorizationInfo.mockResolvedValue(replaced);
+    await act(async () => { await mounted.query.refetchQueries({ queryKey: ['bot-consent', '7', invite] }); });
+    await waitFor(() => expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false));
+    expect((screen.getByRole('button', { name: 'Record consent' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Record consent' }));
+    await waitFor(() => expect(fixture.api.authorizeBot).toHaveBeenCalledWith({ ...invite, installation_revision: 'installed:42' }));
+  });
+  it('does not authorize a preview lacking its required installation revision', async () => {
+    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], installation_revision: undefined }] });
+    mount(<BotAuthorizeDialog request={invite} />);
+    fireEvent.click(await screen.findByRole('checkbox'));
+    expect((screen.getByRole('button', { name: 'Authorize' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(fixture.api.authorizeBot).not.toHaveBeenCalled();
   });
 });
 

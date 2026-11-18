@@ -419,7 +419,7 @@ export interface ApplicationAuthorization {
 export interface BotAuthorizationInfo {
   application: ApplicationSummary;
   user: User;
-  guilds: { id: Snowflake; name: string; icon: string | null; permissions: string; bot_permissions: string | null }[];
+  guilds: { id: Snowflake; name: string; icon: string | null; permissions: string; bot_permissions: string | null; installation_revision: string }[];
   scopes: ('bot' | 'applications.commands')[];
   permissions: string;
 }

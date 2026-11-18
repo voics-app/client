@@ -492,7 +492,7 @@ export class DiscordyApi implements ApiPort {
   botAuthorizationInfo(request: BotAuthorizationRequest) {
     return this.get<BotAuthorizationInfo>('/oauth2/authorize', { ...request });
   }
-  authorizeBot(request: BotAuthorizationRequest & { guild_id: string }) {
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string; installation_revision: string }) {
     return this.post<{ location: string }>('/oauth2/authorize', request);
   }
   applicationAuthorizations() {

@@ -13,8 +13,9 @@ it('uses explicit consent and integration endpoints and never sends credentials 
   const invite = { client_id: '11', guild_id: '7', scope: 'bot', permissions: '2048' };
   await api.botAuthorizationInfo(invite);
   expect(request).toHaveBeenLastCalledWith('GET', '/oauth2/authorize', { query: invite });
-  await api.authorizeBot(invite);
-  expect(request).toHaveBeenLastCalledWith('POST', '/oauth2/authorize', { body: invite, reason: undefined });
+  const submission = { ...invite, installation_revision: 'absent:0' };
+  await api.authorizeBot(submission);
+  expect(request).toHaveBeenLastCalledWith('POST', '/oauth2/authorize', { body: submission, reason: undefined });
   await api.applicationAuthorizations();
   expect(request).toHaveBeenLastCalledWith('GET', '/oauth2/tokens', { query: undefined });
   await api.revokeApplicationAuthorization('31');

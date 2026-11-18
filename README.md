@@ -72,6 +72,10 @@ consent dialog. It supports `bot` and optional `applications.commands`, displays
 server and permissions, and requires an explicit review before authorizing. Unsupported
 scopes and redirect/code-flow parameters are rejected. An already installed bot keeps
 its current permissions; the dialog acknowledges those permissions without changing them.
+Consent also binds to the selected server's exact installation revision from the preview.
+Removal or reinstall invalidates the review even when permission bits are unchanged;
+the API rejects stale revisions with 409 and requires a fresh preview. The POST field
+is required and non-null, so this client requires the matching API/contracts release.
 
 User Settings → Authorized apps lists personal consent records. Revoke consent removes
 only your record; the shared server bot stays installed. Server managers remove a bot

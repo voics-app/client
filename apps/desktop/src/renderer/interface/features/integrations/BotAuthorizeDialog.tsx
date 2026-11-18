@@ -26,14 +26,14 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
   const guild = info?.guilds.find((g) => g.id === guildId);
   const permissions = guild?.bot_permissions ?? info?.permissions ?? '0';
   const installed = guild?.bot_permissions != null;
-  const signature = `${userId}:${info?.application.id}:${guildId}:${installed}:${permissions}:${info?.scopes.join(' ') ?? ''}`;
+  const signature = `${userId}:${info?.application.id}:${guildId}:${guild?.installation_revision}:${installed}:${permissions}:${info?.scopes.join(' ') ?? ''}`;
   const close = () => { if (!busy) useUiStore.getState().openDialog(null); };
   const submit = async () => {
-    if (!guild || !info || confirmed !== signature) return;
+    if (!guild?.installation_revision || !info || confirmed !== signature) return;
     setBusy(true);
     setError(null);
     try {
-      await getRuntime().api.authorizeBot({ client_id: request.client_id, guild_id: guild.id, scope: info.scopes.join(' '), permissions });
+      await getRuntime().api.authorizeBot({ client_id: request.client_id, guild_id: guild.id, scope: info.scopes.join(' '), permissions, installation_revision: guild.installation_revision });
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['authorizations', userId] }),
         qc.invalidateQueries({ queryKey: ['guild', guild.id, 'integrations'] }),
@@ -68,7 +68,7 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
         </>}
       </>}
       {error && <p role="alert" className="field-error">Could not authorize. {error}</p>}
-      <div className="row-end"><Button variant="ghost" disabled={busy} onClick={close}>Cancel</Button><Button variant="primary" loading={busy} disabled={!guild || confirmed !== signature || query.isError} onClick={() => void submit()}>{installed ? 'Record consent' : 'Authorize'}</Button></div>
+      <div className="row-end"><Button variant="ghost" disabled={busy} onClick={close}>Cancel</Button><Button variant="primary" loading={busy} disabled={!guild?.installation_revision || confirmed !== signature || query.isError} onClick={() => void submit()}>{installed ? 'Record consent' : 'Authorize'}</Button></div>
     </div>
   </Modal>;
 }

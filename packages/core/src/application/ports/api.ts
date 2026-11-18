@@ -219,7 +219,7 @@ export interface ApiPort {
 
   applications(): Promise<ApplicationSummary[]>;
   botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;
-  authorizeBot(request: BotAuthorizationRequest & { guild_id: string }): Promise<{ location: string }>;
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string; installation_revision: string }): Promise<{ location: string }>;
   applicationAuthorizations(): Promise<ApplicationAuthorization[]>;
   revokeApplicationAuthorization(authorizationId: string): Promise<void>;
   guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
