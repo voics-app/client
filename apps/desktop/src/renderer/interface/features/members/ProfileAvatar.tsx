@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import type { GuildMember, PresenceStatus, User } from '@discordy/core/contracts/rest';
 import { useLightboxStore } from '@discordy/core/application/stores/lightboxStore';
 import { profileImageCandidates } from '@discordy/core/domain/profile';
@@ -9,6 +10,7 @@ const FULL_SIZE = 1024;
 
 /** A profile's avatar; one with a picture opens full size in the viewer on click. */
 export function ProfileAvatar({ user, size, status, member, guildId }: { user: User; size: number; status?: PresenceStatus | null; member?: GuildMember; guildId?: string | null }) {
+  const { t: msg } = useI18n();
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const name = displayName(user);
   const candidates = profileImageCandidates(cdn, user, 'avatars', member, guildId, FULL_SIZE);
@@ -17,7 +19,7 @@ export function ProfileAvatar({ user, size, status, member, guildId }: { user: U
   const [src = '', ...fallbacks] = candidates;
   const open = () => useLightboxStore.getState().open([{ kind: 'image', src, fallbacks, original: src, filename: `${name} avatar` }]);
   return (
-    <button type="button" className="profile-avatar-button" aria-label={`View ${name}'s avatar`} onClick={open}>
+    <button type="button" className="profile-avatar-button" aria-label={msg('members.avatar', { name })} onClick={open}>
       {avatar}
     </button>
   );

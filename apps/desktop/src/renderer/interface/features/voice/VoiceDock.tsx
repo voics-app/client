@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { LockKey, Monitor, MonitorArrowUp, PhoneDisconnect, VideoCamera, VideoCameraSlash, WifiHigh } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -16,6 +17,7 @@ const STATUS_LABEL = { idle: '', requesting: 'Requesting', connecting: 'Connecti
 
 /** Floating glass dock shown while in a call: state, honest E2EE status, quality and quick controls. */
 export function VoiceDock() {
+  const { t: msg, locale, number, catalogText } = useI18n();
   const call = useVoiceStore((s) => s.call);
   const selfVideo = useVoiceStore((s) => s.selfVideo);
   const selfStream = useVoiceStore((s) => s.selfStream);
@@ -31,11 +33,11 @@ export function VoiceDock() {
   const tone = call.quality ? qualityTone(call.quality.rttMs, call.quality.lossPct) : 'good';
 
   return (
-    <div className={`voice-dock glass is-${call.status}`} role="region" aria-label="Voice connection">
+    <div className={`voice-dock glass is-${call.status}`} role="region" aria-label={msg("settings.voicedock.voice.connection")}>
       <div className="voice-dock-top">
         {connected && (
           <IconButton
-            label="Connection details"
+            label={msg("settings.voicedock.connection.details")}
             size="sm"
             className="voice-signal"
             aria-haspopup="dialog"
@@ -55,25 +57,25 @@ export function VoiceDock() {
         >
           <span className={`voice-state state-${call.status}`}>
             {!connected && <Spinner size={14} />}
-            <span>{STATUS_LABEL[call.status]}</span>
+            <span>{catalogText(STATUS_LABEL[call.status])}</span>
           </span>
           <span className="voice-dock-place">
-            {channel?.name ?? 'Call'}
+            {channel?.name ?? msg("settings.profiledialog.call")}
             {guild ? ` · ${guild.name}` : ''}
           </span>
         </button>
         {call.e2ee && (
-          <Tooltip label="Media is end-to-end encrypted (MLS keys installed)" side="top">
+          <Tooltip label={msg("settings.voicedock.media.is.end.to.end.encrypted.mls.keys.installed")} side="top">
             <span className="e2ee-chip" tabIndex={0}>
               <LockKey size={12} weight="fill" /> E2EE
             </span>
           </Tooltip>
         )}
       </div>
-      {call.error && <p className="voice-dock-error">{call.error}</p>}
+      {call.error && <p className="voice-dock-error">{catalogText(call.error)}</p>}
       {connected && call.quality && (
         <p className="voice-dock-stats tnum">
-          {Math.round(call.quality.rttMs)} ms · {call.quality.lossPct.toFixed(1)}% loss{call.region ? ` · ${call.region}` : ''}
+          {msg('voice.quality', { ping: msg('voice.ms', { value: Math.round(call.quality.rttMs) }), loss: number(call.quality.lossPct / 100, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}{call.region ? ` · ${call.region}` : ''}
         </p>
       )}
       <Menu
@@ -83,12 +85,12 @@ export function VoiceDock() {
         minWidth={248}
         onClose={() => setDetails(null)}
         entries={[
-          { kind: 'label', label: 'Connection details' },
+          { kind: 'label', label: msg("settings.voicedock.connection.details") },
           {
             kind: 'content',
             node: (
               <dl className="conn-details tnum">
-                {connectionRows({ quality: call.quality, history: call.rttHistory, region: call.region, e2ee: call.e2ee }).map((r) => (
+                {connectionRows({ quality: call.quality, history: call.rttHistory, region: call.region, e2ee: call.e2ee }, locale).map((r) => (
                   <div key={r.label} className="conn-row">
                     <dt>{r.label}</dt>
                     <dd className={r.tone ? `quality-${r.tone}` : undefined}>{r.value}</dd>
@@ -102,13 +104,13 @@ export function VoiceDock() {
       <div className="voice-dock-actions">
         <NoiseSuppressionButton />
         <span className="split-control">
-          <IconButton label={selfVideo ? 'Turn off camera' : 'Turn on camera'} hint={cameraKeys} active={selfVideo} onClick={() => void toggleCamera()} disabled={!connected}>
+          <IconButton label={selfVideo ? msg("settings.voicedock.turn.off.camera") : msg("settings.voicedock.turn.on.camera")} hint={cameraKeys} active={selfVideo} onClick={() => void toggleCamera()} disabled={!connected}>
             {selfVideo ? <VideoCamera size={20} weight="fill" /> : <VideoCameraSlash size={20} />}
           </IconButton>
           <DeviceArrow kind="camera" />
         </span>
         <IconButton
-          label={selfStream ? 'Stop sharing' : 'Share your screen'}
+          label={selfStream ? msg("settings.voicedock.stop.sharing") : msg("settings.screenpickerdialog.share.your.screen")}
           hint={shareKeys}
           active={selfStream}
           tone={selfStream ? 'accent' : 'default'}
@@ -117,7 +119,7 @@ export function VoiceDock() {
         >
           {selfStream ? <MonitorArrowUp size={20} weight="fill" /> : <Monitor size={20} />}
         </IconButton>
-        <IconButton label="Disconnect" tone="danger" onClick={() => void leaveVoice()}>
+        <IconButton label={msg("settings.usercontextmenu.disconnect")} tone="danger" onClick={() => void leaveVoice()}>
           <PhoneDisconnect size={20} weight="fill" />
         </IconButton>
       </div>

@@ -1,3 +1,5 @@
+import { createI18n } from './i18n';
+import type { MessageId } from './locales/en';
 /** Member list view model: flat virtualisable rows, collapsible groups, search and activity text. */
 import type { Activity, GuildMember, Role } from '../contracts/rest';
 import type { MemberSection } from './memberModeration';
@@ -38,20 +40,20 @@ export function searchMembers(members: readonly GuildMember[], query: string, na
   return scored.map((s) => s.member);
 }
 
-const VERBS: Record<number, string> = { 0: 'Playing', 1: 'Streaming', 2: 'Listening to', 3: 'Watching', 5: 'Competing in' };
+const VERBS: Record<number, MessageId> = { 0: 'activity.playing', 1: 'activity.streaming', 2: 'activity.listening', 3: 'activity.watching', 5: 'activity.competing' };
 
 /** One line for an activity: the custom status text, or "Playing X" style for the rest. */
-export function activityText(activity: Activity): string {
+export function activityText(activity: Activity, locale?: string): string {
   if (activity.type === CUSTOM_STATUS_ACTIVITY_TYPE) return [activity.emoji?.name, activity.state].filter(Boolean).join(' ');
   const verb = VERBS[activity.type];
-  return verb ? `${verb} ${activity.name}` : (activity.state ?? activity.name);
+  return verb ? createI18n(locale).t(verb, { name: activity.name }) : (activity.state ?? activity.name);
 }
 
 /** What the member list shows under a name: a real activity wins over the custom status. */
-export function activityLine(activities: readonly Activity[]): string | null {
+export function activityLine(activities: readonly Activity[], locale?: string): string | null {
   const real = activities.find((a) => a.type !== CUSTOM_STATUS_ACTIVITY_TYPE);
   const custom = activities.find((a) => a.type === CUSTOM_STATUS_ACTIVITY_TYPE);
-  const text = real ? activityText(real) : custom ? activityText(custom) : '';
+  const text = real ? activityText(real, locale) : custom ? activityText(custom, locale) : '';
   return text || null;
 }
 
@@ -83,14 +85,14 @@ export function truncateText(text: string, max: number): string {
 }
 
 /** Structured form of `activityLine`, so the custom status emoji can be drawn as an image. */
-export function statusLine(activities: readonly Activity[] | undefined, max = 128): StatusLine | null {
+export function statusLine(activities: readonly Activity[] | undefined, max = 128, locale?: string): StatusLine | null {
   const list = activities ?? [];
   const real = list.find((a) => a.type !== CUSTOM_STATUS_ACTIVITY_TYPE);
   const custom = list.find((a) => a.type === CUSTOM_STATUS_ACTIVITY_TYPE);
   if (real) {
-    const full = activityText(real);
+    const full = activityText(real, locale);
     return full ? { emoji: null, text: truncateText(full, max), title: full } : null;
   }
   if (!custom || !(custom.state || custom.emoji?.name)) return null;
-  return { emoji: custom.emoji ?? null, text: truncateText(custom.state ?? '', max), title: activityText(custom) };
+  return { emoji: custom.emoji ?? null, text: truncateText(custom.state ?? '', max), title: activityText(custom, locale) };
 }

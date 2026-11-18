@@ -56,7 +56,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
       case 'muteFor': return void muteChannel(null, c.id, MUTE_DURATIONS.find((d) => d.id === it.arg)?.seconds ?? null);
       case 'close': return closeDm(c.id);
       case 'leave':
-        return openDialog({ kind: 'confirm', title: `Leave ${name}?`, body: 'You will stop receiving messages from this group.', confirmLabel: 'Leave group', danger: true, onConfirm: () => leaveGroupDm(c.id) });
+        return openDialog({ kind: 'confirm', title: t('group.confirmLeave', { name }), body: t('group.leaveBody'), confirmLabel: t('settings.groupdmdialog.leave.group'), danger: true, onConfirm: () => leaveGroupDm(c.id) });
     }
   });
   const copy = (
@@ -101,7 +101,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
 }
 
 export function HomeSidebar() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const channels = useGuildStore((s) => s.channels);
   const reads = useReadStateStore((s) => s.byChannel);
   const presence = usePresenceStore((s) => s.byUser);
@@ -123,8 +123,8 @@ export function HomeSidebar() {
   const stopSelecting = () => { setSelecting(false); setSelected([]); };
   const confirmLeave = () => {
     const names: Record<string, string> = {};
-    for (const c of dms) names[c.id] = c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || 'Unknown';
-    openDialog({ kind: 'confirm', ...bulkLeaveConfirmation(ticked.length), danger: true, onConfirm: async () => { await leaveGroupDms(ticked, names); stopSelecting(); } });
+    for (const c of dms) names[c.id] = c.name || (c.recipients ?? []).map((u) => displayName(u)).join(', ') || t('domain.unknown');
+    openDialog({ kind: 'confirm', ...bulkLeaveConfirmation(ticked.length, locale), danger: true, onConfirm: async () => { await leaveGroupDms(ticked, names); stopSelecting(); } });
   };
   const scrollRef = useRef<HTMLDivElement>(null);
   useRovingFocus(scrollRef, { selector: '.nav-row, .dm-row' });
@@ -149,7 +149,7 @@ export function HomeSidebar() {
         <ul className="dm-list">
           {dms.map((c) => {
             const peers = c.recipients ?? [];
-            const name = c.name || peers.map((u) => displayName(u)).join(', ') || 'Unknown';
+            const name = c.name || peers.map((u) => displayName(u)).join(', ') || t('domain.unknown');
             const read = reads[c.id];
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;

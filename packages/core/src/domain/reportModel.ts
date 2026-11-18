@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Reporting a message or a user (api#126): the categories, the draft, what the server receives and what the person is told. Shared by the desktop and the mobile report dialogs. */
 import type { DeliveryMode } from '../contracts/rest';
 import { brand } from './brandConfig';
@@ -61,16 +62,14 @@ export const serverHoldsCopy = (target: ReportTarget): boolean => target.kind ==
 /** Whether the dialog offers to send the message text itself (a message the server does not store). */
 export const canIncludeContent = (target: ReportTarget): boolean => target.kind === 'message' && target.mode !== 'standard' && target.content.trim().length > 0;
 
-export function reportTitle(target: ReportTarget): string {
-  return target.kind === 'message' ? 'Report message' : `Report ${target.userName}`;
+export function reportTitle(target: ReportTarget, locale?: string): string {
+  const intl = createI18n(locale);
+  return target.kind === 'message' ? intl.catalogText('Report message') : intl.t('report.user', { name: target.userName });
 }
 
 /** What the person is told about the data this report shares, before sending. */
-export function reportDisclosure(target: ReportTarget): string {
-  if (target.kind === 'user') return `${brand().displayName} moderators will see your report and the account you reported. The person is not told who reported them.`;
-  if (serverHoldsCopy(target)) return `${brand().displayName} moderators will see a copy of this message, who sent it and where. The person is not told who reported them.`;
-  const kind = target.mode === 'p2p' ? 'peer-to-peer' : 'ephemeral';
-  return `This is a ${kind} chat, so ${brand().displayName} keeps no copy of its messages. Moderators only receive what you send with this report. The person is not told who reported them.`;
+export function reportDisclosure(target: ReportTarget, locale?: string): string {
+  return createI18n(locale).t(target.kind === 'user' ? 'report.discloseUser' : serverHoldsCopy(target) ? 'report.discloseMessage' : 'report.disclosePrivate', { brand: brand().displayName, kind: target.kind === 'message' ? target.mode : '' });
 }
 
 export const REPORT_CONFIRMATION = {
@@ -79,9 +78,9 @@ export const REPORT_CONFIRMATION = {
 } as const;
 
 /** The first problem with a draft, or null when it can be sent. */
-export function reportDraftError(draft: ReportDraft): string | null {
-  if (!draft.category) return 'Choose what is wrong.';
-  if (draft.note.trim().length > REPORT_NOTE_MAX) return `Keep the note under ${REPORT_NOTE_MAX} characters.`;
+export function reportDraftError(draft: ReportDraft, locale?: string): string | null {
+  if (!draft.category) return createI18n(locale).catalogText('Choose what is wrong.');
+  if (draft.note.trim().length > REPORT_NOTE_MAX) return createI18n(locale).t('report.noteLimit', { max: REPORT_NOTE_MAX });
   return null;
 }
 

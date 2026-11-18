@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
@@ -17,6 +18,7 @@ import { readImageUpload } from '../settings/imageUpload';
 
 /** Group DM settings: name, icon, members (add friends, owner removes) and leave. */
 export function GroupDmDialog({ channelId }: { channelId: string }) {
+  const { t: msg, locale } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const me = useSessionStore((s) => s.user);
   const relationships = useRelationshipStore((s) => s.byUser);
@@ -43,15 +45,15 @@ export function GroupDmDialog({ channelId }: { channelId: string }) {
 
   const pickIcon = async (file: File | undefined) => {
     if (!file) return;
-    const data = await attempt(() => readImageUpload(file), 'Could not read the image');
-    if (data) await patch({ icon: data }, 'Could not change the icon');
+    const data = await attempt(() => readImageUpload(file, locale), msg("settings.groupdmdialog.could.not.read.the.image"));
+    if (data) await patch({ icon: data }, msg("settings.groupdmdialog.could.not.change.the.icon"));
   };
 
   const add = async (user: User) => {
     const ok = await attempt(async () => {
       await getRuntime().api.addGroupRecipient(channelId, user.id);
       return true;
-    }, 'Could not add the member');
+    }, msg("settings.groupdmdialog.could.not.add.the.member"));
     if (!ok) return;
     const current = useGuildStore.getState().channels[channelId];
     if (current) useGuildStore.getState().upsertChannel({ ...current, recipients: [...(current.recipients ?? []).filter((u) => u.id !== user.id), user] });
@@ -63,7 +65,7 @@ export function GroupDmDialog({ channelId }: { channelId: string }) {
     const ok = await attempt(async () => {
       await getRuntime().api.removeGroupRecipient(channelId, user.id);
       return true;
-    }, 'Could not remove the member');
+    }, msg("settings.groupdmdialog.could.not.remove.the.member"));
     if (!ok) return;
     const current = useGuildStore.getState().channels[channelId];
     if (current) useGuildStore.getState().upsertChannel({ ...current, recipients: (current.recipients ?? []).filter((u) => u.id !== user.id) });
@@ -71,45 +73,45 @@ export function GroupDmDialog({ channelId }: { channelId: string }) {
   };
 
   return (
-    <Modal open onClose={close} title="Group settings" width={460}>
+    <Modal open onClose={close} title={msg("header.groupSettings")} width={460}>
       <div className="stack">
         <div className="row">
-          <Avatar id={channel.id} name={channel.name || 'Group'} avatar={channel.icon ?? null} size={56} kind="channel-icons" />
+          <Avatar id={channel.id} name={channel.name || msg("menu.group")} avatar={channel.icon ?? null} size={56} kind="channel-icons" />
           <div className="stack">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void pickIcon(e.target.files?.[0])} />
-            <Button variant="ghost" onClick={() => fileRef.current?.click()}>Change icon</Button>
-            {channel.icon && <Button variant="ghost" onClick={() => void patch({ icon: null }, 'Could not remove the icon')}>Remove icon</Button>}
+            <Button variant="ghost" onClick={() => fileRef.current?.click()}>{msg("settings.groupdmdialog.change.icon")}</Button>
+            {channel.icon && <Button variant="ghost" onClick={() => void patch({ icon: null }, msg("settings.groupdmdialog.could.not.remove.the.icon"))}>{msg("settings.groupdmdialog.remove.icon")}</Button>}
           </div>
         </div>
-        <Field label="Group name">{(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder="Unnamed group" onChange={(e) => setName(e.target.value)} />}</Field>
+        <Field label={msg("settings.groupdmdialog.group.name")}>{(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={msg("settings.groupdmdialog.unnamed.group")} onChange={(e) => setName(e.target.value)} />}</Field>
         <div className="row-end">
-          <Button variant="primary" loading={busy} disabled={name.trim() === (channel.name ?? '') || name.trim() === ''} onClick={() => void patch({ name: name.trim() }, 'Could not rename the group')}>Save name</Button>
+          <Button variant="primary" loading={busy} disabled={name.trim() === (channel.name ?? '') || name.trim() === ''} onClick={() => void patch({ name: name.trim() }, msg("settings.groupdmdialog.could.not.rename.the.group"))}>{msg("settings.passkeys.save.name")}</Button>
         </div>
-        <h3 className="section-title">Members ({recipients.length + 1}/{MAX_GROUP_DM_MEMBERS})</h3>
+        <h3 className="section-title">{msg('group.members', { count: recipients.length + 1, max: MAX_GROUP_DM_MEMBERS })}</h3>
         <ul className="pick-list">
           {[me, ...recipients].map((u) => (
             <li key={u.id} className="pick-row">
               <Avatar id={u.id} name={displayName(u)} avatar={u.avatar} size={28} />
-              <span>{displayName(u)}{u.id === channel.owner_id ? ' (owner)' : ''}</span>
-              {isOwner && u.id !== me.id && <Button variant="ghost" onClick={() => void remove(u)}>Remove</Button>}
+              <span>{u.id === channel.owner_id ? msg('group.owner', { name: displayName(u) }) : displayName(u)}</span>
+              {isOwner && u.id !== me.id && <Button variant="ghost" onClick={() => void remove(u)}>{msg("common.remove")}</Button>}
             </li>
           ))}
         </ul>
-        <h3 className="section-title">Add friends</h3>
+        <h3 className="section-title">{msg("settings.groupdmdialog.add.friends")}</h3>
         <ul className="pick-list">
           {friends.map((u) => (
             <li key={u.id} className="pick-row">
               <Avatar id={u.id} name={displayName(u)} avatar={u.avatar} size={28} />
               <span>{displayName(u)}</span>
-              <Button variant="ghost" disabled={full} onClick={() => void add(u)}>Add</Button>
+              <Button variant="ghost" disabled={full} onClick={() => void add(u)}>{msg("settings.roleseditor.add")}</Button>
             </li>
           ))}
-          {friends.length === 0 && <li className="pick-empty">No friends left to add.</li>}
+          {friends.length === 0 && <li className="pick-empty">{msg("settings.groupdmdialog.no.friends.left.to.add")}</li>}
         </ul>
-        {full && <p className="confirm-body">A group has at most {MAX_GROUP_DM_MEMBERS} members.</p>}
+        {full && <p className="confirm-body">{msg('group.limit', { count: MAX_GROUP_DM_MEMBERS })}</p>}
         <div className="row-end">
-          <Button variant="danger" onClick={() => void leaveGroupDm(channelId)}>Leave group</Button>
-          <Button variant="primary" onClick={close}>Done</Button>
+          <Button variant="danger" onClick={() => void leaveGroupDm(channelId)}>{msg("settings.groupdmdialog.leave.group")}</Button>
+          <Button variant="primary" onClick={close}>{msg("common.done")}</Button>
         </div>
       </div>
     </Modal>

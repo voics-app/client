@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 import { openDm } from '@discordy/core/application/dmCommands';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -48,6 +49,6 @@ export async function leaveGroupDms(channelIds: string[], names: Record<string, 
     forgetLeftGroup(id);
     return true;
   });
-  useUiStore.getState().toast(bulkLeaveOutcomeMessage(result, names));
+  useUiStore.getState().toast(bulkLeaveOutcomeMessage(result, names, getI18n().locale));
   return result;
 }

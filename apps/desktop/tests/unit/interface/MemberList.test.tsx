@@ -6,6 +6,8 @@ import { usePresenceStore } from '@discordy/core/application/stores/peopleStores
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { useMemberGroupStore } from '@discordy/core/application/stores/memberGroupStore';
 import type { User } from '@discordy/core/contracts/rest';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
 
 const send = vi.fn();
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ gateway: { send }, api: {} }) }));
@@ -36,6 +38,22 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('MemberList', () => {
+  it('translates product activity and group labels without translating a role or activity name that resembles UI copy', () => {
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    useGuildStore.setState({ guilds: { [G]: { ...useGuildStore.getState().guilds[G], roles: [role(G, 0), role('adm', 5, { hoist: true, name: 'Do not disturb' })] } } as never });
+    usePresenceStore.setState({ byUser: { owner: { status: 'online', activities: [{ type: 0, name: 'Settings مرحبا' }] } } });
+    render(<LocaleProvider><MemberList guildId={G} /></LocaleProvider>);
+    expect(screen.getByRole('button', { name: 'Do not disturb1' })).toBeTruthy();
+    expect(screen.getByText('Speelt Settings مرحبا')).toBeTruthy();
+    expect(screen.getByLabelText('Servereigenaar')).toBeTruthy();
+    const search = screen.getByRole('searchbox', { name: 'Leden zoeken' });
+    fireEvent.change(search, { target: { value: 'owner' } });
+    expect(screen.getByRole('button', { name: 'Zoekresultaten1' })).toBeTruthy();
+    act(() => useSessionStore.getState().setSettings({ locale: 'en-US' }));
+    expect((screen.getByRole('searchbox', { name: 'Search members' }) as HTMLInputElement).value).toBe('owner');
+    expect(screen.getByText('Playing Settings مرحبا')).toBeTruthy();
+  });
+
   it('groups by hoisted role, online and offline with counts, crown and bot tag', () => {
     render(<MemberList guildId={G} />);
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);

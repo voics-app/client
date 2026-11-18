@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { callUser } from '../../app/callActions';
 import { useEffect, useState, type ElementType, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -108,6 +109,7 @@ export function UserContextMenu({
   /** Known account data when the surface has it (DM recipient, friend, message author). */
   user?: User;
 }) {
+  const { t: msg, catalogText } = useI18n();
   const developerMode = usePrefsStore((s) => s.developerMode);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [panelAt, setPanelAt] = useState({ x: 0, y: 0 });
@@ -177,7 +179,7 @@ export function UserContextMenu({
   const message = async () => {
     const channel = await attempt(
       () => getRuntime().api.openPrivateChannel([userId]),
-      'Could not open conversation',
+      msg("friends.openFailed"),
     );
     if (channel) {
       useGuildStore.getState().upsertChannel(channel);
@@ -192,7 +194,7 @@ export function UserContextMenu({
         .getState()
         .toast({
           tone: 'warning',
-          title: 'Open a text channel to mention someone',
+          title: msg("settings.usercontextmenu.open.a.text.channel.to.mention.someone"),
         });
       return;
     }
@@ -224,14 +226,14 @@ export function UserContextMenu({
   const kick = () =>
     useUiStore.getState().openDialog({
       kind: 'confirm',
-      title: `Kick ${name}?`,
-      body: 'They can rejoin with a new invite.',
-      confirmLabel: 'Kick',
+      title: msg('members.confirmKick', { name }),
+      body: msg("settings.servertabs.they.can.rejoin.with.a.new.invite"),
+      confirmLabel: msg("settings.servertabs.kick"),
       danger: true,
       onConfirm: async () =>
         void (await attempt(
           () => getRuntime().api.kickMember(guildId ?? '', userId),
-          'Could not kick',
+          msg("settings.servertabs.could.not.kick"),
         )),
     });
 
@@ -247,80 +249,80 @@ export function UserContextMenu({
   const entryFor = (id: UserMenuItemId): MenuEntry => {
     switch (id) {
       case 'profile':
-        return item('Profile', () =>
+        return item(msg("settings.profile"), () =>
           useUiStore.getState().openDialog({ kind: 'profile', userId, guildId }),
         );
       case 'mention':
-        return item('Mention', mention);
+        return item(msg("settings.usercontextmenu.mention"), mention);
       case 'message':
-        return item('Message', () => void message());
+        return item(msg("common.message"), () => void message());
       case 'call':
-        return item('Call', () => void call());
+        return item(msg("settings.profiledialog.call"), () => void call());
       case 'note':
-        return item(note ? 'Edit note' : 'Add note', () => openPanel('note'));
+        return item(note ? msg("settings.usercontextmenu.edit.note") : msg("settings.usercontextmenu.add.note"), () => openPanel('note'));
       case 'friend': {
         const action = friendAction(relationship?.type, self, isBot);
         if (action === 'remove')
-          return item('Remove friend', () => void relate(() => getRuntime().api.deleteRelationship(userId), 'Could not remove friend'));
+          return item(msg("friends.remove"), () => void relate(() => getRuntime().api.deleteRelationship(userId), msg("settings.usercontextmenu.could.not.remove.friend")));
         if (action === 'accept')
-          return item('Accept friend request', () => void relate(() => getRuntime().api.putRelationship(userId), 'Could not accept request'));
+          return item(msg("settings.usercontextmenu.accept.friend.request"), () => void relate(() => getRuntime().api.putRelationship(userId), msg("settings.usercontextmenu.could.not.accept.request")));
         if (action === 'pending')
-          return { kind: 'item', label: 'Friend request sent', disabled: true, onSelect: () => undefined };
-        return item('Add friend', () =>
+          return { kind: 'item', label: msg("settings.usercontextmenu.friend.request.sent"), disabled: true, onSelect: () => undefined };
+        return item(msg("friends.add"), () =>
           void relate(
             () => getRuntime().api.putRelationship(userId, targetUser?.username ? { username: targetUser.username } : undefined),
-            'Could not send request',
+            msg("settings.profiledialog.could.not.send.request"),
           ),
         );
       }
       case 'block':
         return blocked
-          ? item('Unblock', () => void relate(() => getRuntime().api.deleteRelationship(userId), 'Could not unblock'))
-          : item('Block', () => void relate(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), 'Could not block'), true);
+          ? item(msg("friends.unblock"), () => void relate(() => getRuntime().api.deleteRelationship(userId), msg("settings.usercontextmenu.could.not.unblock")))
+          : item(msg("settings.profiledialog.block"), () => void relate(() => getRuntime().api.putRelationship(userId, { type: RelationshipType.BLOCKED }), msg("settings.profiledialog.could.not.block")), true);
       case 'report':
-        return item('Report', () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: name } }), true);
+        return item(msg("settings.profiledialog.report"), () => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'user', userId, userName: name } }), true);
       case 'localMute':
-        return item('Mute', toggleLocalMute, false, locallyMuted);
+        return item(msg("media.mute"), toggleLocalMute, false, locallyMuted);
       case 'volume':
-        return item('User volume', () => openPanel('volume'));
+        return item(msg("settings.usercontextmenu.user.volume"), () => openPanel('volume'));
       case 'nickname':
-        return item(self ? 'Edit Server Profile' : 'Change nickname', () =>
+        return item(self ? msg("settings.usercontextmenu.edit.server.profile") : msg("domain.change.nickname"), () =>
           guildId && (self
             ? useUiStore.getState().openSettings({ kind: 'user', tab: 'profile', profileGuildId: guildId })
             : useUiStore.getState().openDialog({ kind: 'editNickname', guildId, userId })),
         );
       case 'roles':
-        return item('Roles', () => openPanel('roles'));
+        return item(msg("settings.profiledialog.roles"), () => openPanel('roles'));
       case 'serverMute':
-        return item(member?.mute ? 'Remove server mute' : 'Server mute', () =>
-          void patchMember(guildId ?? '', userId, { mute: !member?.mute }, 'Could not update mute'),
+        return item(member?.mute ? msg("settings.usercontextmenu.remove.server.mute") : msg("settings.usercontextmenu.server.mute"), () =>
+          void patchMember(guildId ?? '', userId, { mute: !member?.mute }, msg("settings.usercontextmenu.could.not.update.mute")),
         );
       case 'serverDeafen':
-        return item(member?.deaf ? 'Remove server deafen' : 'Server deafen', () =>
-          void patchMember(guildId ?? '', userId, { deaf: !member?.deaf }, 'Could not update deafen'),
+        return item(member?.deaf ? msg("settings.usercontextmenu.remove.server.deafen") : msg("settings.usercontextmenu.server.deafen"), () =>
+          void patchMember(guildId ?? '', userId, { deaf: !member?.deaf }, msg("settings.usercontextmenu.could.not.update.deafen")),
         );
       case 'moveTo':
-        return item('Move to', () => openPanel('move'));
+        return item(msg("settings.usercontextmenu.move.to"), () => openPanel('move'));
       case 'disconnect':
-        return item('Disconnect', () => void moveMember(guildId ?? '', userId, null));
+        return item(msg("settings.usercontextmenu.disconnect"), () => void moveMember(guildId ?? '', userId, null));
       case 'timeout':
-        return item('Timeout', () => openPanel('timeout'));
+        return item(msg("settings.usercontextmenu.timeout"), () => openPanel('timeout'));
       case 'purgeMessages':
-        return item('Delete recent messages', () => confirmPurgeRecentMessages(guildId ?? '', userId, name), true);
+        return item(msg("settings.usercontextmenu.delete.recent.messages"), () => confirmPurgeRecentMessages(guildId ?? '', userId, name), true);
       case 'kick':
-        return item(`Kick ${name}`, kick, true);
+        return item(msg('members.kick', { name }), kick, true);
       case 'ban':
-        return item(`Ban ${name}`, ban, true);
+        return item(msg('members.ban', { name }), ban, true);
       case 'apps': {
         const submenu = appsSubmenu(appCommands, 'user');
         return {
           kind: 'submenu',
-          label: 'Apps',
+          label: msg("menu.apps"),
           entries: toMenuEntries(submenu?.kind === 'submenu' ? submenu.items : [], (it: MenuItemModel) => runContextCommand(viewChannel, appCommands?.find((c) => c.id === it.arg), userId)),
         };
       }
       case 'copyId':
-        return item('Copy user ID', () => void copyText(userId, 'User ID copied'));
+        return item(msg("settings.profiledialog.copy.user.id"), () => void copyText(userId, msg("settings.profiledialog.user.id.copied")));
     }
   };
   const groups = userMenuGroups({
@@ -373,7 +375,7 @@ export function UserContextMenu({
       {panel === 'roles' && guildId && member && (
         <Panel x={panelAt.x} y={panelAt.y} label={`${name} roles`}>
           {roleOptions.length === 0 && (
-            <p className='member-panel-empty'>No roles you can assign.</p>
+            <p className='member-panel-empty'>{msg("settings.usercontextmenu.no.roles.you.can.assign")}</p>
           )}
           {roleOptions.map((role) => (
             <Checkbox
@@ -386,15 +388,15 @@ export function UserContextMenu({
         </Panel>
       )}
       {panel === 'note' && (
-        <Panel x={panelAt.x} y={panelAt.y} label={`Note about ${name}`}>
+        <Panel x={panelAt.x} y={panelAt.y} label={msg('members.note', { name })}>
           <textarea
             className='input'
-            aria-label={`Note about ${name}`}
+            aria-label={msg('members.note', { name })}
             rows={4}
             maxLength={256}
             defaultValue={note}
-            placeholder='Click to add a note (only visible to you)'
-            onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))}
+            placeholder={msg("settings.profiledialog.click.to.add.a.note.only.visible.to.you")}
+            onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, msg("settings.profiledialog.could.not.save.note")))}
           />
         </Panel>
       )}
@@ -412,9 +414,9 @@ export function UserContextMenu({
         </Panel>
       )}
       {panel === 'move' && guildId && (
-        <Panel x={panelAt.x} y={panelAt.y} label={`Move ${name}`}>
+        <Panel x={panelAt.x} y={panelAt.y} label={msg('members.move', { name })}>
           {moveOptions.length === 0 && (
-            <p className='member-panel-empty'>No other voice channels.</p>
+            <p className='member-panel-empty'>{msg("settings.usercontextmenu.no.other.voice.channels")}</p>
           )}
           <div className='member-panel-actions'>
             {moveOptions.map((channel) => (
@@ -434,11 +436,11 @@ export function UserContextMenu({
         </Panel>
       )}
       {panel === 'timeout' && guildId && (
-        <Panel x={panelAt.x} y={panelAt.y} label={`Timeout ${name}`}>
+        <Panel x={panelAt.x} y={panelAt.y} label={msg('members.timeout', { name })}>
           <div className='member-panel-actions'>
             {TIMEOUT_PRESETS.map((p) => (
               <Button
-                key={p.label}
+                key={catalogText(p.label)}
                 size='sm'
                 variant='ghost'
                 onClick={() =>
@@ -446,11 +448,11 @@ export function UserContextMenu({
                     guildId,
                     userId,
                     { communication_disabled_until: timeoutUntil(p.ms) },
-                    'Could not timeout member',
+                    msg("settings.usercontextmenu.could.not.timeout.member"),
                   )
                 }
               >
-                {p.label}
+                {catalogText(p.label)}
               </Button>
             ))}
             {timedOut && (
@@ -462,12 +464,11 @@ export function UserContextMenu({
                     guildId,
                     userId,
                     { communication_disabled_until: null },
-                    'Could not remove timeout',
+                    msg("settings.usercontextmenu.could.not.remove.timeout"),
                   )
                 }
               >
-                Remove timeout
-              </Button>
+                {msg("settings.usercontextmenu.remove.timeout")} </Button>
             )}
           </div>
         </Panel>

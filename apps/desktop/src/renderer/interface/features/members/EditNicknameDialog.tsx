@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useState, type FormEvent } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -18,6 +19,7 @@ export function EditNicknameDialog({
   guildId: string;
   userId: string;
 }) {
+  const { t: msg } = useI18n();
   const me = useSessionStore((s) => s.user?.id);
   const member = useGuildStore((s) => s.members[guildId]?.[userId]);
   const guild = useGuildStore((s) => s.guilds[guildId]);
@@ -26,8 +28,8 @@ export function EditNicknameDialog({
   const self = me === userId;
   const close = () => useUiStore.getState().openDialog(null);
   const title = self
-    ? 'Edit Server Profile'
-    : `Change nickname for ${member?.user.username ?? 'member'}`;
+    ? msg("settings.usercontextmenu.edit.server.profile")
+    : msg('members.nickname', { name: member?.user.username ?? msg('members.memberFallback') });
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -38,7 +40,7 @@ export function EditNicknameDialog({
         getRuntime().api.updateMember(guildId, userId, {
           nick: trimmed || null,
         }),
-      'Could not change nickname',
+      msg("settings.editnicknamedialog.could.not.change.nickname"),
     );
     setBusy(false);
     if (updated) {
@@ -52,13 +54,13 @@ export function EditNicknameDialog({
       open
       onClose={close}
       title={title}
-      description={guild ? `Only shown in ${guild.name}.` : undefined}
+      description={guild ? msg('members.nicknameHere', { name: guild.name }) : undefined}
       width={400}
     >
       <form onSubmit={(e) => void submit(e)}>
         <Field
-          label='Server nickname'
-          hint='Leave empty to use the account name.'
+          label={msg("settings.profileeditor.server.nickname")}
+          hint={msg("settings.editnicknamedialog.leave.empty.to.use.the.account.name")}
         >
           {(id) => (
             <Input
@@ -75,11 +77,9 @@ export function EditNicknameDialog({
         </Field>
         <div className='row-end'>
           <Button variant='ghost' type='button' onClick={close}>
-            Cancel
-          </Button>
+            {msg("common.cancel")} </Button>
           <Button variant='primary' type='submit' loading={busy}>
-            Save
-          </Button>
+            {msg("common.save")} </Button>
         </div>
       </form>
     </Modal>

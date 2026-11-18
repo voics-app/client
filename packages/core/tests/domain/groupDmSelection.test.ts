@@ -69,7 +69,7 @@ describe('bulkLeaveOutcomeMessage', () => {
     expect(bulkLeaveOutcomeMessage({ left: ['a', 'b'], failed: [] }, names)).toEqual({ tone: 'success', title: 'Left 2 group DMs', body: undefined });
   });
   it('names the groups that could not be left', () => {
-    expect(bulkLeaveOutcomeMessage({ left: ['a'], failed: ['b', 'c'] }, names)).toEqual({ tone: 'danger', title: 'Left 1 group DM, 2 failed', body: 'Could not leave: Beta, Gamma' });
+    expect(bulkLeaveOutcomeMessage({ left: ['a'], failed: ['b', 'c'] }, names)).toEqual({ tone: 'danger', title: 'Left 1 group DM, 2 failed', body: 'Could not leave: Beta and Gamma' });
   });
   it('falls back to the id for an unknown name', () => {
     expect(bulkLeaveOutcomeMessage({ left: [], failed: ['z'] }, names).body).toBe('Could not leave: z');

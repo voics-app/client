@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -10,6 +11,7 @@ import { Modal } from '../../shared/ui/Modal';
 
 /** Prune members: pick the inactivity window, see the dry-run count, then confirm. */
 export function PruneDialog({ guildId }: { guildId: string }) {
+  const { t: msg, locale } = useI18n();
   const [days, setDays] = useState(7);
   const [busy, setBusy] = useState(false);
   const close = () => useUiStore.getState().openDialog(null);
@@ -18,30 +20,30 @@ export function PruneDialog({ guildId }: { guildId: string }) {
 
   const submit = async () => {
     setBusy(true);
-    const done = await attempt(() => getRuntime().api.prune(guildId, days), 'Could not prune members');
+    const done = await attempt(() => getRuntime().api.prune(guildId, days), msg("settings.prunedialog.could.not.prune.members"));
     setBusy(false);
     if (!done) return;
     close();
-    useUiStore.getState().toast({ tone: 'info', title: `Pruned ${done.pruned} ${done.pruned === 1 ? 'member' : 'members'}` });
+    useUiStore.getState().toast({ tone: 'info', title: msg('members.pruned', { count: done.pruned }) });
   };
 
   return (
-    <Modal open onClose={close} title="Prune members" description="Remove members who have been inactive and have no roles. They can rejoin with a new invite." width={420}>
+    <Modal open onClose={close} title={msg("settings.servertabs.prune.members")} description={msg("settings.prunedialog.remove.members.who.have.been.inactive.and.have.no")} width={420}>
       <div className="stack">
-        <Field label="Inactive for">
+        <Field label={msg("settings.prunedialog.inactive.for")}>
           {(id) => (
             <Select id={id} value={days} onChange={(e) => setDays(Number(e.target.value))}>
-              {PRUNE_DAY_CHOICES.map((d) => <option key={d} value={d}>{d} {d === 1 ? 'day' : 'days'}</option>)}
+              {PRUNE_DAY_CHOICES.map((d) => <option key={d} value={d}>{msg('members.days', { count: d })}</option>)}
             </Select>
           )}
         </Field>
         <p className="setting-desc" role="status" aria-live="polite">
-          {preview.isError ? errorMessage(preview.error) : preview.isLoading ? 'Counting members' : pruneSummary(count, days)}
+          {preview.isError ? errorMessage(preview.error) : preview.isLoading ? msg("settings.prunedialog.counting.members") : pruneSummary(count, days, locale)}
         </p>
         <div className="row-end">
-          <Button variant="ghost" type="button" onClick={close}>Cancel</Button>
+          <Button variant="ghost" type="button" onClick={close}>{msg("common.cancel")}</Button>
           <Button variant="danger" type="button" loading={busy} disabled={!preview.data || count === 0} onClick={() => void submit()}>
-            {count > 0 ? `Prune ${count} ${count === 1 ? 'member' : 'members'}` : 'Prune'}
+            {count > 0 ? msg('members.prune', { count }) : msg("settings.prunedialog.prune")}
           </Button>
         </div>
       </div>

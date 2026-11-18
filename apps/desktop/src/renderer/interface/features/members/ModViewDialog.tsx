@@ -12,7 +12,7 @@ import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
 
 /** Moderator view of a user, member or not: membership, ban and the audit entries about them. */
 export function ModViewDialog({ guildId, userId }: { guildId: string; userId: string }) {
-  const { locale } = useI18n();
+  const { t: msg, locale, catalogText } = useI18n();
   const close = () => useUiStore.getState().openDialog(null);
   const member = useGuildStore((s) => s.members[guildId]?.[userId]);
   const user = useQuery({ queryKey: ['user', userId], queryFn: () => getRuntime().api.user(userId), initialData: member?.user, staleTime: 60_000 });
@@ -23,7 +23,7 @@ export function ModViewDialog({ guildId, userId }: { guildId: string; userId: st
   const shown = user.data;
 
   return (
-    <Modal open onClose={close} title="Mod View" width={480}>
+    <Modal open onClose={close} title={msg("settings.servertabs.mod.view")} width={480}>
       {!shown ? <Skeleton height={60} radius={12} /> : (
         <div className="stack">
           <div className="row">
@@ -34,21 +34,21 @@ export function ModViewDialog({ guildId, userId }: { guildId: string; userId: st
             </div>
           </div>
           <section className="profile-section">
-            <h4>Status in this server</h4>
-            <p>{member ? `Member since ${new Date(member.joined_at).toLocaleDateString(locale, { dateStyle: 'long' })}` : ban.data ? 'Banned' : ban.isLoading ? 'Checking' : 'Not a member'}</p>
-            {ban.data && <p className="setting-desc">Reason: {ban.data.reason ?? 'No reason given'}</p>}
+            <h4>{msg("settings.modviewdialog.status.in.this.server")}</h4>
+            <p>{member ? msg('members.since', { date: new Date(member.joined_at).toLocaleDateString(locale, { dateStyle: 'long' }) }) : ban.data ? msg("settings.modviewdialog.banned") : ban.isLoading ? msg("settings.modviewdialog.checking") : msg("settings.modviewdialog.not.a.member")}</p>
+            {ban.data && <p className="setting-desc">{msg('members.reason', { reason: ban.data.reason ?? msg('settings.servertabs.no.reason.given') })}</p>}
           </section>
-          <section className="profile-section" aria-label="Moderation history">
-            <h4>Moderation history</h4>
-            {history.isLoading ? <Skeleton height={40} radius={12} /> : entries.length === 0 ? <p className="setting-desc">Nothing logged about this user.</p> : (
+          <section className="profile-section" aria-label={msg("settings.modviewdialog.moderation.history")}>
+            <h4>{msg("settings.modviewdialog.moderation.history")}</h4>
+            {history.isLoading ? <Skeleton height={40} radius={12} /> : entries.length === 0 ? <p className="setting-desc">{msg("settings.modviewdialog.nothing.logged.about.this.user")}</p> : (
               <ul className="manage-list audit">
                 {entries.map((e) => {
                   const actor = e.user_id ? actors.get(e.user_id) : undefined;
                   return (
                     <li key={e.id}>
                       <div className="manage-copy">
-                        <strong>{actor ? displayName(actor) : 'Unknown'} {AUDIT_ACTIONS[e.action_type] ?? `performed action ${e.action_type}`}</strong>
-                        {e.reason && <span>Reason: {e.reason}</span>}
+                        <strong>{msg('members.auditActor', { name: actor ? displayName(actor) : msg('domain.unknown'), action: AUDIT_ACTIONS[e.action_type] ? catalogText(AUDIT_ACTIONS[e.action_type]!) : msg('members.action', { action: e.action_type }) })}</strong>
+                        {e.reason && <span>{msg('members.reason', { reason: e.reason })}</span>}
                       </div>
                       <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString(locale)}</time>
                     </li>
