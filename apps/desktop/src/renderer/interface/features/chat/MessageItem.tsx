@@ -21,7 +21,7 @@ import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
 import { formatTime, useNow } from '../../shared/hooks/useNow';
 import { formatMessageTime, fullMessageTime } from '@discordy/core/domain/messageTime';
 import { AppTag } from '../../shared/ui/AppTag';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { Tooltip } from '../../shared/ui/Tooltip';
@@ -50,7 +50,7 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
       {ref ? (
         <>
           <UserMenuTarget userId={ref.author.id} name={displayName(ref.author)} guildId={guildId} user={ref.author}>
-            {!compact && <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />}
+            {!compact && <UserAvatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} guildId={guildId} size={16} />}
             <span className="reply-name">@{displayName(ref.author)}</span>
           </UserMenuTarget>
           <span className="reply-text">{replyPreviewText(ref.content, compact) || 'Click to see attachment'}</span>
@@ -72,13 +72,13 @@ function HeaderTime({ iso }: { iso: string }) {
   );
 }
 
-function InteractionHeader({ message }: { message: ChatMessage }) {
+function InteractionHeader({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
   const meta = message.interaction_metadata;
   if (!meta) return null;
   return (
     <div className="interaction-header">
       <span className="reply-hook" aria-hidden="true" />
-      <Avatar id={meta.user.id} name={displayName(meta.user)} avatar={meta.user.avatar} size={16} />
+      <UserAvatar id={meta.user.id} name={displayName(meta.user)} avatar={meta.user.avatar} guildId={guildId} size={16} />
       <span className="reply-name">{displayName(meta.user)}</span>
       <span className="reply-text">used {meta.name ? <strong>/{meta.name}</strong> : 'a command'}</span>
     </div>
@@ -236,13 +236,13 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
       {...interactions.rootProps}
     >
       {startsGroup && <ReplyPreview message={message} guildId={guildId} />}
-      {startsGroup && <InteractionHeader message={message} />}
+      {startsGroup && <InteractionHeader message={message} guildId={guildId} />}
       <div className="message-row">
         <div className="message-gutter">
           {startsGroup ? (
             <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
               <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
-                <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
+                <UserAvatar id={message.author.id} name={name} avatar={message.author.avatar} guildId={guildId} size={40} bot={message.author.bot} />
               </button>
             </UserMenuTarget>
           ) : (

@@ -21,7 +21,7 @@ import { markChannelRead } from '../../app/actions';
 import { applyChannelLayout, guildChannels } from '../../app/channelOrderActions';
 import { can, useChannelPermissions, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
@@ -109,7 +109,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
         openDialog({ kind: 'profile', userId: state.user_id, guildId });
       }}
     >
-      <Avatar id={state.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking} />
+      <UserAvatar id={state.user_id} name={name} avatar={user?.avatar} guildId={guildId} member={member} size={22} speaking={speaking} />
       <span className="occupant-name">{name}</span>
       <span className="occupant-flags">
         {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={MUTE_LABEL[flags.mute]} />}

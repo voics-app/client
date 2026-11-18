@@ -8,7 +8,7 @@ import type { VoiceState } from '@discordy/core/contracts/rest';
 import { useFullscreen } from '../../shared/hooks/useFullscreen';
 import { usePanZoom } from '../../shared/hooks/usePanZoom';
 import { displayName } from '../../shared/hooks/useNames';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { Button } from '../../shared/ui/Button';
 import { IconButton } from '../../shared/ui/IconButton';
 import { useMenu } from '../../shared/ui/Menu';
@@ -106,7 +106,7 @@ export function VideoTile({ participant, stream, kind, focused, pinned, onPin, o
           <MediaElement stream={stream} muted className="tile-video" style={panZoom.style} onReady={setVideo} />
         ) : (
           <div className="tile-avatar">
-            <Avatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} size={focused ? 112 : 76} speaking={speaking} />
+            <UserAvatar id={participant.state.user_id} name={participant.name} avatar={participant.avatar} guildId={guildId} member={participant.state.member} size={focused ? 112 : 76} speaking={speaking} />
           </div>
         )}
         {previewOnly && (

@@ -56,7 +56,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
       <View style={styles.gutter}>
         {showHeader && (
           <Pressable accessibilityRole="button" accessibilityLabel={`View profile of ${nameOf(message.author)} avatar`} onPress={() => onPressAuthor(message.author)}>
-            <Avatar user={message.author} size={AVATAR_SIZE} />
+            <Avatar user={message.author} size={AVATAR_SIZE} guildId={guildId} />
           </Pressable>
         )}
       </View>
@@ -66,7 +66,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
             <Ionicons name="return-up-forward" size={14} color={theme.subtle} />
             {preview ? (
               <>
-                <Avatar user={preview.author} size={16} />
+                <Avatar user={preview.author} size={16} guildId={guildId} />
                 <Text style={styles.replyName} numberOfLines={1}>{`@${nameOf(preview.author)}`}</Text>
                 <Text style={styles.reply} numberOfLines={1}>
                   {replyPreviewText(preview.content, false) || 'Attachment'}

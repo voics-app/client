@@ -1,16 +1,16 @@
 import { StyleSheet, View } from 'react-native';
-import type { User } from '@discordy/core/contracts/rest';
+import type { GuildMember, User } from '@discordy/core/contracts/rest';
 import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
 
 const COLORS: Record<string, string> = { online: theme.success, idle: '#f0b232', dnd: theme.danger };
 
 /** An avatar with the presence dot on its corner; offline and invisible show a hollow grey dot. `ring` is the colour behind the avatar, so the dot's border blends in. */
-export function StatusAvatar({ user, status, size, ring = theme.surface }: { user: Pick<User, 'id' | 'avatar' | 'username' | 'global_name'>; status: string; size: number; ring?: string }) {
+export function StatusAvatar({ user, status, size, ring = theme.surface, guildId, member }: { user: Pick<User, 'id' | 'avatar' | 'username' | 'global_name'>; status: string; size: number; ring?: string; guildId?: string | null; member?: GuildMember }) {
   const color = COLORS[status];
   return (
     <View style={{ width: size, height: size }}>
-      <Avatar user={user} size={size} />
+      <Avatar user={user} size={size} guildId={guildId} member={member} />
       <View testID={`status-${status}`} style={[styles.dot, { borderColor: ring }, color ? { backgroundColor: color } : styles.offline]} accessibilityLabel={`Status ${status}`} />
     </View>
   );

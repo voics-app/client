@@ -23,7 +23,7 @@ import { reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
@@ -436,7 +436,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           {suggestions.map((s, i) => (
             <li key={s.key} role="option" aria-selected={i === selected}>
               <button type="button" className={i === selected ? 'is-selected' : ''} onMouseEnter={() => setSelected(i)} onMouseDown={(e) => { e.preventDefault(); accept(s); }}>
-                {s.avatar && <Avatar id={s.avatar.id} name={s.avatar.name} avatar={s.avatar.avatar} size={22} />}
+                {s.avatar && <UserAvatar id={s.avatar.id} name={s.avatar.name} avatar={s.avatar.avatar} guildId={channel.guild_id} size={22} />}
                 <span>{s.label}</span>
                 {s.detail && <span className="suggestion-detail">{s.detail}</span>}
               </button>

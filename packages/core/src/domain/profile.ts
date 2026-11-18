@@ -19,7 +19,7 @@ export function profileBackground(user: Pick<User, 'accent_color' | 'theme_color
 }
 
 /** Server overrides fall back to the global profile; malformed paths never reach the CDN. */
-export function profileImageCandidates(cdn: string, user: User, kind: 'avatars' | 'banners', member?: GuildMember, guildId?: string | null, size = 512): string[] {
+export function profileImageCandidates(cdn: string, user: Pick<User, 'id' | 'avatar' | 'banner'>, kind: 'avatars' | 'banners', member?: GuildMember, guildId?: string | null, size = 512): string[] {
   const override = kind === 'avatars' ? member?.avatar : member?.banner;
   const hash = override || (kind === 'avatars' ? user.avatar : user.banner);
   if (!hash || !/^[a-zA-Z0-9_-]+$/.test(hash) || !/^\d+$/.test(user.id)) return [];

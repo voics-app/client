@@ -16,7 +16,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { useConnectionStore } from '../../app/connectionStore';
 import { StatusLine } from './StatusLine';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { AppTag } from '../../shared/ui/AppTag';
 import { AssetImage } from '../../shared/ui/AssetImage';
 import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
@@ -73,7 +73,7 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
   return createPortal(
     <div className='member-hover-card' role='tooltip' style={{ left: anchor.left - 8, top }}>
       <div className='member-hover-head'>
-        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={56} status={status} />
+        <UserAvatar id={member.user.id} name={name} avatar={member.user.avatar} guildId={guildId} member={member} size={56} status={status} />
         <div className='member-hover-names'>
           <strong style={{ color: roleColor(guild?.roles, member) }}>{name}</strong>
           <span className='member-hover-user'>
@@ -130,7 +130,7 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
         onFocus={(e) => show(e.currentTarget)}
         onBlur={hide}
       >
-        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={32} status={status} />
+        <UserAvatar id={member.user.id} name={name} avatar={member.user.avatar} guildId={guildId} member={member} size={32} status={status} />
         <span className='member-copy'>
           <span className='member-name-line'>
             <span className='member-name' style={roleStyle.tint ? { color: roleStyle.tint } : undefined}>

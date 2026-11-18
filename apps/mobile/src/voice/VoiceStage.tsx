@@ -14,6 +14,7 @@ const tileName = (tile: StageTileModel): string => (tile.kind === 'screen' ? `${
 
 interface TileProps {
   tile: StageTileModel;
+  guildId?: string | null;
   facing: CameraFacing;
   onPress(): void;
   /** A small tile drawn over a large one. */
@@ -34,8 +35,9 @@ function TileLabel({ tile }: { tile: StageTileModel }) {
   );
 }
 
-function Tile({ tile, facing, onPress, overlay = false, avatarSize = 56 }: TileProps) {
+function Tile({ tile, facing, onPress, overlay = false, avatarSize = 56, guildId }: TileProps) {
   const { row } = tile;
+  const member = useVoiceStore((s) => guildId ? s.states[guildId]?.[row.userId]?.member : undefined);
   const watch = () => useVoiceStore.getState().watchStream(tile.key);
   const label = `${tileName(tile)}${row.self && tile.kind !== 'screen' ? ', you' : ''}${row.muted ? ', muted' : ''}${row.speaking ? ', speaking' : ''}`;
   return (
@@ -50,7 +52,7 @@ function Tile({ tile, facing, onPress, overlay = false, avatarSize = 56 }: TileP
         <VideoSurface stream={tile.stream} mirror={row.self && facing === 'front' && tile.kind === 'camera'} fit={tile.kind === 'screen' ? 'contain' : 'cover'} overlay={overlay} style={StyleSheet.absoluteFill} />
       ) : (
         <View style={styles.center}>
-          {tile.kind === 'screen' ? <Ionicons name="desktop-outline" size={avatarSize * 0.6} color={theme.subtle} /> : <Avatar user={row.user} size={avatarSize} />}
+          {tile.kind === 'screen' ? <Ionicons name="desktop-outline" size={avatarSize * 0.6} color={theme.subtle} /> : <Avatar user={row.user} size={avatarSize} guildId={guildId} member={member} />}
           {tile.watchable && (
             <Pressable accessibilityRole="button" accessibilityLabel={`Watch ${row.name}'s screen`} onPress={watch} style={styles.watch}>
               <Text style={styles.watchText}>Watch</Text>
@@ -64,14 +66,14 @@ function Tile({ tile, facing, onPress, overlay = false, avatarSize = 56 }: TileP
 }
 
 /** The video part of a call: one to one with your own small tile, a grid for groups, or one large tile with a strip after a tap. */
-export function VoiceStage({ view, facing, onFocus }: { view: Exclude<StageView, { mode: 'list' }>; facing: CameraFacing; onFocus(key: string | null): void }) {
+export function VoiceStage({ view, facing, onFocus, guildId }: { view: Exclude<StageView, { mode: 'list' }>; facing: CameraFacing; onFocus(key: string | null): void; guildId?: string | null }) {
   const { width } = useWindowDimensions();
   if (view.mode === 'duo') {
     return (
       <View style={styles.stage}>
-        <Tile tile={view.remote} facing={facing} avatarSize={96} onPress={() => onFocus(view.remote.key)} />
+        <Tile tile={view.remote} facing={facing} guildId={guildId} avatarSize={96} onPress={() => onFocus(view.remote.key)} />
         <View style={styles.pip}>
-          <Tile tile={view.self} facing={facing} overlay avatarSize={40} onPress={() => onFocus(view.self.key)} />
+          <Tile tile={view.self} facing={facing} guildId={guildId} overlay avatarSize={40} onPress={() => onFocus(view.self.key)} />
         </View>
       </View>
     );
@@ -79,11 +81,11 @@ export function VoiceStage({ view, facing, onFocus }: { view: Exclude<StageView,
   if (view.mode === 'focus') {
     return (
       <View style={styles.stage}>
-        <Tile tile={view.main} facing={facing} avatarSize={96} onPress={() => onFocus(null)} />
+        <Tile tile={view.main} facing={facing} guildId={guildId} avatarSize={96} onPress={() => onFocus(null)} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.stripContent}>
           {view.strip.map((tile) => (
             <View key={tile.key} style={STRIP}>
-              <Tile tile={tile} facing={facing} overlay avatarSize={32} onPress={() => onFocus(tile.key)} />
+              <Tile tile={tile} facing={facing} guildId={guildId} overlay avatarSize={32} onPress={() => onFocus(tile.key)} />
             </View>
           ))}
         </ScrollView>
@@ -95,7 +97,7 @@ export function VoiceStage({ view, facing, onFocus }: { view: Exclude<StageView,
     <ScrollView style={styles.stage} contentContainerStyle={styles.grid}>
       {view.tiles.map((tile) => (
         <View key={tile.key} style={{ width: cell, height: cell * 1.25 }}>
-          <Tile tile={tile} facing={facing} avatarSize={64} onPress={() => onFocus(tile.key)} />
+          <Tile tile={tile} facing={facing} guildId={guildId} avatarSize={64} onPress={() => onFocus(tile.key)} />
         </View>
       ))}
     </ScrollView>

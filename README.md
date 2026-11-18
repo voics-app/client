@@ -69,6 +69,10 @@ is blocked until drafts are saved or reset, and failed saves retain the draft. E
 server images/bio needs membership; nickname controls respect Change Nickname.
 The user menu's **Edit Server Profile** action opens the matching profile page. Profile
 dialogs display server overrides, pronouns and theme colours on readable app surfaces.
+Member rows, chat authors/replies/reactions and voice occupants/tiles use server
+avatar URLs on desktop and mobile when their explicit server context has an override.
+Clearing it restores the global avatar; DMs and account controls stay global. Failed
+images retain initials and presence/speaking indicators, and a new image is retried.
 These controls require the profile API release (api#43, migration `0054`).
 
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.

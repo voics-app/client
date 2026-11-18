@@ -11,14 +11,14 @@ import { occupantView } from './occupantModel';
 export function OccupantList({ channel, compact = false }: { channel: Channel; compact?: boolean }) {
   const states = useVoiceStore((s) => s.states);
   const members = useGuildStore((s) => (channel.guild_id ? s.members[channel.guild_id] : undefined));
-  const occupants = usersInChannel(states, channel.guild_id, channel.id).map((state) => occupantView(state, members?.[state.user_id]));
+  const occupants = usersInChannel(states, channel.guild_id, channel.id).map((state) => ({ ...occupantView(state, members?.[state.user_id]), member: members?.[state.user_id] ?? state.member }));
   if (occupants.length === 0) return null;
   const size = compact ? 22 : 36;
   return (
     <View testID={`occupants-${channel.id}`} style={compact ? styles.compact : styles.full}>
       {occupants.map((o) => (
         <View key={o.userId} accessibilityLabel={[o.name, ...o.flags].join(', ')} accessible style={[styles.row, compact && styles.rowCompact]}>
-          <Avatar user={o.user} size={size} />
+          <Avatar user={o.user} size={size} guildId={channel.guild_id} member={o.member} />
           <Text numberOfLines={1} style={[styles.name, compact && styles.nameCompact]}>
             {o.name}
           </Text>
