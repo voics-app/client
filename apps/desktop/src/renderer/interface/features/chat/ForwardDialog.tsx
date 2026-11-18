@@ -51,7 +51,7 @@ export function ForwardDialog({ message }: ForwardDialogProps) {
           {targets.map((t) => (
             <li key={t.id}>
               <div className={`pick-row forward-row${t.disabledReason ? ' is-disabled' : ''}`} title={t.disabledReason}>
-                {t.kind === 'channel' ? <Hash size={22} aria-hidden="true" /> : t.kind === 'group' ? <UsersThree size={22} aria-hidden="true" /> : <Avatar id={t.id} name={t.label} avatar={channels[t.id]?.recipients?.[0]?.avatar ?? null} size={30} />}
+                {t.kind === 'channel' ? <Hash size={22} aria-hidden="true" /> : t.kind === 'group' ? <UsersThree size={22} aria-hidden="true" /> : <Avatar id={channels[t.id]?.recipients?.[0]?.id} name={t.label} avatar={channels[t.id]?.recipients?.[0]?.avatar ?? null} size={30} />}
                 <span className="forward-label">{t.label}{t.context && <small> {t.context}</small>}</span>
                 <Button variant="ghost" size="sm" disabled={Boolean(t.disabledReason) || busy !== null} loading={busy === t.id} onClick={() => void send(t)} aria-label={`Send to ${t.label}`}>
                   Send
