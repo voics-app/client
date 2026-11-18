@@ -25,13 +25,19 @@ function run(options: TransformOptions, frames: Uint8Array[]): Promise<Uint8Arra
     },
   });
   const out: Uint8Array[] = [];
-  const sink = new WritableStream<{ data: ArrayBuffer }>({
-    write(frame) {
-      out.push(new Uint8Array(frame.data));
-    },
+  // WebCrypto completion depends on scheduling; the stream closing is the completion signal.
+  return new Promise((resolve, reject) => {
+    const sink = new WritableStream<{ data: ArrayBuffer }>({
+      write(frame) {
+        out.push(new Uint8Array(frame.data));
+      },
+      close() {
+        resolve(out);
+      },
+      abort: reject,
+    });
+    scope.onrtctransform!({ transformer: { readable: source as ReadableStream, writable: sink as WritableStream, options } });
   });
-  scope.onrtctransform!({ transformer: { readable: source as ReadableStream, writable: sink as WritableStream, options } });
-  return new Promise((resolve) => setTimeout(() => resolve(out), 30));
 }
 
 const send = (message: WorkerMessage) => scope.onmessage!({ data: message });
