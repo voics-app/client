@@ -134,11 +134,12 @@ export function TemplateLinkDialog({ code }: { code: string }) {
   const data = template.data;
   if (creating && data) return <NameStep template={data} onBack={() => setCreating(false)} />;
   const preview = data ? previewTemplate(data) : null;
+  const unavailable = (template.error as { code?: number } | null)?.code === 10057;
   return (
     <Modal open onClose={close} title={data ? `Create a server from ${data.name}` : 'Server template'} description={data?.description ?? undefined} width={480}>
       <div className="stack">
         {template.isPending && <Skeleton height={140} radius={12} />}
-        {template.isError && <p className="setting-desc" role="alert">This template link is invalid or no longer exists. {errorMessage(template.error)}</p>}
+        {template.isError && <div><p className="setting-desc" role="alert">{unavailable ? 'This template link is invalid or no longer exists.' : 'Could not load this template.'} {errorMessage(template.error)}</p>{!unavailable && <Button onClick={() => void template.refetch()}>Try again</Button>}</div>}
         {data && preview && (
           <>
             <p className="setting-desc">

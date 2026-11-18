@@ -1,4 +1,5 @@
 import { brand } from './brandConfig';
+import { landingOrigin } from './inviteLinks';
 import { ChannelType, type GuildTemplate } from '../contracts/rest';
 
 /** Server templates: link parsing and the preview a template link opens. */
@@ -14,15 +15,22 @@ export function isBuiltinTemplate(code: string): boolean {
 /** Extracts the code from a bare code, a web `/template/<code>` link or a `<scheme>://template/<code>` link; `null` when it is none of them. */
 export function parseTemplateCode(input: string): string | null {
   const text = input.trim();
-  if (/\s/.test(text)) return null;
-  const m = /(?:template\/|\/)?([\w-]{2,64})\/?(?:[?#].*)?$/.exec(text);
-  const code = m?.[1] ?? text;
-  return CODE.test(code) ? code : null;
+  if (CODE.test(text)) return text;
+  try {
+    const url = new URL(text);
+    const web = url.protocol === 'http:' || url.protocol === 'https:';
+    const code = web
+      ? url.pathname === '/template.html' ? url.searchParams.get('code') : /^\/template\/([^/]+)\/?$/.exec(url.pathname)?.[1]
+      : url.hostname === 'template' ? /^\/([^/]+)\/?$/.exec(url.pathname)?.[1] : null;
+    return code && CODE.test(code) ? code : null;
+  } catch {
+    return null;
+  }
 }
 
-/** The link a manager shares; it opens the app on the template preview. */
-export function templateShareLink(code: string): string {
-  return `${brand().protocolScheme}://template/${encodeURIComponent(code)}`;
+/** Public preview for recipients who may not have the app installed yet. */
+export function templateShareLink(code: string, apiUrl = brand().apiUrl): string {
+  return `${landingOrigin(apiUrl)}/template.html?code=${encodeURIComponent(code)}`;
 }
 
 export interface PreviewChannel {
