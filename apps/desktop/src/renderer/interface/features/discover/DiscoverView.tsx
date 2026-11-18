@@ -1,8 +1,9 @@
+import { useI18n } from '../../shared/i18n';
 import { Compass, MagnifyingGlass, UsersThree } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
+import { categoryLabel } from '@discordy/core/domain/discoveryModel';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { openGuild } from '../../app/navigation';
@@ -24,6 +25,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: string) => void }) {
+  const { t, number } = useI18n();
   const joined = useGuildStore((s) => Boolean(s.guilds[guild.id]));
   const [busy, setBusy] = useState(false);
   const join = async () => {
@@ -56,8 +58,8 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
       )}
       <div className="discover-card-foot">
         <span className="discover-counts">
-          {guild.approximate_presence_count !== null && <span className="discover-online">{guild.approximate_presence_count.toLocaleString('en-US')} online</span>}
-          <span>{memberCountLabel(guild.approximate_member_count)}</span>
+          {guild.approximate_presence_count !== null && <span className="discover-online">{number(guild.approximate_presence_count)} online</span>}
+          <span>{t('discovery.members', { count: guild.approximate_member_count })}</span>
         </span>
         {joined ? (
           <Button variant="ghost" onClick={() => openGuild(guild.id)}>Open</Button>
@@ -70,6 +72,7 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
 }
 
 export function DiscoverView() {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [tag, setTag] = useState<string | null>(null);
@@ -111,7 +114,7 @@ export function DiscoverView() {
           <EmptyState icon={<UsersThree size={40} />} title="No servers found" body={query || category || tag ? 'Try a different search or remove a filter.' : 'No server has opted in to discovery yet.'} />
         ) : (
           <>
-            <p className="discover-total" role="status">{total.toLocaleString('en-US')} {total === 1 ? 'server' : 'servers'}</p>
+            <p className="discover-total" role="status">{t('discovery.servers', { count: total })}</p>
             <ul className="discover-grid">
               {guilds.map((g) => <GuildCard key={g.id} guild={g} onTag={setTag} />)}
             </ul>

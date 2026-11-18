@@ -23,6 +23,7 @@ export type UserSettingsTab =
   | 'keybinds'
   | 'appearance'
   | 'accessibility'
+  | 'language'
   | 'notifications'
   | 'chat'
   | 'connection'

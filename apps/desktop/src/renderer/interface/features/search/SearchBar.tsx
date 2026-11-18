@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { MagnifyingGlass, X } from '@phosphor-icons/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchStore } from '@discordy/core/application/stores/searchStore';
@@ -7,6 +8,7 @@ import { scopeKeyOf, searchTarget, submitSearch } from '../../app/searchActions'
 
 /** Search box of the channel header: Ctrl+F focuses it, `from:`/`in:`/`has:` ... suggest as you type, Enter searches. */
 export function SearchBar({ channelId }: { channelId: string }) {
+  const { t } = useI18n();
   const input = useSearchStore((s) => s.input);
   const scopeKey = useSearchStore((s) => s.scopeKey);
   const set = useSearchStore((s) => s.set);
@@ -86,8 +88,8 @@ export function SearchBar({ channelId }: { channelId: string }) {
         ref={ref}
         type="text"
         className="search-box-input"
-        placeholder="Search"
-        aria-label="Search messages"
+        placeholder={t('common.search')}
+        aria-label={t('search.messages')}
         aria-autocomplete="list"
         aria-expanded={open && suggestions.length > 0}
         aria-controls={listId}
@@ -105,12 +107,12 @@ export function SearchBar({ channelId }: { channelId: string }) {
         onKeyDown={onKeyDown}
       />
       {input && (
-        <button type="button" className="search-box-clear" aria-label="Clear search" onMouseDown={(e) => e.preventDefault()} onClick={clear}>
+        <button type="button" className="search-box-clear" aria-label={t('search.clear')} onMouseDown={(e) => e.preventDefault()} onClick={clear}>
           <X size={12} weight="bold" />
         </button>
       )}
       {open && suggestions.length > 0 && (
-        <ul id={listId} role="listbox" className="search-suggestions" aria-label="Search filters">
+        <ul id={listId} role="listbox" className="search-suggestions" aria-label={t('search.filters')}>
           {suggestions.map((s, i) => (
             <li
               key={s.insert}

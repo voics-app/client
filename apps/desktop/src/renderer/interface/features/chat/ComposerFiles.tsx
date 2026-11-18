@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Eye, EyeSlash, File as FileIcon, TextAa, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import { ALT_TEXT_MAX, displayFilename, isSpoilerName, withoutSpoilerPrefix, withSpoilerPrefix } from '@discordy/core/domain/media';
@@ -21,6 +22,7 @@ function renamed(file: File, name: string): File {
 
 /** The chips above the composer: preview, Spoiler toggle, Edit description (alt text) and Remove. */
 export function ComposerFiles({ files, descriptions, allowDescriptions, onChange }: Props) {
+  const { t, locale } = useI18n();
   const [editing, setEditing] = useState<File | null>(null);
   const previews = useMemo(() => new Map(files.filter((f) => f.type.startsWith('image/')).map((f) => [f, URL.createObjectURL(f)])), [files]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
@@ -60,25 +62,25 @@ export function ComposerFiles({ files, descriptions, allowDescriptions, onChange
               {preview ? <img src={preview} alt={description} /> : <FileIcon size={26} weight="light" />}
             </span>
             <span className="composer-file-name" title={name}>{name}</span>
-            <span className="composer-file-size tnum">{formatBytes(file.size)}</span>
+            <span className="composer-file-size tnum">{formatBytes(file.size, locale)}</span>
             <span className="composer-file-actions">
-              <button type="button" aria-pressed={spoiler} aria-label={spoiler ? `Remove spoiler from ${name}` : `Mark ${name} as spoiler`} title="Spoiler" className={spoiler ? 'is-on' : ''} onClick={() => toggleSpoiler(i)}>
+              <button type="button" aria-pressed={spoiler} aria-label={t(spoiler ? 'files.removeSpoiler' : 'files.markSpoiler', { name })} title={t('composer.spoiler')} className={spoiler ? 'is-on' : ''} onClick={() => toggleSpoiler(i)}>
                 {spoiler ? <EyeSlash size={14} /> : <Eye size={14} />}
               </button>
               {allowDescriptions && (
-                <button type="button" aria-label={`Edit description of ${name}`} title="Edit description (alt text)" className={description ? 'is-on' : ''} onClick={() => setEditing(editing === file ? null : file)}>
+                <button type="button" aria-label={t('files.editDescription', { name })} title={t('files.altText')} className={description ? 'is-on' : ''} onClick={() => setEditing(editing === file ? null : file)}>
                   <TextAa size={14} />
                 </button>
               )}
-              <button type="button" aria-label={`Remove ${name}`} title="Remove" onClick={() => replace(i, null)}><X size={14} /></button>
+              <button type="button" aria-label={t('files.remove', { name })} title={t('common.remove')} onClick={() => replace(i, null)}><X size={14} /></button>
             </span>
             {editing === file && (
               <input
                 className="composer-file-alt"
                 autoFocus
                 maxLength={ALT_TEXT_MAX}
-                placeholder="Describe this image"
-                aria-label={`Description of ${name}`}
+                placeholder={t('files.describe')}
+                aria-label={t('files.description', { name })}
                 value={description}
                 onChange={(e) => setDescription(file, e.target.value)}
                 onKeyDown={(e) => {

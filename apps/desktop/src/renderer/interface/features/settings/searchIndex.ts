@@ -6,7 +6,8 @@
 import type { UserSettingsTab } from '@discordy/core/application/stores/uiStore';
 import { rowSlug } from '@discordy/core/domain/rowSlug';
 import { searchSettingsIndex } from '@discordy/core/domain/settingsSearch';
-import { USER_TABS } from './userTabs';
+import { createI18n } from '@discordy/core/domain/i18n';
+import { USER_TABS, translatedUserTabs } from './userTabs';
 
 export interface SettingEntry {
   tab: UserSettingsTab;
@@ -36,6 +37,7 @@ const TAB_KEYWORDS: Record<UserSettingsTab, string> = {
   keybinds: 'shortcuts hotkeys keyboard push to talk',
   appearance: 'theme dark light oled accent zoom density font',
   accessibility: 'motion contrast tts speech saturation gif',
+  language: 'language locale translation English Dutch Nederlands taal vertaling',
   notifications: 'sounds desktop mentions badge flash',
   chat: 'messages images embeds spoilers emoji reactions enter send',
   connection: 'server api gateway cdn profile url',
@@ -67,8 +69,12 @@ export const USER_SETTINGS_INDEX: SettingEntry[] = [
 ];
 
 /** Tabs and rows matching `query`, best first. An empty query yields nothing. */
-export function searchSettings(query: string, entries: readonly SettingEntry[] = USER_SETTINGS_INDEX, limit = 12): SettingHit[] {
-  const pages = USER_TABS.map((t) => ({ id: t.id, label: t.label, keywords: TAB_KEYWORDS[t.id] }));
-  const rows = entries.map((e) => ({ page: e.tab, label: e.label, ...(e.keywords ? { keywords: e.keywords } : {}) }));
-  return searchSettingsIndex(query, pages, rows, limit).map((h) => ({ tab: h.page, tabLabel: h.pageLabel, label: h.label, rowId: h.rowId }));
+export function searchSettings(query: string, entries: readonly SettingEntry[] = USER_SETTINGS_INDEX, limit = 12, locale = 'en-US'): SettingHit[] {
+  const intl = createI18n(locale);
+  const pages = translatedUserTabs(intl).map((t) => ({ id: t.id, label: t.label, keywords: `${TAB_KEYWORDS[t.id]} ${USER_TABS.find((tab) => tab.id === t.id)?.label ?? ''}` }));
+  const rows = entries.map((e) => ({ page: e.tab, label: intl.catalogText(e.label), keywords: `${e.label} ${e.keywords ?? ''}` }));
+  return searchSettingsIndex(query, pages, rows, limit).map((h) => {
+    const original = h.rowId && entries.find((e) => e.tab === h.page && intl.catalogText(e.label) === h.label);
+    return { tab: h.page, tabLabel: h.pageLabel, label: h.label, rowId: original ? rowSlug(original.label) : h.rowId };
+  });
 }

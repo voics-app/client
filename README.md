@@ -52,6 +52,12 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 
 ## Desktop navigation and safety
 
+Settings → Language offers English and Nederlands, saved to the account. Translated
+surfaces update after saving, including their accessible labels, dates and numbers.
+Failed saves retain the selection for retry. Authored messages and names stay in
+their original language. See [localization](docs/localization.md) for catalog rules,
+the current extraction scope and the remaining acceptance checks.
+
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.

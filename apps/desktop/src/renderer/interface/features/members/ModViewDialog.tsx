@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -11,6 +12,7 @@ import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
 
 /** Moderator view of a user, member or not: membership, ban and the audit entries about them. */
 export function ModViewDialog({ guildId, userId }: { guildId: string; userId: string }) {
+  const { locale } = useI18n();
   const close = () => useUiStore.getState().openDialog(null);
   const member = useGuildStore((s) => s.members[guildId]?.[userId]);
   const user = useQuery({ queryKey: ['user', userId], queryFn: () => getRuntime().api.user(userId), initialData: member?.user, staleTime: 60_000 });
@@ -33,7 +35,7 @@ export function ModViewDialog({ guildId, userId }: { guildId: string; userId: st
           </div>
           <section className="profile-section">
             <h4>Status in this server</h4>
-            <p>{member ? `Member since ${new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}` : ban.data ? 'Banned' : ban.isLoading ? 'Checking' : 'Not a member'}</p>
+            <p>{member ? `Member since ${new Date(member.joined_at).toLocaleDateString(locale, { dateStyle: 'long' })}` : ban.data ? 'Banned' : ban.isLoading ? 'Checking' : 'Not a member'}</p>
             {ban.data && <p className="setting-desc">Reason: {ban.data.reason ?? 'No reason given'}</p>}
           </section>
           <section className="profile-section" aria-label="Moderation history">
@@ -48,7 +50,7 @@ export function ModViewDialog({ guildId, userId }: { guildId: string; userId: st
                         <strong>{actor ? displayName(actor) : 'Unknown'} {AUDIT_ACTIONS[e.action_type] ?? `performed action ${e.action_type}`}</strong>
                         {e.reason && <span>Reason: {e.reason}</span>}
                       </div>
-                      <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString()}</time>
+                      <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString(locale)}</time>
                     </li>
                   );
                 })}

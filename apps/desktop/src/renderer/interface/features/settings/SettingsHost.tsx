@@ -20,7 +20,9 @@ import { RolesEditor } from './server/RolesEditor';
 import { closeSettings, useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { confirmLogout } from './logout';
 import { searchSettings } from './searchIndex';
-import { USER_TABS } from './userTabs';
+import { translatedUserTabs } from './userTabs';
+import { useI18n } from '../../shared/i18n';
+import { LanguageTab } from './user/LanguageTab';
 import { DeveloperTab } from './user/DeveloperTab';
 import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
 
@@ -70,9 +72,10 @@ function revealRow(rowId: string, tries = 20): void {
 }
 
 function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
+  const { t, locale } = useI18n();
   const open = useUiStore((s) => s.openSettings);
   const [query, setQuery] = useState('');
-  const hits = useMemo(() => searchSettings(query), [query]);
+  const hits = useMemo(() => searchSettings(query, undefined, 12, locale), [query, locale]);
   const go = (i: number) => {
     const hit = hits[i];
     if (!hit) return;
@@ -86,12 +89,12 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
     <div className="settings-search">
       <label className="settings-search-field">
         <MagnifyingGlass size={14} aria-hidden="true" />
-        <input type="search" aria-label="Search settings" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(0); if (e.key === 'Escape' && query) { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setQuery(''); } }} />
+        <input type="search" aria-label={t('settings.search')} placeholder={t('common.search')} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(0); if (e.key === 'Escape' && query) { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setQuery(''); } }} />
       </label>
       {query.trim() && (
-        <ul className="settings-search-results" aria-label="Search results">
+        <ul className="settings-search-results" aria-label={t('settings.results')}>
           {hits.map((h, i) => <li key={`${h.tab}-${h.rowId ?? 'tab'}`}><button type="button" className="settings-item" onClick={() => go(i)}><span>{h.label}</span>{h.rowId && <small className="settings-hit-tab">{h.tabLabel}</small>}</button></li>)}
-          {hits.length === 0 && <li className="pick-empty">No settings match.</li>}
+          {hits.length === 0 && <li className="pick-empty">{t('settings.noMatches')}</li>}
         </ul>
       )}
     </div>
@@ -99,18 +102,20 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
 }
 
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
+  const intl = useI18n();
+  const { t } = intl;
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, language: <LanguageTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
   return (
     <Layout
-      title="User settings"
-      nav={<><SettingsSearch tab={tab} />{USER_TABS.map((t) => {
+      title={t('settings.user')}
+      nav={<><SettingsSearch tab={tab} />{translatedUserTabs(intl).map((t) => {
         const heading = t.group !== lastGroup ? <h3 key={`h-${t.group}`}>{t.group}</h3> : null;
         lastGroup = t.group;
         return <div key={t.id}>{heading}<NavItem active={tab === t.id} onClick={guarded(() => open({ kind: 'user', tab: t.id }))}>{t.label}</NavItem></div>;
       })}</>}
-      footer={<div className="settings-group settings-logout"><NavItem active={false} danger onClick={confirmLogout}><SignOut size={15} /> Log out</NavItem></div>}
+      footer={<div className="settings-group settings-logout"><NavItem active={false} danger onClick={confirmLogout}><SignOut size={15} /> {t('settings.logout')}</NavItem></div>}
     >
       {body}
     </Layout>

@@ -3,6 +3,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTrustedDomainStore } from '@discordy/core/application/stores/composerStores';
 import { MarkdownView } from '@renderer/interface/features/chat/MarkdownView';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 
 const open = vi.fn();
 beforeEach(() => {
@@ -17,6 +19,18 @@ afterEach(() => {
 });
 
 describe('MarkdownView', () => {
+  it('formats timestamp tokens in Dutch and preserves mixed-direction authored text', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_700_000_000_000);
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    const unix = Math.floor(Date.now() / 1000) + 120;
+    const { container } = render(<LocaleProvider><MarkdownView source={`Original hello مرحبا <t:${unix}:R>`} /></LocaleProvider>);
+    expect(container.querySelector('time')?.textContent).toBe('over 2 minuten');
+    expect(container.textContent).toContain('Original hello مرحبا');
+    expect(container.querySelector('.markdown')?.getAttribute('dir')).toBe('auto');
+    act(() => useSessionStore.getState().setSettings({ locale: 'en-US' }));
+    expect(container.querySelector('time')?.textContent).toBe('in 2 minutes');
+  });
   it('renders headers, subtext, lists and quotes as elements', () => {
     const { container } = render(<MarkdownView source={'# Big\n-# tiny\n- a\n  - b\n1. one\n> q'} />);
     expect(container.querySelector('h1')?.textContent).toBe('Big');

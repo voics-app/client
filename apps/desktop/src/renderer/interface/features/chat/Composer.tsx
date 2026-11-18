@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
 import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
@@ -69,6 +70,7 @@ function initialDraft(channelId: string, standard: boolean) {
 }
 
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const { t, number } = useI18n();
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<Descriptions>(new Map());
@@ -412,27 +414,27 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   };
 
   const plusEntries: MenuEntry[] = plusMenuEntries().map((id): MenuEntry => {
-    if (id === 'upload') return { kind: 'item', label: 'Upload a file', icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : 'Attachments unavailable here', onSelect: () => fileInput.current?.click() };
+    if (id === 'upload') return { kind: 'item', label: t('composer.upload'), icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : t('composer.noAttachments'), onSelect: () => fileInput.current?.click() };
     const label = id === 'thread' ? 'Create thread' : id === 'poll' ? 'Create poll' : 'Use apps';
     return { kind: 'item', label, disabled: true, onSelect: () => undefined };
   });
   const FORMATS: { kind: FormatKind; label: string; icon: ReactNode }[] = [
-    { kind: 'bold', label: 'Bold', icon: <TextB size={16} /> },
-    { kind: 'italic', label: 'Italic', icon: <TextItalic size={16} /> },
-    { kind: 'strike', label: 'Strikethrough', icon: <TextStrikethrough size={16} /> },
-    { kind: 'spoiler', label: 'Spoiler', icon: <EyeSlash size={16} /> },
-    { kind: 'code', label: 'Code', icon: <Code size={16} /> },
-    { kind: 'quote', label: 'Quote', icon: <Quotes size={16} /> },
+    { kind: 'bold', label: t('composer.bold'), icon: <TextB size={16} /> },
+    { kind: 'italic', label: t('composer.italic'), icon: <TextItalic size={16} /> },
+    { kind: 'strike', label: t('composer.strike'), icon: <TextStrikethrough size={16} /> },
+    { kind: 'spoiler', label: t('composer.spoiler'), icon: <EyeSlash size={16} /> },
+    { kind: 'code', label: t('composer.code'), icon: <Code size={16} /> },
+    { kind: 'quote', label: t('composer.quote'), icon: <Quotes size={16} /> },
   ];
 
-  const placeholder = !canSend ? 'You do not have permission to send messages in this channel' : `Message ${channel.guild_id ? `#${channel.name}` : channel.recipients?.length === 1 ? `@${displayName(channel.recipients[0]!)}` : 'group'}`;
+  const placeholder = !canSend ? t('composer.noPermission') : t('chat.messageTo', { name: channel.guild_id ? `#${channel.name}` : channel.recipients?.length === 1 ? `@${displayName(channel.recipients[0]!)}` : t('composer.group') });
   const replyName = replyTo ? displayName(replyTo.author) : '';
 
   return (
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
       {suggestions.length > 0 && (
-        <ul className="suggestions glass" role="listbox" aria-label={commandSearch !== null ? 'Commands' : 'Suggestions'}>
+        <ul className="suggestions glass" role="listbox" aria-label={t(commandSearch !== null ? 'composer.commands' : 'composer.suggestions')}>
           {suggestions.map((s, i) => (
             <li key={s.key} role="option" aria-selected={i === selected}>
               <button type="button" className={i === selected ? 'is-selected' : ''} onMouseEnter={() => setSelected(i)} onMouseDown={(e) => { e.preventDefault(); accept(s); }}>
@@ -447,21 +449,21 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       <div className={`composer${dragging ? ' is-dragging' : ''}${!canSend ? ' is-disabled' : ''}`}>
         {replyTo && (
           <div className="composer-reply">
-            <ArrowBendUpLeft size={14} /> Replying to <strong>{replyName}</strong>
+            <ArrowBendUpLeft size={14} /> <strong>{t('composer.replyingTo', { name: replyName })}</strong>
             <span className="composer-reply-text">{replyTo.content}</span>
             {replyTo.author.id !== me && (
               <button
                 type="button"
                 className={`composer-reply-ping${pingReplied ? ' is-on' : ''}`}
                 aria-pressed={pingReplied}
-                aria-label={pingReplied ? `Mention ${replyName}: on` : `Mention ${replyName}: off`}
-                title={pingReplied ? 'Mention on' : 'Mention off'}
+                aria-label={t(pingReplied ? 'composer.mentionOnName' : 'composer.mentionOffName', { name: replyName })}
+                title={t(pingReplied ? 'composer.mentionOn' : 'composer.mentionOff')}
                 onClick={() => setPingReplied(!pingReplied)}
               >
-                @ {pingReplied ? 'ON' : 'OFF'}
+                @ {t(pingReplied ? 'composer.on' : 'composer.off')}
               </button>
             )}
-            <IconButton label="Cancel reply" size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
+            <IconButton label={t('composer.cancelReply')} size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
           </div>
         )}
         <ComposerFiles files={files} descriptions={descriptions} allowDescriptions={standard} onChange={(next, nextDescriptions) => { setFiles(next); setDescriptions(nextDescriptions); }} />
@@ -469,22 +471,22 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           <SlashCommandPanel entry={command} values={commandValues} channel={channel} busy={running} onChange={setCommandValues} onRun={() => void runCommand()} onCancel={() => { setCommand(null); ref.current?.focus(); }} />
         )}
         {pendingPaste !== null && (
-          <div className="composer-paste" role="alertdialog" aria-label="Long paste">
-            <span>That is {[...pendingPaste].length.toLocaleString()} characters, over the {MAX_MESSAGE_LENGTH} limit.</span>
-            <button type="button" className="composer-paste-btn is-primary" autoFocus onClick={() => resolvePaste(true)}>Convert to file</button>
-            <button type="button" className="composer-paste-btn" onClick={() => resolvePaste(false)}>Send as message</button>
-            <IconButton label="Dismiss" size="sm" onClick={() => { setPendingPaste(null); ref.current?.focus(); }}><X size={14} /></IconButton>
+          <div className="composer-paste" role="alertdialog" aria-label={t('composer.longPaste')}>
+            <span>{t('composer.pasteLimit', { count: [...pendingPaste].length, limit: MAX_MESSAGE_LENGTH })}</span>
+            <button type="button" className="composer-paste-btn is-primary" autoFocus onClick={() => resolvePaste(true)}>{t('composer.convertFile')}</button>
+            <button type="button" className="composer-paste-btn" onClick={() => resolvePaste(false)}>{t('composer.sendAsMessage')}</button>
+            <IconButton label={t('composer.dismiss')} size="sm" onClick={() => { setPendingPaste(null); ref.current?.focus(); }}><X size={14} /></IconButton>
           </div>
         )}
         {hasSelection && canSend && !command && (
-          <div className="composer-format" role="toolbar" aria-label="Text formatting">
+          <div className="composer-format" role="toolbar" aria-label={t('composer.formatting')}>
             {FORMATS.map((f) => (
               <IconButton key={f.kind} label={f.label} size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => format(f.kind)}>{f.icon}</IconButton>
             ))}
           </div>
         )}
         <div className="composer-row">
-          <IconButton label="Add to message" aria-haspopup="menu" aria-expanded={plusMenu.open} disabled={!canSend} onClick={plusMenu.openBelow}>
+          <IconButton label={t('composer.add')} aria-haspopup="menu" aria-expanded={plusMenu.open} disabled={!canSend} onClick={plusMenu.openBelow}>
             <PlusCircle size={22} />
           </IconButton>
           <Menu open={plusMenu.open} x={plusMenu.anchor?.x ?? 0} y={plusMenu.anchor?.y ?? 0} entries={plusEntries} onClose={plusMenu.close} minWidth={180} />
@@ -524,20 +526,20 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
             }}
           />
           {showCounter(remainingChars) && (
-            <span className={`composer-counter${tooLong ? ' is-over' : ''}`} role="status" aria-label={`${remainingChars} characters remaining`}>{remainingChars}</span>
+            <span className={`composer-counter${tooLong ? ' is-over' : ''}`} role="status" aria-label={t('composer.charactersLeft', { count: remainingChars })}>{number(remainingChars)}</span>
           )}
-          {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
+          {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={t('composer.slowmodeLabel', { count: slowmodeLeft })}>{t('composer.slowmode', { time: formatCountdown(slowmodeLeft) })}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
-          <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
-          <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
-          <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
+          <IconButton label={t('composer.timestamp')} disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
+          <IconButton label={t('composer.emoji')} disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
+          <IconButton label={slowmodeLeft > 0 ? t('composer.wait', { count: slowmodeLeft }) : t('composer.send')} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
           </IconButton>
         </div>
         {!standard && (
           <p className="composer-note"><LockSimple size={12} weight="fill" /> {mode === 'ephemeral' ? 'End-to-end encrypted with MLS. Kept only on your devices.' : 'Sent directly to your peer. Kept only on your devices.'}</p>
         )}
-        {dragging && <div className="drop-overlay">Drop files to attach</div>}
+        {dragging && <div className="drop-overlay">{t('composer.drop')}</div>}
       </div>
       {emoji.node}
       <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />

@@ -9,12 +9,12 @@ export function useNow(intervalMs = 1000): number {
   return now;
 }
 
-export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+export function formatTime(iso: string, locale?: string): string {
+  return new Date(iso).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatDay(ms: number): string {
-  return new Date(ms).toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+export function formatDay(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 export function formatDuration(totalSeconds: number): string {

@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Gear, Headphones, SpeakerSlash, Microphone, MicrophoneSlash } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { usePresenceStore } from '@discordy/core/application/stores/peopleStores';
@@ -5,7 +6,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { menuTopAbove } from '@discordy/core/domain/menuPlacement';
-import { customStatusLine, shownStatus, STATUS_CHOICES, statusLabel, type ManualStatus } from '@discordy/core/domain/selfPresence';
+import { customStatusLine, shownStatus, STATUS_CHOICES, type ManualStatus } from '@discordy/core/domain/selfPresence';
 import { setAutoIdle } from '@discordy/core/application/selfPresence';
 import { publishPresence } from '../../app/presenceActions';
 import { attempt } from '../../app/actions';
@@ -26,6 +27,7 @@ export function setStatus(status: ManualStatus): void {
 }
 
 export function UserPanel() {
+  const { t } = useI18n();
   const user = useSessionStore((s) => s.user);
   const settingsStatus = useSessionStore((s) => s.settings.status);
   const storedCustom = useSessionStore((s) => s.settings.custom_status);
@@ -42,11 +44,11 @@ export function UserPanel() {
   const customStatus = customStatusLine(storedCustom, Date.now());
 
   const entries: MenuEntry[] = [
-    { kind: 'label', label: 'Status' },
-    ...STATUS_CHOICES.map<MenuEntry>((s) => ({ kind: 'item', label: s.label, checked: (settingsStatus ?? 'online') === s.id, onSelect: () => setStatus(s.id) })),
+    { kind: 'label', label: t('shell.status') },
+    ...STATUS_CHOICES.map<MenuEntry>((s) => ({ kind: 'item', label: t(`presence.${s.id}`), checked: (settingsStatus ?? 'online') === s.id, onSelect: () => setStatus(s.id) })),
     { kind: 'separator' },
-    { kind: 'item', label: 'Set custom status', onSelect: () => openDialog({ kind: 'customStatus' }) },
-    { kind: 'item', label: 'Edit profile', onSelect: () => openSettings({ kind: 'user', tab: 'profile' }) },
+    { kind: 'item', label: t('shell.customStatus'), onSelect: () => openDialog({ kind: 'customStatus' }) },
+    { kind: 'item', label: t('shell.editProfile'), onSelect: () => openSettings({ kind: 'user', tab: 'profile' }) },
   ];
 
   return (
@@ -59,28 +61,28 @@ export function UserPanel() {
           setMenu({ x: r.left, y: menuTopAbove(r, entries.length, window.innerHeight) });
         }}
         aria-haspopup="menu"
-        aria-label="Account and status"
+        aria-label={t('shell.accountStatus')}
       >
         <Avatar id={user.id} name={displayName(user)} avatar={user.avatar} size={34} status={status === 'invisible' ? 'offline' : status} />
         <span className="user-panel-copy">
           <span className="user-panel-name">{displayName(user)}</span>
-          <span className="user-panel-sub">{customStatus || statusLabel(status)}</span>
+          <span className="user-panel-sub">{customStatus || t(`presence.${status}`)}</span>
         </span>
       </button>
       <div className="user-panel-actions">
         <span className="split-control">
-          <IconButton label={selfMute ? 'Unmute' : 'Mute'} hint={muteKeys} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
+          <IconButton label={t(selfMute ? 'shell.unmute' : 'shell.mute')} hint={muteKeys} active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
             {selfMute ? <MicrophoneSlash size={20} /> : <Microphone size={20} />}
           </IconButton>
           <DeviceArrow kind="input" />
         </span>
         <span className="split-control">
-          <IconButton label={selfDeaf ? 'Undeafen' : 'Deafen'} hint={deafenKeys} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
+          <IconButton label={t(selfDeaf ? 'shell.undeafen' : 'shell.deafen')} hint={deafenKeys} active={selfDeaf} tone={selfDeaf ? 'danger' : 'default'} onClick={() => void toggleDeafen()}>
             {selfDeaf ? <SpeakerSlash size={20} /> : <Headphones size={20} />}
           </IconButton>
           <DeviceArrow kind="output" />
         </span>
-        <IconButton label="User settings" onClick={() => openSettings({ kind: 'user', tab: 'account' })}>
+        <IconButton label={t('settings.user')} onClick={() => openSettings({ kind: 'user', tab: 'account' })}>
           <Gear size={20} />
         </IconButton>
       </div>

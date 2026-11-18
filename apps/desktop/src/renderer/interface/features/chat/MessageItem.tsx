@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowClockwise, BellSlash, ChatTeardropText, Eye, LockKey, Timer, Plugs, WarningCircle } from '@phosphor-icons/react';
 import { isMentioned, isSilent } from '@discordy/core/domain/notificationPolicy';
 import { memo, useRef, useState } from 'react';
@@ -38,6 +39,7 @@ import { SystemMessage } from './SystemMessage';
 import { isSystemType } from '@discordy/core/domain/systemMessage';
 
 function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
+  const { t } = useI18n();
   const ref = message.referenced_message ?? (message.message_reference?.message_id ? useMessageStore.getState().timelines[message.channel_id]?.byId[message.message_reference.message_id] : null);
   const compact = usePrefsStore((s) => s.compactReplyPreview);
   if (!message.message_reference || isForward(message)) return null;
@@ -53,10 +55,10 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
             {!compact && <Avatar id={ref.author.id} name={displayName(ref.author)} avatar={ref.author.avatar} size={16} />}
             <span className="reply-name">@{displayName(ref.author)}</span>
           </UserMenuTarget>
-          <span className="reply-text">{replyPreviewText(ref.content, compact) || 'Click to see attachment'}</span>
+          <span className="reply-text">{replyPreviewText(ref.content, compact) || t('chat.attachmentPreview')}</span>
         </>
       ) : (
-        <span className="reply-text is-missing">{message.referenced_message === null ? 'Original message was deleted' : 'Original message unavailable'}</span>
+        <span className="reply-text is-missing">{message.referenced_message === null ? t('chat.originalDeleted') : t('chat.originalUnavailable')}</span>
       )}
     </div>
   );
@@ -64,10 +66,11 @@ function ReplyPreview({ message, guildId }: { message: ChatMessage; guildId: str
 
 /** Header timestamp: Today at / Yesterday at / date, with the full date on hover. Re-evaluated each minute so it rolls over at midnight. */
 function HeaderTime({ iso }: { iso: string }) {
+  const { locale } = useI18n();
   const now = useNow(60_000);
   return (
-    <Tooltip label={fullMessageTime(iso)}>
-      <time className="message-time tnum" dateTime={iso} tabIndex={0}>{formatMessageTime(iso, now)}</time>
+    <Tooltip label={fullMessageTime(iso, locale)}>
+      <time className="message-time tnum" dateTime={iso} tabIndex={0}>{formatMessageTime(iso, now, locale)}</time>
     </Tooltip>
   );
 }
@@ -209,6 +212,7 @@ export interface MessageItemProps {
 }
 
 export const MessageItem = memo(function MessageItem({ message, startsGroup, guildId, onRetry, onDiscard, flash }: MessageItemProps) {
+  const { t, locale, date } = useI18n();
   const me = useSessionStore((s) => s.user?.id);
   const myRoles = useGuildStore((s) => (me && message.guild_id ? s.members[message.guild_id]?.[me]?.roles : undefined));
   const editing = useUiStore((s) => s.editing?.messageId === message.id);
@@ -241,13 +245,13 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
         <div className="message-gutter">
           {startsGroup ? (
             <UserMenuTarget userId={message.author.id} name={name} guildId={guildId} user={message.author}>
-              <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={`Profile of ${name}`}>
+              <button type="button" className="message-avatar" onClick={() => openDialog({ kind: 'profile', userId: message.author.id, guildId: guildId ?? null })} aria-label={t('chat.profileOf', { name })}>
                 <Avatar id={message.author.id} name={name} avatar={message.author.avatar} size={40} bot={message.author.bot} />
               </button>
             </UserMenuTarget>
           ) : (
-            <Tooltip label={fullMessageTime(message.timestamp)}>
-              <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
+            <Tooltip label={fullMessageTime(message.timestamp, locale)}>
+              <time className="message-time-gutter tnum" dateTime={message.timestamp}>{formatTime(message.timestamp, locale)}</time>
             </Tooltip>
           )}
         </div>
@@ -261,14 +265,14 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               </UserMenuTarget>
               {message.author.bot && <AppTag />}
               {message.deliveryMode === 'ephemeral' && (
-                <Tooltip label="Delivered end-to-end encrypted. Stored only on your devices."><span className="message-mode mode-ephemeral" tabIndex={0}><LockKey size={12} weight="fill" /></span></Tooltip>
+                <Tooltip label={t('chat.encrypted')}><span className="message-mode mode-ephemeral" tabIndex={0}><LockKey size={12} weight="fill" /></span></Tooltip>
               )}
               {message.deliveryMode === 'p2p' && (
-                <Tooltip label="Delivered directly peer-to-peer. Stored only on your devices."><span className="message-mode mode-p2p" tabIndex={0}><Plugs size={12} weight="fill" /></span></Tooltip>
+                <Tooltip label={t('chat.peerDelivered')}><span className="message-mode mode-p2p" tabIndex={0}><Plugs size={12} weight="fill" /></span></Tooltip>
               )}
               <HeaderTime iso={message.timestamp} />
               {message.expiresAt !== undefined && (
-                <Tooltip label={`Disappears ${new Date(message.expiresAt).toLocaleString()}`}><span className="message-mode" tabIndex={0}><Timer size={12} /></span></Tooltip>
+                <Tooltip label={t('chat.disappears', { time: date(message.expiresAt, { dateStyle: 'medium', timeStyle: 'short' }) })}><span className="message-mode" tabIndex={0}><Timer size={12} /></span></Tooltip>
               )}
             </header>
           )}
@@ -279,13 +283,13 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
               {message.content && <MarkdownView source={message.content} guildId={guildId} />}
               {message.content && <InviteCards content={message.content} />}
               {isSilent(message) && (
-                <Tooltip label="Sent silently: no notification">
-                  <span className="silent-mark" tabIndex={0} role="img" aria-label="Silent message"><BellSlash size={12} /></span>
+                <Tooltip label={t('chat.silentHelp')}>
+                  <span className="silent-mark" tabIndex={0} role="img" aria-label={t('chat.silent')}><BellSlash size={12} /></span>
                 </Tooltip>
               )}
               {message.edited_timestamp && (
-                <Tooltip label={`Edited ${fullMessageTime(message.edited_timestamp)}`}>
-                  <span className="edited" tabIndex={0}>(edited)</span>
+                <Tooltip label={t('chat.editedAt', { time: fullMessageTime(message.edited_timestamp, locale) })}>
+                  <span className="edited" tabIndex={0}>{t('chat.edited')}</span>
                 </Tooltip>
               )}
             </>
@@ -298,20 +302,20 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           <Reactions message={message} />
           {ephemeral && (
             <p className="message-ephemeral">
-              <Eye size={13} /> Only you can see this
-              <button type="button" onClick={() => useMessageStore.getState().remove(message.channel_id, message.id)}>Dismiss message</button>
+              <Eye size={13} /> {t('chat.onlyYou')}
+              <button type="button" onClick={() => useMessageStore.getState().remove(message.channel_id, message.id)}>{t('chat.dismiss')}</button>
             </p>
           )}
           {message.thread && (
             <button type="button" className="thread-chip" onClick={() => setSidePanel({ kind: 'thread', threadId: message.thread!.id })}>
-              <ChatTeardropText size={16} /> {message.thread.name} <span>{message.thread.message_count ?? 0} messages</span>
+              <ChatTeardropText size={16} /> {message.thread.name} <span>{t('chat.messageCount', { count: message.thread.message_count ?? 0 })}</span>
             </button>
           )}
           {failed && (
             <p className="message-failed" role="alert">
-              <WarningCircle size={14} weight="fill" /> {message.error ?? 'Not delivered'}
-              <button type="button" onClick={() => onRetry(message)}><ArrowClockwise size={13} /> Retry</button>
-              <button type="button" onClick={() => onDiscard(message)}>Discard</button>
+              <WarningCircle size={14} weight="fill" /> {message.error ?? t('chat.notDelivered')}
+              <button type="button" onClick={() => onRetry(message)}><ArrowClockwise size={13} /> {t('chat.retry')}</button>
+              <button type="button" onClick={() => onDiscard(message)}>{t('chat.discard')}</button>
             </p>
           )}
         </div>

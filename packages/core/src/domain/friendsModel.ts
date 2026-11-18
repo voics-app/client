@@ -1,5 +1,6 @@
 /** Pure view model of the Friends page: tab lists, counts, search and the Active Now column. */
 import { RelationshipType, type Activity, type Relationship, type VoiceState } from '../contracts/rest';
+import { createI18n } from './i18n';
 
 export type FriendsTab = 'online' | 'all' | 'pending' | 'blocked' | 'add';
 export type PresenceLookup = Record<string, { status: string; activities?: Activity[] } | undefined>;
@@ -74,12 +75,13 @@ export function activeNow(friends: Relationship[], voice: Record<string, Record<
 }
 
 /** Clear, actionable text for a failed "add friend by username". */
-export function friendRequestError(status: number, serverMessage: string, username: string): string {
-  if (status === 0) return 'You appear to be offline. Try again when you are connected.';
-  if (status === 404) return `We could not find anyone named "${username}". Check the spelling and try again.`;
-  if (status === 403) return `${username} is not accepting friend requests from you.`;
-  if (status === 429) return 'You are sending requests too quickly. Wait a moment and try again.';
-  if (status === 400 && /self|yourself/i.test(serverMessage)) return 'You cannot add yourself as a friend.';
-  if (status === 400 && /bot/i.test(serverMessage)) return 'Bots cannot be added as friends.';
-  return serverMessage || 'The request could not be sent.';
+export function friendRequestError(status: number, serverMessage: string, username: string, locale?: string): string {
+  const { t } = createI18n(locale);
+  if (status === 0) return t('friends.offline');
+  if (status === 404) return t('friends.notFound', { name: username });
+  if (status === 403) return t('friends.notAccepting', { name: username });
+  if (status === 429) return t('friends.rateLimited');
+  if (status === 400 && /self|yourself/i.test(serverMessage)) return t('friends.self');
+  if (status === 400 && /bot/i.test(serverMessage)) return t('friends.bot');
+  return serverMessage || t('friends.requestFailed');
 }

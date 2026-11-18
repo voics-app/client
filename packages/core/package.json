@@ -27,6 +27,7 @@
     "vitest": "3.2.4"
   },
   "dependencies": {
+    "intl-messageformat": "12.2.0",
     "zustand": "5.0.8"
   }
 }

@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { Trash, Upload } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
@@ -72,6 +73,7 @@ export function ServerEmoji({ guildId }: { guildId: string }) {
 }
 
 export function ServerMembers({ guildId }: { guildId: string }) {
+  const { locale } = useI18n();
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const members = useGuildStore((s) => s.members[guildId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -140,7 +142,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
           <li key={m.user.id}>
             {m.user.id !== guild.owner_id && m.user.id !== me && <input type="checkbox" aria-label={`Select ${m.user.username}`} checked={selected.has(m.user.id)} onChange={() => toggle(m.user.id)} />}
             <Avatar id={m.user.id} name={displayName(m.user, m.nick)} avatar={m.user.avatar} size={34} />
-            <div className="manage-copy"><strong>{displayName(m.user, m.nick)}</strong><span className="mono">{m.user.username}{isTimedOut(m) ? ' · timed out' : ''} · joined {new Date(m.joined_at).toLocaleDateString()}</span></div>
+            <div className="manage-copy"><strong>{displayName(m.user, m.nick)}</strong><span className="mono">{m.user.username}{isTimedOut(m) ? ' · timed out' : ''} · joined {new Date(m.joined_at).toLocaleDateString(locale)}</span></div>
             <Select aria-label={`Add role to ${m.user.username}`} value="" onChange={(e) => { const rid = e.target.value; if (rid) void attempt(() => getRuntime().api.addMemberRole(guildId, m.user.id, rid), 'Could not add role'); }}>
               <option value="">{m.roles.filter((r) => r !== guildId).length} roles, add</option>
               {assignable.filter((r) => !m.roles.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -154,6 +156,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
 }
 
 export function ServerInvites({ guildId }: { guildId: string }) {
+  const { locale } = useI18n();
   const qc = useQueryClient();
   const apiUrl = useConnectionStore((c) => c.apiUrl);
   const invites = useQuery({ queryKey: ['guild', guildId, 'invites'], queryFn: () => getRuntime().api.guildInvites(guildId) });
@@ -163,7 +166,7 @@ export function ServerInvites({ guildId }: { guildId: string }) {
         <ul className="manage-list">
           {invites.data?.map((i) => (
             <li key={i.code}>
-              <div className="manage-copy"><strong className="mono">{i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
+              <div className="manage-copy"><strong className="mono">{i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString(locale)}` : ' · never expires'}</span></div>
               <Button size="sm" onClick={() => void copyText(inviteWebUrl(i.code, apiUrl), 'Invite link copied')}>Copy</Button>
               <IconButton label="Revoke invite" tone="danger" onClick={() => void attempt(async () => { await getRuntime().api.deleteInvite(i.code); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'invites'] }); }, 'Could not revoke invite')}><Trash size={18} /></IconButton>
             </li>
@@ -199,6 +202,7 @@ export function ServerBans({ guildId }: { guildId: string }) {
 }
 
 export function ServerAudit({ guildId }: { guildId: string }) {
+  const { locale } = useI18n();
   const auditEnabled = useGuildStore((s) => s.guilds[guildId]?.audit_log_enabled ?? true);
   const [actionType, setActionType] = useState('');
   const [actorId, setActorId] = useState('');
@@ -236,7 +240,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
                 <Avatar id={actor?.id} name={actor ? displayName(actor) : '?'} avatar={actor?.avatar} size={30} />
                 <div className="manage-copy"><strong>{actor ? displayName(actor) : 'Unknown'} {AUDIT_ACTIONS[e.action_type] ?? `performed action ${e.action_type}`}</strong>{e.reason && <span>Reason: {e.reason}</span>}</div>
                 {isMemberAuditEntry(e) && <Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openDialog({ kind: 'modView', guildId, userId: e.target_id as string })}>Mod View</Button>}
-                <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString()}</time>
+                <time className="tnum">{new Date(timestampOf(e.id)).toLocaleString(locale)}</time>
               </li>
             );
           })}

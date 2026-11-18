@@ -1,4 +1,5 @@
 /** Message timestamp labels: "Today at 3:04 PM", "Yesterday at ...", else a short locale date. Pure; callers pass `now`. */
+import { createI18n } from './i18n';
 
 function dayKey(ms: number, timeZone?: string): string {
   // en-CA gives a sortable yyyy-mm-dd key in the requested zone.
@@ -21,8 +22,9 @@ export function formatMessageTime(iso: string, nowMs: number, locale?: string, t
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return '';
   const days = calendarDaysAgo(ms, nowMs, timeZone);
-  if (days === 0) return `Today at ${clockTime(ms, locale, timeZone)}`;
-  if (days === 1) return `Yesterday at ${clockTime(ms, locale, timeZone)}`;
+  const { t } = createI18n(locale);
+  if (days === 0) return t('chat.today', { time: clockTime(ms, locale, timeZone) });
+  if (days === 1) return t('chat.yesterday', { time: clockTime(ms, locale, timeZone) });
   return `${new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeZone }).format(new Date(ms))} ${clockTime(ms, locale, timeZone)}`;
 }
 

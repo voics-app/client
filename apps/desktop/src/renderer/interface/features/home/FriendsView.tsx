@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Check, ChatCircle, MagnifyingGlass, Phone, UserPlus, UsersThree, VideoCamera, X } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
@@ -25,12 +26,13 @@ import { UserMenuTarget } from '../members/UserContextMenu';
 import { BRAND } from '@shared/brand';
 
 function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
+  const { t } = useI18n();
   const status = usePresenceStore((s) => s.byUser[rel.id]?.status ?? 'offline');
   const openDialog = useUiStore((s) => s.openDialog);
   const api = getRuntime().api;
   const name = rel.nickname || displayName(rel.user);
   const message = async () => {
-    const channel = await attempt(() => api.openPrivateChannel([rel.id]), 'Could not open conversation');
+    const channel = await attempt(() => api.openPrivateChannel([rel.id]), t('friends.openFailed'));
     if (channel) {
       useGuildStore.getState().upsertChannel(channel);
       openChannel(channel.id);
@@ -44,22 +46,23 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
         <Avatar id={rel.id} name={name} avatar={rel.user.avatar} size={38} status={tab === 'blocked' ? null : status} />
         <span className="friend-copy">
           <span className="friend-name">{name}</span>
-          <span className="friend-sub">{rel.type === RelationshipType.INCOMING ? 'Incoming friend request' : rel.type === RelationshipType.OUTGOING ? 'Outgoing friend request' : rel.type === RelationshipType.BLOCKED ? 'Blocked' : status === 'offline' ? 'Offline' : status[0]!.toUpperCase() + status.slice(1)}</span>
+          <span className="friend-sub">{rel.type === RelationshipType.INCOMING ? t('friends.incoming') : rel.type === RelationshipType.OUTGOING ? t('friends.outgoing') : rel.type === RelationshipType.BLOCKED ? t('friends.blocked') : status === 'offline' ? t('presence.offline') : t(`presence.${status}`)}</span>
         </span>
       </button>
       </UserMenuTarget>
       <span className="friend-actions">
-        {isFriend && <IconButton label="Message" onClick={() => void message()}><ChatCircle size={20} weight="fill" /></IconButton>}
-        {isFriend && <IconButton label="Voice call" onClick={() => void callUser(rel.id)}><Phone size={20} weight="fill" /></IconButton>}
-        {isFriend && <IconButton label="Video call" onClick={() => void callUser(rel.id, true)}><VideoCamera size={20} weight="fill" /></IconButton>}
-        {rel.type === RelationshipType.INCOMING && <IconButton label="Accept" tone="accent" onClick={() => void attempt(() => api.putRelationship(rel.id), 'Could not accept')}><Check size={20} weight="bold" /></IconButton>}
-        <IconButton label={rel.type === RelationshipType.BLOCKED ? 'Unblock' : isFriend ? 'Remove friend' : rel.type === RelationshipType.OUTGOING ? 'Cancel request' : 'Ignore'} tone="danger" onClick={() => void attempt(() => api.deleteRelationship(rel.id), 'Could not update')}><X size={20} weight="bold" /></IconButton>
+        {isFriend && <IconButton label={t('common.message')} onClick={() => void message()}><ChatCircle size={20} weight="fill" /></IconButton>}
+        {isFriend && <IconButton label={t('common.voiceCall')} onClick={() => void callUser(rel.id)}><Phone size={20} weight="fill" /></IconButton>}
+        {isFriend && <IconButton label={t('common.videoCall')} onClick={() => void callUser(rel.id, true)}><VideoCamera size={20} weight="fill" /></IconButton>}
+        {rel.type === RelationshipType.INCOMING && <IconButton label={t('common.accept')} tone="accent" onClick={() => void attempt(() => api.putRelationship(rel.id), t('friends.acceptFailed'))}><Check size={20} weight="bold" /></IconButton>}
+        <IconButton label={rel.type === RelationshipType.BLOCKED ? t('friends.unblock') : isFriend ? t('friends.remove') : rel.type === RelationshipType.OUTGOING ? t('friends.cancelRequest') : t('common.ignore')} tone="danger" onClick={() => void attempt(() => api.deleteRelationship(rel.id), t('friends.updateFailed'))}><X size={20} weight="bold" /></IconButton>
       </span>
     </li>
   );
 }
 
 function AddFriend() {
+  const { t, locale } = useI18n();
   const [username, setUsername] = useState('');
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,21 +71,21 @@ function AddFriend() {
     setBusy(true);
     try {
       await getRuntime().api.sendFriendRequest(username.trim());
-      setResult({ ok: true, text: `Friend request sent to ${username.trim()}.` });
+      setResult({ ok: true, text: t('friends.sent', { name: username.trim() }) });
       setUsername('');
     } catch (err) {
-      setResult({ ok: false, text: err instanceof ApiError ? friendRequestError(err.status, err.message, username.trim()) : errorMessage(err) });
+      setResult({ ok: false, text: err instanceof ApiError ? friendRequestError(err.status, err.message, username.trim(), locale) : errorMessage(err) });
     } finally {
       setBusy(false);
     }
   };
   return (
     <form className="add-friend" onSubmit={submit}>
-      <h2>Add friend</h2>
-      <p>You can add people with their {BRAND.displayName} username.</p>
+      <h2>{t('friends.add')}</h2>
+      <p>{t('friends.addHelp', { app: BRAND.displayName })}</p>
       <div className="add-friend-row">
-        <Input aria-label="Username" data-autofocus placeholder="Enter a username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <Button type="submit" variant="primary" loading={busy} disabled={username.trim().length < 2}>Send request</Button>
+        <Input aria-label={t('common.username')} data-autofocus placeholder={t('friends.enterUsername')} value={username} onChange={(e) => setUsername(e.target.value)} />
+        <Button type="submit" variant="primary" loading={busy} disabled={username.trim().length < 2}>{t('friends.send')}</Button>
       </div>
       {result && <p className={`add-friend-result${result.ok ? ' is-ok' : ' is-bad'}`} role="status">{result.text}</p>}
     </form>
@@ -90,6 +93,7 @@ function AddFriend() {
 }
 
 function JoinActivityVoice({ channelId, guildId }: { channelId: string; guildId: string | null }) {
+  const { t } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const permissions = useChannelPermissions(channelId);
   const connected = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
@@ -97,27 +101,28 @@ function JoinActivityVoice({ channelId, guildId }: { channelId: string; guildId:
   if (!channel || !guildId || channel.guild_id !== guildId ||
     (channel.type !== ChannelType.GUILD_VOICE && channel.type !== ChannelType.GUILD_STAGE_VOICE) ||
     !can(permissions, Permission.VIEW_CHANNEL) || !can(permissions, Permission.CONNECT)) return null;
-  return <Button size="sm" variant="ghost" disabled={connected} onClick={() => void openVoiceChannel(guildId, channelId)}>{connected ? 'Joined' : 'Join voice'}</Button>;
+  return <Button size="sm" variant="ghost" disabled={connected} onClick={() => void openVoiceChannel(guildId, channelId)}>{connected ? t('friends.joined') : t('friends.joinVoice')}</Button>;
 }
 
 function ActiveNow({ friends }: { friends: Relationship[] }) {
+  const { t } = useI18n();
   const voice = useVoiceStore((s) => s.states);
   const presence = usePresenceStore((s) => s.byUser);
   const channels = useGuildStore((s) => s.channels);
   const guilds = useGuildStore((s) => s.guilds);
   const entries = activeNow(friends, voice, presence);
   return (
-    <aside className="active-now" aria-label="Active Now">
-      <h2>Active Now</h2>
+    <aside className="active-now" aria-label={t('friends.active')}>
+      <h2>{t('friends.active')}</h2>
       {entries.length === 0 ? (
-        <p className="setting-desc">Friends' voice channels, activities and custom statuses appear here.</p>
+        <p className="setting-desc">{t('friends.activeEmpty')}</p>
       ) : (
         <ul>
           {entries.map((e) => {
             const name = e.rel.nickname || displayName(e.rel.user);
             const channel = e.channelId ? channels[e.channelId] : undefined;
             const guild = e.guildId ? guilds[e.guildId] : undefined;
-            const where = e.kind === 'voice' ? `In voice${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : e.kind === 'playing' ? `Playing ${e.detail}` : e.detail;
+            const where = e.kind === 'voice' ? `${t('friends.inVoice')}${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : e.kind === 'playing' ? t('friends.playing', { name: e.detail }) : e.detail;
             return (
               <li key={e.rel.id} className="active-now-card">
                 <Avatar id={e.rel.id} name={name} avatar={e.rel.user.avatar} size={36} status={presence[e.rel.id]?.status ?? 'offline'} />
@@ -133,6 +138,7 @@ function ActiveNow({ friends }: { friends: Relationship[] }) {
 }
 
 export function FriendsView() {
+  const { t, number } = useI18n();
   const [tab, setTab] = useState<Tab>('online');
   const [query, setQuery] = useState('');
   const byUser = useRelationshipStore((s) => s.byUser);
@@ -143,23 +149,23 @@ export function FriendsView() {
   const { friends, online, incoming, outgoing, blocked } = view;
   const list = tab === 'online' ? online : tab === 'all' ? friends : tab === 'pending' ? [...incoming, ...outgoing] : blocked;
   const tabs: { id: Tab; label: string; count: number; tone: 'accent' | 'danger' }[] = [
-    { id: 'online', label: 'Online', count: total.online.length, tone: 'accent' },
-    { id: 'all', label: 'All', count: total.friends.length, tone: 'accent' },
-    { id: 'pending', label: 'Pending', count: total.incoming.length + total.outgoing.length, tone: 'danger' },
-    { id: 'blocked', label: 'Blocked', count: total.blocked.length, tone: 'accent' },
+    { id: 'online', label: t('presence.online'), count: total.online.length, tone: 'accent' },
+    { id: 'all', label: t('friends.all'), count: total.friends.length, tone: 'accent' },
+    { id: 'pending', label: t('friends.pending'), count: total.incoming.length + total.outgoing.length, tone: 'danger' },
+    { id: 'blocked', label: t('friends.blocked'), count: total.blocked.length, tone: 'accent' },
   ];
-  const emptyTitle = tab === 'online' ? 'No friends online' : tab === 'pending' ? 'No pending requests' : tab === 'blocked' ? 'Nobody is blocked' : 'No friends yet';
+  const emptyTitle = tab === 'online' ? t('friends.noneOnline') : tab === 'pending' ? t('friends.nonePending') : tab === 'blocked' ? t('friends.noneBlocked') : t('friends.none');
   return (
-    <section className="friends" aria-label="Friends">
+    <section className="friends" aria-label={t('friends.title')}>
       <header className="channel-header">
-        <div className="channel-header-title"><UsersThree size={22} className="channel-header-icon" /><h1>Friends</h1></div>
+        <div className="channel-header-title"><UsersThree size={22} className="channel-header-icon" /><h1>{t('friends.title')}</h1></div>
         <nav className="friends-tabs" role="tablist">
           {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'is-on' : ''} onClick={() => setTab(t.id)}>
               {t.label} <Count value={t.count} tone={t.tone} />
             </button>
           ))}
-          <button type="button" role="tab" aria-selected={tab === 'add'} className={`add-tab${tab === 'add' ? ' is-on' : ''}`} onClick={() => setTab('add')}><UserPlus size={15} /> Add friend</button>
+          <button type="button" role="tab" aria-selected={tab === 'add'} className={`add-tab${tab === 'add' ? ' is-on' : ''}`} onClick={() => setTab('add')}><UserPlus size={15} /> {t('friends.add')}</button>
         </nav>
       </header>
       <div className="friends-body">
@@ -170,24 +176,24 @@ export function FriendsView() {
             <>
               <div className="friends-search">
                 <MagnifyingGlass size={16} />
-                <Input aria-label="Search friends" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+                <Input aria-label={t('friends.search')} placeholder={t('common.search')} value={query} onChange={(e) => setQuery(e.target.value)} />
               </div>
               {list.length === 0 ? (
                 query ? (
-                  <EmptyState icon={<MagnifyingGlass size={36} weight="light" />} title="No matches" body={`Nobody in this list matches "${query}".`} />
+                  <EmptyState icon={<MagnifyingGlass size={36} weight="light" />} title={t('common.noMatches')} body={t('friends.noMatch', { query })} />
                 ) : (
-                  <EmptyState icon={<UsersThree size={36} weight="light" />} title={emptyTitle} body="Add friends by username to chat, call and share screens." action={<Button variant="primary" onClick={() => setTab('add')}>Add a friend</Button>} />
+                  <EmptyState icon={<UsersThree size={36} weight="light" />} title={emptyTitle} body={t('friends.emptyHelp')} action={<Button variant="primary" onClick={() => setTab('add')}>{t('friends.addAction')}</Button>} />
                 )
               ) : tab === 'pending' ? (
                 <ul className="friend-list">
-                  {incoming.length > 0 && <li className="friend-heading">Incoming — {incoming.length}</li>}
+                  {incoming.length > 0 && <li className="friend-heading">{t('friends.incomingCount', { count: incoming.length })}</li>}
                   {incoming.map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
-                  {outgoing.length > 0 && <li className="friend-heading">Outgoing — {outgoing.length}</li>}
+                  {outgoing.length > 0 && <li className="friend-heading">{t('friends.outgoingCount', { count: outgoing.length })}</li>}
                   {outgoing.map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
                 </ul>
               ) : (
                 <ul className="friend-list">
-                  <li className="friend-heading">{tab === 'online' ? 'Online' : tab === 'all' ? 'All friends' : 'Blocked'} — {list.length}</li>
+                  <li className="friend-heading">{tab === 'online' ? t('presence.online') : tab === 'all' ? t('friends.allFriends') : t('friends.blocked')} — {number(list.length)}</li>
                   {list.map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
                 </ul>
               )}

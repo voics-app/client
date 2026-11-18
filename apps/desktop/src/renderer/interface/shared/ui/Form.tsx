@@ -138,9 +138,9 @@ export function Checkbox({ checked, onChange, label }: { checked: boolean; onCha
   );
 }
 
-export function SettingRow({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+export function SettingRow({ title, description, children, searchKey }: { title: string; description?: ReactNode; children: ReactNode; searchKey?: string }) {
   return (
-    <div className="setting-row" data-row={typeof title === 'string' ? rowSlug(title) : undefined}>
+    <div className="setting-row" data-row={rowSlug(searchKey ?? title)}>
       <div className="setting-copy">
         <p className="setting-title">{title}</p>
         {description && <p className="setting-desc">{description}</p>}

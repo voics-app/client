@@ -5,6 +5,7 @@ import { X } from '@phosphor-icons/react';
 import { trapTarget } from '@discordy/core/domain/rovingFocus';
 import { gentle } from './motion';
 import { IconButton } from './IconButton';
+import { useI18n } from '../i18n';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -21,6 +22,7 @@ interface Props {
 
 /** Double-bezel dialog: a tinted shell around an inner core, with focus trapping and Escape to close. */
 export function Modal({ open, onClose, title, description, children, footer, width = 440, bare }: Props) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const previous = useRef<HTMLElement | null>(null);
 
@@ -83,7 +85,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
                     {title && <h2 className="modal-title">{title}</h2>}
                     {description && <p className="modal-desc">{description}</p>}
                   </div>
-                  <IconButton label="Close" size="sm" onClick={onClose}>
+                  <IconButton label={t('common.close')} size="sm" onClick={onClose}>
                     <X size={18} />
                   </IconButton>
                 </header>

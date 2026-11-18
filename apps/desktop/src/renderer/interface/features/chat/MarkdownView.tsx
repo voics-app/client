@@ -25,6 +25,7 @@ import { Modal } from '../../shared/ui/Modal';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { highlightCode } from './highlighter';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
+import { useI18n } from '../../shared/i18n';
 
 function Spoiler({ children, guildId }: { children: ReactNode; guildId: string | null | undefined }) {
   const [clicked, setClicked] = useState(false);
@@ -115,15 +116,16 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
 }
 
 function Timestamp({ unix, style }: { unix: number; style: 'f' | 't' | 'T' | 'd' | 'D' | 'F' | 'R' }) {
+  const { locale } = useI18n();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (style !== 'R' || !isValidUnix(unix)) return;
     const id = setTimeout(() => setNow(Date.now()), relativeTickMs(unix, now));
     return () => clearTimeout(id);
   }, [style, unix, now]);
-  const label = formatTimestamp(unix, style, now);
+  const label = formatTimestamp(unix, style, now, locale);
   return (
-    <Tooltip label={timestampTooltip(unix)}>
+    <Tooltip label={timestampTooltip(unix, locale)}>
       <time className="md-timestamp" dateTime={isValidUnix(unix) ? new Date(unix * 1000).toISOString() : undefined}>{label}</time>
     </Tooltip>
   );
@@ -267,7 +269,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
 export function MarkdownView({ source, guildId }: { source: string; guildId?: string | null }) {
   const big = isEmojiOnly(source);
   return (
-    <div className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
+    <div dir="auto" className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
       <Nodes nodes={parseMarkdown(source)} guildId={guildId} big={big} />
     </div>
   );

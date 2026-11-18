@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { useEffect, useRef, useState } from 'react';
 import type { BackupCode, Passkey, User } from '@discordy/core/contracts/rest';
 import { looksLikeSecondFactor } from '@discordy/core/domain/accountSecurity';
@@ -83,6 +84,7 @@ function PasskeyModal({ edit, user, origin, onClose, onChanged }: { edit: Edit; 
 }
 
 export function Passkeys({ user }: { user: User }) {
+  const { locale } = useI18n();
   const site = usePasskeySite();
   const [keys, setKeys] = useState<Passkey[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function Passkeys({ user }: { user: User }) {
     </SettingRow>
     {site === null && <p className="setting-desc">Passkey enrollment needs a configured HTTPS ceremony site for this connection. Existing passkeys can still be renamed or removed. Authenticator and backup codes remain available for sign-in.</p>}
     {error ? <p className="field-error" role="alert">{error} <Button onClick={() => setRevision(value => value + 1)}>Retry</Button></p> : keys === null ? <p role="status">Loading passkeys…</p> : keys.length === 0 ? <p className="setting-desc">No passkeys added yet.</p> : <ul className="passkey-list">
-      {keys.map(key => <li key={key.id}><SettingRow title={key.name} description={`Added ${new Date(key.created_at).toLocaleDateString()}. ${key.last_used_at ? `Last used ${new Date(key.last_used_at).toLocaleDateString()}.` : 'Not used yet.'}`}><div className="row"><Button aria-label={`Rename ${key.name}`} onClick={() => setEdit({ kind: 'rename', key })}>Rename</Button><Button variant="danger" aria-label={`Remove ${key.name}`} onClick={() => setEdit({ kind: 'remove', key })}>Remove</Button></div></SettingRow></li>)}
+      {keys.map(key => <li key={key.id}><SettingRow title={key.name} description={`Added ${new Date(key.created_at).toLocaleDateString(locale)}. ${key.last_used_at ? `Last used ${new Date(key.last_used_at).toLocaleDateString(locale)}.` : 'Not used yet.'}`}><div className="row"><Button aria-label={`Rename ${key.name}`} onClick={() => setEdit({ kind: 'rename', key })}>Rename</Button><Button variant="danger" aria-label={`Remove ${key.name}`} onClick={() => setEdit({ kind: 'remove', key })}>Remove</Button></div></SettingRow></li>)}
     </ul>}
     {keys?.length === 10 && <p className="setting-desc">You have ten passkeys. Remove one before adding another.</p>}
     {edit && <PasskeyModal edit={edit} user={user} origin={site?.origin} onClose={() => setEdit(null)} onChanged={() => setRevision(value => value + 1)} />}
