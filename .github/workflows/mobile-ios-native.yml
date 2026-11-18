@@ -21,8 +21,15 @@ jobs:
   native:
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      # ExpoModulesJSI requires Swift tools 6.2; macos-15 defaults to Xcode 16.4/Swift 6.1.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v5
+      - name: Verify the native toolchain
+        run: |
+          xcodebuild -version
+          swift --version
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
