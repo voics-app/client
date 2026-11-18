@@ -2,6 +2,7 @@
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -433,6 +434,21 @@ export class DiscordyApi implements ApiPort {
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams) {
     const path = scope.guildId ? `/guilds/${scope.guildId}/messages/search` : `/channels/${scope.channelId}/messages/search`;
     return this.get<MessageSearchResponse>(path, toQuery(params));
+  }
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage) {
+    return this.post<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled`, body);
+  }
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }) {
+    return this.get<ScheduledMessagePage>(`/channels/${enc(channelId)}/messages/scheduled`, query);
+  }
+  scheduledMessage(channelId: string, scheduleId: string) {
+    return this.get<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`);
+  }
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage) {
+    return this.patch<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, body);
+  }
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number) {
+    return this.http.request<ScheduledMessage>('DELETE', `/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, { query: { expected_revision: expectedRevision } });
   }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
