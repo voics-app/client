@@ -6,6 +6,7 @@ import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, Select } from '../../../shared/ui/Form';
 import { Skeleton } from '../../../shared/ui/Misc';
+import { ServerCommunity } from './ServerCommunity';
 
 export function ServerDiscovery({ guildId }: { guildId: string }) {
   const qc = useQueryClient();
@@ -36,12 +37,13 @@ export function ServerDiscovery({ guildId }: { guildId: string }) {
     <div className="settings-page">
       <h1>Server discovery</h1>
       <p className="page-sub">List this server in Discover so anyone can find and join it.</p>
-      {!data ? (
+      <ServerCommunity guildId={guildId} />
+      {settings.isError ? <div role="alert"><p>Could not load discovery settings.</p><Button onClick={() => void settings.refetch()}>Retry</Button></div> : !data ? (
         <Skeleton height={120} radius={12} />
       ) : (
         <div className="stack">
           <p className="setting-desc">
-            {data.enabled ? 'This server is listed in Discover.' : 'This server is not listed.'} {memberCountLabel(data.member_count)}.
+            {data.enabled ? (data.blockers.length ? 'This listing is paused until the requirements below are met.' : 'This server is listed in Discover.') : 'This server is not listed.'} {memberCountLabel(data.member_count)}.
           </p>
           {data.blockers.length > 0 && (
             <ul className="discovery-blockers" role="status">
@@ -50,17 +52,17 @@ export function ServerDiscovery({ guildId }: { guildId: string }) {
           )}
           <Field label="Category">
             {(id) => (
-              <Select id={id} value={category} onChange={(e) => setCategory(e.target.value)}>
+              <Select id={id} disabled={saving} value={category} onChange={(e) => setCategory(e.target.value)}>
                 <option value="">Choose a category</option>
                 {categories.data?.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
               </Select>
             )}
           </Field>
           <Field label="Tags" hint="Up to 5, separated by commas or spaces. Letters, digits and dashes.">
-            {(id) => <Input id={id} value={tags} placeholder="rust, open-source" onChange={(e) => setTags(e.target.value)} />}
+            {(id) => <Input id={id} disabled={saving} value={tags} placeholder="rust, open-source" onChange={(e) => setTags(e.target.value)} />}
           </Field>
           <div className="discovery-actions">
-            <Button variant="primary" loading={saving} disabled={!category || (data.blockers.length > 0 && !data.enabled)} onClick={() => void save(true)}>
+            <Button variant="primary" loading={saving} disabled={!category || data.blockers.length > 0} onClick={() => void save(true)}>
               {data.enabled ? 'Save listing' : 'List in Discover'}
             </Button>
             {data.enabled && <Button variant="ghost" loading={saving} onClick={() => void save(false)}>Remove from Discover</Button>}

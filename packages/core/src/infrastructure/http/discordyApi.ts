@@ -210,6 +210,9 @@ export class DiscordyApi implements ApiPort {
     return this.del<void>(`/users/@me/relationships/${userId}`);
   }
   createReport(body: CreateReportBody) {
+    if (body.target === 'guild') {
+      return this.post<void>(`/discovery/guilds/${body.guild_id}/reports`, { category: body.category, ...(body.note ? { note: body.note } : {}) });
+    }
     return this.post<void>('/reports', body);
   }
 

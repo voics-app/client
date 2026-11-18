@@ -2,6 +2,7 @@ import { Compass, MagnifyingGlass, UsersThree } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
@@ -65,6 +66,7 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
           <Button variant="primary" loading={busy} onClick={() => void join()}>Join</Button>
         )}
       </div>
+      <Button variant="ghost" aria-label={`Report ${guild.name} listing`} onClick={() => useUiStore.getState().openDialog({ kind: 'report', target: { kind: 'guild', guildId: guild.id, guildName: guild.name } })}>Report listing</Button>
     </li>
   );
 }

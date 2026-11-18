@@ -8,6 +8,11 @@ function fakeHttp() {
 }
 
 describe('DiscordyApi permanent invitations', () => {
+  it('sends a listing report to discovery with only its allowed fields', async () => {
+    const { http, request } = fakeHttp();
+    await new DiscordyApi(http).createReport({ target: 'guild', guild_id: '7', category: 'spam', note: 'Public ad', content: 'must not be sent' });
+    expect(request).toHaveBeenCalledWith('POST', '/discovery/guilds/7/reports', { body: { category: 'spam', note: 'Public ad' }, reason: undefined });
+  });
   it('uses the guild vanity route and sends explicit null when removing', async () => {
     const { http, request } = fakeHttp();
     const api = new DiscordyApi(http);

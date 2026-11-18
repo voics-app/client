@@ -19,6 +19,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ReportDialog', () => {
+  it('explains public listing evidence and submits a guild report', async () => {
+    createReport.mockResolvedValue(undefined);
+    render(<ReportDialog target={{ kind: 'guild', guildId: 'g1', guildName: 'Public hub' }} />);
+    expect(screen.getByRole('dialog', { name: 'Report Public hub listing' })).toBeTruthy();
+    expect(screen.getByText(/public listing.*Private channels/)).toBeTruthy();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /Spam/ }));
+    fireEvent.click(send());
+    expect(await screen.findByText('Report sent')).toBeTruthy();
+    expect(createReport).toHaveBeenCalledWith({ target: 'guild', guild_id: 'g1', category: 'spam' });
+  });
   it('needs a category before it can be sent', () => {
     render(<ReportDialog target={message('standard')} />);
     expect(send().disabled).toBe(true);

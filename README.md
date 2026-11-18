@@ -52,6 +52,18 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 
 ## Desktop navigation and safety
 
+**Server settings → Discovery** includes Community setup. Enable it and choose
+Standard rules/updates channels without age restrictions, then save before
+opting in to Discover. Disabling Community clears those choices and removes the
+listing. An opted-in server that fails eligibility is shown as paused; its
+listing can still be removed. Setup does not add membership screening.
+
+Discover cards offer **Report listing**. The dialog sends a category and optional
+note through the discovery report API; moderators receive a server-captured
+public listing snapshot. Private channels, members and messages are not copied,
+and reporting does not automatically remove a listing. Failed saves/reports keep
+their draft for retry. No new client configuration is needed.
+
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
