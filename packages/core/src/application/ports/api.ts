@@ -1,6 +1,7 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
 import type { SearchParams } from '../../domain/messageSearch';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -194,6 +195,11 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage): Promise<ScheduledMessage>;
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }): Promise<ScheduledMessagePage>;
+  scheduledMessage(channelId: string, scheduleId: string): Promise<ScheduledMessage>;
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage): Promise<ScheduledMessage>;
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number): Promise<ScheduledMessage>;
   editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
