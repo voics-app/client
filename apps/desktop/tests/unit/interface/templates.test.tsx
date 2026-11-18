@@ -35,7 +35,7 @@ const template: GuildTemplate = {
     channels: [{ id: 1, type: 0, name: 'general', position: 0, parent_id: null, topic: null, nsfw: false, permission_overwrites: [] }],
   },
 };
-const builtins = ['gaming', 'friends', 'study-group', 'community', 'creators'].map((code) => ({ ...template, code: `builtin-${code}`, name: code, is_dirty: false }));
+const builtins = [['gaming', 'Gaming'], ['friends', 'Friends'], ['study-group', 'Study Group'], ['community', 'Community'], ['creators', 'Creators']].map(([code, name]) => ({ ...template, code: `builtin-${code}`, name: name!, is_dirty: false }));
 
 function mount(element: React.ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

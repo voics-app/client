@@ -25,6 +25,7 @@ export interface PrivateMessagingDeps {
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   /** Downloads an encrypted attachment from the CDN. */
   fetchBytes: (url: string) => Promise<Uint8Array>;
+  locale?: () => string;
   /** Public CDN origin of the active connection profile. */
   cdnUrl: () => string;
   now?: () => number;
@@ -51,7 +52,7 @@ export class PrivateMessaging {
     const devices = new DeviceDirectory(deps.api, now);
     const history = new LocalHistory(() => (this.storeOpen ? deps.crypto : undefined), now);
     this.retention = new PrivateRetention(history, now);
-    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes });
+    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes, locale: deps.locale });
     this.ephemeral = new EphemeralService({
       gateway: deps.gateway,
       api: deps.api,

@@ -223,7 +223,7 @@ export function ServerAudit({ guildId, target }: { guildId: string; target?: { i
   return (
     <Page title={msg("settings.servertabs.audit.log")} sub={msg("settings.servertabs.moderation.and.configuration.actions.newest.first")}>
       <ServerAuditPolicy key={guildId} guildId={guildId} />
-      {target && <div className="row"><p>Showing entries for {target.name}.</p><Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openSettings({ kind: 'server', guildId, tab: 'audit' })}>Clear target filter</Button></div>}
+      {target && <div className="row"><p>{msg('integrations.auditTarget', { name: target.name })}</p><Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openSettings({ kind: 'server', guildId, tab: 'audit' })}>{msg("settings.servertabs.clear.target.filter")}</Button></div>}
       <div className="member-filters row">
         <Select aria-label={msg("settings.servertabs.filter.by.action")} value={actionType} onChange={(e) => setActionType(e.target.value)}>
           <option value="">{msg("settings.servertabs.all.actions")}</option>

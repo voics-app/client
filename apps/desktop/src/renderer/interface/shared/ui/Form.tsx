@@ -27,13 +27,13 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   return (
     <span className={`input-shell${invalid ? ' is-invalid' : ''}${className ? ` ${className}` : ''}`}>
       {leading && <span className="input-leading">{leading}</span>}
-      <input ref={ref} className="input" aria-invalid={invalid || undefined} {...rest} />
+      <input ref={ref} className="input" dir="auto" aria-invalid={invalid || undefined} {...rest} />
     </span>
   );
 });
 
 export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function TextArea({ className, ...rest }, ref) {
-  return <textarea ref={ref} className={`textarea${className ? ` ${className}` : ''}`} {...rest} />;
+  return <textarea ref={ref} className={`textarea${className ? ` ${className}` : ''}`} dir="auto" {...rest} />;
 });
 
 export function Select({ children, className, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {

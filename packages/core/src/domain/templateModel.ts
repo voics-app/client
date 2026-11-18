@@ -13,6 +13,22 @@ export function isBuiltinTemplate(code: string): boolean {
   return code.startsWith(BUILTIN_PREFIX);
 }
 
+const BUILTIN_COPY = {
+  'builtin-gaming': ['template.builtinGaming', 'template.builtinGamingDescription'],
+  'builtin-friends': ['template.builtinFriends', 'template.builtinFriendsDescription'],
+  'builtin-study-group': ['template.builtinStudy', 'template.builtinStudyDescription'],
+  'builtin-community': ['template.builtinCommunity', 'template.builtinCommunityDescription'],
+  'builtin-creators': ['template.builtinCreators', 'template.builtinCreatorsDescription'],
+} as const;
+
+/** Only shipped template identities are product copy. Snapshot names must show exactly what will be created. */
+export function templateIdentity(template: Pick<GuildTemplate, 'code' | 'name' | 'description'>, locale?: string): { name: string; description: string | null } {
+  const keys = Object.hasOwn(BUILTIN_COPY, template.code) ? BUILTIN_COPY[template.code as keyof typeof BUILTIN_COPY] : null;
+  if (!keys) return { name: template.name, description: template.description };
+  const { t } = createI18n(locale);
+  return { name: t(keys[0]), description: t(keys[1]) };
+}
+
 /** Extracts the code from a bare code, a web `/template/<code>` link or a `<scheme>://template/<code>` link; `null` when it is none of them. */
 export function parseTemplateCode(input: string): string | null {
   const text = input.trim();

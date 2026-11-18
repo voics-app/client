@@ -24,6 +24,7 @@ function mount(ui: React.ReactNode = <ProfileTab />) {
 }
 beforeEach(() => {
   vi.resetAllMocks(); f.permissions = 0n;
+  useSessionStore.getState().reset();
   useSessionStore.getState().setUser(user);
   useConnectionStore.setState({ cdnUrl: 'https://cdn' });
   useUnsavedStore.setState({ sources: {}, shake: 0, escBlocked: false });

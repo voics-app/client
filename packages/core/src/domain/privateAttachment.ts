@@ -1,4 +1,5 @@
 /** Pure rules for attachments in the private delivery modes: limits, validation of untrusted peer refs, display mapping. */
+import { createI18n } from './i18n';
 import type { Attachment } from '../contracts/rest';
 
 export type PrivateMode = 'ephemeral' | 'p2p';
@@ -36,7 +37,7 @@ const INLINE_MIME = /^(image|video|audio)\/[a-z0-9][a-z0-9.+-]*$/;
 const OBJECT_KEY = /^attachments\/(\d+)\/[A-Za-z0-9._~%@+=-]+(?:\/[A-Za-z0-9._~%@+=-]+)*$/;
 
 export const maxFileBytes = (mode: PrivateMode): number => (mode === 'p2p' ? P2P_MAX_FILE_BYTES : EPHEMERAL_MAX_FILE_BYTES);
-const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+
 
 export function sanitizeFileName(name: string): string {
   const printable =[...name].filter((ch) => ch.charCodeAt(0) > 0x1f && ch.charCodeAt(0) !== 0x7f).join('');
@@ -93,12 +94,13 @@ export function parseFileRef(raw: unknown, channelId: string, mode: PrivateMode)
 }
 
 /** Human-readable reason the files cannot be sent, or null when they are acceptable. */
-export function checkOutgoingFiles(files: { name: string; size: number }[], mode: PrivateMode): string | null {
-  if (files.length > MAX_PRIVATE_FILES) return `Attach at most ${MAX_PRIVATE_FILES} files per message.`;
+export function checkOutgoingFiles(files: { name: string; size: number }[], mode: PrivateMode, locale?: string): string | null {
+  const { t } = createI18n(locale);
+  if (files.length > MAX_PRIVATE_FILES) return t('file.privateCount', { count: MAX_PRIVATE_FILES });
   const limit = maxFileBytes(mode);
   for (const file of files) {
-    if (file.size === 0) return `${file.name} is empty and cannot be sent.`;
-    if (file.size > limit) return `${file.name} is larger than the ${megabytes(limit)} limit for ${mode === 'p2p' ? 'P2P' : 'Ephemeral'} chats.`;
+    if (file.size === 0) return t('file.privateEmpty', { name: file.name });
+    if (file.size > limit) return t('file.privateLimit', { name: file.name, size: Math.round(limit / (1024 * 1024)), mode });
   }
   return null;
 }

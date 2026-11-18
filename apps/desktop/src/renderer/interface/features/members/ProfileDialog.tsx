@@ -120,9 +120,9 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
           <div className="profile-head">
             <ProfileAvatar user={user} member={member} guildId={guildId} size={84} status={status} />
             <div className="profile-names">
-              <h2>{displayName(user, member?.nick)}</h2>
-              <p className="mono">{user.username}</p>
-              {user.pronouns && <p>{user.pronouns}</p>}
+              <h2 dir="auto">{displayName(user, member?.nick)}</h2>
+              <p className="mono" dir="auto">{user.username}</p>
+              {user.pronouns && <p dir="auto">{user.pronouns}</p>}
               <StatusLine className="profile-status" activities={activities} />
             </div>
           </div>
@@ -143,7 +143,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
               </div>
             )}
             {(member?.bio || user.bio) && (
-              <section className="profile-section"><h4>{msg("settings.profileeditor.about.me")}</h4><p className="selectable">{member?.bio || user.bio}</p></section>
+              <section className="profile-section"><h4>{msg("settings.profileeditor.about.me")}</h4><p className="selectable" dir="auto">{member?.bio || user.bio}</p></section>
             )}
             {guildId && member && (
               <section className="profile-section">

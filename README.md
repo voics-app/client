@@ -86,8 +86,9 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 Settings → Language offers English and Nederlands, saved to the account. Translated
 surfaces update after saving, including their accessible labels, dates and numbers.
 Failed saves retain the selection for retry. Authored messages and names stay in
-their original language. See [localization](docs/localization.md) for catalog rules,
-the current extraction scope and the remaining acceptance checks.
+their original language. Account and server settings, chat, moderation, voice,
+application consent and native menus use the same English/Dutch catalog. See
+[localization](docs/localization.md) for coverage, catalog rules and acceptance.
 
 User Settings → Profile edits the global profile or a selected server profile with a
 live preview. Global profiles support display name, pronouns, About me, avatar/banner

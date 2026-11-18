@@ -18,9 +18,9 @@ export function ProfilePreview({ user, member, guildId, avatarUpload, bannerUplo
       <ProfileBanner user={user} member={member} guildId={guildId} preview={bannerUpload} />
       <div className="profile-head">
         <Avatar id={user.id} name={name} size={72} sources={avatar} />
-        <div className="profile-names"><h2>{name}</h2><p>{user.username}</p>{user.pronouns && <p>{user.pronouns}</p>}</div>
+        <div className="profile-names"><h2 dir="auto">{name}</h2><p dir="auto">{user.username}</p>{user.pronouns && <p dir="auto">{user.pronouns}</p>}</div>
       </div>
-      <div className="profile-body"><section className="profile-section"><h4>{msg("settings.profileeditor.about.me")}</h4><p className="selectable">{bio || msg("settings.profilepreview.your.about.me.will.appear.here")}</p></section></div>
+      <div className="profile-body"><section className="profile-section"><h4>{msg("settings.profileeditor.about.me")}</h4><p className="selectable" dir={bio ? 'auto' : undefined}>{bio || msg("settings.profilepreview.your.about.me.will.appear.here")}</p></section></div>
     </div>
     {guildId && <p className="field-hint">{msg("settings.profilepreview.pronouns.and.theme.colours.come.from.your.global.profile")}</p>}
   </section>;

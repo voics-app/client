@@ -18,7 +18,8 @@ describe('attachment metadata patches', () => {
   it('uses Unicode character count and rejects duplicate or unknown ids', () => {
     const draft = { ...attachmentDraft(attachment), description: '🐈'.repeat(1024) };
     expect(attachmentMetadataEdits([attachment], [draft])[0]?.description).toBe(draft.description);
-    expect(() => attachmentMetadataEdits([attachment], [{ ...draft, description: `${draft.description}x` }])).toThrow('1024');
+    expect(() => attachmentMetadataEdits([attachment], [{ ...draft, description: `${draft.description}x` }])).toThrow('1,024');
+    expect(() => attachmentMetadataEdits([attachment], [{ ...draft, description: `${draft.description}x` }], 'nl')).toThrow('1.024 tekens');
     expect(() => attachmentMetadataEdits([attachment], [draft, draft])).toThrow('no longer available');
     expect(() => attachmentMetadataEdits([], [draft])).toThrow('no longer available');
   });

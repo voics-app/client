@@ -17,7 +17,7 @@ import { GatewayClient } from '@discordy/core/infrastructure/gateway/gatewayClie
 import { DiscordyApi } from '@discordy/core/infrastructure/http/discordyApi';
 import { HttpClient } from '@discordy/core/infrastructure/http/httpClient';
 import { browserSocketFactory } from '@renderer/infrastructure/net/socket';
-import { uploadWithProgress } from '@renderer/infrastructure/http/browserUpload';
+import { createProgressUpload } from '@renderer/infrastructure/http/browserUpload';
 import type { AuthResponse, ReadyPayload, VoiceState } from '@discordy/core/contracts/rest';
 import { currentPresence } from '@discordy/core/application/selfPresence';
 import { bridge, sessionVault } from './bridge';
@@ -70,7 +70,7 @@ export function createRuntime(info: AppInfo): Runtime {
 
   const http: HttpClient = new HttpClient({
     baseUrl: connection.apiUrl,
-    progressUpload: uploadWithProgress,
+    progressUpload: createProgressUpload(() => getI18n().locale),
     tokens: {
       access: () => tokens.access,
       refresh: async () => {
@@ -121,6 +121,7 @@ export function createRuntime(info: AppInfo): Runtime {
     },
     createPeerConnection: browserPeerConnection,
     fetchBytes,
+    locale: () => getI18n().locale,
     cdnUrl: () => useConnectionStore.getState().cdnUrl,
     iceServers: () => turn.iceServers(),
     deviceLabel: `${BRAND.displayName} ${info.platform}`,

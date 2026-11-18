@@ -1,6 +1,7 @@
 /** Bot-install links support only the scopes the server implements. */
 import { ALL_PERMISSIONS, Permission, type PermissionName } from '../contracts/permissions';
 import { PERMISSION_CATALOG } from './permissionCatalog';
+import { createI18n } from './i18n';
 
 export interface BotAuthorizationRequest {
   client_id: string;
@@ -35,11 +36,12 @@ export function parseAuthorizationRoute(route: string): BotAuthorizationRequest 
   return { client_id: params.get('client_id')!, scope: params.get('scope')!, permissions: params.get('permissions')!, ...(params.has('guild_id') ? { guild_id: params.get('guild_id')! } : {}) };
 }
 
-export function permissionChecklist(permissions: string): { id: PermissionName; label: string }[] {
+export function permissionChecklist(permissions: string, locale?: string): { id: PermissionName; label: string }[] {
+  const { catalogText } = createI18n(locale);
   const bits = BigInt(permissions);
-  if ((bits & Permission.ADMINISTRATOR) !== 0n) return [{ id: 'ADMINISTRATOR', label: 'Administrator — all permissions, bypassing channel restrictions' }];
+  if ((bits & Permission.ADMINISTRATOR) !== 0n) return [{ id: 'ADMINISTRATOR', label: catalogText('Administrator — all permissions, bypassing channel restrictions') }];
   return Object.entries(Permission).filter(([, bit]) => (bits & bit) !== 0n).map(([name]) => ({
     id: name as PermissionName,
-    label: PERMISSION_CATALOG.find((entry) => entry.name === name)?.label ?? name.charAt(0) + name.slice(1).toLowerCase().replaceAll('_', ' '),
+    label: catalogText(PERMISSION_CATALOG.find((entry) => entry.name === name)?.label ?? name.charAt(0) + name.slice(1).toLowerCase().replaceAll('_', ' ')),
   }));
 }

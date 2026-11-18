@@ -3,11 +3,12 @@ import { request as httpRequest } from 'node:http';
 import { PasskeyBroker } from '../../../src/main/passkeys/passkeyBroker';
 import { passkeySite } from '../../../src/main/passkeys/config';
 import type { PasskeyRequest } from '../../../src/shared/passkeys';
+import { setNativeLocale } from '../../../src/main/locale';
 
 const site = { origin: 'https://keys.example.test', rpId: 'example.test' };
 const request: PasskeyRequest = { id: '12345678-1234-1234-1234-123456789012', kind: 'get', publicKey: { rpId: site.rpId, challenge: 'abcdefghijklmnop' } };
 const brokers: PasskeyBroker[] = [];
-afterEach(() => brokers.splice(0).forEach(broker => broker.cancel()));
+afterEach(() => { brokers.splice(0).forEach(broker => broker.cancel()); setNativeLocale('en-US'); });
 
 async function start(timeout = 60_000) {
   const open = vi.fn(async (_url: string) => undefined);
@@ -24,6 +25,19 @@ async function start(timeout = 60_000) {
 }
 
 describe('browser passkey boundary', () => {
+  it('uses the account language for the browser handoff while retaining the original ceremony', async () => {
+    setNativeLocale('nl');
+    const flow = await start();
+    expect(flow.html).toContain('<html lang="nl" dir="ltr">');
+    expect(flow.html).toContain('Doorgaan met je toegangssleutel');
+    expect(flow.html).toContain('<button id="continue">Doorgaan</button>');
+    const setup = JSON.parse(/const setup = (.*);/.exec(flow.html)![1]!);
+    expect(setup.publicKey).toEqual(request.publicKey);
+    expect(setup.site).toEqual(site);
+    expect(setup.copy.description).toContain(site.origin);
+    expect((await flow.post({ ok: false, reason: 'cancelled' })).status).toBe(204);
+    expect(await flow.result).toEqual({ ok: false, reason: 'cancelled' });
+  });
   it('opens only random-port IPv4 loopback and keeps options/state out of the URL', async () => {
     const flow = await start();
     expect(flow.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);

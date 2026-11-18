@@ -2,7 +2,7 @@ import globals from 'globals';
 import { baseConfigs, reactHooks, sharedTsRules, tseslint } from '../../eslint.base.mjs';
 
 export default tseslint.config(
-  { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'stage/**', 'electron-builder.config.cjs'] },
+  { ignores: ['out/**', 'dist/**', 'release/**', 'node_modules/**', 'test-results/**', 'output/playwright/**', 'stage/**', 'electron-builder.config.cjs'] },
   ...baseConfigs,
   // Plain Node diagnostic scripts (e.g. tests/live/attach-watch.mjs).
   { files: ['**/*.mjs'], languageOptions: { globals: globals.node } },

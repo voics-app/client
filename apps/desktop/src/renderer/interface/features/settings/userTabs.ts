@@ -21,13 +21,14 @@ export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] 
   { id: 'about', label: 'About and updates', group: 'App settings' },
 ];
 
-const LABELS: Partial<Record<UserSettingsTab, MessageId>> = {
+const LABELS: Record<UserSettingsTab, MessageId> = {
   account: 'settings.account', profile: 'settings.profile', privacy: 'settings.privacy', devices: 'settings.devices',
   voice: 'settings.voice', keybinds: 'settings.keybinds', appearance: 'settings.appearance', accessibility: 'settings.accessibility',
   language: 'settings.language', notifications: 'settings.notifications', chat: 'settings.chat', connection: 'settings.connection',
   desktop: 'settings.desktop', advanced: 'settings.advanced', developer: 'settings.developer', about: 'settings.about',
+  authorizedApps: 'settings.authorizedapps.authorized.apps',
 };
 
 export function translatedUserTabs({ t }: I18n) {
-  return USER_TABS.map((tab) => ({ ...tab, label: LABELS[tab.id] ? t(LABELS[tab.id]!) : tab.label, group: t(tab.group === 'User settings' ? 'settings.user' : 'settings.app') }));
+  return USER_TABS.map((tab) => ({ ...tab, label: t(LABELS[tab.id]), group: t(tab.group === 'User settings' ? 'settings.user' : 'settings.app') }));
 }

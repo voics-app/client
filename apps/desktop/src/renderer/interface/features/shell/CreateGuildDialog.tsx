@@ -5,7 +5,7 @@ import { CaretRight, GameController, GraduationCap, Heart, PaintBrush, Plus, Use
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { parseTemplateCode, previewTemplate, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
+import { parseTemplateCode, previewTemplate, templateIdentity, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
 import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../app/actions';
 import { openGuild } from '../../app/navigation';
@@ -49,7 +49,7 @@ function useCreateServer(code: string | null) {
 }
 
 function NameStep({ template, onBack }: { template: GuildTemplate | null; onBack: () => void }) {
-  const { t: msg } = useI18n();
+  const { t: msg, locale } = useI18n();
   const me = useSessionStore((s) => s.user);
   const [name, setName] = useState('');
   const { busy, error, create } = useCreateServer(template?.code ?? null);
@@ -61,7 +61,7 @@ function NameStep({ template, onBack }: { template: GuildTemplate | null; onBack
     <Modal
       open
       onClose={close}
-      title={template ? msg("template.customize", { name: template.name }) : msg("settings.createguilddialog.customize.your.server")}
+      title={template ? msg("template.customize", { name: templateIdentity(template, locale).name }) : msg("settings.createguilddialog.customize.your.server")}
       description={msg("settings.createguilddialog.give.your.new.server.a.name.you.can.always")}
     >
       <form onSubmit={submit} className="stack">
@@ -101,7 +101,7 @@ export function CreateGuildDialog() {
             <li key={t.code}>
               <button type="button" className="template-row" onClick={() => setStep({ kind: 'name', template: t })}>
                 <span className="template-icon">{TEMPLATE_ICONS[t.code] ?? <UsersThree size={22} weight="duotone" />}</span>
-                <span className="template-text"><strong>{t.name}</strong><span>{t.description ?? templateSummary(t, locale)}</span></span>
+                <span className="template-text"><strong>{templateIdentity(t, locale).name}</strong><span>{templateIdentity(t, locale).description ?? templateSummary(t, locale)}</span></span>
                 <CaretRight size={16} />
               </button>
             </li>
@@ -140,7 +140,7 @@ export function TemplateLinkDialog({ code }: { code: string }) {
   const preview = data ? previewTemplate(data) : null;
   const unavailable = (template.error as { code?: number } | null)?.code === 10057;
   return (
-    <Modal open onClose={close} title={data ? msg("template.createFrom", { name: data.name }) : msg("settings.servertemplate.server.template")} description={data?.description ?? undefined} width={480}>
+    <Modal open onClose={close} title={data ? msg("template.createFrom", { name: templateIdentity(data, locale).name }) : msg("settings.servertemplate.server.template")} description={data ? templateIdentity(data, locale).description ?? undefined : undefined} width={480}>
       <div className="stack">
         {template.isPending && <Skeleton height={140} radius={12} />}
         {template.isError && <div><p className="setting-desc" role="alert">{unavailable ? msg("settings.createguilddialog.this.template.link.is.invalid.or.no.longer.exists") : msg("settings.createguilddialog.could.not.load.this.template")} {errorMessage(template.error)}</p>{!unavailable && <Button onClick={() => void template.refetch()}>{msg("common.retry")}</Button>}</div>}

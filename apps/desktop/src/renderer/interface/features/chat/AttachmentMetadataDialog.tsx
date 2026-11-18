@@ -2,7 +2,7 @@ import { useI18n } from '../../shared/i18n';
 import { useCallback, useRef, useState } from 'react';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { editAttachments } from '@discordy/core/application/attachmentCommands';
-import { errorMessage } from '@discordy/core/application/errorMessage';
+import { errorMessage } from '../../app/actions';
 import { attachmentDraft, attachmentMetadataEdits, type AttachmentDraft } from '@discordy/core/domain/attachmentEdits';
 import { ALT_TEXT_MAX, displayFilename } from '@discordy/core/domain/media';
 import { getRuntime } from '../../app/runtime';
@@ -13,7 +13,7 @@ import './attachmentMetadata.css';
 
 /** Keeps a stable opening snapshot so unrelated incoming edits are not written back. */
 export function AttachmentMetadataDialog({ message, onClose }: { message: ChatMessage; onClose: () => void }) {
-  const { t: msg } = useI18n();
+  const { t: msg, locale } = useI18n();
   const [original] = useState(() => message.attachments);
   const [drafts, setDrafts] = useState(() => original.map(attachmentDraft));
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,7 @@ export function AttachmentMetadataDialog({ message, onClose }: { message: ChatMe
   const [error, setError] = useState<string | null>(null);
   const close = useCallback(() => { if (!busyRef.current) onClose(); }, [onClose]);
   const invalid = drafts.some((draft) => [...draft.description.trim()].length > ALT_TEXT_MAX);
-  const edits = invalid ? [] : attachmentMetadataEdits(original, drafts);
+  const edits = invalid ? [] : attachmentMetadataEdits(original, drafts, locale);
   const update = (id: string, patch: Partial<AttachmentDraft>) => {
     setDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, ...patch } : draft));
     setError(null);
