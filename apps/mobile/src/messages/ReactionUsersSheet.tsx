@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { reactionKey, useMessageStore } from '@discordy/core/application/stores/messageStore';
 import { BRAND } from '../brand';
@@ -20,6 +21,7 @@ export interface ReactionTarget {
 /** Everyone who reacted to a message, one tab per emoji. */
 export function ReactionUsersSheet({ target: shown, onClose }: { target: ReactionTarget | null; onClose(): void }) {
   const target = useLastValue(shown);
+  const guildId = useGuildStore((s) => target ? s.channels[target.channelId]?.guild_id : undefined);
   const [picked, setPicked] = useState<string | null>(null);
   const [users, setUsers] = useState<Who[] | null>(null);
   const reactions = useMessageStore((s) => (target ? s.timelines[target.channelId]?.byId[target.messageId]?.reactions : undefined)) ?? [];
@@ -63,7 +65,7 @@ export function ReactionUsersSheet({ target: shown, onClose }: { target: Reactio
           keyExtractor={(u) => u.id}
           renderItem={({ item }) => (
             <View style={styles.person}>
-              <Avatar user={{ id: item.id, avatar: item.avatar ?? null, username: item.username ?? '?', global_name: item.global_name ?? null }} size={36} />
+              <Avatar user={{ id: item.id, avatar: item.avatar ?? null, username: item.username ?? '?', global_name: item.global_name ?? null }} size={36} guildId={guildId} />
               <Text style={styles.name}>{item.global_name || item.username || 'Unknown user'}</Text>
             </View>
           )}

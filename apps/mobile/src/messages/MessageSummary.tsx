@@ -7,13 +7,15 @@ import { theme } from '../theme';
 import { AttachmentList } from './attachments/AttachmentList';
 import { MarkdownText } from './markdown/MarkdownText';
 import { nameOf } from './MessageRow';
+import { useChatContext } from './chatContext';
 
 /** One message as a card outside a chat (pinned messages, search hits): author, time, text and attachments, with the screen's own actions below. Needs a `ChatContext` for the server's names. */
 export function MessageSummary({ message, channelName, children }: { message: ChatMessage; channelName?: string; children?: ReactNode }) {
+  const { guildId } = useChatContext();
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Avatar user={message.author} size={24} />
+        <Avatar user={message.author} size={24} guildId={guildId} />
         <Text numberOfLines={1} style={styles.author}>
           {nameOf(message.author)}
         </Text>

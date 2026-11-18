@@ -8,6 +8,7 @@ import { useMemberGroupStore } from '@discordy/core/application/stores/memberGro
 import type { User } from '@discordy/core/contracts/rest';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { LocaleProvider } from '@renderer/interface/shared/i18n';
+import { useConnectionStore } from '@renderer/interface/app/connectionStore';
 
 const send = vi.fn();
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ gateway: { send }, api: {} }) }));
@@ -52,6 +53,29 @@ describe('MemberList', () => {
     act(() => useSessionStore.getState().setSettings({ locale: 'en-US' }));
     expect((screen.getByRole('searchbox', { name: 'Search members' }) as HTMLInputElement).value).toBe('owner');
     expect(screen.getByText('Playing Settings مرحبا')).toBeTruthy();
+  });
+
+  it.each(['row', 'hover card'])('uses the server avatar path in the %s and retains presence', (surface) => {
+    vi.useFakeTimers();
+    try {
+      useConnectionStore.setState({ cdnUrl: 'https://cdn.test' });
+      useGuildStore.setState({
+        guilds: { '9': { id: '9', name: 'G', owner_id: '7', emojis: [], roles: [role('9', 0)] } } as never,
+        members: { '9': { '7': { ...member('7'), user: { ...user('7'), avatar: 'global' }, avatar: 'server' } } } as never,
+      });
+      usePresenceStore.setState({ byUser: { '7': { status: 'online', activities: [] } } });
+      const { container } = render(<MemberList guildId="9" />);
+      if (surface === 'hover card') {
+        fireEvent.mouseEnter(screen.getByText('7').closest('button')!);
+        act(() => void vi.advanceTimersByTime(400));
+      }
+      const target = surface === 'hover card' ? screen.getByRole('tooltip') : container;
+      expect(target.querySelector('img')?.getAttribute('src'))
+        .toBe('https://cdn.test/guilds/9/users/7/avatars/server.png?size=128');
+      expect(target.querySelector('[aria-label="online"]')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('groups by hoisted role, online and offline with counts, crown and bot tag', () => {

@@ -18,6 +18,15 @@ template actions keep the fields and navigation guarded until they finish.
 
 ## Layout
 
+Standard mention counts use authoritative versioned snapshots when READY certifies
+`read_state_versioned` (contracts#48 / docs ADR0027). ACK and READ_STATE_UPDATE apply only newer
+channel versions; CREATE does not increment an already-included count. READ_STATE_SYNC after
+resume repairs missed updates and local optimistic ACKs that never committed, without replacing
+a newer replayed snapshot. Fresh READY resets the version history. Older gateways retain legacy
+counting and private decrypted traffic stays local; private explicit MESSAGE_ACK still syncs
+read markers and manual unread using its existing behavior. Notifications and the local mention inbox
+continue to consume messages independently; this does not claim durable accounting or delivery.
+
 Server Settings → Overview includes a **Permanent invite** field. Members with
 Manage Server can set a 2–32-character code, copy its invite link, rename it or
 remove it. Codes ignore case; renaming resets the join count. The server needs a
@@ -80,6 +89,10 @@ is blocked until drafts are saved or reset, and failed saves retain the draft. E
 server images/bio needs membership; nickname controls respect Change Nickname.
 The user menu's **Edit Server Profile** action opens the matching profile page. Profile
 dialogs display server overrides, pronouns and theme colours on readable app surfaces.
+Member rows, chat authors/replies/reactions and voice occupants/tiles use server
+avatar URLs on desktop and mobile when their explicit server context has an override.
+Clearing it restores the global avatar; DMs and account controls stay global. Failed
+images retain initials and presence/speaking indicators, and a new image is retried.
 These controls require the profile API release (api#43, migration `0054`).
 
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.

@@ -101,7 +101,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
         <View style={styles.sheet}>
           <View testID="profile-banner" style={[styles.banner, { backgroundColor: banner }]} />
           <View style={styles.avatar}>
-            <StatusAvatar user={user} status={status} size={72} />
+            <StatusAvatar user={user} status={status} size={72} guildId={guildId} />
           </View>
           <Text style={styles.name}>{view.name}</Text>
           <Text style={styles.username}>{view.username}</Text>

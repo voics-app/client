@@ -789,6 +789,13 @@ export interface UserNote {
   note: string;
 }
 
+export interface ReadStateEntry {
+  id: Snowflake;
+  last_message_id: Snowflake | null;
+  mention_count: number;
+  read_state_version?: string;
+}
+
 export interface ReadyPayload {
   v: number;
   user: User;
@@ -801,7 +808,8 @@ export interface ReadyPayload {
   user_guild_settings?: GuildNotificationSettings[];
   /** Private notes keyed by the noted user's id. */
   notes?: Record<Snowflake, string>;
-  read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
+  read_state?: ReadStateEntry[];
+  read_state_versioned?: true;
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;
 }
