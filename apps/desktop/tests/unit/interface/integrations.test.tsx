@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { Permission } from '@discordy/core/contracts/permissions';
@@ -36,6 +37,7 @@ function mount(element: React.ReactNode) {
 }
 beforeEach(() => {
   vi.resetAllMocks(); fixture.permissions = 0n;
+  useGuildStore.getState().reset();
   useSessionStore.setState({ user: { id: '7', username: 'Sam' } as User });
   useUiStore.setState({ dialog: null, settings: null });
   fixture.api.botAuthorizationInfo.mockResolvedValue(info);
@@ -74,6 +76,17 @@ describe('bot consent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Record consent' }));
     await waitFor(() => expect(fixture.api.authorizeBot).toHaveBeenCalledWith({ ...invite, permissions: '8' }));
   });
+  it('requires a new review if a consent-only preview changes into a new installation', async () => {
+    fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, guilds: [{ ...info.guilds[0], bot_permissions: info.permissions }] });
+    const mounted = mount(<BotAuthorizeDialog request={invite} />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'I have reviewed these permissions.' }));
+    expect((screen.getByRole('button', { name: 'Record consent' }) as HTMLButtonElement).disabled).toBe(false);
+    await act(async () => { mounted.query.setQueryData(['bot-consent', '7', invite], info); });
+    await screen.findByRole('button', { name: 'Authorize' });
+    expect((screen.getByRole('checkbox', { name: 'I have reviewed these permissions.' }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole('button', { name: 'Authorize' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(fixture.api.authorizeBot).not.toHaveBeenCalled();
+  });
   it('exposes load errors and a retry without presenting an empty success', async () => {
     fixture.api.botAuthorizationInfo.mockRejectedValueOnce(new Error('Application unavailable'));
     mount(<BotAuthorizeDialog request={invite} />);
@@ -101,6 +114,25 @@ describe('personal authorizations', () => {
 });
 
 describe('webhook editing', () => {
+  it('starts another blank webhook when New webhook is clicked after creating one', async () => {
+    fixture.permissions = Permission.MANAGE_WEBHOOKS | Permission.MANAGE_GUILD;
+    useGuildStore.setState({ guilds: { '1': { id: '1', name: 'Study club', icon: null, owner_id: '7', roles: [], emojis: [] } }, channels: { '2': channels[0]! } });
+    fixture.api.createWebhook.mockImplementation(async () => {
+      fixture.api.guildWebhooks.mockResolvedValue([hook]);
+      return { ...hook, url: 'https://example.invalid/synthetic-created' };
+    });
+    mount(<ServerIntegrations guildId="1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'New webhook' }));
+    fireEvent.change(screen.getByLabelText('Webhook name'), { target: { value: 'Reminders' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create webhook' }));
+    await screen.findByRole('heading', { name: 'Edit Reminders' });
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Close editor' }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'New webhook' }));
+    expect(screen.getByRole('heading', { name: 'Create webhook' })).toBeTruthy();
+    expect((screen.getByLabelText('Webhook name') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByLabelText('Webhook execution URL')).toBeNull();
+    expect(fixture.api.createWebhook).toHaveBeenCalledTimes(1);
+  });
   it('preserves a failed edit and sends only changed metadata', async () => {
     fixture.api.updateWebhook.mockRejectedValueOnce(new Error('Temporary failure')).mockResolvedValue({ ...hook, name: 'Announcements' });
     mount(<WebhookEditor guildId="1" initial={hook} channels={channels} canAudit onClose={vi.fn()} onSaved={vi.fn()} />);

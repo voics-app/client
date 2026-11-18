@@ -25,8 +25,8 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
   const info = query.data;
   const guild = info?.guilds.find((g) => g.id === guildId);
   const permissions = guild?.bot_permissions ?? info?.permissions ?? '0';
-  const signature = `${guildId}:${permissions}:${info?.scopes.join(' ') ?? ''}`;
   const installed = guild?.bot_permissions != null;
+  const signature = `${userId}:${info?.application.id}:${guildId}:${installed}:${permissions}:${info?.scopes.join(' ') ?? ''}`;
   const close = () => { if (!busy) useUiStore.getState().openDialog(null); };
   const submit = async () => {
     if (!guild || !info || confirmed !== signature) return;

@@ -56,16 +56,21 @@ function Webhooks({ guildId, canAudit }: { guildId: string; canAudit: boolean })
   const members = useGuildStore((s) => s.members[guildId]);
   const allChannels = useGuildStore((s) => s.channels);
   const [selected, setSelected] = useState<Webhook | 'new' | null>(null);
+  const [newDraft, setNewDraft] = useState(0);
   const qc = useQueryClient();
   const hooks = useQuery({ queryKey: ['guild', guildId, 'webhooks', userId], queryFn: () => getRuntime().api.guildWebhooks(guildId) });
   const channels = guild && userId ? webhookChannels(Object.values(allChannels), { guildId, ownerId: guild.owner_id, userId, memberRoleIds: members?.[userId]?.roles ?? [], roles: guild.roles }) : [];
-  const choose = (value: Webhook | 'new' | null) => { if (useUnsavedStore.getState().requestLeave()) setSelected(value); };
+  const choose = (value: Webhook | 'new' | null) => {
+    if (!useUnsavedStore.getState().requestLeave()) return;
+    if (value === 'new') setNewDraft((version) => version + 1);
+    setSelected(value);
+  };
   return <section className="integration-section"><div className="integration-section-heading"><h2>Webhooks</h2><Button size="sm" variant="primary" disabled={channels.length === 0} onClick={() => choose('new')}>New webhook</Button></div>
     <p className="page-sub">Send messages from external services. Execution URLs are shown only after creation or regeneration.</p>
     {channels.length === 0 && <p className="field-hint">You need access and Manage Webhooks permission in an eligible channel to create a webhook.</p>}
     {hooks.isPending ? <p role="status">Loading webhooks…</p> : hooks.isError ? <div><p role="alert" className="field-error">Could not load webhooks. {errorMessage(hooks.error)}</p><Button onClick={() => void hooks.refetch()}>Try again</Button></div> : hooks.data.length === 0 ? <p>No webhooks yet.</p> : <ul className="integration-list" aria-label="Webhooks">{hooks.data.map((hook) => <li key={hook.id}>
       <div className="integration-identity"><Avatar id={hook.id} name={hook.name ?? 'Webhook'} avatar={hook.avatar} size={36} /><div><h3>{hook.name ?? 'Webhook'}</h3><p>{hook.channel_id && allChannels[hook.channel_id] ? `#${allChannels[hook.channel_id]?.name}` : 'Unavailable channel'}</p></div><Button size="sm" variant="ghost" onClick={() => choose(hook)}>Edit</Button></div>
     </li>)}</ul>}
-    {selected && <WebhookEditor key={selected === 'new' ? 'new' : selected.id} guildId={guildId} initial={selected === 'new' ? null : selected} channels={channels} canAudit={canAudit} onClose={() => choose(null)} onSaved={() => void qc.invalidateQueries({ queryKey: ['guild', guildId, 'webhooks'] })} />}
+    {selected && <WebhookEditor key={selected === 'new' ? `new:${newDraft}` : selected.id} guildId={guildId} initial={selected === 'new' ? null : selected} channels={channels} canAudit={canAudit} onClose={() => choose(null)} onSaved={() => void qc.invalidateQueries({ queryKey: ['guild', guildId, 'webhooks'] })} />}
   </section>;
 }
