@@ -303,6 +303,28 @@ describe('mobile video', () => {
     return stack;
   }
 
+  it('does not open the camera outside a connected call', async () => {
+    const { voice, openCamera } = setup();
+    await expect(voice.controller.setVideo(true)).rejects.toThrow(/connected call/i);
+    expect(openCamera).not.toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('does not publish a camera permission result after leaving the call', async () => {
+    const { voice, camera, openCamera } = await inCall();
+    let granted!: (stream: NativeVideoStream) => void;
+    openCamera.mockImplementationOnce(() => new Promise((resolve) => { granted = resolve; }));
+    const opening = voice.controller.setVideo(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const leaving = voice.controller.leave();
+    granted(camera);
+    await Promise.allSettled([opening, leaving]);
+    expect(mockSessions[0]!.camera.filter(({ track }) => track !== null)).toEqual([]);
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    voice.dispose();
+  });
+
   it('uses VP8 and a cryptor for the video of an encrypted call', async () => {
     const { voice } = await inCall();
     expect(mockSessions[0]!.options.preferredVideoCodec).toBe('VP8');

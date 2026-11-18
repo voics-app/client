@@ -1,0 +1,60 @@
+name: mobile-ios-native
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/mobile/modules/voics-screen-share/**'
+      - 'apps/mobile/plugins/withIosScreenShare.js'
+      - 'apps/mobile/plugins/broadcast/**'
+      - 'apps/mobile/scripts/verify-ios-broadcast.mjs'
+      - '.github/workflows/mobile-ios-native.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Fetch the existing crypto framework
+        working-directory: apps/mobile
+        env:
+          VOICS_CRYPTO_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/fetch-crypto-framework.mjs
+      - name: Generate and verify the native project
+        working-directory: apps/mobile
+        run: |
+          pnpm exec expo prebuild --platform ios --no-install
+          node scripts/verify-ios-broadcast.mjs
+          pnpm exec expo prebuild --platform ios --no-install
+          node scripts/verify-ios-broadcast.mjs
+      - name: Compile ReplayKit extension independently
+        working-directory: apps/mobile
+        run: xcodebuild -project ios/Voics.xcodeproj -target VoicsBroadcast -configuration Release -sdk iphonesimulator ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
+      - name: Install pods
+        working-directory: apps/mobile/ios
+        run: pod install
+      - name: Compile native app and consent module
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/Voics.xcworkspace -scheme Voics -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/voics-ios" build | tee "$RUNNER_TEMP/voics-ios-build.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-native-build-log
+          path: ${{ runner.temp }}/voics-ios-build.log
+          if-no-files-found: ignore

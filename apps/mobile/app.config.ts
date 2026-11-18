@@ -53,6 +53,7 @@ const config: ExpoConfig = {
     'expo-audio',
     // R8 rule for the LiveKit WebRTC release build (see the file).
     './plugins/withAndroidProguard',
+    './plugins/withIosScreenShare',
     // The development client and WebRTC are native: Expo Go ignores both, and the app guards every use (src/native/isNativeBuild.ts).
     'expo-dev-client',
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],

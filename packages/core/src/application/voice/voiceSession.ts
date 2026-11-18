@@ -66,6 +66,7 @@ export interface VoiceSessionOptions {
 
 const FATAL_CLOSE_CODES = new Set([4003, 4004, 4006, 4014]);
 const ZOMBIE_CLOSE = 4900;
+const VIDEO_SSRC_RETRY_MS = 250;
 
 const kindOf = (source: SourceKind): 'audio' | 'video' => (source === 'audio' ? 'audio' : 'video');
 
@@ -109,6 +110,8 @@ export class VoiceSession implements VoiceSessionPort {
   private earlyDave: { op: number; d: unknown }[] = [];
   private lastSpeakingFlags = 0;
   private retiredCount = 0;
+  private videoAnnouncementTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastVideoAnnouncement: string | null = null;
 
   private readonly status = new Listeners<[SessionStatus]>();
   private readonly closedListeners = new Listeners<[SessionClosed]>();
@@ -192,6 +195,9 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private closePeerConnection(): void {
+    if (this.videoAnnouncementTimer) clearTimeout(this.videoAnnouncementTimer);
+    this.videoAnnouncementTimer = null;
+    this.lastVideoAnnouncement = null;
     for (const source of this.sources.values()) this.dropRemote(source);
     this.pc?.close();
     this.pc = null;
@@ -663,20 +669,24 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   async setCameraTrack(track: MediaTrackLike | null, constraints?: CaptureConstraints): Promise<void> {
-    const sender = this.cameraTransceiver?.sender;
-    if (!this.cameraTransceiver || !sender) return;
+    const transceiver = this.cameraTransceiver;
+    const sender = transceiver?.sender;
+    if (!transceiver || !sender) return;
     this.cameraTrack = track;
-    await this.replaceProtected(this.cameraTransceiver, track, 'video');
+    await this.replaceProtected(transceiver, track, 'video');
+    if (track && this.cameraTransceiver !== transceiver) throw new Error('The call ended before the camera could be published.');
     if (track) await this.applySenderParameters(sender, constraints ?? presetConstraints('720p30'));
     await this.announceVideo();
   }
 
   async setScreenTrack(track: MediaTrackLike | null, options?: ScreenTrackOptions): Promise<void> {
-    const sender = this.screenTransceiver?.sender;
-    if (!this.screenTransceiver || !sender) return;
+    const transceiver = this.screenTransceiver;
+    const sender = transceiver?.sender;
+    if (!transceiver || !sender) return;
     this.screenTrack = track;
     if (track && options) track.contentHint = options.contentHint;
-    await this.replaceProtected(this.screenTransceiver, track, 'video');
+    await this.replaceProtected(transceiver, track, 'video');
+    if (track && this.screenTransceiver !== transceiver) throw new Error('The call ended before the screen could be published.');
     if (track && options) await this.applySenderParameters(sender, options.constraints);
     await this.announceVideo();
   }
@@ -698,7 +708,12 @@ export class VoiceSession implements VoiceSessionPort {
   /** Reads the real outbound ssrcs from stats (the browser, not the node, picks them) and tells the node. */
   private async announceVideo(): Promise<void> {
     const ready = this.ready;
-    if (!ready) return;
+    const pc = this.pc;
+    const cameraTrack = this.cameraTrack;
+    const screenTrack = this.screenTrack;
+    if (!ready || !pc) return;
+    if (this.videoAnnouncementTimer) clearTimeout(this.videoAnnouncementTimer);
+    this.videoAnnouncementTimer = null;
     const ssrcOf = async (transceiver: TransceiverLike | null): Promise<number> => {
       if (!transceiver?.sender.track) return 0;
       const report = await transceiver.sender.getStats();
@@ -707,17 +722,29 @@ export class VoiceSession implements VoiceSessionPort {
     };
     const cameraSsrc = await ssrcOf(this.cameraTransceiver);
     const screenSsrc = await ssrcOf(this.screenTransceiver);
+    if (this.pc !== pc || this.cameraTrack !== cameraTrack || this.screenTrack !== screenTrack) return;
+    // Native WebRTC can return no outbound report until it encodes its first frame. A one-shot
+    // announcement leaves a working camera invisible to every receiver for the rest of the call.
+    if ((cameraTrack && !cameraSsrc) || (screenTrack && !screenSsrc)) {
+      this.videoAnnouncementTimer = setTimeout(() => {
+        this.videoAnnouncementTimer = null;
+        void this.announceVideo().catch((error: unknown) => this.fail(`Could not announce video: ${errorText(error)}`));
+      }, VIDEO_SSRC_RETRY_MS);
+    }
     const streams: VideoPayload['streams'] = [];
     const camera = ready.streams.find((s) => s.type === 'video');
     const screen = ready.streams.find((s) => s.type === 'screen') ?? camera;
     if (cameraSsrc > 0) streams.push({ type: 'video', rid: camera?.rid ?? '100', quality: 100, ssrc: cameraSsrc, rtx_ssrc: camera?.rtx_ssrc ?? 0, active: true });
     if (screenSsrc > 0) streams.push({ type: 'screen', rid: screen?.rid ?? '100', quality: 100, ssrc: screenSsrc, rtx_ssrc: screen?.rtx_ssrc ?? 0, active: true });
-    this.sendFrame(VoiceOp.VIDEO, {
+    const payload = {
       audio_ssrc: this.audioSsrc(),
       video_ssrc: cameraSsrc || screenSsrc,
       rtx_ssrc: 0,
       streams,
-    } satisfies VideoPayload);
+    } satisfies VideoPayload;
+    const serialized = JSON.stringify(payload);
+    if (serialized !== this.lastVideoAnnouncement) this.sendFrame(VoiceOp.VIDEO, payload);
+    this.lastVideoAnnouncement = serialized;
   }
 
   setSpeaking(flags: number): void {

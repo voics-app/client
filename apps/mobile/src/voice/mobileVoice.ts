@@ -36,6 +36,7 @@ export function createMobileVoice({ gateway, native, socketFactory, iceServers, 
   const route = new AudioRoute(native.route);
   const controller = new MobileCallController({
     gateway,
+    screenShare: native.screenShare,
     openCamera: (facing) => native.openCamera(facing),
     onBackground: (listener) => {
       const subscription = AppState.addEventListener('change', (state) => {

@@ -7,6 +7,8 @@ import type { IceServer } from '@discordy/core/domain/turn';
 import type { MediaPeerConnection, MediaStreamLike, MediaTrackLike } from '@discordy/core/application/ports/media';
 import { isNativeBuild } from '../native/isNativeBuild';
 import { MobileFrameCryptor, type FrameCryptorModule } from './mobileFrameCryptor';
+import type { ScreenShareDriver } from './mobileScreenShare';
+import { loadIosScreenShare } from './nativeScreenShare';
 
 export interface NativeAudioTrack extends MediaTrackLike {
   enabled: boolean;
@@ -22,6 +24,8 @@ export interface NativeVideoTrack extends MediaTrackLike {
   enabled: boolean;
   /** @livekit/react-native-webrtc: flips between the front and the back camera on the same track, so the sender keeps its track and its cryptor. */
   _switchCamera(): void;
+  readonly readyState?: string;
+  onended?: (() => void) | null;
 }
 
 /** A camera stream: toURL() is what a native video view renders. */
@@ -41,6 +45,7 @@ export interface AudioRouteDriver {
 }
 
 export interface NativeVoice {
+  screenShare?: ScreenShareDriver;
   createPeerConnection(iceServers: IceServer[]): MediaPeerConnection;
   createStream(track: MediaTrackLike): MediaStreamLike;
   openMicrophone(): Promise<NativeAudioTrack>;
@@ -61,7 +66,7 @@ const CAMERA_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, fra
 export interface WebRtcModule extends Partial<FrameCryptorModule> {
   RTCPeerConnection: new (config: object) => unknown;
   MediaStream: new (tracks: unknown[]) => unknown;
-  mediaDevices: { getUserMedia(constraints: object): Promise<NativeAudioStream | NativeVideoStream> };
+  mediaDevices: { getUserMedia(constraints: object): Promise<NativeAudioStream | NativeVideoStream>; getDisplayMedia?(): Promise<NativeVideoStream> };
 }
 
 export interface InCallManagerModule {
@@ -119,7 +124,7 @@ export function loadNativeVoice(): NativeVoice | null {
     const webrtc = require('@livekit/react-native-webrtc') as WebRtcModule;
     const inCall = (require('react-native-incall-manager') as { default: InCallManagerModule }).default;
     /* eslint-enable @typescript-eslint/no-require-imports */
-    return createNativeVoice(webrtc, inCall);
+    return { ...createNativeVoice(webrtc, inCall), screenShare: loadIosScreenShare(webrtc.mediaDevices) };
   } catch {
     return null;
   }

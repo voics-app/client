@@ -40,6 +40,8 @@ The component gallery is at `#/__gallery` (open the renderer URL with that hash)
 
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.
 
+Native iOS builds include a ReplayKit broadcast extension for screen sharing during calls. Its app group, embedded target, EAS signing metadata and consent bridge are generated from source; see the mobile README for build and real-device acceptance checks. Camera and screen streams use the existing encrypted media path, including safe cancellation of late permission results and delayed native SSRC announcements.
+
 ## Test and lint
 
 ```

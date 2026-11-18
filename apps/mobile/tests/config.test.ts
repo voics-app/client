@@ -27,6 +27,10 @@ describe('app.config', () => {
     const names = (config.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
     expect(names).toEqual(expect.arrayContaining(['expo-dev-client', '@config-plugins/react-native-webrtc']));
   });
+
+  it('generates the ReplayKit extension for native screen sharing', () => {
+    expect(config.plugins).toContain('./plugins/withIosScreenShare');
+  });
 });
 
 describe('app.config tablets', () => {
