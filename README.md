@@ -74,6 +74,8 @@ Right-click a server icon or open its header menu for notification settings, Hid
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 
+The Forward picker uses each DM recipient's user ID for their global avatar, including animated images. Forwarding still targets the DM channel ID; recipients without an avatar retain their initials. The routing regression is covered by `apps/desktop/tests/unit/interface/ForwardDialog.test.tsx`.
+
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 ## Mobile app
