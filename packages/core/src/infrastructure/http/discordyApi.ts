@@ -1,9 +1,16 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
   ApplicationCommand,
   ApplicationSummary,
+  ApplicationAuthorization,
+  BotAuthorizationInfo,
+  GuildIntegration,
+  Webhook,
+  WebhookCredential,
+  WebhookEdit,
   AttachmentUploadSlot,
   AuditLog,
   AccountChange,
@@ -481,6 +488,39 @@ export class DiscordyApi implements ApiPort {
 
   applications() {
     return this.get<ApplicationSummary[]>('/applications');
+  }
+  botAuthorizationInfo(request: BotAuthorizationRequest) {
+    return this.get<BotAuthorizationInfo>('/oauth2/authorize', { ...request });
+  }
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string }) {
+    return this.post<{ location: string }>('/oauth2/authorize', request);
+  }
+  applicationAuthorizations() {
+    return this.get<ApplicationAuthorization[]>('/oauth2/tokens');
+  }
+  revokeApplicationAuthorization(authorizationId: string) {
+    return this.del<void>(`/oauth2/tokens/${enc(authorizationId)}`);
+  }
+  guildIntegrations(guildId: string) {
+    return this.get<GuildIntegration[]>(`/guilds/${enc(guildId)}/integrations`);
+  }
+  removeGuildIntegration(guildId: string, applicationId: string) {
+    return this.del<void>(`/guilds/${enc(guildId)}/integrations/${enc(applicationId)}`);
+  }
+  guildWebhooks(guildId: string) {
+    return this.get<Webhook[]>(`/guilds/${enc(guildId)}/webhooks`);
+  }
+  createWebhook(channelId: string, body: { name: string; avatar?: string }) {
+    return this.post<WebhookCredential>(`/channels/${enc(channelId)}/webhooks`, body);
+  }
+  updateWebhook(webhookId: string, body: WebhookEdit) {
+    return this.patch<Webhook>(`/webhooks/${enc(webhookId)}`, body);
+  }
+  resetWebhookToken(webhookId: string) {
+    return this.post<WebhookCredential>(`/webhooks/${enc(webhookId)}/reset-token`);
+  }
+  deleteWebhook(webhookId: string) {
+    return this.del<void>(`/webhooks/${enc(webhookId)}`);
   }
   globalCommands(applicationId: string) {
     return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);

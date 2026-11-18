@@ -198,13 +198,13 @@ export function ServerBans({ guildId }: { guildId: string }) {
   );
 }
 
-export function ServerAudit({ guildId }: { guildId: string }) {
+export function ServerAudit({ guildId, target }: { guildId: string; target?: { id: string; name: string } }) {
   const auditEnabled = useGuildStore((s) => s.guilds[guildId]?.audit_log_enabled ?? true);
   const [actionType, setActionType] = useState('');
   const [actorId, setActorId] = useState('');
-  const query = { limit: 100, ...(actionType ? { action_type: Number(actionType) } : {}), ...(actorId ? { user_id: actorId } : {}) };
+  const query = { limit: 100, ...(target ? { target_id: target.id } : {}), ...(actionType ? { action_type: Number(actionType) } : {}), ...(actorId ? { user_id: actorId } : {}) };
   const log = useInfiniteQuery({
-    queryKey: ['guild', guildId, 'audit', actionType, actorId],
+    queryKey: ['guild', guildId, 'audit', actionType, actorId, target?.id],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => getRuntime().api.auditLog(guildId, { ...query, before: pageParam }),
     getNextPageParam: (last) => (last.audit_log_entries.length >= 100 ? last.audit_log_entries[last.audit_log_entries.length - 1]?.id : undefined),
@@ -217,6 +217,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
   return (
     <Page title="Audit log" sub="Moderation and configuration actions, newest first.">
       <ServerAuditPolicy key={guildId} guildId={guildId} />
+      {target && <div className="row"><p>Showing entries for {target.name}.</p><Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openSettings({ kind: 'server', guildId, tab: 'audit' })}>Clear target filter</Button></div>}
       <div className="member-filters row">
         <Select aria-label="Filter by action" value={actionType} onChange={(e) => setActionType(e.target.value)}>
           <option value="">All actions</option>

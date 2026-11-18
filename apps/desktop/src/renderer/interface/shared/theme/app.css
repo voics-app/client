@@ -430,6 +430,9 @@ button.mode-badge:active { transform: scale(0.96); }
 .settings-page { display: flex; flex-direction: column; gap: 16px; } .settings-page h1 { font-size: var(--fs-page); letter-spacing: -0.02em; } .settings-page h3 { font-size: var(--fs-title); margin-top: 12px; } .page-sub { color: var(--fg-muted); margin-top: -8px; }
 .save-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: var(--z-float); display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 20px; border-radius: 999px; animation: pop-in 220ms var(--ease-spring); } .save-bar span { margin-right: 24px; font-weight: 560; }
 .save-bar.is-shaking { animation: bar-shake 420ms ease; }
+.save-bar.has-error { max-width: min(760px, calc(100vw - 48px)); border-radius: 14px; }
+.save-bar-copy { display: grid; gap: 4px; max-width: 440px; min-width: 0; }
+.save-bar.has-error .btn { flex-shrink: 0; }
 @keyframes bar-shake { 0%, 100% { translate: 0; box-shadow: none; } 15%, 55% { translate: -9px; box-shadow: 0 0 0 2px var(--danger); } 35%, 75% { translate: 9px; box-shadow: 0 0 0 2px var(--danger); } }
 .settings-logout { margin-top: auto; padding-top: 16px; } .settings-logout .settings-item { display: flex; align-items: center; gap: 8px; }
 .settings-item.is-danger { color: var(--danger); }
