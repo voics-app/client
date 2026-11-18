@@ -22,6 +22,7 @@ import type {
   Device,
   Emoji,
   Guild,
+  VanityUrl,
   DiscoveryPage,
   GuildTemplate,
   DiscoveryQuery,
@@ -244,6 +245,12 @@ export class DiscordyApi implements ApiPort {
   }
   updateGuild(guildId: string, patch: Partial<Guild>) {
     return this.patch<Guild>(`/guilds/${guildId}`, patch);
+  }
+  guildVanityUrl(guildId: string) {
+    return this.get<VanityUrl>(`/guilds/${guildId}/vanity-url`);
+  }
+  updateGuildVanityUrl(guildId: string, code: string | null) {
+    return this.patch<VanityUrl>(`/guilds/${guildId}/vanity-url`, { code });
   }
   deleteGuild(guildId: string) {
     return this.del<void>(`/guilds/${guildId}`);

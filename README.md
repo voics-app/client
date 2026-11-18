@@ -4,6 +4,20 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Server Settings → Overview includes a **Permanent invite** field. Members with
+Manage Server can set a 2–32-character code, copy its invite link, rename it or
+remove it. Codes ignore case; renaming resets the join count. The server needs a
+text channel visible to everyone. The API validates uniqueness and still checks
+bans when someone joins.
+
+Server Settings → Audit log includes **Record audit log** and **Keep audit
+entries** (30, 90 or 365 days). Only owners and administrators can change these.
+Disabling logging preserves retained entries; policy changes always remain
+recorded. Shorter retention removes older entries automatically. A role with
+View Audit Log can open this page and read entries without changing the policy.
+Both controls display server errors and retain unsaved input for correction.
+These controls require the API vanity/audit-policy release (api#96 and api#85).
+
 | Path | Purpose |
 |---|---|
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |

@@ -211,9 +211,16 @@ export interface Guild {
   voice_region?: string | null;
   /** When true, pruning members needs ADMINISTRATOR instead of KICK_MEMBERS. */
   prune_admin_only?: boolean;
+  audit_log_enabled?: boolean;
+  audit_log_retention_days?: 30 | 90 | 365;
 }
 
 /** GuildFull as delivered by READY / GUILD_CREATE (P4 `/state`). */
+export interface VanityUrl {
+  code: string | null;
+  uses: number;
+}
+
 export interface GuildFull extends Guild {
   channels: Channel[];
   threads?: Channel[];
