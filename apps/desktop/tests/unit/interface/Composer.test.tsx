@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore } from '@discordy/core/application/stores/messageStore';
+import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -107,6 +108,76 @@ describe('Composer: reply ping and @silent', () => {
     type('@silent');
     fireEvent.keyDown(input(), { key: 'Enter' });
     expect(send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ content: '@silent', silent: false }));
+  });
+
+  it('retains the reply target and ping choice when a silent reply fails and is sent again', async () => {
+    const c = dmChannel();
+    const target = replyTarget('bob');
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: target } } as never);
+    useReplyPingStore.setState({ ping: false });
+    send.mockRejectedValueOnce(new Error('Offline'));
+    render(<Composer channel={c} mode="standard" />);
+    type('@silent answer');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    await waitFor(() => expect(input().value).toBe('@silent answer'));
+    expect(useUiStore.getState().replyTo[c.id]?.id).toBe('m9');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ content: 'answer', silent: true, replyTo: 'm9', pingReplied: false }));
+  });
+
+  it('does not advertise the Standard-only ping control in a private chat', () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    render(<Composer channel={c} mode="ephemeral" />);
+    expect(screen.queryByRole('button', { name: /Mention bob/ })).toBeNull();
+  });
+
+  it('does not attach a failed reply to a newer draft', async () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    let reject!: (error: Error) => void;
+    send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    render(<Composer channel={c} mode="standard" />);
+    type('first answer');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    type('new draft');
+    await act(async () => reject(new Error('Offline')));
+    expect(input().value).toBe('new draft');
+    expect(useUiStore.getState().replyTo[c.id]).toBeNull();
+  });
+
+  it('does not restore failed text into a newly selected reply', async () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    let reject!: (error: Error) => void;
+    send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    render(<Composer channel={c} mode="standard" />);
+    type('answer to Bob');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    act(() => useUiStore.getState().setReplyTo(c.id, { ...replyTarget('ada'), id: 'm10' }));
+    await act(async () => reject(new Error('Offline')));
+    expect(input().value).toBe('');
+    expect(useUiStore.getState().replyTo[c.id]?.id).toBe('m10');
+  });
+
+  it('keeps explicit mention tokens when retrying a ping-off reply', async () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    useReplyPingStore.setState({ ping: false });
+    send.mockRejectedValueOnce(new Error('Offline'));
+    render(<Composer channel={c} mode="standard" />);
+    act(() => useMentionStore.getState().requestMention(c.id, 'Ada', '123'));
+    type(`${input().value}answer`);
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ content: '<@123> answer', pingReplied: false }));
+    await waitFor(() => expect(input().value).toBe('@Ada answer'));
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ content: '<@123> answer', replyTo: 'm9', pingReplied: false }));
   });
 });
 
@@ -300,10 +371,10 @@ describe('Composer: edit last message and Escape', () => {
     const c = dmChannel();
     render(<Composer channel={c} mode="standard" />);
     act(() => useUiStore.setState({ editing: { channelId: c.id, messageId: '3' }, replyTo: { [c.id]: msg('9', 'bob') } } as never));
-    fireEvent.keyDown(input(), { key: 'Escape' });
+    expect(fireEvent.keyDown(input(), { key: 'Escape' })).toBe(false);
     expect(useUiStore.getState().editing).toBeNull();
     expect(useUiStore.getState().replyTo[c.id]).not.toBeNull();
-    fireEvent.keyDown(input(), { key: 'Escape' });
+    expect(fireEvent.keyDown(input(), { key: 'Escape' })).toBe(false);
     expect(useUiStore.getState().replyTo[c.id]).toBeNull();
   });
 });

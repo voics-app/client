@@ -58,6 +58,14 @@ DM rows show custom status or live typing and offer a close button on hover or k
 
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
+Desktop taskbar, tray and title activity follows text chats, announcements, threads
+and DMs, with immediate mute updates and timed expiry. Escape marks a channel read;
+Shift+Escape marks its server, including when the composer has focus after its own
+cancel actions. Standard replies offer a remembered ping toggle and `@silent`
+messages. Failed sends restore reply context and mention tokens without replacing
+a newer draft. See [desktop notifications](docs/desktop-notifications.md) for rules,
+keyboard behavior and native acceptance checks.
+
 ## Mobile app
 
 `pnpm dev:mobile` starts the Expo dev server for `apps/mobile` (phone with Expo Go or a development build, no Mac needed). Details: [apps/mobile/README.md](apps/mobile/README.md). The root `pnpm lint`, `pnpm typecheck` and `pnpm test:unit` cover desktop and mobile; React is pinned to the same version in both apps (React Native needs 19.3), so a single copy is hoisted.

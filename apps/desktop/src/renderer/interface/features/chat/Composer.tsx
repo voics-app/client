@@ -85,6 +85,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const ref = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef(text);
   textRef.current = text;
+  const filesRef = useRef(files);
+  filesRef.current = files;
   const fileInput = useRef<HTMLInputElement>(null);
   const mentionMap = useRef(new Map<string, string>());
   const lastTyping = useRef(0);
@@ -345,7 +347,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       silent,
       pingReplied: replyTo && replyTo.author.id !== me ? pingReplied : true,
     };
-    const draft = { text, files, descriptions };
+    const draft = { text, files, descriptions, mentions: new Map(mentionMap.current) };
     setText('');
     setFiles([]);
     setDescriptions(new Map());
@@ -359,9 +361,14 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
       const cancelled = e instanceof Error && e.name === 'UploadCancelled';
       if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
-      setText((current) => current || draft.text);
-      setFiles((current) => (current.length > 0 ? current : draft.files));
-      setDescriptions((current) => (current.size > 0 ? current : draft.descriptions));
+      // Restore the whole message together, without combining it with a newer draft or reply.
+      if (!textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id]) {
+        setText(draft.text);
+        setFiles(draft.files);
+        setDescriptions(draft.descriptions);
+        setReplyTo(channel.id, replyTo ?? null);
+        mentionMap.current = draft.mentions;
+      }
     }
   };
 
@@ -449,7 +456,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           <div className="composer-reply">
             <ArrowBendUpLeft size={14} /> Replying to <strong>{replyName}</strong>
             <span className="composer-reply-text">{replyTo.content}</span>
-            {replyTo.author.id !== me && (
+            {standard && replyTo.author.id !== me && (
               <button
                 type="button"
                 className={`composer-reply-ping${pingReplied ? ' is-on' : ''}`}
@@ -505,7 +512,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
                 if (e.key === 'ArrowDown') { e.preventDefault(); setSelected((i) => (i + 1) % suggestions.length); return; }
                 if (e.key === 'ArrowUp') { e.preventDefault(); setSelected((i) => (i - 1 + suggestions.length) % suggestions.length); return; }
                 if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); accept(suggestions[selected]!); return; }
-                if (e.key === 'Escape') { setCaret(0); return; }
+                if (e.key === 'Escape') { e.preventDefault(); setCaret(0); return; }
               }
               if (e.key === 'ArrowUp' && !text && files.length === 0 && !command && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                 const timeline = useMessageStore.getState().timelines[channel.id];
@@ -518,8 +525,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
               const action = enterAction({ key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, isComposing: e.nativeEvent.isComposing }, sendWithCtrlEnter);
               if (action === 'send') { e.preventDefault(); void send(); }
               if (e.key === 'Escape') {
-                if (editing?.channelId === channel.id) setEditing(null);
-                else if (replyTo) setReplyTo(channel.id, null);
+                if (editing?.channelId === channel.id) { e.preventDefault(); setEditing(null); }
+                else if (replyTo) { e.preventDefault(); setReplyTo(channel.id, null); }
               }
             }}
           />

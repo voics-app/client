@@ -40,6 +40,11 @@ describe('notifyIncoming and @silent', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it.each([null, '100'])('routes a notification to the exact message in scope %s', (guildId) => {
+    notifyIncoming(dm({ guild_id: guildId, mentions: [me] }));
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ route: `/channels/${guildId ?? '@me'}/300/9` }));
+  });
+
   it.each([
     ['the master sound switch is off', () => usePrefsStore.setState({ notifySounds: false } as never)],
     ['the message sound is off', () => usePrefsStore.setState({ soundToggles: { message: false } } as never)],
