@@ -100,6 +100,8 @@ export interface PresenceUpdatePayload {
   status: Exclude<PresenceStatus, 'offline'>;
   activities: Activity[];
   afk: boolean;
+  /** P7 optional lifecycle hint; only mobile user sessions receive a bounded background lease. */
+  background?: boolean;
 }
 
 export interface VoiceStateUpdatePayload {
