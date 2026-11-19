@@ -7,6 +7,8 @@ import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { createBrowserMicPipeline, createBrowserMixer } from '../audio/browserAudio';
 import { browserSocketFactory } from '../net/socket';
 import { DaveSession } from '@discordy/core/application/voice/daveSession';
@@ -63,7 +65,14 @@ export function createVoiceController(options: BrowserVoiceOptions): VoiceContro
   const mixer = createBrowserMixer();
   return new VoiceController({
     gateway: options.gateway,
-    createSession: (params) => createVoiceSession(params, options.identityKeysOf, options.iceServers, (userId, stream) => mixer.setSoundboardStream(userId, stream as MediaStream | null)),
+    createSession: (params) => createVoiceSession(params, options.identityKeysOf, options.iceServers, (userId, stream) => {
+      if (stream) {
+        const muted = userId in useLocalPeopleStore.getState().mutedUsers;
+        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : undefined);
+        if (volume !== undefined) mixer.setUserVolume(userId, volume);
+      }
+      mixer.setSoundboardStream(userId, stream as MediaStream | null);
+    }),
     mic: createBrowserMicPipeline(),
     mixer,
     openCamera: (deviceId, preset) =>
