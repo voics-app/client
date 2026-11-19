@@ -20,17 +20,22 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
       - run: pnpm install --frozen-lockfile
       - name: Inspect Android tooling
         run: |
-          java -version
+          java -version || true
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
           command -v sdkmanager || true
           df -h "$RUNNER_TEMP"
+      - name: Prepare job-local JDK if needed
+        run: |
+          set -euo pipefail
+          if command -v java >/dev/null && java -version 2>&1 | grep -q 'version "17'; then exit 0; fi
+          mkdir -p "$RUNNER_TEMP/api46-jdk"
+          curl -fsSL https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse -o "$RUNNER_TEMP/api46-jdk.tar.gz"
+          tar -xzf "$RUNNER_TEMP/api46-jdk.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/api46-jdk"
+          echo "JAVA_HOME=$RUNNER_TEMP/api46-jdk" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/api46-jdk/bin" >> "$GITHUB_PATH"
       - name: Prepare job-local Android SDK
         run: |
           set -euo pipefail
