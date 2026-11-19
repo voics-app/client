@@ -162,7 +162,7 @@ export interface ApiPort {
   appealForm(guildId: string): Promise<{ question: string }>;
   setAppealForm(guildId: string, question: string): Promise<void>;
   submitBanAppeal(guildId: string, answer: string): Promise<{ id: string }>;
-  banAppeals(guildId: string): Promise<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string }[]>;
+  banAppeals(guildId: string): Promise<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]>;
   resolveBanAppeal(guildId: string, id: string, decision: 'accept' | 'deny'): Promise<void>;
   bans(guildId: string): Promise<Ban[]>;
   ban(guildId: string, userId: string, reason?: string, options?: { delete_message_seconds?: number }): Promise<void>;

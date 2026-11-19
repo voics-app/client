@@ -330,7 +330,7 @@ export class DiscordyApi implements ApiPort {
   appealForm(guildId: string) { return this.get<{ question: string }>(`/guilds/${guildId}/ban-appeals/form`); }
   setAppealForm(guildId: string, question: string) { return this.put<void>(`/guilds/${guildId}/ban-appeals/form`, { question }); }
   submitBanAppeal(guildId: string, answer: string) { return this.post<{ id: string }>(`/guilds/${guildId}/ban-appeals`, { answer }); }
-  banAppeals(guildId: string) { return this.get<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string }[]>(`/guilds/${guildId}/ban-appeals`); }
+  banAppeals(guildId: string) { return this.get<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]>(`/guilds/${guildId}/ban-appeals`); }
   resolveBanAppeal(guildId: string, id: string, decision: 'accept' | 'deny') { return this.post<void>(`/guilds/${guildId}/ban-appeals/${id}/${decision}`); }
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
