@@ -74,6 +74,14 @@ export interface CreateChannelBody {
   rate_limit_per_user?: number;
 }
 
+export interface SoundboardSound {
+  id: string;
+  guild_id: string;
+  creator_id: string | null;
+  name: string;
+  volume: number;
+}
+
 export interface ApiPort {
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
@@ -173,6 +181,10 @@ export interface ApiPort {
   createEmoji(guildId: string, body: { name: string; image: string }): Promise<Emoji>;
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;
   deleteEmoji(guildId: string, emojiId: string): Promise<void>;
+  soundboardSounds(guildId: string): Promise<SoundboardSound[]>;
+  createSoundboardSound(guildId: string, body: { name: string; sound: string; volume?: number }): Promise<SoundboardSound>;
+  updateSoundboardSound(guildId: string, soundId: string, patch: { name?: string; volume?: number }): Promise<SoundboardSound>;
+  deleteSoundboardSound(guildId: string, soundId: string): Promise<void>;
   guildInvites(guildId: string): Promise<Invite[]>;
 
   channel(channelId: string): Promise<Channel>;

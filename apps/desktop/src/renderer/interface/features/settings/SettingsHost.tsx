@@ -15,6 +15,7 @@ import { ChannelSettings } from './channel/ChannelSettings';
 import { ServerDiscovery } from './server/ServerDiscovery';
 import { ServerTemplate } from './server/ServerTemplate';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers } from './server/ServerTabs';
+import { ServerSoundboard } from './server/ServerSoundboard';
 import { ServerOverview } from './server/ServerOverview';
 import { RolesEditor } from './server/RolesEditor';
 import { closeSettings, useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
@@ -127,7 +128,7 @@ function ServerSettings({ guildId, tab, auditTarget }: { guildId: string; tab: S
   if (!guild) return null;
   const tabs = serverSettingsTabs(perms).filter((entry) => entry.show);
   const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
+  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, soundboard: <ServerSoundboard guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
   return (
     <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
       const entries = tabs.filter((entry) => entry.group === group);

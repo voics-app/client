@@ -1,5 +1,5 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
-import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
+import type { ApiPort, CreateChannelBody, MessageQuery, SoundboardSound } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
@@ -362,6 +362,18 @@ export class DiscordyApi implements ApiPort {
   }
   deleteEmoji(guildId: string, emojiId: string) {
     return this.del<void>(`/guilds/${guildId}/emojis/${emojiId}`);
+  }
+  soundboardSounds(guildId: string) {
+    return this.get<SoundboardSound[]>(`/guilds/${guildId}/soundboard-sounds`);
+  }
+  createSoundboardSound(guildId: string, body: { name: string; sound: string; volume?: number }) {
+    return this.post<SoundboardSound>(`/guilds/${guildId}/soundboard-sounds`, body);
+  }
+  updateSoundboardSound(guildId: string, soundId: string, patch: { name?: string; volume?: number }) {
+    return this.patch<SoundboardSound>(`/guilds/${guildId}/soundboard-sounds/${soundId}`, patch);
+  }
+  deleteSoundboardSound(guildId: string, soundId: string) {
+    return this.del<void>(`/guilds/${guildId}/soundboard-sounds/${soundId}`);
   }
   guildInvites(guildId: string) {
     return this.get<Invite[]>(`/guilds/${guildId}/invites`);
