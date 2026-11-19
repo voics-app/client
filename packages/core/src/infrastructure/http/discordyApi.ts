@@ -510,6 +510,12 @@ export class DiscordyApi implements ApiPort {
   guildWebhooks(guildId: string) {
     return this.get<Webhook[]>(`/guilds/${enc(guildId)}/webhooks`);
   }
+  followAnnouncement(channelId: string, targetChannelId: string) {
+    return this.post<{ channel_id: string; webhook_id: string }>(`/channels/${enc(channelId)}/followers`, { webhook_channel_id: targetChannelId });
+  }
+  followedChannels(guildId: string) {
+    return this.get<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>(`/guilds/${enc(guildId)}/followed-channels`);
+  }
   createWebhook(channelId: string, body: { name: string; avatar?: string }) {
     return this.post<WebhookCredential>(`/channels/${enc(channelId)}/webhooks`, body);
   }

@@ -28,8 +28,25 @@ export function ServerIntegrations({ guildId }: { guildId: string }) {
     <h1>Integrations</h1><p className="page-sub">Manage applications and incoming webhooks connected to this server.</p>
     {apps && <InstalledApplications key={`apps:${guildId}:${userId}`} guildId={guildId} canAudit={audit} canKick={hasPermission(permissions, Permission.KICK_MEMBERS)} />}
     {hooks && <Webhooks key={`hooks:${guildId}:${userId}`} guildId={guildId} canAudit={audit} />}
+    {hooks && <Following key={`following:${guildId}:${userId}`} guildId={guildId} />}
     {!apps && !hooks && <p>You need Manage Server or Manage Webhooks permission to manage integrations.</p>}
   </div>;
+}
+
+function Following({ guildId }: { guildId: string }) {
+  const userId = useSessionStore((s) => s.user?.id);
+  const channels = useGuildStore((s) => s.channels);
+  const qc = useQueryClient();
+  const followed = useQuery({ queryKey: ['guild', guildId, 'followed-channels', userId], queryFn: () => getRuntime().api.followedChannels(guildId) });
+  const unfollow = (webhookId: string) => useUiStore.getState().openDialog({ kind: 'confirm', title: 'Unfollow channel?', body: 'New publications will no longer be delivered to this channel.', confirmLabel: 'Unfollow', danger: true, onConfirm: async () => {
+    await getRuntime().api.deleteWebhook(webhookId);
+    await Promise.all([qc.invalidateQueries({ queryKey: ['guild', guildId, 'followed-channels'] }), qc.invalidateQueries({ queryKey: ['guild', guildId, 'webhooks'] })]);
+  } });
+  return <section className="integration-section"><h2>Following</h2>
+    {followed.isPending ? <p role="status">Loading followed channels…</p> : followed.isError ? <div><p role="alert" className="field-error">Could not load followed channels. {errorMessage(followed.error)}</p><Button onClick={() => void followed.refetch()}>Try again</Button></div> : followed.data.length === 0 ? <p>No announcement channels followed.</p> : <ul className="integration-list" aria-label="Following">{followed.data.map((item) => <li key={item.webhook_id}>
+      <div className="integration-identity"><div><h3>{channels[item.channel_id]?.name ? `#${channels[item.channel_id]?.name}` : 'Announcement channel'}</h3><p>Posts to {channels[item.webhook_channel_id]?.name ? `#${channels[item.webhook_channel_id]?.name}` : 'an unavailable channel'}</p></div><Button size="sm" variant="ghost" onClick={() => unfollow(item.webhook_id)}>Unfollow</Button></div>
+    </li>)}</ul>}
+  </section>;
 }
 
 function InstalledApplications({ guildId, canAudit, canKick }: { guildId: string; canAudit: boolean; canKick: boolean }) {
@@ -68,7 +85,7 @@ function Webhooks({ guildId, canAudit }: { guildId: string; canAudit: boolean })
   return <section className="integration-section"><div className="integration-section-heading"><h2>Webhooks</h2><Button size="sm" variant="primary" disabled={channels.length === 0} onClick={() => choose('new')}>New webhook</Button></div>
     <p className="page-sub">Send messages from external services. Execution URLs are shown only after creation or regeneration.</p>
     {channels.length === 0 && <p className="field-hint">You need access and Manage Webhooks permission in an eligible channel to create a webhook.</p>}
-    {hooks.isPending ? <p role="status">Loading webhooks…</p> : hooks.isError ? <div><p role="alert" className="field-error">Could not load webhooks. {errorMessage(hooks.error)}</p><Button onClick={() => void hooks.refetch()}>Try again</Button></div> : hooks.data.length === 0 ? <p>No webhooks yet.</p> : <ul className="integration-list" aria-label="Webhooks">{hooks.data.map((hook) => <li key={hook.id}>
+    {hooks.isPending ? <p role="status">Loading webhooks…</p> : hooks.isError ? <div><p role="alert" className="field-error">Could not load webhooks. {errorMessage(hooks.error)}</p><Button onClick={() => void hooks.refetch()}>Try again</Button></div> : hooks.data.filter((hook) => hook.type !== 2).length === 0 ? <p>No webhooks yet.</p> : <ul className="integration-list" aria-label="Webhooks">{hooks.data.filter((hook) => hook.type !== 2).map((hook) => <li key={hook.id}>
       <div className="integration-identity"><Avatar id={hook.id} name={hook.name ?? 'Webhook'} avatar={hook.avatar} size={36} /><div><h3>{hook.name ?? 'Webhook'}</h3><p>{hook.channel_id && allChannels[hook.channel_id] ? `#${allChannels[hook.channel_id]?.name}` : 'Unavailable channel'}</p></div><Button size="sm" variant="ghost" onClick={() => choose(hook)}>Edit</Button></div>
     </li>)}</ul>}
     {selected && <WebhookEditor key={selected === 'new' ? `new:${newDraft}` : selected.id} guildId={guildId} initial={selected === 'new' ? null : selected} channels={channels} canAudit={canAudit} onClose={() => choose(null)} onSaved={() => void qc.invalidateQueries({ queryKey: ['guild', guildId, 'webhooks'] })} />}
