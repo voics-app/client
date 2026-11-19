@@ -35,6 +35,7 @@ export const PERMISSION_CATALOG: readonly PermissionEntry[] = [
   e('MANAGE_NICKNAMES', 'Manage nicknames', 'Change other members’ nicknames.', 'Membership', false),
   e('KICK_MEMBERS', 'Kick members', 'Remove members from the server.', 'Membership', false),
   e('BAN_MEMBERS', 'Ban members', 'Permanently ban members.', 'Membership', false),
+  e('MANAGE_BAN_APPEALS', 'Manage ban appeals', 'Configure and review ban appeals.', 'Membership', false),
   e('MODERATE_MEMBERS', 'Timeout members', 'Temporarily stop members from talking or writing.', 'Membership', false),
   e('SEND_MESSAGES', 'Send messages', 'Post in text channels.', 'Text'),
   e('SEND_MESSAGES_IN_THREADS', 'Send messages in threads', 'Post inside threads.', 'Text'),

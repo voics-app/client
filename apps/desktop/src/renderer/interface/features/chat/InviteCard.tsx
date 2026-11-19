@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { Invite } from '@discordy/core/contracts/rest';
 import { instanceInviteCodes } from '@discordy/core/domain/inviteLinks';
-import { attempt } from '../../app/actions';
+import { errorMessage } from '../../app/actions';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useConnectionStore } from '../../app/connectionStore';
 import { openGuild } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
@@ -51,10 +53,14 @@ function InviteCard({ code }: { code: string }) {
   const guildId = invite?.guild?.id;
   const join = async () => {
     setBusy(true);
-    const joined = await attempt(() => getRuntime().api.acceptInvite(code), 'Could not join server');
-    setBusy(false);
-    const gid = joined?.guild?.id ?? guildId;
-    if (joined && gid) setTimeout(() => openGuild(gid), 300);
+    try {
+      const joined = await getRuntime().api.acceptInvite(code);
+      const gid = joined.guild?.id ?? guildId;
+      if (gid) setTimeout(() => openGuild(gid), 300);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 40007) useUiStore.getState().openDialog({ kind: 'joinGuild', code });
+      else useUiStore.getState().toast({ tone: 'danger', title: 'Could not join server', body: errorMessage(err) });
+    } finally { setBusy(false); }
   };
 
   if (invite === null) {

@@ -8,6 +8,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useGuildPermissions } from '../../../shared/hooks/usePermissions';
+import { Permission } from '@discordy/core/contracts/permissions';
 import { attempt, copyText } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';
 import { getRuntime } from '../../../app/runtime';
@@ -177,11 +178,15 @@ export function ServerInvites({ guildId }: { guildId: string }) {
 export function ServerBans({ guildId }: { guildId: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState('');
-  const bans = useQuery({ queryKey: ['guild', guildId, 'bans'], queryFn: () => getRuntime().api.bans(guildId) });
+  const perms = useGuildPermissions(guildId);
+  const mayBan = (perms & Permission.BAN_MEMBERS) !== 0n;
+  const mayAppeal = (perms & Permission.MANAGE_BAN_APPEALS) !== 0n;
+  const bans = useQuery({ queryKey: ['guild', guildId, 'bans'], queryFn: () => getRuntime().api.bans(guildId), enabled: mayBan });
   const shown = filterBans(bans.data ?? [], query);
   return (
     <Page title="Bans" sub="People who cannot rejoin until unbanned.">
-      {(bans.data?.length ?? 0) > 0 && <Input aria-label="Search bans" placeholder="Search by name, ID or reason" value={query} onChange={(e) => setQuery(e.target.value)} />}
+      {mayAppeal && <BanAppeals guildId={guildId} />}
+      {mayBan && <><h2>Current bans</h2>{(bans.data?.length ?? 0) > 0 && <Input aria-label="Search bans" placeholder="Search by name, ID or reason" value={query} onChange={(e) => setQuery(e.target.value)} />}
       {bans.isLoading ? <Loading /> : bans.data?.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title="No bans" body="Nobody is banned from this server." /> : shown.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title="No matching bans" /> : (
         <ul className="manage-list">
           {shown.map((b) => (
@@ -193,9 +198,26 @@ export function ServerBans({ guildId }: { guildId: string }) {
             </li>
           ))}
         </ul>
-      )}
+      )}</>}
     </Page>
   );
+}
+
+function BanAppeals({ guildId }: { guildId: string }) {
+  const qc = useQueryClient();
+  const [question, setQuestion] = useState('');
+  const form = useQuery({ queryKey: ['guild', guildId, 'appeal-form'], queryFn: () => getRuntime().api.appealForm(guildId), retry: false });
+  const appeals = useQuery({ queryKey: ['guild', guildId, 'appeals'], queryFn: () => getRuntime().api.banAppeals(guildId) });
+  return <section className="stack"><h2>Ban appeals</h2>
+    <p>Set a short question for banned users.</p>
+    <Input aria-label="Appeal question" placeholder={form.data?.question ?? 'Why should we unban you?'} value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={500} />
+    <Button disabled={!question.trim()} onClick={() => void attempt(async () => { await getRuntime().api.setAppealForm(guildId, question); setQuestion(''); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'appeal-form'] }); }, 'Could not save question')}>Save question</Button>
+    {form.data && <p>Current question: {form.data.question}</p>}
+    {appeals.isError && <p>Could not load appeals.</p>}
+    {appeals.data?.map((a) => <article key={a.id}><strong>{a.user_id}</strong><p>{a.question}</p><p>{a.answer}</p>
+      {(['accept', 'deny'] as const).map((decision) => <Button key={decision} onClick={() => void attempt(async () => { await getRuntime().api.resolveBanAppeal(guildId, a.id, decision); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'appeals'] }); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'bans'] }); }, 'Could not review appeal')}>{decision === 'accept' ? 'Accept and unban' : 'Deny'}</Button>)}
+    </article>)}
+  </section>;
 }
 
 export function ServerAudit({ guildId, target }: { guildId: string; target?: { id: string; name: string } }) {

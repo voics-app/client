@@ -9,6 +9,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
 import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -47,6 +48,9 @@ function useClose() {
 function JoinGuildDialog({ initial }: { initial?: string }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
+  const [appealQuestion, setAppealQuestion] = useState<string | null>(null);
+  const [appealAnswer, setAppealAnswer] = useState('');
+  const [appealSent, setAppealSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const close = useClose();
@@ -89,17 +93,36 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
-    const joined = await attempt(() => api.acceptInvite(invite.code), 'Could not join server');
-    setBusy(false);
-    if (joined) {
+    try {
+      const joined = await api.acceptInvite(invite.code);
       close();
       const gid = joined.guild?.id ?? invite.guild?.id;
       if (gid) setTimeout(() => openGuild(gid), 300);
-    }
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 40007 && invite.guild?.id) {
+        try { setAppealQuestion((await api.appealForm(invite.guild.id)).question); }
+        catch (formError) { if (formError instanceof ApiError && formError.status === 404) setAppealQuestion(''); else setError(errorMessage(formError)); }
+      } else setError(errorMessage(err));
+    } finally { setBusy(false); }
+  };
+  const submitAppeal = async () => {
+    if (!invite?.guild?.id) return;
+    setBusy(true); setError(null);
+    try { await api.submitBanAppeal(invite.guild.id, appealAnswer); setAppealSent(true); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
   };
   return (
     <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
-      {invite ? (
+      {appealQuestion !== null ? (
+        <div className="stack"><h2>You are banned</h2>
+          {appealSent ? <p>Your appeal has been submitted.</p> : appealQuestion ? <>
+            <Field label={appealQuestion} error={error}>{(id) => <Input id={id} value={appealAnswer} maxLength={2000} onChange={(e) => setAppealAnswer(e.target.value)} />}</Field>
+            <Button loading={busy} disabled={!appealAnswer.trim()} onClick={() => void submitAppeal()}>Submit appeal</Button>
+          </> : <p>This server has not enabled appeals.</p>}
+          <Button variant="ghost" onClick={close}>Close</Button>
+        </div>
+      ) : invite ? (
         <div className="stack">
           <div className="invite-card">
             <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
@@ -108,6 +131,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
               <p>{invite.approximate_member_count ?? '?'} members · {invite.approximate_presence_count ?? '?'} online</p>
             </div>
           </div>
+          {error && <p role="alert">{error}</p>}
           <div className="row-end">
             <Button variant="ghost" onClick={() => setInvite(null)}>Back</Button>
             <Button variant="primary" loading={busy} onClick={() => void accept()}>Accept invite</Button>
@@ -187,6 +211,9 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
 
 function InviteDialog({ guildId, channelId }: { guildId: string; channelId: string }) {
   const [invite, setInvite] = useState<Invite | null>(null);
+  const [appealQuestion, setAppealQuestion] = useState<string | null>(null);
+  const [appealAnswer, setAppealAnswer] = useState('');
+  const [appealSent, setAppealSent] = useState(false);
   const [maxAge, setMaxAge] = useState('86400');
   const [maxUses, setMaxUses] = useState('0');
   const [busy, setBusy] = useState(false);
