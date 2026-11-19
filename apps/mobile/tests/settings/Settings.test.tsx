@@ -210,6 +210,13 @@ describe('settings', () => {
       expect(screen.getByText(/Encrypted modes are not available in the mobile app yet/)).toBeTruthy();
     });
 
+    it('saves a friend request source only when the server supports it', async () => {
+      useSessionStore.setState({ settings: { default_delivery_mode: 'standard', friend_source_flags: { all: true, mutual_friends: false, mutual_guilds: false } } });
+      await open('/settings/privacy');
+      await fireEvent(await screen.findByLabelText('Friend requests from everyone'), 'valueChange', false);
+      await waitFor(() => expect(mockApi.updateSettings).toHaveBeenCalledWith({ friend_source_flags: { all: false } }));
+    });
+
     it('turns on end-to-end encryption for all my calls and saves it to the account', async () => {
       await open('/settings/privacy');
       const toggle = await screen.findByLabelText('Encrypt all my calls end-to-end');
