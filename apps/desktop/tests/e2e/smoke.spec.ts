@@ -51,6 +51,24 @@ test('sends a message in a channel', async () => {
   expect(JSON.stringify([...backend.messages.values()])).toContain('hello from playwright');
 });
 
+test('creates, votes and ends a poll', async () => {
+  await page.getByRole('button', { name: 'Add to message' }).click();
+  await page.getByRole('menuitem', { name: 'Create poll' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Create poll' });
+  await dialog.getByLabel('Question').fill('Where for lunch?');
+  await dialog.getByLabel('Answer 1').fill('Soup');
+  await dialog.getByLabel('Answer 2').fill('Salad');
+  await dialog.getByRole('button', { name: 'Create poll' }).click();
+  const poll = page.getByRole('region', { name: 'Poll: Where for lunch?' });
+  await expect(poll).toBeVisible();
+  await poll.getByRole('button', { name: /Soup/ }).click();
+  await expect(poll.getByRole('button', { name: /Soup/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(poll.getByText('1 vote', { exact: true })).toBeVisible();
+  await poll.getByRole('button', { name: 'End poll' }).click();
+  await expect(poll.getByText(/Poll ended/)).toBeVisible();
+  await expect(poll.getByRole('button', { name: /Soup/ })).toBeDisabled();
+});
+
 test('runs slash commands and renders interaction responses', async () => {
   const log = page.getByRole('log', { name: 'Messages' });
   const composer = page.getByRole('textbox', { name: /Message #general/ });
