@@ -22,6 +22,7 @@ import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
 import { passkeySite } from './passkeys/config';
 import { PasskeyBroker } from './passkeys/passkeyBroker';
+import { shouldRegisterProtocol } from './protocolRegistration';
 
 if (process.env.DISCORDY_USER_DATA_DIR) {
   app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
@@ -53,6 +54,7 @@ function navigate(link: string | null): void {
 }
 
 function registerProtocol(): void {
+  if (!shouldRegisterProtocol(app.isPackaged, env.DISCORDY_REGISTER_DEV_PROTOCOL)) return;
   for (const protocol of new Set([PROTOCOL, LEGACY_PROTOCOL])) registerScheme(protocol);
 }
 
