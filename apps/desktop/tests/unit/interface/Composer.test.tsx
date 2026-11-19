@@ -41,6 +41,7 @@ const type = (value: string) => fireEvent.change(input(), { target: { value, sel
 
 beforeEach(() => {
   send.mockClear();
+  useSessionStore.setState({ status: 'ready' });
   useDraftStore.setState({ drafts: {} });
   useSlowmodeStore.setState({ lastSent: {} });
   useReplyPingStore.setState({ ping: true });
