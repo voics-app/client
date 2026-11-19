@@ -177,6 +177,10 @@ describe('RemoteAudioMixer', () => {
     usePrefsStore.setState({ soundboardMuted: true });
     expect(soundGain.gain.value).toBe(0);
     expect(voiceGain.gain.value).toBe(1);
+    usePrefsStore.setState({ soundboardMuted: false });
+    mixer.setUserVolume('u1', 0);
+    expect(voiceGain.gain.value).toBe(0);
+    expect(soundGain.gain.value).toBe(0);
     usePrefsStore.setState({ soundboardMuted: false, soundboardVolume: 1 });
     mixer.dispose();
   });

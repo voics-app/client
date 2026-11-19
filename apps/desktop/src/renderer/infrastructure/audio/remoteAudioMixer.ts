@@ -101,14 +101,20 @@ export class RemoteAudioMixer implements MixerPort {
 
   private applySoundboardVolume(userId: string): void {
     const prefs = usePrefsStore.getState();
-    this.setUserVolume(`soundboard:${userId}`, prefs.soundboardMuted ? 0 : prefs.soundboardVolume);
+    const userVolume = this.volumes.get(userId) ?? 1;
+    this.setChannelVolume(`soundboard:${userId}`, prefs.soundboardMuted ? 0 : prefs.soundboardVolume * userVolume);
+  }
+
+  private setChannelVolume(key: string, volume: number): void {
+    const clamped = Math.max(0, Math.min(2, volume));
+    this.volumes.set(key, clamped);
+    const voice = this.voices.get(key);
+    if (voice) voice.gain.gain.value = clamped;
   }
 
   setUserVolume(userId: string, volume: number): void {
-    const clamped = Math.max(0, Math.min(2, volume));
-    this.volumes.set(userId, clamped);
-    const voice = this.voices.get(userId);
-    if (voice) voice.gain.gain.value = clamped;
+    this.setChannelVolume(userId, volume);
+    if (this.soundboardUsers.has(userId)) this.applySoundboardVolume(userId);
   }
 
   setMasterVolume(volume: number): void {
