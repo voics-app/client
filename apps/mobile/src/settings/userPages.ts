@@ -28,6 +28,7 @@ const row = (page: UserPageId, label: string, keywords = ''): SettingsRowInfo<Us
 
 /** Every row of every page, so search can find a setting by its title. A new setting registers itself by adding one line next to its page's other rows. */
 export const USER_SETTING_ROWS: readonly SettingsRowInfo<UserPageId>[] = [
+  row('connections', 'Show on profile', 'github visibility'),
   row('account', 'Username'),
   row('account', 'Email'),
   row('account', 'Password'),
