@@ -61,6 +61,7 @@
 
 - Open voice calls from the channel list and resize the call and text panels; controls and headers fit narrow windows.
 - Development builds no longer take over the installed app?s Windows invite-link association.
+- The Windows taskbar mention badge shows 9+ for ten or more mentions.
 - Gateway reconnection falls back to the configured endpoint if the advertised resume endpoint fails, with timeouts for stalled handshakes.
 
 ## 0.2.0
