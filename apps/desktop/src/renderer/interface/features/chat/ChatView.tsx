@@ -8,7 +8,8 @@ import { ChannelType } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { useNow } from '../../shared/hooks/useNow';
-import { CallStrip } from '../voice/CallStrip';
+import { VoiceStage } from '../voice/VoiceStage';
+import { ResizeHandle, useCallSplit } from '../voice/ResizeHandle';
 import { ChannelHeader } from './ChannelHeader';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -45,14 +46,18 @@ export function ChatView({ channelId }: { channelId: string }) {
   const inCall = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
   useSessionStore((s) => s.settings); // re-resolve the mode when account defaults or overrides change
   const mode = channel ? getRuntime().privacy.sender.resolveMode(channel) : 'standard';
+  const split = useCallSplit('vertical');
 
   if (!channel) return <div className="stage-empty" />;
   const title = channel.type === ChannelType.DM || channel.type === ChannelType.GROUP_DM ? (channel.name || (channel.recipients ?? []).map((u) => displayName(u)).join(', ') || 'Direct message') : (channel.name ?? '');
 
   return (
-    <section className="chat" aria-label={title}>
+    <section className="chat" aria-label={title} ref={split.containerRef}>
       <ChannelHeader channel={channel} mode={mode} />
-      {inCall && <CallStrip channelId={channelId} />}
+      {inCall && <>
+        <div className="dm-call-stage" style={{ height: `${split.percent}%` }}><VoiceStage channelId={channelId} guildId={null} /></div>
+        <ResizeHandle split={split} />
+      </>}
       <MessageList channelId={channelId} />
       <TypingBar channelId={channelId} />
       <Composer channel={channel} mode={mode} />

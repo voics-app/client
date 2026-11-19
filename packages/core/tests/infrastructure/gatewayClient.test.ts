@@ -67,7 +67,7 @@ describe('GatewayClient', () => {
     ready(first, 1);
     client.renewSession();
     expect(client.sessionId).toBeNull();
-    vi.advanceTimersByTime(60_000);
+    vi.advanceTimersByTime(2000);
     const second = FakeSocket.latest();
     expect(second).not.toBe(first);
     hello(second);
