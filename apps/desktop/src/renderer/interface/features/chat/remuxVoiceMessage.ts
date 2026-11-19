@@ -6,15 +6,28 @@ export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
     const audio = await input.getPrimaryAudioTrack();
     if (!audio || await audio.getCodec() !== 'opus') throw new Error('Recording does not contain Opus audio.');
     const decoderConfig = await audio.getDecoderConfig();
-    if (!decoderConfig) throw new Error('Recording has no Opus configuration.');
+    if (!decoderConfig?.description) throw new Error('Recording has no Opus configuration.');
+    const description = decoderConfig.description;
+    const header = ArrayBuffer.isView(description)
+      ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength)
+      : new Uint8Array(description);
+    if (header.length < 19 || String.fromCharCode(...header.subarray(0, 8)) !== 'OpusHead') throw new Error('Invalid Opus header.');
+    const preSkip = header[10]! | (header[11]! << 8);
     const target = new BufferTarget();
     const output = new Output({ format: new OggOutputFormat(), target });
     const source = new EncodedAudioPacketSource('opus');
     output.addAudioTrack(source);
     await output.start();
     let first = true;
+    let offset = 0;
     for await (const packet of new EncodedPacketSink(audio).packets()) {
-      await source.add(packet, first ? { decoderConfig } : undefined);
+      if (first) {
+        // WebM packet times are quantized to milliseconds; preserve the
+        // sample-accurate OpusHead pre-skip when writing the Ogg granule.
+        offset = -preSkip / 48_000 - packet.timestamp;
+        if (Math.abs(offset) > 0.1) throw new Error('Unexpected Opus recording timestamps.');
+      }
+      await source.add(packet.clone({ timestamp: packet.timestamp + offset }), first ? { decoderConfig } : undefined);
       first = false;
     }
     if (first) throw new Error('The recording has no audio packets.');
