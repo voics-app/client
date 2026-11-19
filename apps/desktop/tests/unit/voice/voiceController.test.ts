@@ -114,7 +114,7 @@ const update = { token: 'tok', guild_id: 'g1', channel_id: 'c1', endpoint: 'rtc.
 beforeEach(() => {
   vi.useFakeTimers();
   useVoiceStore.getState().resetCall();
-  useVoiceStore.setState({ selfMute: false, selfDeaf: false, userVolumes: {}, speaking: {}, localCamera: null, localScreen: null });
+  useVoiceStore.setState({ states: {}, selfMute: false, selfDeaf: false, userVolumes: {}, speaking: {}, localCamera: null, localScreen: null });
   useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
 });
 afterEach(() => vi.useRealTimers());
@@ -345,7 +345,7 @@ describe('VoiceController', () => {
     await controller.join({ guildId: 'g1', channelId: 'c1' });
     controller.onVoiceServerUpdate(update);
     sessions[0]!.audio.forEach((l) => l('u9', {} as MediaStream));
-    expect(mixer.setUserVolume).not.toHaveBeenCalled();
+    expect(mixer.setUserVolume).toHaveBeenCalledWith('u9', 1);
     expect(mixer.setStream).toHaveBeenCalledTimes(1);
     expect(useVoiceStore.getState().userVolumes.u9).toBeUndefined();
   });
@@ -359,8 +359,8 @@ describe('VoiceController', () => {
       l('u2', {} as MediaStream);
       l('u3', {} as MediaStream);
     });
-    expect(mixer.setUserVolume).toHaveBeenCalledTimes(1);
     expect(mixer.setUserVolume).toHaveBeenCalledWith('u2', 0);
+    expect(mixer.setUserVolume).toHaveBeenCalledWith('u3', 1);
     useLocalPeopleStore.setState({ mutedUsers: {} });
   });
 

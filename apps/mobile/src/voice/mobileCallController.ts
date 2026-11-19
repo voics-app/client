@@ -10,6 +10,12 @@ import { presetConstraints } from '@discordy/core/domain/videoPresets';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { VoiceSessionPort } from '@discordy/core/application/ports/voice';
 import { VoiceCallController, type VoiceCallDeps } from '@discordy/core/application/voice/voiceCallController';
+import type { JoinTarget } from '@discordy/core/application/voice/voiceCallController';
+import type { VoiceServerUpdate } from '@discordy/core/contracts/gateway';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { CameraFacing, NativeVideoStream } from './nativeVoice';
 import { MobileScreenShare, type ScreenShareDriver } from './mobileScreenShare';
 
@@ -37,7 +43,8 @@ export class MobileCallController extends VoiceCallController {
     super(mobile);
     this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState() });
     this.disposers.push(
-      mobile.onBackground(() => void this.setVideo(false).catch(() => undefined)),
+      mobile.onBackground(() => { this.setPushToTalk(false); void this.setVideo(false).catch(() => undefined); }),
+      useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
       useVoiceStore.subscribe((state, previous) => {
         if (state.call.status !== previous.call.status && (state.call.status === 'idle' || state.call.status === 'failed')) {
           this.releaseCapture();
@@ -45,6 +52,37 @@ export class MobileCallController extends VoiceCallController {
         }
       }),
     );
+  }
+
+  override async join(target: JoinTarget): Promise<void> {
+    this.syncVoicePermissions(target);
+    await super.join(target);
+    if (this.target) this.syncVoicePermissions(this.target);
+  }
+
+  override onVoiceServerUpdate(update: VoiceServerUpdate): void {
+    if (this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId)) {
+      this.syncVoicePermissions({ guildId: update.guild_id, channelId: update.channel_id });
+    }
+    super.onVoiceServerUpdate(update);
+  }
+
+  setPushToTalk(pressed: boolean): void {
+    this.mobile.mic.setPushToTalk?.(pressed);
+  }
+
+  private syncVoicePermissions(target: JoinTarget | null): void {
+    const state = useGuildStore.getState();
+    const guild = target?.guildId ? state.guilds[target.guildId] : undefined;
+    const channel = target ? state.channels[target.channelId] : undefined;
+    const user = useSessionStore.getState().user?.id;
+    const member = target?.guildId && user ? state.members[target.guildId]?.[user] : undefined;
+    const permissions = target?.guildId && guild && channel && user && member
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? [])
+      : 0n;
+    const forced = Boolean(target?.guildId) && !hasPermission(permissions, Permission.USE_VAD);
+    this.mobile.mic.setForcePushToTalk?.(forced);
+    if (useVoiceStore.getState().requiresPtt !== forced) useVoiceStore.getState().setSelf({ requiresPtt: forced });
   }
 
   get facing(): CameraFacing {

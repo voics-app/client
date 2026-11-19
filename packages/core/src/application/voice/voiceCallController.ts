@@ -224,8 +224,8 @@ export class VoiceCallController {
       session.onRemoteAudio((userId, stream) => {
         // A local mute outlives the session (it is persisted); the in-memory volume does not, so honour it here.
         const muted = userId in useLocalPeopleStore.getState().mutedUsers;
-        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : undefined);
-        if (volume !== undefined) this.deps.mixer.setUserVolume(userId, volume);
+        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : 1);
+        this.deps.mixer.setUserVolume(userId, volume);
         this.deps.mixer.setStream(userId, stream);
         this.syncPriorityVolumes();
       }),

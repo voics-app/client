@@ -47,6 +47,7 @@ export interface VoiceStoreState {
   selfDeaf: boolean;
   selfVideo: boolean;
   selfStream: boolean;
+  requiresPtt: boolean;
   streamPreset: VideoPresetId;
   speaking: Record<string, number>;
   remoteStreams: RemoteStream[];
@@ -66,7 +67,7 @@ export interface VoiceStoreState {
   upsertState(state: VoiceState): void;
   hydrate(scopeId: string, states: VoiceState[]): void;
   setCall(patch: Partial<CallState>): void;
-  setSelf(patch: Partial<Pick<VoiceStoreState, 'selfMute' | 'selfDeaf' | 'selfVideo' | 'selfStream' | 'streamPreset'>>): void;
+  setSelf(patch: Partial<Pick<VoiceStoreState, 'selfMute' | 'selfDeaf' | 'selfVideo' | 'selfStream' | 'streamPreset' | 'requiresPtt'>>): void;
   setSpeaking(userId: string, level: number): void;
   setRemoteStream(stream: RemoteStream): void;
   removeRemoteStreams(userId: string, kind?: RemoteStream['kind']): void;
@@ -93,6 +94,7 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   selfDeaf: false,
   selfVideo: false,
   selfStream: false,
+  requiresPtt: false,
   streamPreset: '1080p60',
   speaking: {},
   remoteStreams: [],
@@ -153,7 +155,7 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   stopWatching: (key) => set((s) => ({ watching: s.watching.filter((k) => k !== key), focusedStream: s.focusedStream === key ? null : s.focusedStream, pipStream: s.pipStream === key ? null : s.pipStream })),
   setHideSelfPreview: (hideSelfPreview) => set({ hideSelfPreview }),
   resetCall: () =>
-    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [], screenSsrcs: {}, streamViewers: [] }),
+    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, requiresPtt: false, focusedStream: null, pipStream: null, watching: [], screenSsrcs: {}, streamViewers: [] }),
 }));
 
 export function usersInChannel(states: VoiceStoreState['states'], scopeId: string | null | undefined, channelId: string): VoiceState[] {

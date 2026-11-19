@@ -75,7 +75,7 @@ export class VoiceController extends VoiceCallController {
   }
 
   override onVoiceServerUpdate(update: VoiceServerUpdate): void {
-    if (this.target && update.guild_id === this.target.guildId) {
+    if (this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId)) {
       this.syncVoicePermissions({ guildId: update.guild_id, channelId: update.channel_id });
     }
     super.onVoiceServerUpdate(update);
