@@ -8,6 +8,7 @@ let backend: FakeBackend;
 let app: ElectronApplication;
 let page: Page;
 let userData: string;
+let launchStarted: number;
 
 test.beforeAll(async () => {
   backend = await startFakeBackend();
@@ -21,6 +22,7 @@ test.beforeAll(async () => {
     DISCORDY_CDN_URL: `${backend.apiUrl}/cdn`,
   } as Record<string, string>;
   delete env.ELECTRON_RENDERER_URL;
+  launchStarted = performance.now();
   app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
   page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
@@ -30,6 +32,11 @@ test.afterAll(async () => {
   await app?.close();
   await backend?.close();
   rmSync(userData, { recursive: true, force: true });
+});
+
+test('cold start reaches the auth screen', async () => {
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30_000 });
+  console.log(`Electron cold launch to auth: ${Math.round(performance.now() - launchStarted)} ms`);
 });
 
 test('signs in and lands in the server shell', async () => {
@@ -49,6 +56,25 @@ test('sends a message in a channel', async () => {
   await composer.press('Enter');
   await expect(page.getByRole('log', { name: 'Messages' }).getByText('hello from playwright')).toBeVisible({ timeout: 15_000 });
   expect(JSON.stringify([...backend.messages.values()])).toContain('hello from playwright');
+});
+
+test('opens settings and the emoji picker on demand', async () => {
+  await page.getByRole('button', { name: 'User settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'User settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'User settings' })).toBeHidden();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Server settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeHidden();
+  await page.getByRole('button', { name: 'Emoji', exact: true }).click();
+  const picker = page.getByRole('dialog', { name: 'Emoji picker' });
+  await expect(picker).toBeVisible();
+  await picker.getByPlaceholder('Search emoji').fill('smile');
+  await expect(picker.getByPlaceholder('Search emoji')).toHaveValue('smile');
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeHidden();
 });
 
 test('runs slash commands and renders interaction responses', async () => {

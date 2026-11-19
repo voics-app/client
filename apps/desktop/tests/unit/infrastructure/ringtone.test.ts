@@ -3,14 +3,14 @@ import { INCOMING_RING, RINGTONE_PATTERNS, Ringtone } from '@renderer/infrastruc
 
 function fakeContext() {
   const oscillators: Array<{ frequency: { value: number }; type: string }> = [];
-  const gains: Array<{ gain: { linearRampToValueAtTime: ReturnType<typeof vi.fn> } }> = [];
+  const gains: Array<{ gain: { linearRampToValueAtTime: ReturnType<typeof vi.fn> }; disconnect: ReturnType<typeof vi.fn> }> = [];
   const context = {
     currentTime: 0,
     destination: {},
     setSinkId: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
     createGain: () => {
-      const gain = { gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn() };
+      const gain = { gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
       gains.push(gain);
       return gain;
     },
@@ -28,7 +28,7 @@ describe('Ringtone resilience', () => {
   afterEach(() => vi.useRealTimers());
 
   it('falls back to the default pattern for an unknown tone id and the default sink when the device is gone', async () => {
-    const { context, oscillators } = fakeContext();
+    const { context, oscillators, gains } = fakeContext();
     const setSinkId = vi.fn(async (id: string) => {
       if (id) throw new Error('NotFoundError');
     });
@@ -39,6 +39,7 @@ describe('Ringtone resilience', () => {
     expect(oscillators.map((o) => o.frequency.value)).toEqual([440, 480]);
     expect(setSinkId).toHaveBeenLastCalledWith('');
     ringtone.stop();
+    expect(gains[0]?.disconnect).toHaveBeenCalledOnce();
   });
 
   it('resumes a context that gets suspended while ringing', () => {
@@ -91,6 +92,6 @@ describe('Ringtone', () => {
     ringtone.start(null, { tone: 'chime', volume: 0.5 });
     expect(oscillators.map((o) => o.frequency.value)).toEqual([659, 784, 988]);
     expect(oscillators.every((o) => o.type === 'triangle')).toBe(true);
-    expect(gains[0]?.gain.linearRampToValueAtTime).toHaveBeenCalledWith(RINGTONE_PATTERNS.chime.gain * 0.5, expect.any(Number));
+    expect(gains[1]?.gain.linearRampToValueAtTime).toHaveBeenCalledWith(RINGTONE_PATTERNS.chime.gain * 0.5, expect.any(Number));
   });
 });
