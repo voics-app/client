@@ -2,7 +2,7 @@
 import { Permission } from '../contracts/permissions';
 import { hasPermission } from './permissions';
 
-export type ServerSettingsTabId = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit';
+export type ServerSettingsTabId = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export interface ServerSettingsTabEntry {
   id: ServerSettingsTabId;
@@ -21,6 +21,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
     { id: 'invites', label: 'Invites', group: 'People', show: can(Permission.MANAGE_GUILD) },
     { id: 'template', label: 'Template', group: 'Server', show: can(Permission.MANAGE_GUILD) },
     { id: 'discovery', label: 'Discovery', group: 'Server', show: can(Permission.MANAGE_GUILD) },
+    { id: 'integrations', label: 'Integrations', group: 'Server', show: can(Permission.MANAGE_GUILD) || can(Permission.MANAGE_WEBHOOKS) },
     { id: 'bans', label: 'Bans', group: 'Moderation', show: can(Permission.BAN_MEMBERS) },
     { id: 'audit', label: 'Audit log', group: 'Moderation', show: can(Permission.VIEW_AUDIT_LOG) },
   ];
@@ -28,5 +29,5 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
 
 /** Settings remain reachable for audit readers as well as server managers. */
 export function canOpenServerSettings(perms: bigint): boolean {
-  return hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS) || hasPermission(perms, Permission.VIEW_AUDIT_LOG);
+  return hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS) || hasPermission(perms, Permission.VIEW_AUDIT_LOG) || hasPermission(perms, Permission.MANAGE_WEBHOOKS);
 }

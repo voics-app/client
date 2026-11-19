@@ -6,7 +6,7 @@ import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc'
 import { installDisplayMediaHandler } from './capture';
 import { resolveConnection, resolveUpdateFeed } from './config';
 import { CryptoHost } from './cryptoHost';
-import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
+import { DeepLinkInbox, LEGACY_PROTOCOL, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
 import { GlobalKeybinds, HookHub, PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
 import { loadMainSettings, saveMainSettings } from './settings';
@@ -53,10 +53,14 @@ function navigate(link: string | null): void {
 }
 
 function registerProtocol(): void {
+  for (const protocol of new Set([PROTOCOL, LEGACY_PROTOCOL])) registerScheme(protocol);
+}
+
+function registerScheme(protocol: string): void {
   if (process.defaultApp && process.argv[1]) {
-    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1])]);
+    app.setAsDefaultProtocolClient(protocol, process.execPath, [resolve(process.argv[1])]);
   } else {
-    app.setAsDefaultProtocolClient(PROTOCOL);
+    app.setAsDefaultProtocolClient(protocol);
   }
 }
 
