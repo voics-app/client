@@ -1,4 +1,4 @@
-﻿name: Windows installer verification
+name: Windows installer verification
 on:
   pull_request:
     branches: [main]
@@ -12,7 +12,10 @@ permissions:
   contents: read
 jobs:
   installer:
-    runs-on: windows-latest
+    # This check installs the app: use a disposable Windows VM, never the user's PC.
+    # Do not execute fork-controlled code on the self-hosted runner.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64, voics-windows-disposable]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
