@@ -22,7 +22,8 @@
     "dist:linux": "pnpm build:native && pnpm --filter @discordy/desktop dist:linux",
     "test:unit": "pnpm --filter @discordy/core test && pnpm --filter @discordy/desktop test && pnpm --filter @discordy/mobile test",
     "lint:native": "pnpm --filter @discordy/crypto lint",
-    "dev:mobile": "pnpm --filter @discordy/mobile start"
+    "dev:mobile": "pnpm --filter @discordy/mobile start",
+    "test:ci": "pnpm test:unit && pnpm --filter @discordy/desktop exec electron-vite build && node apps/desktop/scripts/check-renderer-budget.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

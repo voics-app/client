@@ -67,6 +67,9 @@ Run these from this `client` folder (the parent `voics` folder is not a pnpm pro
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
 
+Desktop renderer builds defer settings, server administration, the emoji picker and slash-command panel until opened. Chunk failures retry with backoff, then offer retry, close or reload (reload can discard unsaved changes). The container CI build prints the entry and its static JavaScript imports and enforces a 3,000,000-byte uncompressed budget; run `node apps/desktop/scripts/check-renderer-budget.mjs` after a desktop build. CSS, workers, on-demand chunks and compressed transfer size are outside that budget. See [renderer performance](docs/renderer-performance.md) for measurement and acceptance.
+
+
 ## Desktop navigation and safety
 
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.

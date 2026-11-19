@@ -26,7 +26,34 @@ jobs:
       image-name: discordy-client
       lint-script: lint
       typecheck-script: typecheck
-      test-script: "test:unit"
+      test-script: "test:ci"
+  boot-reference:
+    # Run the signed-out Electron path on the existing Linux runner, using fresh profiles.
+    if: github.event_name == 'pull_request'
+    runs-on: vm-runner
+    continue-on-error: true
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check reference environment
+        run: |
+          uname -a
+          command -v xvfb-run
+          node --version
+          pnpm --version
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Build renderer
+        run: pnpm --filter @discordy/desktop exec electron-vite build
+      - name: Measure three fresh Electron launches
+        working-directory: apps/desktop
+        run: xvfb-run -a pnpm exec playwright test tests/e2e/smoke.spec.ts --grep 'signs in and lands' --repeat-each=3 --workers=1
+
   docker:
     needs: [node]
     permissions:
