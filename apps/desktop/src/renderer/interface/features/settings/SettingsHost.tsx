@@ -21,6 +21,8 @@ import { closeSettings, useUnsavedStore } from '@discordy/core/application/store
 import { confirmLogout } from './logout';
 import { searchSettings } from './searchIndex';
 import { USER_TABS } from './userTabs';
+import { AuthorizedApps } from '../integrations/AuthorizedApps';
+import { ServerIntegrations } from '../integrations/ServerIntegrations';
 import { DeveloperTab } from './user/DeveloperTab';
 import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
 
@@ -101,7 +103,7 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, authorizedApps: <AuthorizedApps />, about: <AboutTab /> }[tab];
   return (
     <Layout
       title="User settings"
@@ -117,7 +119,7 @@ function UserSettings({ tab }: { tab: UserSettingsTab }) {
   );
 }
 
-function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettingsTab }) {
+function ServerSettings({ guildId, tab, auditTarget }: { guildId: string; tab: ServerSettingsTab; auditTarget?: { id: string; name: string } }) {
   const open = useUiStore((s) => s.openSettings);
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -125,7 +127,7 @@ function ServerSettings({ guildId, tab }: { guildId: string; tab: ServerSettings
   if (!guild) return null;
   const tabs = serverSettingsTabs(perms).filter((entry) => entry.show);
   const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} /> }[selectedTab];
+  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
   return (
     <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
       const entries = tabs.filter((entry) => entry.group === group);
@@ -152,6 +154,6 @@ export function SettingsHost() {
 
 function SettingsRouter({ target }: { target: SettingsTarget }) {
   if (target.kind === 'user') return <UserSettings tab={target.tab} />;
-  if (target.kind === 'server') return <ServerSettings guildId={target.guildId} tab={target.tab} />;
+  if (target.kind === 'server') return <ServerSettings guildId={target.guildId} tab={target.tab} auditTarget={target.auditTarget} />;
   return <ChannelSettings channelId={target.channelId} tab={target.tab} />;
 }

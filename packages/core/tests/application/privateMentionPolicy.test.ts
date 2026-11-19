@@ -30,6 +30,12 @@ describe.each(['ephemeral', 'p2p'] as const)('%s local mention counts', (mode) =
     expect(useReadStateStore.getState().byChannel['200']?.mentionCount ?? 0).toBe(0);
   });
 
+  it('counts private mentions locally even with versioned server read state', () => {
+    useReadStateStore.setState({ versioned: true });
+    registerIncoming(message(mode), vi.fn());
+    expect(useReadStateStore.getState().byChannel['200']?.mentionCount).toBe(1);
+  });
+
   it('allows an explicit channel override and still counts during DND', () => {
     useNotificationSettingsStore.getState().upsert(withLevel(withLevel(emptySettings('100'), null, 2), '200', 1));
     registerIncoming(message(mode), vi.fn());

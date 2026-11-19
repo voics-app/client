@@ -31,6 +31,8 @@ export interface GatewayClientOptions {
 
 const SEND_LIMIT = 115; // 120/60 s minus headroom reserved for heartbeats
 const SEND_WINDOW_MS = 60_000;
+const HELLO_TIMEOUT_MS = 10_000;
+const READY_TIMEOUT_MS = 30_000;
 const ZOMBIE_CLOSE = 4900;
 
 export class GatewayClient implements GatewayPort {
@@ -40,6 +42,9 @@ export class GatewayClient implements GatewayPort {
 
   private socket: SocketLike | null = null;
   private resumeUrl: string | null = null;
+  private resumeEndpointPending = false;
+  private helloTimer: ReturnType<typeof setTimeout> | null = null;
+  private readyTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -148,11 +153,20 @@ export class GatewayClient implements GatewayPort {
     this.clearTimers();
     this.detach();
     const base = resume && this.resumeUrl ? this.resumeUrl : this.options.url;
+    this.resumeEndpointPending = resume && this.resumeUrl !== null;
     this.setState(resume ? 'resuming' : 'connecting');
     // resume_gateway_url may arrive with or without the /gateway path; never double it.
     const origin = base.replace(/\/+$/, '').replace(/\/gateway$/, '');
-    const socket = this.options.socketFactory(`${origin}/gateway?v=1&encoding=json`);
+    let socket: SocketLike;
+    try {
+      socket = this.options.socketFactory(`${origin}/gateway?v=1&encoding=json`);
+    } catch {
+      this.reconnect(resume);
+      return;
+    }
     this.socket = socket;
+    // A refused or blackholed endpoint may never deliver a close event or HELLO.
+    this.helloTimer = setTimeout(() => this.reconnect(resume), HELLO_TIMEOUT_MS);
     socket.onmessage = (event) => this.handleFrame(event.data);
     socket.onclose = (event) => this.handleClose(event.code);
     socket.onerror = () => undefined;
@@ -176,6 +190,9 @@ export class GatewayClient implements GatewayPort {
     }
     switch (frame.op) {
       case GatewayOp.HELLO:
+        if (this.helloTimer === null) break; // Duplicate HELLO must not extend authentication.
+        this.clearHelloTimer();
+        this.readyTimer = setTimeout(() => this.reconnect(this.sessionId !== null), READY_TIMEOUT_MS);
         this.startHeartbeat((frame.d as HelloPayload).heartbeat_interval);
         this.authenticate();
         break;
@@ -203,12 +220,16 @@ export class GatewayClient implements GatewayPort {
   private handleDispatch(frame: GatewayFrame): void {
     if (typeof frame.s === 'number') this.sequence = frame.s;
     if (frame.t === 'READY') {
+      this.clearReadyTimer();
       const ready = frame.d as { session_id: string; resume_gateway_url?: string };
       this.sessionId = ready.session_id;
       this.resumeUrl = ready.resume_gateway_url ?? null;
+      this.resumeEndpointPending = false;
       this.attempts = 0;
       this.setState('ready');
     } else if (frame.t === 'RESUMED') {
+      this.clearReadyTimer();
+      this.resumeEndpointPending = false;
       this.attempts = 0;
       this.setState('ready');
     }
@@ -271,6 +292,7 @@ export class GatewayClient implements GatewayPort {
   }
 
   private reconnect(resume: boolean): void {
+    this.discardFailedResumeEndpoint();
     this.clearTimers();
     this.socket?.close(ZOMBIE_CLOSE, 'reconnecting');
     this.detach();
@@ -278,6 +300,7 @@ export class GatewayClient implements GatewayPort {
   }
 
   private handleClose(code: number): void {
+    this.discardFailedResumeEndpoint();
     this.clearTimers();
     this.detach();
     if (this.manualClose) {
@@ -306,10 +329,29 @@ export class GatewayClient implements GatewayPort {
   }
 
   private clearTimers(): void {
+    this.clearHelloTimer();
+    this.clearReadyTimer();
     if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer);
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.heartbeatTimer = null;
     this.reconnectTimer = null;
+  }
+
+  private clearHelloTimer(): void {
+    if (this.helloTimer) clearTimeout(this.helloTimer);
+    this.helloTimer = null;
+  }
+
+  private clearReadyTimer(): void {
+    if (this.readyTimer) clearTimeout(this.readyTimer);
+    this.readyTimer = null;
+  }
+
+  private discardFailedResumeEndpoint(): void {
+    // Keep the session and sequence: another gateway can resume from shared storage.
+    // Trust the advertised endpoint again only after a fresh READY supplies it.
+    if (this.resumeEndpointPending) this.resumeUrl = null;
+    this.resumeEndpointPending = false;
   }
 
   private setState(state: GatewayState): void {

@@ -13,7 +13,7 @@ interface Props {
   speaking?: number;
   bot?: boolean;
   square?: boolean;
-  /** CDN folder of `avatar`: user avatars by default, `icons` for guild icons. */
+  /** CDN folder of `avatar`: user avatars by default, `icons` for guilds, `app-icons` for applications. */
   kind?: AssetKind;
 }
 
