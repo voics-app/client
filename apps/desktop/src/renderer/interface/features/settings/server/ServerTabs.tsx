@@ -215,7 +215,7 @@ export function BanAppeals({ guildId }: { guildId: string }) {
     {form.data && <p>Current question: {form.data.question}</p>}
     {appeals.isError && <p>Could not load appeals.</p>}
     {appeals.data?.map((a) => <article key={a.id}><strong>{a.user_id}</strong><p>{a.question}</p><p>{a.answer}</p>
-      <p>Status: {a.status}{a.resolved_by ? ` ? Reviewed by ${a.resolved_by}` : ''}</p>
+      <p>Status: {a.status}{a.resolved_by ? ` - Reviewed by ${a.resolved_by}` : ''}</p>
       {a.status === 'open' && (['accept', 'deny'] as const).map((decision) => <Button key={decision} onClick={() => void attempt(async () => { await getRuntime().api.resolveBanAppeal(guildId, a.id, decision); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'appeals'] }); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'bans'] }); }, 'Could not review appeal')}>{decision === 'accept' ? 'Accept and unban' : 'Deny'}</Button>)}
     </article>)}
   </section>;

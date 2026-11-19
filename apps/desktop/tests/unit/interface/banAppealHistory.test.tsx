@@ -13,6 +13,6 @@ afterEach(cleanup);
 it('shows the decision and reviewer in appeal history', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><BanAppeals guildId="42" /></QueryClientProvider>);
-  expect(await screen.findByText('Status: denied · Reviewed by 3')).toBeTruthy();
+  expect(await screen.findByText('Status: denied - Reviewed by 3')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Deny' })).toBeNull();
 });
