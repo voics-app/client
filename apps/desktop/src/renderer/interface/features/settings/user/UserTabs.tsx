@@ -425,7 +425,7 @@ export function NotificationsTab() {
   useEffect(() => () => { preview.stop(); if (previewTimer) clearTimeout(previewTimer); }, []);
   return (
     <Page title="Notifications">
-      <SettingRow title="Streamer mode" description="Hide your email and invite codes, hide direct message notification content, and silence app sounds on this device."><Switch label="Streamer mode" checked={prefs.streamerMode} onChange={(v) => prefs.set('streamerMode', v)} /></SettingRow>
+      <SettingRow title="Streamer mode" description="Hide your email and invite codes, redact direct message notifications, and silence notification and call tones and text-to-speech on this device."><Switch label="Streamer mode" checked={prefs.streamerMode} onChange={(v) => prefs.set('streamerMode', v)} /></SettingRow>
       <SettingRow title="Detect OBS" description={!prefs.streamerAutoDetect ? 'Check for OBS every five seconds. Detection is delayed; turn streamer mode on manually before streaming.' : obsDetected === null ? 'Checking for OBS failed or is pending; streamer mode stays active.' : obsDetected ? 'OBS detected; streamer mode is active.' : 'OBS is not running. Detection is delayed; turn streamer mode on manually before streaming.'}><Switch label="Detect OBS" checked={prefs.streamerAutoDetect} disabled={!bridge} onChange={(v) => prefs.set('streamerAutoDetect', v)} /></SettingRow>
       {streamer && <p role="status" className="setting-desc">Streamer mode is active.</p>}
       <SettingRow title="Desktop notifications" description="Shown for mentions and direct messages."><Switch label="Desktop notifications" checked={prefs.notifyDesktop} onChange={(v) => prefs.set('notifyDesktop', v)} /></SettingRow>
