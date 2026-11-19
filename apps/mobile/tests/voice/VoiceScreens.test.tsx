@@ -150,9 +150,9 @@ describe('voice screens', () => {
     await renderRouter('./app', { initialUrl: '/servers/g1' });
     await openLounge();
     const talk = await screen.findByLabelText('Hold to talk');
-    fireEvent(talk, 'pressIn');
+    await fireEvent(talk, 'pressIn');
     expect(mockController.setPushToTalk).toHaveBeenLastCalledWith(true);
-    fireEvent(talk, 'pressOut');
+    await fireEvent(talk, 'pressOut');
     expect(mockController.setPushToTalk).toHaveBeenLastCalledWith(false);
   });
 
