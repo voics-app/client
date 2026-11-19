@@ -23,6 +23,7 @@ export function categoryLabel(slug: string): string {
 }
 
 const BLOCKER_MESSAGES: Record<string, string> = {
+  COMMUNITY_REQUIRED: 'Enable Community and choose rules and updates channels below.',
   DESCRIPTION_REQUIRED: 'Add a server description of at least 10 characters in Overview.',
   MEMBER_COUNT_TOO_LOW: 'The server needs more members before it can be listed.',
   GUILD_TOO_NEW: 'The server is too new to be listed. Try again later.',

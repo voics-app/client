@@ -30,7 +30,8 @@ export type ReportTarget =
       content: string;
       mode: DeliveryMode;
     }
-  | { kind: 'user'; userId: string; userName: string };
+  | { kind: 'user'; userId: string; userName: string }
+  | { kind: 'guild'; guildId: string; guildName: string };
 
 export interface ReportDraft {
   category: ReportCategory | null;
@@ -41,9 +42,10 @@ export interface ReportDraft {
 
 export const emptyReportDraft = (): ReportDraft => ({ category: null, note: '', includeContent: false });
 
-/** The JSON body of `POST /reports`. */
+/** A report command. The HTTP adapter sends guild targets to the discovery listing route. */
 export interface CreateReportBody {
-  target: 'message' | 'user';
+  target: 'message' | 'user' | 'guild';
+  guild_id?: string;
   category: ReportCategory;
   note?: string;
   channel_id?: string;
@@ -62,11 +64,13 @@ export const serverHoldsCopy = (target: ReportTarget): boolean => target.kind ==
 export const canIncludeContent = (target: ReportTarget): boolean => target.kind === 'message' && target.mode !== 'standard' && target.content.trim().length > 0;
 
 export function reportTitle(target: ReportTarget): string {
+  if (target.kind === 'guild') return `Report ${target.guildName} listing`;
   return target.kind === 'message' ? 'Report message' : `Report ${target.userName}`;
 }
 
 /** What the person is told about the data this report shares, before sending. */
 export function reportDisclosure(target: ReportTarget): string {
+  if (target.kind === 'guild') return `${brand().displayName} moderators will see the public listing as it appears when you report it. Private channels, members and messages are not copied. The owner is not told who reported them. Reporting does not automatically remove the listing.`;
   if (target.kind === 'user') return `${brand().displayName} moderators will see your report and the account you reported. The person is not told who reported them.`;
   if (serverHoldsCopy(target)) return `${brand().displayName} moderators will see a copy of this message, who sent it and where. The person is not told who reported them.`;
   const kind = target.mode === 'p2p' ? 'peer-to-peer' : 'ephemeral';
@@ -93,6 +97,7 @@ export function buildReportBody(target: ReportTarget, draft: ReportDraft): Creat
   if (error || !draft.category) throw new Error(error ?? 'Choose what is wrong.');
   const note = draft.note.trim();
   const base = { category: draft.category, ...(note ? { note } : {}) };
+  if (target.kind === 'guild') return { target: 'guild', guild_id: target.guildId, ...base };
   if (target.kind === 'user') return { target: 'user', user_id: target.userId, ...base };
   const body: CreateReportBody = { target: 'message', channel_id: target.channelId, message_id: target.messageId, ...base };
   if (target.mode === 'standard') return body;

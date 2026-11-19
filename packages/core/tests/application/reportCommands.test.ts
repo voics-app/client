@@ -7,6 +7,12 @@ const target: ReportTarget = { kind: 'message', channelId: 'c1', messageId: 'm1'
 const draft = { ...emptyReportDraft(), category: 'harassment' as const };
 
 describe('submitReport', () => {
+  it('reports a discovery listing without client-supplied evidence', async () => {
+    const createReport = vi.fn().mockResolvedValue(undefined);
+    const listing: ReportTarget = { kind: 'guild', guildId: 'g1', guildName: 'Public hub' };
+    expect(await submitReport({ createReport }, listing, { ...draft, note: '  public spam  ', includeContent: true })).toEqual({ ok: true });
+    expect(createReport).toHaveBeenCalledWith({ target: 'guild', guild_id: 'g1', category: 'harassment', note: 'public spam' });
+  });
   it('posts the built body', async () => {
     const createReport = vi.fn().mockResolvedValue(undefined);
     expect(await submitReport({ createReport }, target, draft)).toEqual({ ok: true });

@@ -206,6 +206,7 @@ export interface Guild {
   system_channel_id?: Snowflake | null;
   system_channel_flags?: number;
   rules_channel_id?: Snowflake | null;
+  public_updates_channel_id?: Snowflake | null;
   preferred_locale?: string;
   member_count?: number;
   voice_region?: string | null;
