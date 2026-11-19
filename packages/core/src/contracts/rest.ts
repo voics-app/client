@@ -162,6 +162,7 @@ export interface Channel {
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];
+  flags?: number;
   default_sort_order?: number | null;
   default_forum_layout?: number;
   default_reaction_emoji?: { emoji_id: string | null; emoji_name: string | null } | null;

@@ -4,6 +4,8 @@ import { useDraftStore } from '@discordy/core/application/stores/composerStores'
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';
@@ -24,9 +26,14 @@ export function ForumView({ channelId }: { channelId: string }) {
   const [layout, setLayout] = useState(channel?.default_forum_layout === 1 ? 'list' : 'gallery');
   const [draftPost, setDraftPost] = useState<Channel | null>(null);
   const setPanel = useUiStore((s) => s.setSidePanel);
+  const mayManageThreads = can(useChannelPermissions(channelId), Permission.MANAGE_THREADS);
   const tags = channel?.available_tags ?? [];
   const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD && (!filterTag || c.applied_tags?.includes(filterTag)));
-  posts.sort((a, b) => a.id === b.id ? 0 : BigInt(a.id) > BigInt(b.id) ? -1 : 1);
+  posts.sort((a, b) => Number(Boolean((b.flags ?? 0) & 2)) - Number(Boolean((a.flags ?? 0) & 2)) || (a.id === b.id ? 0 : BigInt(a.id) > BigInt(b.id) ? -1 : 1));
+  const togglePin = async (post: Channel) => {
+    const updated = await attempt(() => getRuntime().api.updateChannel(post.id, { flags: (post.flags ?? 0) ^ 2 }), 'Could not update pinned post');
+    if (updated) useGuildStore.getState().upsertChannel(updated);
+  };
 
   const close = () => {
     if (submitting) return;
@@ -78,11 +85,14 @@ export function ForumView({ channelId }: { channelId: string }) {
           <EmptyState icon={<ChatsCircle size={36} weight="light" />} title="No posts yet" body="Start a discussion. Every post is its own thread." action={<Button variant="primary" onClick={() => setCreating(true)}>Create the first post</Button>} />
         ) : (
           posts.map((p) => (
-            <button key={p.id} type="button" className="forum-post" onClick={() => setPanel({ kind: 'thread', threadId: p.id })}>
-              <h3>{p.name}</h3>
+            <article key={p.id} className="forum-post">
+              <button type="button" onClick={() => setPanel({ kind: 'thread', threadId: p.id })}>
+                {(p.flags ?? 0) & 2 ? <span>Pinned ? </span> : null}<strong>{p.name}</strong>
+              </button>
               <span>{p.applied_tags?.map((id) => tags.find((tag) => tag.id === id)?.name).filter(Boolean).join(' ? ')}</span>
               {p.message_count != null && <span className="tnum">{Math.max(0, p.message_count - 1)} replies</span>}
-            </button>
+              {mayManageThreads && <Button size="sm" onClick={() => void togglePin(p)}>{(p.flags ?? 0) & 2 ? 'Unpin' : 'Pin'}</Button>}
+            </article>
           ))
         )}
       </div>

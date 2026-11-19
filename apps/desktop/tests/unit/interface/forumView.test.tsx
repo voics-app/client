@@ -13,6 +13,7 @@ vi.mock('@discordy/core/application/stores/guildStore', () => {
   return { useGuildStore: store };
 });
 vi.mock('@discordy/core/application/stores/uiStore', () => ({ useUiStore: (selector: (state: unknown) => unknown) => selector({ setSidePanel: fixture.setSidePanel }) }));
+vi.mock('@renderer/interface/shared/hooks/usePermissions', () => ({ useChannelPermissions: () => 0n, can: () => false }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { createThread: fixture.createThread }, privacy: { sender: { send: fixture.send } } }) }));
 vi.mock('@renderer/interface/app/actions', () => ({ attempt: async (fn: () => Promise<unknown>) => { try { return await fn(); } catch { return undefined; } } }));
 
