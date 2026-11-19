@@ -7,7 +7,7 @@ import { MemberActionSheet } from '../serverSettings/MemberActionSheet';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { GuildMember, User } from '@discordy/core/contracts/rest';
+import type { GuildMember, LinkedConnection, User } from '@discordy/core/contracts/rest';
 import type { ReportTarget } from '@discordy/core/domain/reportModel';
 import { statusLine } from '@discordy/core/domain/memberList';
 import { openConversation } from '../dms/dmActions';
@@ -43,6 +43,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
   const member = useGuildStore((s) => (guildId && user ? s.members[guildId]?.[user.id] : undefined));
   const me = useSessionStore((s) => s.user?.id);
   const [fetched, setFetched] = useState<Fetched | null>(null);
+  const [connections, setConnections] = useState<{ id: string; items: LinkedConnection[] } | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [managing, setManaging] = useState<GuildMember | null>(null);
   const [reporting, setReporting] = useState<ReportTarget | null>(null);
@@ -60,6 +61,14 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
     return () => {
       current = false;
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || user.bot) return;
+    let current = true;
+    void Promise.resolve().then(() => getRuntime().api.userConnections(user.id))
+      .then((items) => { if (current) setConnections({ id: user.id, items }); }).catch(() => undefined);
+    return () => { current = false; };
   }, [user]);
 
   const close = () => {
@@ -135,6 +144,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
             )}
           </View>
           <View style={styles.fields}>
+          {connections?.id === user.id && connections.items.length > 0 && <ProfileField label="Connections">{connections.items.map((item) => `${item.provider === 'github' ? 'GitHub' : item.provider}: ${item.name}`).join('\n')}</ProfileField>}
           {view.bio !== '' && <ProfileField label="About me">{view.bio}</ProfileField>}
           {view.roles.length > 0 && <ProfileField label="Roles">{view.roles.join(', ')}</ProfileField>}
           {view.memberSince && <ProfileField label="Member since">{view.memberSince.toLocaleDateString()}</ProfileField>}

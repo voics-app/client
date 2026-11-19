@@ -1,6 +1,6 @@
 import { searchSettingsIndex, type SettingsHit, type SettingsPageInfo, type SettingsRowInfo } from '@discordy/core/domain/settingsSearch';
 
-export type UserPageId = 'account' | 'profile' | 'privacy' | 'devices' | 'appearance' | 'accessibility' | 'notifications' | 'chat';
+export type UserPageId = 'account' | 'connections' | 'profile' | 'privacy' | 'devices' | 'appearance' | 'accessibility' | 'notifications' | 'chat';
 
 export interface UserPage extends SettingsPageInfo<UserPageId> {
   group: 'User settings' | 'App settings';
@@ -14,6 +14,7 @@ export interface UserPage extends SettingsPageInfo<UserPageId> {
  */
 export const USER_PAGES: readonly UserPage[] = [
   { id: 'account', label: 'My account', group: 'User settings', icon: 'person-circle-outline', hint: 'Username, email, password, two-factor, log out', keywords: 'username email password security two-factor 2fa authenticator backup codes log out sign out delete disable' },
+  { id: 'connections', label: 'Connections', group: 'User settings', icon: 'id-card-outline', hint: 'Linked accounts and profile visibility', keywords: 'github linked accounts profile' },
   { id: 'profile', label: 'Profile', group: 'User settings', icon: 'id-card-outline', hint: 'Avatar, banner, about me, status', keywords: 'display name avatar picture banner about me bio colour color status custom status online idle do not disturb invisible' },
   { id: 'privacy', label: 'Privacy and delivery', group: 'User settings', icon: 'lock-closed-outline', hint: 'Delivery mode, blocked users', keywords: 'delivery mode encryption e2ee ephemeral p2p block blocked unblock' },
   { id: 'devices', label: 'Devices and sessions', group: 'User settings', icon: 'phone-portrait-outline', hint: 'Where you are logged in', keywords: 'devices sessions logged in log out other fingerprint identity' },
