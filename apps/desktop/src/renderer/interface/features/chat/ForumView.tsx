@@ -23,13 +23,19 @@ export function ForumView({ channelId }: { channelId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filterTag, setFilterTag] = useState('');
+  const [sort, setSort] = useState(channel?.default_sort_order === 1 ? 'created' : 'activity');
   const [layout, setLayout] = useState(channel?.default_forum_layout === 1 ? 'list' : 'gallery');
   const [draftPost, setDraftPost] = useState<Channel | null>(null);
   const setPanel = useUiStore((s) => s.setSidePanel);
   const mayManageThreads = can(useChannelPermissions(channelId), Permission.MANAGE_THREADS);
   const tags = channel?.available_tags ?? [];
   const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD && (!filterTag || c.applied_tags?.includes(filterTag)));
-  posts.sort((a, b) => Number(Boolean((b.flags ?? 0) & 2)) - Number(Boolean((a.flags ?? 0) & 2)) || (a.id === b.id ? 0 : BigInt(a.id) > BigInt(b.id) ? -1 : 1));
+  posts.sort((a, b) => {
+    const pinOrder = Number(Boolean((b.flags ?? 0) & 2)) - Number(Boolean((a.flags ?? 0) & 2));
+    const aKey = sort === 'activity' ? (a.last_message_id ?? a.id) : a.id;
+    const bKey = sort === 'activity' ? (b.last_message_id ?? b.id) : b.id;
+    return pinOrder || (aKey === bKey ? 0 : BigInt(aKey) > BigInt(bKey) ? -1 : 1);
+  });
   const togglePin = async (post: Channel) => {
     const updated = await attempt(() => getRuntime().api.updateChannel(post.id, { flags: (post.flags ?? 0) ^ 2 }), 'Could not update pinned post');
     if (updated) useGuildStore.getState().upsertChannel(updated);
@@ -79,7 +85,7 @@ export function ForumView({ channelId }: { channelId: string }) {
         <div className="channel-header-title"><ChatsCircle size={22} className="channel-header-icon" /><h1>{channel?.name}</h1>{channel?.topic && <span className="channel-topic">{channel.topic}</span>}</div>
         <div className="channel-header-actions"><Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setCreating(true)}>New post</Button></div>
       </header>
-      <div className="forum-controls"><label>Filter tags <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}><option value="">All tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label><label>Layout <select value={layout} onChange={(e) => setLayout(e.target.value)}><option value="list">List</option><option value="gallery">Gallery</option></select></label></div>
+      <div className="forum-controls"><label>Sort <select value={sort} onChange={(e) => setSort(e.target.value)}><option value="activity">Recent activity (when available)</option><option value="created">Newest posts</option></select></label><label>Filter tags <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}><option value="">All tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label><label>Layout <select value={layout} onChange={(e) => setLayout(e.target.value)}><option value="list">List</option><option value="gallery">Gallery</option></select></label></div>
       <div className={`forum-list${layout === 'list' ? ' forum-list--rows' : ''}`}>
         {posts.length === 0 ? (
           <EmptyState icon={<ChatsCircle size={36} weight="light" />} title="No posts yet" body="Start a discussion. Every post is its own thread." action={<Button variant="primary" onClick={() => setCreating(true)}>Create the first post</Button>} />
