@@ -13,6 +13,7 @@ const SAM: User = { id: 'u3', username: 'sam', global_name: 'Sam', avatar: null 
 const dm = { id: '1000', type: ChannelType.DM, delivery_mode: 'standard', recipients: [PAT] } as unknown as Channel;
 
 const mockApi = {
+  userConnections: jest.fn(async (_id: string): Promise<{provider: string; account_id: string; name: string; visible: boolean}[]> => []),
   messages: jest.fn(async () => []),
   ack: jest.fn(async () => undefined),
   userProfile: jest.fn(async (id: string) => ({ user: { ...PAT, id, bio: 'Plays chess' }, mutual_guilds: [{ id: 'g1', nick: 'Patty' }, { id: 'left' }], mutual_friends: [SAM] })),
@@ -58,6 +59,13 @@ describe('full profile sheet', () => {
     expect(screen.getByText('Mutual friends - 1')).toBeTruthy();
     expect(screen.getByText('Sam')).toBeTruthy();
     expect(screen.getByText('Friends since')).toBeTruthy();
+  });
+
+  it('shows the visible connections returned for the viewed profile', async () => {
+    mockApi.userConnections.mockResolvedValueOnce([{ provider: 'github', account_id: '123', name: 'pat-code', visible: true }]);
+    await openProfile(friend(RelationshipType.FRIEND));
+    expect(await screen.findByText('GitHub: pat-code')).toBeTruthy();
+    expect(mockApi.userConnections).toHaveBeenCalledWith('u2');
   });
 
   it('says when there is nothing in common', async () => {
