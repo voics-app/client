@@ -1,5 +1,5 @@
 import { Check, DeviceMobile, Laptop, SignOut, Upload } from '@phosphor-icons/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePrefsStore, type AccentId, type ThemeId } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -32,6 +32,7 @@ import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
 import { SessionsList } from './SessionsList';
+import { ProfileBadges } from './ProfileBadges';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -71,31 +72,6 @@ export function AccountTab() {
       </SettingRow>
     </Page>
   );
-}
-
-function ProfileBadges({ userId }: { userId: string }) {
-  const client = useQueryClient();
-  const badges = useQuery({ queryKey: ['own-badges', userId], queryFn: () => getRuntime().api.ownBadges() });
-  const update = useMutation({
-    mutationFn: ({ id, visible }: { id: string; visible: boolean }) => getRuntime().api.setBadgeVisibility(id, visible),
-    onSuccess: async () => {
-      await Promise.all([
-        client.invalidateQueries({ queryKey: ['own-badges', userId] }),
-        client.invalidateQueries({ queryKey: ['user-badges', userId] }),
-      ]);
-    },
-  });
-  return <section aria-label="Profile badges">
-    <h2>Profile badges</h2>
-    <p className="setting-desc">Choose which badges others can see on your profile.</p>
-    {badges.isLoading && <p>Loading badges?</p>}
-    {badges.isError && <p role="alert">Could not load badges.</p>}
-    {badges.data?.length === 0 && <p className="setting-desc">You have no badges yet.</p>}
-    {badges.data?.map((badge) => <SettingRow key={badge.id} title={badge.id}>
-      <Switch label={`Show ${badge.id} on your profile`} checked={badge.visible} disabled={update.isPending} onChange={(visible) => update.mutate({ id: badge.id, visible })} />
-    </SettingRow>)}
-    {update.isError && <p role="alert">Could not update badge visibility. Try again.</p>}
-  </section>;
 }
 
 export function ProfileTab() {
