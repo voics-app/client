@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-## 0.9.11
-
-- Open voice calls from the channel list and resize the call and text panels; controls and headers fit narrow windows.
-- Development builds no longer take over the installed app?s Windows invite-link association.
-- Gateway reconnection falls back to the configured endpoint if the advertised resume endpoint fails, with timeouts for stalled handshakes.
-
 - Mobile sign-in: Forgot password, the reset flow (email, then the code from the email and the new password) and Create account, with the same api calls as desktop (client#261). The links in account emails open the right screen on both apps with the token filled in: `voics://reset-password?token=...` opens the new-password form, `voics://verify-email?token=...` verifies the address. On desktop `routeFromDeepLink` accepts both links (the token must be 16 to 128 base64url characters, anything else is dropped), they work while signed out, and the sign-in screen opens on the reset form or verifies at once; signed in, a verify link verifies and toasts, a reset link asks to sign out first. Tokens are never logged. Core: `domain/authLinks.ts`, `authLinkStore`.
 - Mobile app: a long press on a channel in the channel list opens the channel menu, as the right-click menu does on desktop: Mark as read, Mute, Notification settings, Invite people and, with Manage Channels, Edit channel (opens the channel settings) and Delete channel (asks first). A long press on a category opens its edit sheet. The same Edit and Delete entries are in the menu of an open channel. Until now channels could only be edited through Server settings, Channels, which nothing in the channel list pointed to.
 - Delete and disappearing messages in Ephemeral and P2P chats (desktop and iPhone). The author can delete their own message for everyone; the other devices remove it when they receive the signed control message, offline devices when they catch up, and nobody else can delete it. A per-chat timer (5 minutes to 4 weeks) removes new messages from every device after that time. The local encrypted store really drops the content (SQLite `secure_delete`). The dialogs say that someone may already have copied or screenshotted a message. Core: `PrivateRetention`, control messages, `MessageSender.remove` and `setDisappearTimer`.
@@ -62,6 +56,12 @@
 - Messages render GitHub-style pipe tables: a header row, per-column alignment (`:--`, `:-:`, `--:`) and horizontal scrolling when wide; limited to 12 columns and 50 rows.
 - Settings, Devices now lists where you are logged in (client, OS, approximate location, last active) with a Log out per device and Log out all known devices; revoked devices are signed out right away. Needs the api and gateway session revocation.
 - Fixed components at the bottom of the window lagging and leaving a trail while resizing on Windows: the voice dock is opaque, and blur and transitions are suspended during a resize.
+
+## 0.9.11
+
+- Open voice calls from the channel list and resize the call and text panels; controls and headers fit narrow windows.
+- Development builds no longer take over the installed app?s Windows invite-link association.
+- Gateway reconnection falls back to the configured endpoint if the advertised resume endpoint fails, with timeouts for stalled handshakes.
 
 ## 0.2.0
 
