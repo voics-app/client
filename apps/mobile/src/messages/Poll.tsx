@@ -45,6 +45,8 @@ export function MessagePoll({ message }: { message: ChatMessage }) {
   const active = useAppActive();
   const gateway = useSessionStore((s) => s.gateway);
   const me = useSessionStore((s) => s.user?.id);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const poll = message.poll!;
   const results = poll.results;
   const refresh = async () => {
@@ -65,7 +67,7 @@ export function MessagePoll({ message }: { message: ChatMessage }) {
     catch (error) { Alert.alert('Could not end poll', errorMessage(error)); await refresh(); }
     finally { setBusy(false); }
   };
-  const closed = results?.is_finalized || Date.now() >= Date.parse(poll.expiry);
+  const closed = results?.is_finalized || now >= Date.parse(poll.expiry);
   return <View style={styles.poll} accessibilityLabel={`Poll: ${poll.question.text}`}>
     <Text style={styles.title}>{poll.question.text}</Text><Text style={styles.meta}>{closed ? 'Poll ended' : `Ends ${new Date(poll.expiry).toLocaleString()}`}{poll.allow_multiselect ? ' - Select multiple' : ' - Select one'}</Text>
     {poll.answers.map((answer) => { const count = results?.answer_counts.find((entry) => entry.id === answer.answer_id); return <Pressable key={answer.answer_id} accessibilityRole="button" accessibilityState={{ selected: count?.me_voted ?? false, disabled: Boolean(busy || closed || results?.vote_version === undefined) }} disabled={busy || closed || results?.vote_version === undefined} onPress={() => void vote(answer.answer_id, !count?.me_voted)} style={[styles.answer, count?.me_voted && styles.selected]}><Text style={styles.text}>{answer.poll_media.emoji?.name ? `${answer.poll_media.emoji.name} ` : ''}{answer.poll_media.text}</Text><Text style={styles.meta}>{count ? `${count.count} ${count.count === 1 ? 'vote' : 'votes'}` : 'Unknown'}</Text></Pressable>; })}

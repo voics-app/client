@@ -7,6 +7,7 @@ import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, Select } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { useNow } from '../../shared/hooks/useNow';
 
 export function CreatePoll({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const [question, setQuestion] = useState('');
@@ -41,6 +42,7 @@ export function MessagePoll({ message }: { message: ChatMessage }) {
   const [busy, setBusy] = useState(false);
   const gateway = useSessionStore((s) => s.gateway);
   const me = useSessionStore((s) => s.user?.id);
+  const now = useNow(60_000);
   const poll = message.poll!;
   const results = poll.results;
   const refresh = async () => {
@@ -70,7 +72,7 @@ export function MessagePoll({ message }: { message: ChatMessage }) {
     catch (error) { reportError(error, 'Could not end poll'); await refresh(); }
     finally { setBusy(false); }
   };
-  const closed = results?.is_finalized || Date.now() >= Date.parse(poll.expiry);
+  const closed = results?.is_finalized || now >= Date.parse(poll.expiry);
   return <section className="message-poll" aria-label={`Poll: ${poll.question.text}`}>
     <strong>{poll.question.text}</strong>
     <span className="poll-meta">{closed ? 'Poll ended' : `Ends ${new Date(poll.expiry).toLocaleString()}`}{poll.allow_multiselect ? ' - Select multiple' : ' - Select one'}</span>
