@@ -13,7 +13,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [favoritePreviews, setFavoritePreviews] = useState<string[]>([]);
+  const [favoritePreviews, setFavoritePreviews] = useState<{ key: string; urls: string[] }>({ key: '', urls: [] });
   const favorites = useSessionStore((s) => s.settings.preferences?.favorite_gifs ?? NO_FAVORITES);
 
   useEffect(() => { void getRuntime().api.gifCategories().then((r) => setCategories(r.tags ?? [])).catch(() => undefined); }, []);
@@ -36,10 +36,10 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
     return () => { current = false; clearTimeout(timer); };
   }, [query]);
   useEffect(() => {
-    if (!favoritesOnly || favorites.length === 0) { setFavoritePreviews([]); return; }
+    if (!favoritesOnly || favorites.length === 0) return;
     let current = true;
     const batches = [favorites.slice(0, 48), favorites.slice(48, 96), favorites.slice(96)].filter((batch) => batch.length);
-    void Promise.all(batches.map((batch) => getRuntime().api.gifPreviews(batch))).then((responses) => { if (current) setFavoritePreviews(responses.flatMap((response) => response.urls)); }).catch(() => { if (current) setError('Could not load favorite GIFs.'); });
+    void Promise.all(batches.map((batch) => getRuntime().api.gifPreviews(batch))).then((responses) => { if (current) setFavoritePreviews({ key: JSON.stringify(favorites), urls: responses.flatMap((response) => response.urls) }); }).catch(() => { if (current) setError('Could not load favorite GIFs.'); });
     return () => { current = false; };
   }, [favoritesOnly, favorites]);
 
@@ -50,7 +50,8 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
       useSessionStore.getState().setSettings(settings);
     } catch { setError('Could not save favorites.'); }
   };
-  const visible = favoritesOnly ? favorites.flatMap((url, i) => favoritePreviews[i] ? [{ id: url, url, preview: favoritePreviews[i]!, description: 'Favorite GIF' }] : []) : items;
+  const favoriteUrls = favoritePreviews.key === JSON.stringify(favorites) ? favoritePreviews.urls : NO_FAVORITES;
+  const visible = favoritesOnly ? favorites.flatMap((url, i) => favoriteUrls[i] ? [{ id: url, url, preview: favoriteUrls[i]!, description: 'Favorite GIF' }] : []) : items;
   return <div className="gif-picker" role="dialog" aria-label="GIF picker" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
     <div className="gif-picker-header"><strong>GIFs</strong><button type="button" onClick={onClose} aria-label="Close GIF picker">×</button></div>
     <input autoFocus aria-label="Search GIFs" placeholder="Search GIFs" value={query} onChange={(e) => { setFavoritesOnly(false); setQuery(e.target.value); }} />
