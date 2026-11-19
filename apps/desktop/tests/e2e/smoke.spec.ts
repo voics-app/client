@@ -34,9 +34,13 @@ test.afterAll(async () => {
   rmSync(userData, { recursive: true, force: true });
 });
 
-test('signs in and lands in the server shell', async () => {
+test('cold start reaches the auth screen', async () => {
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30_000 });
   console.log(`Electron cold launch to auth: ${Math.round(performance.now() - launchStarted)} ms`);
+});
+
+test('signs in and lands in the server shell', async () => {
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel('Email').fill('ada@example.test');
   await page.getByLabel('Password').fill('correct horse battery');
   await page.getByRole('button', { name: 'Sign in' }).click();

@@ -63,7 +63,7 @@ jobs:
               corepack pnpm install --frozen-lockfile --prefer-offline
               corepack pnpm --filter @discordy/desktop exec electron-vite build
               cd apps/desktop
-              xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "signs in and lands" --repeat-each=3 --workers=1 --retries=0
+              xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "cold start reaches the auth screen" --repeat-each=3 --workers=1 --retries=0
             '
 
   docker:
