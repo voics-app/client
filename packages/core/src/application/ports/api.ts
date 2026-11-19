@@ -51,6 +51,7 @@ import type {
   UserProfile,
   UserSettings,
   VoiceRegion,
+  StageInstance,
 } from '../../contracts/rest';
 
 export interface MessageQuery {
@@ -216,6 +217,10 @@ export interface ApiPort {
   upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;
+  stageInstance(channelId: string): Promise<StageInstance | null>;
+  startStage(channelId: string, topic: string): Promise<StageInstance>;
+  updateStage(channelId: string, topic: string): Promise<StageInstance>;
+  endStage(channelId: string): Promise<void>;
 
   applications(): Promise<ApplicationSummary[]>;
   botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;

@@ -21,7 +21,7 @@ test.beforeAll(async () => {
     DISCORDY_CDN_URL: `${backend.apiUrl}/cdn`,
   } as Record<string, string>;
   delete env.ELECTRON_RENDERER_URL;
-  app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
+  app = await electron.launch({ args: [resolve(__dirname, '../..')], env, executablePath: process.env.DISCORDY_E2E_ELECTRON });
   page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
 });
@@ -39,6 +39,22 @@ test('signs in and lands in the server shell', async () => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('navigation', { name: 'Servers' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Nightglass HQ' })).toBeVisible();
+});
+
+test('manages a stage while audience audio is unavailable', async () => {
+  await page.getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('button', { name: /Town hall/ }).first().click();
+  await expect(page.getByText('No stage is live.')).toBeVisible();
+  await expect(page.getByText(/Joining stage audio is unavailable/)).toBeVisible();
+  await page.getByLabel('Stage topic').fill('Community questions');
+  await page.getByRole('button', { name: 'Start stage' }).click();
+  await expect(page.getByText('Stage is live.')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('stage-live.png') });
+  await page.getByLabel('Stage topic').fill('Open discussion');
+  await page.getByRole('button', { name: 'Save topic' }).click();
+  await expect(page.getByText('Open discussion', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'End stage' }).click();
+  await expect(page.getByText('No stage is live.')).toBeVisible();
 });
 
 test('sends a message in a channel', async () => {

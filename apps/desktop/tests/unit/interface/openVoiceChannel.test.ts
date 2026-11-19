@@ -36,6 +36,13 @@ describe('openVoiceChannel', () => {
     expect(useUiStore.getState().view).toEqual({ kind: 'guild', guildId: 'g1', channelId: 'vc1' });
   });
 
+  it('opens a stage without joining audio while enforcement is unavailable', async () => {
+    useGuildStore.setState({ channels: { stage: { ...voiceChannel, id: 'stage', type: ChannelType.GUILD_STAGE_VOICE } } });
+    await openVoiceChannel('g1', 'stage');
+    expect(voice.join).not.toHaveBeenCalled();
+    expect(useUiStore.getState().view).toEqual({ kind: 'guild', guildId: 'g1', channelId: 'stage' });
+  });
+
   it('only reopens the call view when clicked again while already connected', async () => {
     await openVoiceChannel('g1', 'vc1');
     useUiStore.setState({ view: { kind: 'home', channelId: null } });

@@ -333,6 +333,13 @@ describe('dispatchRouter', () => {
     expect(ctx.invalidate).toHaveBeenCalledWith(['guild', '100', 'bans']);
   });
 
+  it('invalidates the affected stage for each lifecycle event', () => {
+    const { route, ctx } = setup();
+    for (const event of ['STAGE_INSTANCE_CREATE', 'STAGE_INSTANCE_UPDATE', 'STAGE_INSTANCE_DELETE']) route(event, { channel_id: 'stage' });
+    expect(ctx.invalidate).toHaveBeenCalledTimes(3);
+    expect(ctx.invalidate).toHaveBeenCalledWith(['stage-instance', 'stage']);
+  });
+
   it('ignores unknown events', () => {
     const { route } = setup();
     expect(() => route('SOMETHING_NEW', {})).not.toThrow();

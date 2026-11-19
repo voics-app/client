@@ -2,6 +2,8 @@
 import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { reportError } from './actions';
 import { openChannel } from './navigation';
 
@@ -31,6 +33,7 @@ function require(): VoiceFacade | null {
 }
 
 export async function joinVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
+  if (useGuildStore.getState().channels[channelId]?.type === ChannelType.GUILD_STAGE_VOICE) return;
   const call = useVoiceStore.getState().call;
   if (call.channelId === channelId && call.status !== 'idle') return;
   try {
