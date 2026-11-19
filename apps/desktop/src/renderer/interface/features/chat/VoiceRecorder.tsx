@@ -16,12 +16,12 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
   const active = useRef<{ recorder: MediaRecorder; stream: MediaStream; context: AudioContext; timer: ReturnType<typeof setInterval> } | null>(null);
   const mounted = useRef(true);
   const draftUrl = useRef<string | null>(null);
-  useEffect(() => () => {
+  useEffect(() => { mounted.current = true; return () => {
     mounted.current = false;
     const session = active.current;
     if (session) { clearInterval(session.timer); session.recorder.onstop = null; if (session.recorder.state !== 'inactive') session.recorder.stop(); session.stream.getTracks().forEach((track) => track.stop()); void session.context.close(); }
     if (draftUrl.current) URL.revokeObjectURL(draftUrl.current);
-  }, []);
+  }; }, []);
   const clear = () => { if (draftUrl.current) URL.revokeObjectURL(draftUrl.current); draftUrl.current = null; setDraft(null); };
   const start = async () => {
     if (disabled || busy || active.current) return;

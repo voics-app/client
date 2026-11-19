@@ -50,6 +50,9 @@ class VoicsRecorderModule : Module() {
         next.setAudioSamplingRate(48000)
         next.setAudioEncodingBitRate(64000)
         next.setAudioChannels(1)
+        // The JS timer normally stops at five minutes. This native limit is a
+        // safety net if the JS runtime is stalled.
+        next.setMaxDuration(301000)
         next.setOutputFile(file.absolutePath)
         next.prepare()
         next.start()
@@ -85,6 +88,7 @@ class VoicsRecorderModule : Module() {
       val file = File(android.net.Uri.parse(uri).path ?: "")
       if (file.parentFile?.canonicalFile == context.cacheDir.canonicalFile && file.name.startsWith("voice-") && file.name.endsWith(".ogg")) file.delete()
     }
+    OnActivityEntersBackground { release(true) }
     OnDestroy { release(true) }
   }
 }

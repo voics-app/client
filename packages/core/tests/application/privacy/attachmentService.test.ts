@@ -3,6 +3,7 @@ import { AttachmentService } from '../../../src/application/privacy/attachmentSe
 import { AttachmentError } from '../../../src/application/privacy/attachmentCipher';
 import { useTransferStore } from '../../../src/application/stores/transferStore';
 import { EPHEMERAL_MAX_FILE_BYTES, privateRefOf } from '../../../src/domain/privateAttachment';
+import { decodePayload, encodePayload } from '../../../src/application/privacy/types';
 
 const file = (name: string, text: string, type = 'text/plain') => new File([text], name, { type });
 
@@ -33,6 +34,22 @@ function setup() {
 
 describe('AttachmentService ephemeral upload', () => {
   beforeEach(() => useTransferStore.getState().reset());
+
+  it.each(['ephemeral', 'p2p'] as const)('keeps voice metadata inside the %s private envelope and encrypts audio', async (mode) => {
+    const { service, stored } = setup();
+    const audio = file('voice.ogg', 'PRIVATE-AUDIO-BYTES', 'audio/ogg');
+    const prepared = mode === 'ephemeral' ? (await service.prepareCdn('500', [audio], '9001'))[0]! : (await service.prepareP2P([audio], '9001'))[0]!.attachment;
+    const ref = { ...privateRefOf(prepared)!, voice: { duration_secs: 2.5, waveform: 'AQID' } };
+    const encoded = encodePayload({ v: 1, content: '', nonce: '9001', timestamp: '2026-01-01T00:00:00Z', files: [ref] });
+    const decoded = decodePayload(encoded, { channelId: '500', mode, messageId: '9001' });
+    expect(decoded.files?.[0]?.voice).toEqual(ref.voice);
+    if (mode === 'ephemeral') expect(Buffer.from([...stored.values()][0]!).includes(Buffer.from('PRIVATE-AUDIO'))).toBe(false);
+    else {
+      const result = (await service.prepareP2P([audio], '9002'))[0]!;
+      expect(Buffer.from(result.ciphertext).includes(Buffer.from('PRIVATE-AUDIO'))).toBe(false);
+      await expect(service.accept(result.attachment.private, result.ciphertext)).resolves.toBeUndefined();
+    }
+  });
 
   it('uploads only ciphertext under an opaque filename and returns refs with key material', async () => {
     const { service, api, stored } = setup();

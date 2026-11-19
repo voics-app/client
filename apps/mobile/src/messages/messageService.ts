@@ -199,6 +199,12 @@ export class MessageService {
         this.discard(channel.id, nonce);
         return false;
       }
+      // The recorder retains the local draft for retry; do not leave a second
+      // failed timeline item pointing at a cache file the user may discard.
+      if (input.voice) {
+        this.discard(channel.id, nonce);
+        return false;
+      }
       useMessageStore.getState().failOptimistic(channel.id, nonce, errorMessage(error));
       return false;
     }

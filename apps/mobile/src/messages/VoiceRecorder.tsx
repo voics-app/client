@@ -54,6 +54,7 @@ export function VoiceRecorder({ disabled, onSend }: { disabled: boolean; onSend(
     try {
       const ok = await onSend({ uri: draft.uri, name: 'voice-message.ogg', size: draft.size, mimeType: 'audio/ogg' }, { duration_secs: draft.duration_secs, waveform: draft.waveform });
       if (ok) { void recorder.discard(draft.uri); draftUri.current = null; setDraft(null); }
+      else Alert.alert('Voice message not sent', 'Your recording is still available to retry.');
     } finally { setBusy(false); }
   };
   return <View style={styles.row}>
