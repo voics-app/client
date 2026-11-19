@@ -21,5 +21,5 @@ export function LazyFeature<P extends object>({ load, props, close }: { load: ()
   const [attempt, setAttempt] = useState(0);
   const [Feature, setFeature] = useState(() => lazy(() => retryImport(load)));
   const retry = () => { setFeature(() => lazy(() => retryImport(load))); setAttempt((n) => n + 1); };
-  return <LoadBoundary key={attempt} retry={retry} close={close}><Suspense fallback={<div role="status">Loading?</div>}><Feature {...props} /></Suspense></LoadBoundary>;
+  return <LoadBoundary key={attempt} retry={retry} close={close}><Suspense fallback={<div role="status">Loading...</div>}><Feature {...props} /></Suspense></LoadBoundary>;
 }

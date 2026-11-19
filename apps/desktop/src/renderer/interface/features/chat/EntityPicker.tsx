@@ -28,7 +28,7 @@ export function EntityPicker({ option, value, channel, onChange }: EntityPickerP
 
   return (
     <Select value={value} aria-label={option.name} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{option.required ? 'Chooseâ€¦' : 'None'}</option>
+      <option value="">{option.required ? 'Choose…' : 'None'}</option>
       {option.type === OptionType.MENTIONABLE ? (
         <>
           <optgroup label="Members">{memberChoices.map(optionOf)}</optgroup>

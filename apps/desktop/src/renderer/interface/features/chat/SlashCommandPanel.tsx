@@ -12,7 +12,7 @@ function OptionControl({ option, value, channel, onChange }: EntityPickerProps &
   if (option.choices && option.choices.length > 0) {
     return (
       <Select value={value} aria-label={option.name} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{option.required ? 'Chooseâ€¦' : 'None'}</option>
+        <option value="">{option.required ? 'Choose…' : 'None'}</option>
         {option.choices.map((c) => <option key={String(c.value)} value={String(c.value)}>{c.name}</option>)}
       </Select>
     );
