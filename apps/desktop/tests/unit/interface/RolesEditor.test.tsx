@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -68,7 +68,7 @@ describe('RolesEditor', () => {
     expect(toggle.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(updateRole).toHaveBeenCalledWith(G, 'low', expect.objectContaining({ hoist: true }));
   });
 
@@ -83,3 +83,4 @@ describe('RolesEditor', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+
