@@ -20,6 +20,7 @@ import { Updater, createElectronUpdaterPort } from './updater';
 import { legacyUserDataDir, migrateLegacyUserData } from './userDataMigration';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
+import { shouldRegisterProtocol } from './protocolRegistration';
 
 if (process.env.DISCORDY_USER_DATA_DIR) {
   app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
@@ -51,6 +52,7 @@ function navigate(link: string | null): void {
 }
 
 function registerProtocol(): void {
+  if (!shouldRegisterProtocol(app.isPackaged, env.DISCORDY_REGISTER_DEV_PROTOCOL)) return;
   if (process.defaultApp && process.argv[1]) {
     app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1])]);
   } else {
