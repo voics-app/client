@@ -5,6 +5,7 @@
  * Chromium only pumps WebRTC audio into Web Audio when a media element consumes it.
  */
 import type { MixerPort } from '@renderer/application/voice/ports';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 interface Voice {
   element: HTMLAudioElement;
@@ -30,6 +31,11 @@ export class RemoteAudioMixer implements MixerPort {
   private masterVolume = 1;
   private deafened = false;
   private outputDeviceId: string | null = null;
+  private readonly soundboardUsers = new Set<string>();
+  private readonly unsubscribeSoundboardPrefs = usePrefsStore.subscribe((next, previous) => {
+    if (next.soundboardVolume === previous.soundboardVolume && next.soundboardMuted === previous.soundboardMuted) return;
+    for (const userId of this.soundboardUsers) this.applySoundboardVolume(userId);
+  });
 
   constructor(private readonly deps: MixerDeps = browserMixerDeps) {}
 
@@ -84,6 +90,20 @@ export class RemoteAudioMixer implements MixerPort {
     if (context.state === 'suspended') void context.resume();
   }
 
+  /** Uses a separate gain so muting soundboard never silences the microphone. */
+  setSoundboardStream(userId: string, stream: MediaStream | null): void {
+    if (stream) this.soundboardUsers.add(userId);
+    else this.soundboardUsers.delete(userId);
+    const key = `soundboard:${userId}`;
+    this.setStream(key, stream);
+    if (stream) this.applySoundboardVolume(userId);
+  }
+
+  private applySoundboardVolume(userId: string): void {
+    const prefs = usePrefsStore.getState();
+    this.setUserVolume(`soundboard:${userId}`, prefs.soundboardMuted ? 0 : prefs.soundboardVolume);
+  }
+
   setUserVolume(userId: string, volume: number): void {
     const clamped = Math.max(0, Math.min(2, volume));
     this.volumes.set(userId, clamped);
@@ -107,6 +127,8 @@ export class RemoteAudioMixer implements MixerPort {
   }
 
   dispose(): void {
+    this.unsubscribeSoundboardPrefs();
+    this.soundboardUsers.clear();
     for (const userId of [...this.voices.keys()]) this.setStream(userId, null);
     void this.context?.close();
     this.context = null;

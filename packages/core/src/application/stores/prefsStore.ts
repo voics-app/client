@@ -55,6 +55,8 @@ export interface PrefsState {
   cameraPreset: VideoPresetId;
   inputVolume: number;
   outputVolume: number;
+  soundboardVolume: number;
+  soundboardMuted: boolean;
   inputMode: InputMode;
   vadThreshold: number;
   pttKeycode: number | null;
@@ -139,6 +141,8 @@ export const DEFAULT_PREFS: PrefsData = {
   cameraPreset: '720p30',
   inputVolume: 1,
   outputVolume: 1,
+  soundboardVolume: 1,
+  soundboardMuted: false,
   inputMode: 'vad',
   vadThreshold: 0.12,
   pttKeycode: null,
