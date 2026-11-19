@@ -29,7 +29,7 @@ jobs:
       test-script: "test:unit"
   badge-electron-e2e:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -39,16 +39,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @discordy/desktop build
-      - run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
-      - name: Exercise the Electron fixture profile
-        run: |
-          dbus-run-session -- bash -c '
-            eval "$(printf "fixture\n" | gnome-keyring-daemon --unlock --components=secrets)"
-            export GNOME_KEYRING_CONTROL
-            xvfb-run -a pnpm --filter @discordy/desktop exec playwright test tests/e2e/profile-badges.spec.ts
-          '
-        env:
-          ELECTRON_DISABLE_SANDBOX: '1'
+      - run: pnpm --filter @discordy/desktop exec playwright test tests/e2e/profile-badges.spec.ts
 
   docker:
     needs: [node]
