@@ -224,7 +224,7 @@ export class VoiceCallController {
       session.onRemoteAudio((userId, stream) => {
         // A local mute outlives the session (it is persisted); the in-memory volume does not, so honour it here.
         const muted = userId in useLocalPeopleStore.getState().mutedUsers;
-        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : 1);
+        const volume = muted ? 0 : (useVoiceStore.getState().userVolumes[userId] ?? 1);
         this.deps.mixer.setUserVolume(userId, volume);
         this.deps.mixer.setStream(userId, stream);
         this.syncPriorityVolumes();
@@ -318,7 +318,8 @@ export class VoiceCallController {
 
   setUserVolume(userId: string, volume: number): void {
     useVoiceStore.getState().setUserVolume(userId, volume);
-    this.deps.mixer.setUserVolume(userId, useVoiceStore.getState().userVolumes[userId] ?? 1);
+    const muted = userId in useLocalPeopleStore.getState().mutedUsers;
+    this.deps.mixer.setUserVolume(userId, muted ? 0 : (useVoiceStore.getState().userVolumes[userId] ?? 1));
     this.syncPriorityVolumes();
   }
 
@@ -343,7 +344,7 @@ export class VoiceCallController {
     const active = new Set(users.filter((userId) => (voice.speaking[userId] ?? 0) > 0.02 && isPriority(userId)));
     const muted = useLocalPeopleStore.getState().mutedUsers;
     for (const userId of users) {
-      const base = voice.userVolumes[userId] ?? (userId in muted ? 0 : 1);
+      const base = userId in muted ? 0 : (voice.userVolumes[userId] ?? 1);
       this.deps.mixer.setUserVolume(userId, base * (active.size && !active.has(userId) ? 0.5 : 1));
     }
   }
