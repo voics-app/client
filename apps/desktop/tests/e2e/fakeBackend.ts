@@ -173,7 +173,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     const gifUrl = 'https://gif.example.test/cat.gif';
     if (path === '/external/fixture') {
       res.writeHead(200, { 'Content-Type': 'image/gif' });
-      return res.end(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
+      // Two distinct frames so the still-frame test exercises an actual animation.
+      return res.end(Buffer.from('R0lGODlhAgACAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAAIBgABCAQQEAAh+QQBCgABACwAAAAAAgACAIEAAP8AAAAAAAAAAAAIBgABCAQQEAA7', 'base64'));
     }
     if (path === '/gifs/categories') return json(res, 200, { tags: [{ name: 'Cats', searchterm: 'cats' }] });
     if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
@@ -221,7 +222,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
         mentions: [],
         mention_roles: [],
         attachments: [],
-        embeds: String(body.content ?? '').trim() === gifUrl ? [{ type: 'image', url: gifUrl, thumbnail: { url: gifUrl, proxy_url: proxyUrl, width: 1, height: 1 } }] : [],
+        embeds: String(body.content ?? '').trim() === gifUrl ? [{ type: 'image', url: gifUrl, thumbnail: { url: gifUrl, proxy_url: proxyUrl, width: 2, height: 2 } }] : [],
         pinned: false,
         type: 0,
         nonce: body.nonce ?? null,
