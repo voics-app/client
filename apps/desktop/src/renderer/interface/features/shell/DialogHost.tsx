@@ -159,7 +159,7 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       const userId = useSessionStore.getState().user?.id;
       const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
       if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
-      await beginOnboarding(screening.guildId, !!joinedGuildId);
+      await beginOnboarding(screening.guildId, true);
     } catch (err) {
       setError(errorMessage(err));
       setAgreed(false);

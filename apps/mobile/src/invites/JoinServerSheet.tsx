@@ -119,7 +119,7 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId 
       const userId = useSessionStore.getState().user?.id;
       const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
       if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
-      await finishJoin(screening.guildId, !!joinedGuildId);
+      await finishJoin(screening.guildId, true);
     } catch (e) {
       setError(errorMessage(e)); setAgreed(false);
       try {
