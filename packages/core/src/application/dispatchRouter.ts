@@ -1,3 +1,4 @@
+import { pollEventResults } from '../domain/poll';
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
 import { becameFriends } from '@discordy/core/domain/dmIntro';
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
@@ -10,6 +11,7 @@ import type {
   GuildNotificationSettings,
   GuildMember,
   Message,
+  PollResults,
   ModalCreate,
   PresenceUpdate,
   ReadyPayload,
@@ -196,6 +198,14 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     MESSAGE_UPDATE: (d: Partial<Message> & { id: string; channel_id: string }) => messages().patch(d.channel_id, d.id, d),
     MESSAGE_DELETE: (d: { id: string; channel_id: string }) => messages().remove(d.channel_id, d.id),
     MESSAGE_DELETE_BULK: (d: { ids: string[]; channel_id: string }) => messages().removeMany(d.channel_id, d.ids),
+    MESSAGE_POLL_VOTE_ADD: (d: { channel_id: string; message_id: string; user_id: string; answer_ids: number[]; vote_version: string; results: PollResults }) => {
+      const poll = messages().timelines[d.channel_id]?.byId[d.message_id]?.poll;
+      if (poll) messages().patch(d.channel_id, d.message_id, { poll: { ...poll, results: pollEventResults(d.results, d.user_id === meId(), d.vote_version, d.answer_ids) } });
+    },
+    MESSAGE_POLL_VOTE_REMOVE: (d: { channel_id: string; message_id: string; user_id: string; answer_ids: number[]; vote_version: string; results: PollResults }) => {
+      const poll = messages().timelines[d.channel_id]?.byId[d.message_id]?.poll;
+      if (poll) messages().patch(d.channel_id, d.message_id, { poll: { ...poll, results: pollEventResults(d.results, d.user_id === meId(), d.vote_version, d.answer_ids) } });
+    },
     MESSAGE_REACTION_ADD: (d: ReactionEvent) => messages().reactionAdd(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE: (d: ReactionEvent) => messages().reactionRemove(d.channel_id, d.message_id, d.emoji, d.user_id === meId()),
     MESSAGE_REACTION_REMOVE_ALL: (d: { channel_id: string; message_id: string }) => messages().reactionClear(d.channel_id, d.message_id),

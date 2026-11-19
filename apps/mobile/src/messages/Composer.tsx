@@ -38,11 +38,12 @@ export interface ComposerProps {
   draftKey?: string | undefined;
   /** The chat whose application commands `/` offers; absent where commands are not allowed (no permission, private delivery). */
   slashChannel?: Channel | undefined;
+  onCreatePoll?: () => void;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onCreatePoll, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
@@ -133,6 +134,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
+        {mode.kind === 'compose' && onCreatePoll && <Pressable accessibilityRole="button" accessibilityLabel="Create poll" hitSlop={6} onPress={onCreatePoll} style={styles.plus}><Ionicons name="bar-chart-outline" size={22} color={theme.muted} /></Pressable>}
         <TextInput nativeID={COMPOSER_INPUT_ID} accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline selection={forcedSelection} onSelectionChange={(e) => { setSelection(e.nativeEvent.selection); setForcedSelection(undefined); }} onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
         <Pressable accessibilityRole="button" accessibilityLabel="Add emoji" hitSlop={6} onPress={() => setEmojiOpen(true)} style={styles.plus}>
           <Ionicons name="happy-outline" size={24} color={theme.muted} />

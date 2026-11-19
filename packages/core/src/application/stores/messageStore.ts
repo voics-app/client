@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import type { DeliveryMode, Emoji, Message } from '../../contracts/rest';
 import { compareSnowflakes } from '../../domain/snowflake';
+import { mergePoll } from '../../domain/poll';
 
 export type LocalState = 'sending' | 'failed';
 
@@ -68,7 +69,10 @@ export const useMessageStore = create<MessageState>((set) => ({
       updateTimeline(s, channelId, (t) => {
         const keep = prepend || append;
         const byId = { ...(keep ? t.byId : Object.fromEntries(Object.entries(t.byId).filter(([, m]) => m.localState))) };
-        for (const m of messages) byId[m.id] = m;
+        for (const m of messages) {
+          const previous = t.byId[m.id];
+          byId[m.id] = { ...m, poll: m.poll ? mergePoll(previous?.poll, m.poll) : previous?.poll };
+        }
         const base = keep ? t.ids : t.ids.filter((id) => byId[id]?.localState);
         return {
           ids: sortIds([...base, ...messages.map((m) => m.id)], byId),
@@ -90,7 +94,8 @@ export const useMessageStore = create<MessageState>((set) => ({
           delete byId[nonce];
           ids = ids.filter((id) => id !== nonce);
         }
-        byId[message.id] = { ...byId[message.id], ...message, localState: undefined };
+        const previous = byId[message.id];
+        byId[message.id] = { ...previous, ...message, poll: message.poll ? mergePoll(previous?.poll, message.poll) : previous?.poll, localState: undefined };
         return { ...t, byId, ids: sortIds([...ids, message.id], byId) };
       }),
     ),
@@ -104,7 +109,7 @@ export const useMessageStore = create<MessageState>((set) => ({
   failOptimistic: (channelId, nonce, error) =>
     set((s) => updateTimeline(s, channelId, (t) => mapMessage(t, nonce, (m) => ({ ...m, localState: 'failed', error })))),
   patch: (channelId, messageId, patch) =>
-    set((s) => updateTimeline(s, channelId, (t) => mapMessage(t, messageId, (m) => ({ ...m, ...patch })))),
+    set((s) => updateTimeline(s, channelId, (t) => mapMessage(t, messageId, (m) => ({ ...m, ...patch, poll: patch.poll ? mergePoll(m.poll, patch.poll) : m.poll })))),
   remove: (channelId, messageId) =>
     set((s) =>
       updateTimeline(s, channelId, (t) => {

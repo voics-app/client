@@ -296,6 +296,24 @@ export interface MessageCall {
   ended_timestamp?: string | null;
 }
 
+export interface PollAnswerCount { id: number; count: number; me_voted?: boolean }
+export interface PollResults { answer_counts: PollAnswerCount[]; is_finalized: boolean; version: string; vote_version?: string }
+export interface Poll {
+  question: { text: string };
+  answers: { answer_id: number; poll_media: { text: string; emoji?: { name: string } } }[];
+  expiry: string;
+  allow_multiselect: boolean;
+  layout_type: 1;
+  results?: PollResults;
+}
+export interface PollCreate {
+  question: { text: string };
+  answers: { poll_media: { text: string } }[];
+  duration: number;
+  allow_multiselect: boolean;
+  layout_type: 1;
+}
+
 export interface Message {
   id: Snowflake;
   channel_id: Snowflake;
@@ -325,6 +343,7 @@ export interface Message {
   call?: MessageCall;
   application_id?: Snowflake;
   components?: MessageComponent[];
+  poll?: Poll;
   interaction_metadata?: InteractionMetadata;
   /** Search results only: true for the match, absent for its context messages. */
   hit?: boolean;
@@ -729,6 +748,7 @@ export const ApiErrorCode = {
 } as const;
 
 export interface CreateMessageBody {
+  poll?: PollCreate;
   content: string;
   nonce: string;
   attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];

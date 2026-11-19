@@ -16,6 +16,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { maxFileBytes } from '@discordy/core/domain/privateAttachment';
 import { searchEntries, slashQuery, type OptionValues, type SlashEntry } from '@discordy/core/domain/slashCommand';
 import { Permission } from '@discordy/core/contracts/permissions';
+import { isThread } from '@discordy/core/domain/threads';
 import { parseSilentPrefix, parseTtsCommand } from '@discordy/core/domain/appearance';
 import { speak } from '@renderer/infrastructure/tts';
 import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
@@ -32,6 +33,7 @@ import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { CreatePoll } from './Poll';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -79,6 +81,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [commandValues, setCommandValues] = useState<OptionValues>({});
   const [running, setRunning] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
+  const [creatingPoll, setCreatingPoll] = useState(false);
   const [pendingPaste, setPendingPaste] = useState<string | null>(null);
   const plusMenu = useMenu();
   const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
@@ -107,7 +110,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const appNames = useInteractionStore((s) => s.appNames);
 
   const standard = mode === 'standard';
-  const canSend = !channel.guild_id || can(perms, Permission.SEND_MESSAGES);
+  const canSend = !channel.guild_id || can(perms, isThread(channel) ? Permission.SEND_MESSAGES_IN_THREADS : Permission.SEND_MESSAGES);
   const ttsAllowed = !channel.guild_id || can(perms, Permission.SEND_TTS_MESSAGES);
   const canAttach = !channel.guild_id || can(perms, Permission.ATTACH_FILES);
 
@@ -411,9 +414,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     else insertAtCaret(pasted);
   };
 
-  const plusEntries: MenuEntry[] = plusMenuEntries().map((id): MenuEntry => {
+  const plusEntries: MenuEntry[] = plusMenuEntries({ threads: false, polls: true, apps: false }).map((id): MenuEntry => {
     if (id === 'upload') return { kind: 'item', label: 'Upload a file', icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : 'Attachments unavailable here', onSelect: () => fileInput.current?.click() };
-    const label = id === 'thread' ? 'Create thread' : id === 'poll' ? 'Create poll' : 'Use apps';
+    if (id === 'poll') return { kind: 'item', label: 'Create poll', disabled: !standard || !canSend || (!!channel.guild_id && !can(perms, Permission.SEND_POLLS)), onSelect: () => setCreatingPoll(true) };
+    const label = id === 'thread' ? 'Create thread' : 'Use apps';
     return { kind: 'item', label, disabled: true, onSelect: () => undefined };
   });
   const FORMATS: { kind: FormatKind; label: string; icon: ReactNode }[] = [
@@ -430,6 +434,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
 
   return (
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+      {creatingPoll && <CreatePoll channelId={channel.id} onClose={() => setCreatingPoll(false)} />}
       <PeerStatus channel={channel} mode={mode} />
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={commandSearch !== null ? 'Commands' : 'Suggestions'}>

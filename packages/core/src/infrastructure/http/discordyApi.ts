@@ -46,6 +46,7 @@ import type {
   Invite,
   Message,
   MessageSearchResponse,
+  Poll,
   PermissionOverwrite,
   Relationship,
   Role,
@@ -433,6 +434,18 @@ export class DiscordyApi implements ApiPort {
   }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
+  }
+  getPoll(channelId: string, messageId: string) {
+    return this.get<Poll>(`/channels/${channelId}/polls/${messageId}`);
+  }
+  setPollVote(channelId: string, messageId: string, answerId: number, selected: boolean, revision: string) {
+    const path = `/channels/${channelId}/polls/${messageId}/answers/${answerId}/@me`;
+    return selected
+      ? this.put<Poll>(path, { expected_vote_version: revision })
+      : this.http.request<Poll>('DELETE', path, { query: { expected_vote_version: revision } });
+  }
+  endPoll(channelId: string, messageId: string) {
+    return this.post<Message>(`/channels/${channelId}/polls/${messageId}/expire`);
   }
   editMessage(channelId: string, messageId: string, patch: EditMessageBody) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);

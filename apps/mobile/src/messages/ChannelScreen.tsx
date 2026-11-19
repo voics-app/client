@@ -33,6 +33,7 @@ import { MessageActionSheet } from './MessageActionSheet';
 import { AttachmentMetadataSheet } from './AttachmentMetadataSheet';
 import { ReportSheet } from '../report/ReportSheet';
 import { MessageRow, nameOf } from './MessageRow';
+import { CreatePollSheet } from './Poll';
 import { blockUser } from '../friends/friendActions';
 import { confirmDestructive } from '../ui/attempt';
 import { notifyError, notifySuccess, tapLight, tickSelection } from '../haptics';
@@ -75,6 +76,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   const userId = useSessionStore((s) => s.user?.id);
   const timeline = useMessageStore((s) => s.timelines[channelId]);
 
+  const [creatingPoll, setCreatingPoll] = useState(false);
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
   const [editingAttachments, setEditingAttachments] = useState<ChatMessage | null>(null);
@@ -355,9 +357,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           />
         )}
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
-          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} {...(access?.standard && access.canCreatePoll && !blockedReason ? { onCreatePoll: () => setCreatingPoll(true) } : {})} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         </KeyboardAvoidingView>
+        <CreatePollSheet visible={creatingPoll} channelId={channelId} onClose={() => setCreatingPoll(false)} />
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
         <AttachmentMetadataSheet message={editingAttachments} onClose={() => setEditingAttachments(null)} />
         <ReportSheet target={reporting} onClose={() => setReporting(null)} />

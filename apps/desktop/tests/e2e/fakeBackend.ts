@@ -61,6 +61,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const polls = new Map<string, { question: unknown; answers: { answer_id: number; poll_media: unknown }[]; expiry: string; allow_multiselect: boolean; layout_type: number; results: { version: string; vote_version: string; is_finalized: boolean; answer_counts: { id: number; count: number; me_voted: boolean }[] } }>();
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -196,6 +197,31 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       respondToInteraction(id, body);
       return json(res, 201, { id });
     }
+    const pollPath = /^\/channels\/(\d+)\/polls\/(\d+)(?:\/answers\/(\d+)\/@me|\/(expire))?$/.exec(path);
+    if (pollPath) {
+      const [, channelId, messageId, answerId, expire] = pollPath;
+      const poll = polls.get(messageId!);
+      if (!poll) return json(res, 404, { message: 'Poll missing' });
+      if (answerId) {
+        const revision = req.method === 'DELETE' ? url.searchParams.get('expected_vote_version') : body.expected_vote_version;
+        if (revision !== poll.results.vote_version) return json(res, 409, { message: 'Stale vote' });
+        for (const count of poll.results.answer_counts) {
+          const selected = count.id === Number(answerId) && req.method === 'PUT';
+          count.count = selected ? 1 : 0;
+          count.me_voted = selected;
+        }
+        poll.results.version = String(Number(poll.results.version) + 1);
+        poll.results.vote_version = String(Number(poll.results.vote_version) + 1);
+        return json(res, 200, poll);
+      }
+      if (expire) {
+        poll.results.is_finalized = true;
+        poll.results.version = String(Number(poll.results.version) + 1);
+        const message = (messages.get(channelId!) ?? []).find((item) => (item as { id: string }).id === messageId) as Record<string, unknown>;
+        return json(res, 200, { ...message, poll });
+      }
+      return json(res, 200, poll);
+    }
     const history = /^\/channels\/(\d+)\/messages$/.exec(path);
     if (history) {
       const id = history[1]!;
@@ -217,6 +243,13 @@ export async function startFakeBackend(): Promise<FakeBackend> {
         type: 0,
         nonce: body.nonce ?? null,
       };
+      if (body.poll) {
+        const draft = body.poll as { question: unknown; answers: { poll_media: unknown }[]; allow_multiselect: boolean; duration: number };
+        const answers = draft.answers.map((answer, index) => ({ answer_id: index + 1, poll_media: answer.poll_media }));
+        const poll = { question: draft.question, answers, expiry: new Date(Date.now() + draft.duration * 3600000).toISOString(), allow_multiselect: draft.allow_multiselect, layout_type: 1, results: { version: '0', vote_version: '0', is_finalized: false, answer_counts: answers.map((answer) => ({ id: answer.answer_id, count: 0, me_voted: false })) } };
+        polls.set(message.id, poll);
+        Object.assign(message, { poll });
+      }
       messages.set(id, [...(messages.get(id) ?? []), message]);
       dispatch('MESSAGE_CREATE', message);
       return json(res, 200, message);
