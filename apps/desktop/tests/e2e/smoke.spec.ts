@@ -59,6 +59,11 @@ test('opens settings and the emoji picker on demand', async () => {
   await expect(page.getByRole('dialog', { name: 'User settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Close settings' }).click();
   await expect(page.getByRole('dialog', { name: 'User settings' })).toBeHidden();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Server settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeHidden();
   await page.getByRole('button', { name: 'Emoji', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'Emoji picker' });
   await expect(picker).toBeVisible();

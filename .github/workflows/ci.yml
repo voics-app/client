@@ -28,11 +28,14 @@ jobs:
       typecheck-script: typecheck
       test-script: "test:ci"
   boot-reference:
-    # Run the signed-out Electron path on the existing Linux runner, using fresh profiles.
+    # A disposable container supplies Electron's GUI libraries without changing the runner host.
     if: github.event_name == 'pull_request'
     runs-on: vm-runner
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+      options: --ipc=host
     continue-on-error: true
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: read
       packages: read
@@ -49,6 +52,7 @@ jobs:
       - name: Check reference environment
         run: |
           uname -a
+          cat /etc/os-release
           command -v xvfb-run
           node --version
           pnpm --version
@@ -58,7 +62,7 @@ jobs:
         run: pnpm --filter @discordy/desktop exec electron-vite build
       - name: Measure three fresh Electron launches
         working-directory: apps/desktop
-        run: xvfb-run -a pnpm exec playwright test tests/e2e/smoke.spec.ts --grep 'signs in and lands' --repeat-each=3 --workers=1
+        run: xvfb-run -a pnpm exec playwright test tests/e2e/smoke.spec.ts --grep 'signs in and lands' --repeat-each=3 --workers=1 --retries=0
 
   docker:
     needs: [node]
