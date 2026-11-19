@@ -14,6 +14,7 @@ export interface ChannelAccess {
   canReact: boolean;
   canReadHistory: boolean;
   canAttach: boolean;
+  canSendVoice: boolean;
   canManageMessages: boolean;
   /** Start a thread from a message: Create Public Threads, in a channel that is not itself a thread. */
   canCreateThread: boolean;
@@ -45,6 +46,7 @@ export function channelAccess({ guild, channel, members, userId, parent }: Chann
     canReact: can(Permission.ADD_REACTIONS),
     canReadHistory: can(Permission.READ_MESSAGE_HISTORY),
     canAttach: channel.delivery_mode === 'standard' && can(Permission.ATTACH_FILES),
+    canSendVoice: can(Permission.SEND_VOICE_MESSAGES),
     canManageMessages: can(Permission.MANAGE_MESSAGES),
     canCreateThread: !thread && can(Permission.CREATE_PUBLIC_THREADS),
     canManageThreads: can(Permission.MANAGE_THREADS),
@@ -55,7 +57,7 @@ export function channelAccess({ guild, channel, members, userId, parent }: Chann
 
 /** In a DM every participant may send, react and read; there are no roles to moderate with. */
 export function dmAccess(channel: Channel): ChannelAccess {
-  return { canSend: true, canReact: true, canReadHistory: true, canAttach: channel.delivery_mode === 'standard', canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: channel.delivery_mode === 'standard' };
+  return { canSend: true, canReact: true, canReadHistory: true, canAttach: channel.delivery_mode === 'standard', canSendVoice: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: channel.delivery_mode === 'standard' };
 }
 
 export interface MessageActions {

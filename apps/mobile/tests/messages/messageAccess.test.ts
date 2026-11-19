@@ -13,7 +13,8 @@ const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: strin
 
 describe('channelAccess', () => {
   it('allows sending, reacting and reading for a regular member', () => {
-    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: false, standard: true });
+    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canSendVoice: false, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: false, standard: true });
+    expect(access(BASIC | Permission.SEND_VOICE_MESSAGES).canSendVoice).toBe(true);
   });
 
   it('allows application commands with Use Application Commands, and always in a direct message', () => {
@@ -136,7 +137,7 @@ describe('messageActions', () => {
 
 describe('dmAccess', () => {
   it('lets participants send, react and read, but never moderate', () => {
-    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: true });
+    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canSendVoice: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: true });
   });
 
   it('marks private delivery as not standard', () => {

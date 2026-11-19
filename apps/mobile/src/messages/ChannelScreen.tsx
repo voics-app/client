@@ -356,7 +356,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           />
         )}
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
-          {channel && access?.standard && <VoiceRecorder disabled={Boolean(blockedReason) || !access.canAttach} onSend={(file, voice) => service.send(channel, { content: '', files: [file], voice })} />}
+          {channel && access?.standard && <VoiceRecorder disabled={Boolean(blockedReason) || !access.canAttach || !access.canSendVoice} onSend={(file, voice) => service.send(channel, { content: '', files: [file], voice })} />}
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         </KeyboardAvoidingView>
