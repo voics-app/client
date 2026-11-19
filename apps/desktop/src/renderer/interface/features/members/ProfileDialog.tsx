@@ -6,6 +6,7 @@ import { usePresenceStore, useRelationshipStore } from '@discordy/core/applicati
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { badgeLabel } from '@discordy/core/domain/profile';
 import { RelationshipType, type User } from '@discordy/core/contracts/rest';
 import { attempt, copyText, reportError } from '../../app/actions';
 import { callUser } from '../../app/callActions';
@@ -78,6 +79,12 @@ function Mutuals({ userId }: { userId: string }) {
   );
 }
 
+export function VisibleBadges({ userId }: { userId: string }) {
+  const badges = useQuery({ queryKey: ['user-badges', userId], queryFn: () => getRuntime().api.userBadges(userId) });
+  if (!badges.data?.length) return null;
+  return <section className="profile-section" aria-label="Badges"><h4>Badges</h4><ul>{badges.data.map((id) => <li key={id}>{badgeLabel(id)}</li>)}</ul></section>;
+}
+
 export function ProfileDialog({ userId, guildId }: { userId: string; guildId: string | null }) {
   const close = () => useUiStore.getState().openDialog(null);
   const me = useSessionStore((s) => s.user);
@@ -135,6 +142,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                 <Button variant="ghost" icon={<Flag size={16} />} onClick={report}>Report</Button>
               </div>
             )}
+            <VisibleBadges userId={userId} />
             {user.bio && (
               <section className="profile-section"><h4>About me</h4><p className="selectable">{user.bio}</p></section>
             )}

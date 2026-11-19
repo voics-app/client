@@ -113,6 +113,9 @@ export interface ApiPort {
   updateMe(patch: Partial<Pick<User, 'username' | 'global_name' | 'avatar' | 'banner' | 'bio' | 'accent_color'>>): Promise<User>;
   user(userId: string): Promise<User>;
   userProfile(userId: string): Promise<UserProfile>;
+  ownBadges(): Promise<Array<{ id: string; visible: boolean }>>;
+  userBadges(userId: string): Promise<string[]>;
+  setBadgeVisibility(id: string, visible: boolean): Promise<void>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
   privateChannels(): Promise<Channel[]>;

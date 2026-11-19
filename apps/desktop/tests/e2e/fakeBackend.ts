@@ -61,6 +61,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const badges = [{ id: 'fixture_one', visible: true }, { id: 'fixture_two', visible: true }];
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -176,6 +177,16 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (path === '/devices') return json(res, 200, { device_id: snowflake() });
     if (/^\/devices\/\d+\/key-packages$/.test(path)) return json(res, 204, null);
     if (/^\/users\/\d+\/devices$/.test(path)) return json(res, 200, []);
+    if (path === '/users/@me/badges' && req.method === 'GET') return json(res, 200, badges);
+    const badge = /^\/users\/@me\/badges\/([a-z0-9_-]+)$/.exec(path);
+    if (badge && req.method === 'PUT') {
+      const grant = badges.find((item) => item.id === badge[1]);
+      if (!grant || typeof body.visible !== 'boolean') return json(res, 404, {});
+      grant.visible = body.visible;
+      return json(res, 204, null);
+    }
+    if (path === `/users/${USER.id}/badges` && req.method === 'GET') return json(res, 200, badges.filter((item) => item.visible).map((item) => item.id));
+    if (path === `/users/${USER.id}` && req.method === 'GET') return json(res, 200, USER);
     if (path === '/users/@me') return json(res, 200, USER);
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);

@@ -33,6 +33,7 @@ import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
 import { SessionsList } from './SessionsList';
+import { ProfileBadges } from './ProfileBadges';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -131,6 +132,7 @@ export function ProfileTab() {
           <Field label="Profile colour">{(id) => <input id={id} type="color" className="color-input" value={accent} onChange={(e) => setAccent(e.target.value)} />}</Field>
         </div>
       </div>
+      <ProfileBadges userId={user.id} />
       <UnsavedBar dirty={dirty} saving={saving} onReset={reset} onSave={() => void save()} />
     </Page>
   );
