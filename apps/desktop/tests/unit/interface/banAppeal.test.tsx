@@ -27,3 +27,15 @@ it('offers and submits an appeal after an invite is rejected for a ban', async (
   await waitFor(() => expect(api.submitBanAppeal).toHaveBeenCalledWith('42', 'I understand the rules.', 'What changed?'));
   expect(await screen.findByText('Your appeal has been submitted.')).toBeTruthy();
 });
+
+it('keeps the answer and refreshes the question if the form changed', async () => {
+  api.appealForm.mockResolvedValueOnce({ question: 'What changed?' }).mockResolvedValueOnce({ question: 'New question?' });
+  api.submitBanAppeal.mockRejectedValueOnce(new ApiError(409, 0, 'Question changed or appeal already open'));
+  render(<JoinGuildDialog initial="abcdef" />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Accept invite' }));
+  fireEvent.change(await screen.findByRole('textbox', { name: 'What changed?' }), { target: { value: 'My answer' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Submit appeal' }));
+  const updated = await screen.findByRole('textbox', { name: 'New question?' }) as HTMLInputElement;
+  expect(updated.value).toBe('My answer');
+  expect(screen.getByText('Question changed or appeal already open')).toBeTruthy();
+});
