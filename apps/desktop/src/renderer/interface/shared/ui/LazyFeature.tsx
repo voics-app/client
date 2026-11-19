@@ -12,7 +12,7 @@ class LoadBoundary extends Component<{ children: ReactNode; retry: () => void; c
   override state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   override render() {
-    if (this.state.failed) return <div role="alert">Could not load this feature. <button type="button" onClick={this.props.retry}>Try again</button> <button type="button" onClick={this.props.close}>Close</button> <button type="button" onClick={() => window.location.reload()}>Reload app</button><p>Reloading may discard unsaved changes.</p></div>;
+    if (this.state.failed) return <div className="lazy-feature-error" role="alert">Could not load this feature. <button type="button" onClick={this.props.retry}>Try again</button> <button type="button" onClick={this.props.close}>Close</button> <button type="button" onClick={() => window.location.reload()}>Reload app</button><p>Reloading may discard unsaved changes.</p></div>;
     return this.props.children;
   }
 }
