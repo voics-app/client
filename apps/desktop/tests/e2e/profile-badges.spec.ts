@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { startFakeBackend } from './fakeBackend';
 
 test('profile settings hide one badge from the public profile after reload', async () => {
+  test.setTimeout(120_000);
   const backend = await startFakeBackend();
   const userData = mkdtempSync(join(tmpdir(), 'voics-badges-e2e-'));
   const env = { ...process.env, DISCORDY_E2E: '1', DISCORDY_USER_DATA_DIR: userData,

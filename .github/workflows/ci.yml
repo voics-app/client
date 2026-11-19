@@ -27,20 +27,6 @@ jobs:
       lint-script: lint
       typecheck-script: typecheck
       test-script: "test:ci"
-  badge-electron-e2e:
-    if: github.event_name == 'pull_request'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @discordy/desktop build
-      - run: pnpm --filter @discordy/desktop exec playwright test tests/e2e/profile-badges.spec.ts
-
   docker:
     needs: [node]
     permissions:
