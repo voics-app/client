@@ -7,7 +7,7 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { idBefore } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
+import { MessageFlag, type Channel, type CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
 import type { MessageSender } from '@discordy/core/application/privacy/messageSender';
@@ -23,6 +23,7 @@ export interface SendInput {
   content: string;
   replyTo?: string;
   files?: OutgoingFile[];
+  voice?: { duration_secs: number; waveform: string };
 }
 
 /** Reads a picked file into a Blob; React Native's fetch serves file URIs. */
@@ -180,13 +181,15 @@ export class MessageService {
     this.unsent.set(nonce, input);
     try {
       if (encrypted) {
+        if (input.files?.length) throw new Error('Private file sending is not available on this device.');
         await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}) });
         this.unsent.delete(nonce);
         useMessageStore.getState().remove(channel.id, nonce);
         return true;
       }
       const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
-      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
+      if (input.voice && attachments?.[0]) Object.assign(attachments[0], input.voice);
+      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}), ...(input.voice ? { flags: MessageFlag.IS_VOICE_MESSAGE } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
       this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });

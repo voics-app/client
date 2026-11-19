@@ -1,0 +1,38 @@
+name: Temporary voice Android QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/voice-messages-15]
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VOICS_MOBILE_QA: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: pnpm install --frozen-lockfile
+      - run: echo y | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'cmake;3.31.6'
+      - run: pnpm exec expo prebuild --platform android --no-install
+        working-directory: apps/mobile
+      - run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 -Pandroid.cmakeVersion=3.31.6
+        working-directory: apps/mobile/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voics-voice-qa-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 2

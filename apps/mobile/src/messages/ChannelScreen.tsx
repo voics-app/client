@@ -28,6 +28,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { MessageSkeletons } from '../ui/Skeleton';
 import { MembersEdgeSwipe } from './MembersEdgeSwipe';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
+import { VoiceRecorder } from './VoiceRecorder';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
 import { AttachmentMetadataSheet } from './AttachmentMetadataSheet';
@@ -355,6 +356,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           />
         )}
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
+          {channel && access?.standard && <VoiceRecorder disabled={Boolean(blockedReason) || !access.canAttach} onSend={(file, voice) => service.send(channel, { content: '', files: [file], voice })} />}
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         </KeyboardAvoidingView>

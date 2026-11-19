@@ -157,25 +157,28 @@ function ActiveAudio({ attachment }: { attachment: Attachment }) {
   const player = useAudioPlayer({ uri: attachment.url });
   const status = useAudioPlayerStatus(player);
   const [auto, setAuto] = useState(true);
+  const [speed, setSpeed] = useState(1);
   if (auto && status.isLoaded) {
     setAuto(false);
     player.play();
   }
-  return <AudioShell attachment={attachment} playing={status.playing} onToggle={() => (status.playing ? player.pause() : player.play())} />;
+  return <AudioShell attachment={attachment} playing={status.playing} onToggle={() => (status.playing ? player.pause() : player.play())} speed={speed} onSpeed={() => { const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; player.setPlaybackRate(next); setSpeed(next); }} />;
 }
 
-function AudioShell({ attachment, playing, onToggle }: { attachment: Attachment; playing: boolean; onToggle(): void }) {
+function AudioShell({ attachment, playing, onToggle, speed, onSpeed }: { attachment: Attachment; playing: boolean; onToggle(): void; speed?: number; onSpeed?(): void }) {
+  let samples: number[] = [];
+  try { samples = [...atob(attachment.waveform ?? '')].slice(0, 64).map((c) => c.charCodeAt(0)); } catch { /* untrusted metadata */ }
   return (
     <View style={styles.file}>
       <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause' : 'Play'} onPress={onToggle} style={styles.play}>
         <Ionicons name={playing ? 'pause' : 'play'} size={22} color={theme.accentText} />
       </Pressable>
       <View style={styles.fileText}>
-        <Text numberOfLines={1} style={styles.fileName}>
-          {displayFilename(attachment.filename)}
-        </Text>
-        <Text style={styles.fileSize}>{formatBytes(attachment.size)}</Text>
+        <Text numberOfLines={1} style={styles.fileName}>{attachment.waveform ? 'Voice message' : displayFilename(attachment.filename)}</Text>
+        {samples.length > 0 && <View accessibilityLabel="Recording waveform" style={styles.wave}>{samples.map((sample, i) => <View key={i} style={{ width: 2, height: Math.max(2, sample / 12), backgroundColor: theme.accent }} />)}</View>}
+        <Text style={styles.fileSize}>{attachment.duration_secs ? `${Math.ceil(attachment.duration_secs)}s` : formatBytes(attachment.size)}</Text>
       </View>
+      {attachment.waveform && onSpeed && <Pressable accessibilityRole="button" accessibilityLabel={`Playback speed ${speed} times`} onPress={onSpeed}><Text style={styles.fileName}>{speed}×</Text></Pressable>}
     </View>
   );
 }
@@ -194,6 +197,7 @@ const styles = StyleSheet.create({
   moreText: { color: theme.text, fontSize: 26, fontWeight: '700' },
   file: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 12, borderRadius: 10, backgroundColor: theme.raised, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.hairlineStrong, maxWidth: 320 },
   fileText: { flex: 1 },
+  wave: { flexDirection: 'row', alignItems: 'center', gap: 1, height: 24, overflow: 'hidden' },
   fileName: { color: theme.accent, fontSize: 15 },
   fileSize: { color: theme.subtle, fontSize: 12 },
   play: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
