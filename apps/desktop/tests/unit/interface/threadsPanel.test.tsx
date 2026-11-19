@@ -5,17 +5,32 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ThreadsPanel } from '@renderer/interface/features/panels/ThreadsPanel';
+import { ThreadInvite } from '@renderer/interface/features/panels/ThreadInvite';
 
-const api = { listThreads: vi.fn() };
+const api = { listThreads: vi.fn(), members: vi.fn(), joinThread: vi.fn() };
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api }) }));
 
 beforeEach(() => {
   api.listThreads.mockReset();
+  api.members.mockReset();
+  api.joinThread.mockReset();
   api.listThreads.mockImplementation(async (_id: string, archived: boolean) => archived
     ? [{ id: 'archived', name: 'Old plans', type: 11, parent_id: 'parent', delivery_mode: 'standard' }]
     : [{ id: 'active', name: 'New plans', type: 11, parent_id: 'parent', delivery_mode: 'standard', member_count: 2 }]);
   useGuildStore.setState({ channels: {} });
   useUiStore.setState({ sidePanel: null });
+});
+
+it('invites a selected guild member through the thread membership API', async () => {
+  api.members.mockResolvedValue([{ user: { id: 'member', username: 'Rin', global_name: null, avatar: null }, nick: null }]);
+  api.joinThread.mockResolvedValue(undefined);
+  const close = vi.fn();
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ThreadInvite guildId="guild" threadId="thread" onClose={close} /></QueryClientProvider>);
+  await screen.findByRole('option', { name: 'Rin' });
+  fireEvent.change(screen.getByLabelText('Invite a member'), { target: { value: 'member' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+  await waitFor(() => expect(api.joinThread).toHaveBeenCalledWith('thread', 'member'));
+  await waitFor(() => expect(close).toHaveBeenCalled());
 });
 afterEach(cleanup);
 

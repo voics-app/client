@@ -125,6 +125,7 @@ export interface ThreadMetadata {
   auto_archive_duration: number;
   archive_timestamp: string;
   locked: boolean;
+  invitable?: boolean;
 }
 
 export interface ForumTag {

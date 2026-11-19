@@ -1,5 +1,6 @@
 import { DotsThree } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -12,6 +13,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { NotificationBell } from '../chat/ChannelHeader';
 import { Composer } from '../chat/Composer';
 import { MessageList } from '../chat/MessageList';
+import { ThreadInvite } from './ThreadInvite';
 
 export function ThreadPanel({ threadId }: { threadId: string }) {
   const storedThread = useGuildStore((s) => s.channels[threadId]);
@@ -19,6 +21,7 @@ export function ThreadPanel({ threadId }: { threadId: string }) {
   const permissions = useChannelPermissions(threadId);
   const menu = useMenu();
   const queryClient = useQueryClient();
+  const [inviting, setInviting] = useState(false);
   const detail = useQuery({ queryKey: ['thread', threadId], queryFn: () => getRuntime().api.channel(threadId) });
   const thread = detail.data ?? storedThread;
   if (!thread) return <p className="panel-note">This thread is no longer available.</p>;
@@ -45,10 +48,12 @@ export function ThreadPanel({ threadId }: { threadId: string }) {
   ];
   if (metadata && mayArchive) entries.push({ kind: 'item', label: metadata.archived ? 'Unarchive thread' : 'Archive thread', disabled: metadata.locked && !manages, onSelect: () => void update({ archived: !metadata.archived }) });
   if (metadata && manages) entries.push({ kind: 'item', label: metadata.locked ? 'Unlock thread' : 'Lock thread', onSelect: () => void update({ locked: !metadata.locked }) });
+  if (thread.type === 12 && thread.guild_id && (manages || (metadata?.invitable && (thread.is_thread_member || thread.owner_id === me)))) entries.push({ kind: 'item', label: 'Invite a member', onSelect: () => setInviting(true) });
   return (
     <div className="thread-panel">
       <div className="thread-title"><span>{thread.name}</span><span className="thread-actions"><NotificationBell channel={thread} /><IconButton label="Thread actions" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.openBelow}><DotsThree size={20} /></IconButton></span></div>
       <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} />
+      {inviting && thread.guild_id && <ThreadInvite guildId={thread.guild_id} threadId={threadId} onClose={() => setInviting(false)} />}
       <MessageList channelId={threadId} />
       {metadata?.archived ? <p className="panel-note">This thread is archived.</p> : <Composer channel={thread} mode={getRuntime().privacy.sender.resolveMode(thread)} />}
     </div>
