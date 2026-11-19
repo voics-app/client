@@ -72,6 +72,7 @@ export function ForumView({ channelId }: { channelId: string }) {
         setCreating(false);
         setTitle('');
         setBody('');
+        setSelectedTags([]);
         setDraftPost(null);
         setPanel({ kind: 'thread', threadId: thread.id });
       }
