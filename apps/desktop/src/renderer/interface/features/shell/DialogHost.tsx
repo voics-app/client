@@ -211,9 +211,6 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
 
 function InviteDialog({ guildId, channelId }: { guildId: string; channelId: string }) {
   const [invite, setInvite] = useState<Invite | null>(null);
-  const [appealQuestion, setAppealQuestion] = useState<string | null>(null);
-  const [appealAnswer, setAppealAnswer] = useState('');
-  const [appealSent, setAppealSent] = useState(false);
   const [maxAge, setMaxAge] = useState('86400');
   const [maxUses, setMaxUses] = useState('0');
   const [busy, setBusy] = useState(false);
