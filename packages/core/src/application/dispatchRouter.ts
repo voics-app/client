@@ -1,5 +1,6 @@
 /** Maps gateway DISPATCH events (P6/P7) onto the Zustand stores. */
 import { becameFriends } from '@discordy/core/domain/dmIntro';
+import type { GuildScheduledEventStart } from '@discordy/core/contracts/scheduledEvents';
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
 import { isMentioned } from '@discordy/core/domain/notificationPolicy';
 import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
@@ -37,6 +38,7 @@ export interface DispatchContext {
   /** Every VOICE_STATE_UPDATE, after the store has applied it (the call reacts to its own). */
   onVoiceState?(state: VoiceState): void;
   onIncomingMessage(message: ChatMessage): void;
+  onScheduledEventStart?(event: GuildScheduledEventStart): void;
   /** A friend request from someone else arrived (not a replay of one already pending). */
   onFriendRequest?(request: Relationship): void;
   invalidate(queryKey: readonly unknown[]): void;
@@ -128,6 +130,12 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
   const messages = () => useMessageStore.getState();
 
   const handlers: Record<string, Handler> = {
+    GUILD_SCHEDULED_EVENT_CREATE: (d: { guild_id: string }) => ctx.invalidate(['guild-events', d.guild_id]),
+    GUILD_SCHEDULED_EVENT_UPDATE: (d: { guild_id: string }) => ctx.invalidate(['guild-events', d.guild_id]),
+    GUILD_SCHEDULED_EVENT_DELETE: (d: { guild_id: string }) => ctx.invalidate(['guild-events', d.guild_id]),
+    GUILD_SCHEDULED_EVENT_USER_ADD: (d: { guild_id: string; guild_scheduled_event_id: string }) => { ctx.invalidate(['guild-events', d.guild_id]); ctx.invalidate(['event-interest', d.guild_id, d.guild_scheduled_event_id]); },
+    GUILD_SCHEDULED_EVENT_USER_REMOVE: (d: { guild_id: string; guild_scheduled_event_id: string }) => { ctx.invalidate(['guild-events', d.guild_id]); ctx.invalidate(['event-interest', d.guild_id, d.guild_scheduled_event_id]); },
+    GUILD_SCHEDULED_EVENT_START: (d: GuildScheduledEventStart) => ctx.onScheduledEventStart?.(d),
     READY: (d: ReadyPayload) => {
       hydrateReady(d);
       ctx.onUserSettings?.(d.user_settings ?? {}, true, d.user.id);

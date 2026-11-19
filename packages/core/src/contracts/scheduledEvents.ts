@@ -24,3 +24,11 @@ export interface CreateGuildScheduledEvent {
   entity_metadata?: { location: string } | null;
   image?: string | null;
 }
+
+export interface GuildScheduledEventStart {
+  guild_id: string;
+  guild_scheduled_event_id: string;
+  scheduled_start_time: string;
+  revision: number;
+  dedupe_key: string;
+}

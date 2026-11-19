@@ -67,6 +67,9 @@ export class DiscordyApi implements ApiPort {
   guildScheduledEvents(guildId: string) {
     return this.get<GuildScheduledEvent[]>(`/guilds/${enc(guildId)}/scheduled-events`);
   }
+  guildScheduledEvent(guildId: string, eventId: string) {
+    return this.get<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}`);
+  }
   createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent) {
     return this.post<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events`, body);
   }

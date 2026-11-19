@@ -1,4 +1,6 @@
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
+import type { ApiPort } from '@discordy/core/application/ports/api';
+import type { GuildScheduledEventStart } from '@discordy/core/contracts/scheduledEvents';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -6,12 +8,42 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { alertBody, incomingAlert } from '@discordy/core/domain/incomingAlert';
-import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { isChannelMutedDeep, isGuildMuted, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { summarizeActivity } from '@discordy/core/domain/unread';
 import { shouldPlaySound } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { bridge } from './bridge';
+
+const recentEventReminders = new Set<string>();
+
+/** Recheck current visibility, interest and start time before showing a targeted reminder. */
+export async function notifyScheduledEventStart(api: ApiPort, reminder: GuildScheduledEventStart): Promise<void> {
+  if (recentEventReminders.has(reminder.dedupe_key)) return;
+  recentEventReminders.add(reminder.dedupe_key);
+  if (recentEventReminders.size > 1000) recentEventReminders.delete(recentEventReminders.values().next().value!);
+  try {
+    const [event, interest] = await Promise.all([
+      api.guildScheduledEvent(reminder.guild_id, reminder.guild_scheduled_event_id),
+      api.guildScheduledEventInterest(reminder.guild_id, reminder.guild_scheduled_event_id),
+    ]);
+    const start = Date.parse(event.scheduled_start_time);
+    const now = Date.now();
+    if (!interest.interested || ![1, 2].includes(event.status) || start !== Date.parse(reminder.scheduled_start_time) || !Number.isFinite(start) || now - start > 300_000 || start - now > 2_000) return;
+    if (useSessionStore.getState().settings.status === 'dnd') return;
+    const settings = useNotificationSettingsStore.getState().byScope[scopeKey(event.guild_id)];
+    const channel = event.channel_id ? useGuildStore.getState().channels[event.channel_id] : null;
+    if (channel ? isChannelMutedDeep(settings, channel, now) : isGuildMuted(settings, now)) return;
+    useUiStore.getState().toast({ tone: 'info', title: 'Event starting', body: event.name });
+    if (usePrefsStore.getState().notifyDesktop) {
+      const route = event.channel_id ? `/channels/${event.guild_id}/${event.channel_id}` : undefined;
+      bridge?.app.notify({ title: 'Event starting', body: event.name, route, silent: true });
+    }
+  } catch (error) {
+    recentEventReminders.delete(reminder.dedupe_key);
+    console.warn('Could not verify scheduled event reminder', error);
+  }
+}
 
 function activeChannelId(): string | null {
   const view = useUiStore.getState().view;

@@ -77,6 +77,7 @@ export interface CreateChannelBody {
 
 export interface ApiPort {
   guildScheduledEvents(guildId: string): Promise<GuildScheduledEvent[]>;
+  guildScheduledEvent(guildId: string, eventId: string): Promise<GuildScheduledEvent>;
   createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent): Promise<GuildScheduledEvent>;
   guildScheduledEventInterest(guildId: string, eventId: string): Promise<{ interested: boolean }>;
   setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean): Promise<void>;
