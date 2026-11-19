@@ -102,6 +102,20 @@ describe('join a server', () => {
     expect(await screen.findByText('Your appeal has been submitted.')).toBeTruthy();
   });
 
+  it('keeps the answer when the question changes before submission', async () => {
+    mockApi.acceptInvite.mockRejectedValueOnce(new ApiError(403, 40007, 'You are banned'));
+    mockApi.appealForm.mockResolvedValueOnce({ question: 'What changed?' }).mockResolvedValueOnce({ question: 'New question?' });
+    mockApi.submitBanAppeal.mockRejectedValueOnce(new ApiError(409, 0, 'Question changed'));
+    await openJoin();
+    await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await fireEvent.press(await screen.findByLabelText('Accept invite'));
+    await fireEvent.changeText(await screen.findByLabelText('What changed?'), 'My answer');
+    await fireEvent.press(screen.getByLabelText('Submit appeal'));
+    expect((await screen.findByLabelText('New question?')).props.value).toBe('My answer');
+    expect(await screen.findByText('Question changed')).toBeTruthy();
+  });
+
   it('tells you when accepting fails and keeps the preview', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     mockApi.acceptInvite.mockRejectedValueOnce(new Error('You are banned from this server'));
