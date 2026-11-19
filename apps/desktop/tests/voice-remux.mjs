@@ -10,7 +10,7 @@ import { remuxVoiceMessage } from '../src/renderer/interface/features/chat/remux
 const dir = mkdtempSync(join(tmpdir(), 'voics-voice-remux-'));
 const input = join(dir, 'known.webm');
 const output = join(dir, 'result.ogg');
-const run = (name, args) => execFileSync(name, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+const run = (name, args) => execFileSync(name, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, SDL_AUDIODRIVER: 'dummy' } });
 try {
   run('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=523:sample_rate=48000:duration=1.2', '-c:a', 'libopus', '-y', input]);
   const source = readFileSync(input);
@@ -26,5 +26,6 @@ try {
   assert.ok(Math.abs(Number(probe.format.duration) - 1.2) < 0.05, 'duration changed');
   const decode = (path) => run('ffmpeg', ['-v', 'error', '-i', path, '-f', 's16le', '-acodec', 'pcm_s16le', '-']);
   assert.deepEqual(decode(output), decode(input), 'decoded audio changed or shifted');
+  run('ffplay', ['-v', 'error', '-nodisp', '-autoexit', output]);
   console.log('Ogg/Opus headers, pre-skip, duration and decoded samples verified');
 } finally { rmSync(dir, { recursive: true, force: true }); }
