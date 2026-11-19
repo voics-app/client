@@ -6,7 +6,10 @@ import { CommandPalette } from '../features/palette/CommandPalette';
 import { DialogHost } from '../features/shell/DialogHost';
 import { IncomingCallHost } from '../features/calls/IncomingCall';
 import { Shell } from '../features/shell/Shell';
-import { SettingsHost } from '../features/settings/SettingsHost';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { LazyFeature } from '../shared/ui/LazyFeature';
+
+const loadSettings = () => import('../features/settings/SettingsHost').then(({ SettingsHost }) => ({ default: SettingsHost }));
 import { Toasts } from '../shared/ui/Toasts';
 import { Lightbox } from '../features/chat/Lightbox';
 import { Spinner } from '../shared/ui/Spinner';
@@ -36,6 +39,7 @@ function Boot({ message }: { message: string }) {
 export function App() {
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const settings = useUiStore((s) => s.settings);
   const status = useSessionStore((s) => s.status);
   useAppearance();
   useWindowResizing();
@@ -92,7 +96,7 @@ export function App() {
           <Shell />
           <IncomingCallHost />
           <DialogHost />
-          <SettingsHost />
+          {settings && <LazyFeature load={loadSettings} props={{}} close={() => useUiStore.getState().openSettings(null)} />}
           <UpdateBanner />
           <Lightbox />
         </>
