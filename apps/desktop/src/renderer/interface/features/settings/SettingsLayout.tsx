@@ -33,4 +33,3 @@ export function NavItem({ active, onClick, children, danger }: { active: boolean
 
 /** Switches tab unless the current page holds unsaved edits, in which case the bar shakes instead. */
 export const guarded = (go: () => void) => () => { if (useUnsavedStore.getState().requestLeave()) go(); };
-

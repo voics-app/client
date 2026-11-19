@@ -30,4 +30,3 @@ export function ServerSettings({ guildId, tab, auditTarget }: { guildId: string;
     </Layout>
   );
 }
-
