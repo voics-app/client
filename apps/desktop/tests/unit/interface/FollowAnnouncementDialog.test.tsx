@@ -17,7 +17,7 @@ beforeEach(() => {
   useSessionStore.setState({ user: { id: '7', username: 'owner' } as User });
   useGuildStore.setState({
     guilds: { '1': { id: '1', name: 'Source', owner_id: '7', roles: [] }, '2': { id: '2', name: 'Target', owner_id: '7', roles: [] } } as never,
-    channels: { '10': { id: '10', guild_id: '1', type: ChannelType.GUILD_ANNOUNCEMENT, name: 'news' }, '20': { id: '20', guild_id: '2', type: ChannelType.GUILD_TEXT, name: 'general' } },
+    channels: { '10': { id: '10', guild_id: '1', type: ChannelType.GUILD_ANNOUNCEMENT, name: 'news', delivery_mode: 'standard' }, '20': { id: '20', guild_id: '2', type: ChannelType.GUILD_TEXT, name: 'general', delivery_mode: 'standard' } },
   });
 });
 afterEach(cleanup);

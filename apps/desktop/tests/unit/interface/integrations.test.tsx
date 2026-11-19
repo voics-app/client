@@ -52,7 +52,7 @@ afterEach(cleanup);
 it('lists followed announcements and offers unfollow in server settings', async () => {
   fixture.permissions = Permission.MANAGE_WEBHOOKS;
   fixture.api.followedChannels.mockResolvedValue([{ channel_id: '3', webhook_channel_id: '2', webhook_id: '21' }]);
-  useGuildStore.setState({ channels: { '2': { id: '2', guild_id: '1', type: 0, name: 'general' }, '3': { id: '3', guild_id: '4', type: 5, name: 'news' } } });
+  useGuildStore.setState({ channels: { '2': { id: '2', guild_id: '1', type: 0, name: 'general', delivery_mode: 'standard' }, '3': { id: '3', guild_id: '4', type: 5, name: 'news', delivery_mode: 'standard' } } });
   mount(<ServerIntegrations guildId="1" />);
   expect(await screen.findByText('#news')).toBeTruthy();
   expect(screen.getByText('Posts to #general')).toBeTruthy();
