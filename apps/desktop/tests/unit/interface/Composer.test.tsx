@@ -11,7 +11,7 @@ import { Permission } from '@discordy/core/contracts/permissions';
 import type { Channel, Message, User } from '@discordy/core/contracts/rest';
 
 const send = vi.fn(async () => null);
-const gifs = vi.fn(async () => ({ results: [{ id: '1', content_description: 'Happy cat', media_formats: { gif: { url: 'https://example.test/cat.gif' } } }] }));
+const gifs = vi.fn(async () => ({ results: [{ id: '1', content_description: 'Happy cat', media_formats: { gif: { url: 'https://example.test/cat.gif' }, tinygif: { url: 'https://example.test/cat.gif', proxy_url: 'https://cdn.example.test/external/signed' } } }] }));
 const gifCategories = vi.fn(async () => ({ tags: [{ name: 'Cats', searchterm: 'cats' }] }));
 const updateSettings = vi.fn(async (patch: { preferences: { favorite_gifs: string[] } }) => ({ default_delivery_mode: 'standard', preferences: patch.preferences }));
 vi.mock('@renderer/interface/app/runtime', () => ({

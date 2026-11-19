@@ -13,6 +13,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [favoritePreviews, setFavoritePreviews] = useState<string[]>([]);
   const favorites = useSessionStore((s) => s.settings.preferences?.favorite_gifs ?? NO_FAVORITES);
 
   useEffect(() => { void getRuntime().api.gifCategories().then((r) => setCategories(r.tags ?? [])).catch(() => undefined); }, []);
@@ -25,14 +26,22 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
         setItems((r.results ?? []).flatMap((gif) => {
           const url = gif.media_formats?.gif?.url;
           if (!url || !url.startsWith('https://')) return [];
-          const preview = gif.media_formats.tinygif?.url;
-          return [{ id: gif.id, url, preview: preview?.startsWith('https://') ? preview : url, description: gif.content_description ?? 'GIF' }];
+          const preview = gif.media_formats.tinygif?.proxy_url;
+          if (!preview) return [];
+          return [{ id: gif.id, url, preview, description: gif.content_description ?? 'GIF' }];
         }));
         setError('');
       }).catch(() => { if (current) setError('GIFs are unavailable right now.'); }).finally(() => { if (current) setLoading(false); });
     }, 300);
     return () => { current = false; clearTimeout(timer); };
   }, [query]);
+  useEffect(() => {
+    if (!favoritesOnly || favorites.length === 0) { setFavoritePreviews([]); return; }
+    let current = true;
+    const batches = [favorites.slice(0, 48), favorites.slice(48, 96), favorites.slice(96)].filter((batch) => batch.length);
+    void Promise.all(batches.map((batch) => getRuntime().api.gifPreviews(batch))).then((responses) => { if (current) setFavoritePreviews(responses.flatMap((response) => response.urls)); }).catch(() => { if (current) setError('Could not load favorite GIFs.'); });
+    return () => { current = false; };
+  }, [favoritesOnly, favorites]);
 
   const toggleFavorite = async (url: string) => {
     const next = favorites.includes(url) ? favorites.filter((v) => v !== url) : [...favorites, url].slice(-100);
@@ -41,7 +50,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (url: string) => void; 
       useSessionStore.getState().setSettings(settings);
     } catch { setError('Could not save favorites.'); }
   };
-  const visible = favoritesOnly ? favorites.map((url) => ({ id: url, url, preview: url, description: 'Favorite GIF' })) : items;
+  const visible = favoritesOnly ? favorites.flatMap((url, i) => favoritePreviews[i] ? [{ id: url, url, preview: favoritePreviews[i]!, description: 'Favorite GIF' }] : []) : items;
   return <div className="gif-picker" role="dialog" aria-label="GIF picker" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
     <div className="gif-picker-header"><strong>GIFs</strong><button type="button" onClick={onClose} aria-label="Close GIF picker">×</button></div>
     <input autoFocus aria-label="Search GIFs" placeholder="Search GIFs" value={query} onChange={(e) => { setFavoritesOnly(false); setQuery(e.target.value); }} />

@@ -37,3 +37,14 @@ jobs:
     with:
       image-name: client
       description: Voics client web build (renderer bundle and component gallery, served by nginx)
+
+  electron-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm --filter @discordy/desktop test:e2e

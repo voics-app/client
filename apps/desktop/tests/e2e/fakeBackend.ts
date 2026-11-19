@@ -169,6 +169,15 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     const url = new URL(req.url ?? '/', 'http://x');
     const path = url.pathname.replace(/^\/api\/v1/, '');
     const body = req.method === 'GET' ? {} : await readBody(req);
+    const proxyUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/external/fixture`;
+    const gifUrl = 'https://gif.example.test/cat.gif';
+    if (path === '/external/fixture') {
+      res.writeHead(200, { 'Content-Type': 'image/gif' });
+      return res.end(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
+    }
+    if (path === '/gifs/categories') return json(res, 200, { tags: [{ name: 'Cats', searchterm: 'cats' }] });
+    if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
+    if (path === '/gifs/previews') return json(res, 200, { urls: ((body.urls ?? []) as string[]).map(() => proxyUrl) });
 
     if (path === '/auth/login' || path === '/auth/register') return json(res, 200, { access_token: 'access-1', refresh_token: 'refresh-1', user: USER });
     if (path === '/auth/refresh') return json(res, 200, { access_token: 'access-2', refresh_token: 'refresh-2' });
@@ -177,7 +186,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (/^\/devices\/\d+\/key-packages$/.test(path)) return json(res, 204, null);
     if (/^\/users\/\d+\/devices$/.test(path)) return json(res, 200, []);
     if (path === '/users/@me') return json(res, 200, USER);
-    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
+    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false, ...((body.preferences ?? {}) as object) } });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
@@ -212,7 +221,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
         mentions: [],
         mention_roles: [],
         attachments: [],
-        embeds: [],
+        embeds: String(body.content ?? '').trim() === gifUrl ? [{ type: 'image', url: gifUrl, thumbnail: { url: gifUrl, proxy_url: proxyUrl, width: 1, height: 1 } }] : [],
         pinned: false,
         type: 0,
         nonce: body.nonce ?? null,
@@ -247,7 +256,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               guilds: guilds.map(guildPayload),
               private_channels: [],
               relationships: [],
-              user_settings: { default_delivery_mode: 'standard', status: 'online' },
+              user_settings: { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false } },
               read_state: [],
               presences: [],
             },
