@@ -335,6 +335,7 @@ describe('dispatchRouter', () => {
 
   it('invalidates the relevant guild soundboard after metadata events', () => {
     const { route, ctx } = setup();
+    ctx.invalidate.mockClear();
     for (const event of ['SOUNDBOARD_SOUND_CREATE', 'SOUNDBOARD_SOUND_UPDATE', 'SOUNDBOARD_SOUND_DELETE']) route(event, { guild_id: '100' });
     expect(ctx.invalidate).toHaveBeenCalledTimes(3);
     expect(ctx.invalidate).toHaveBeenCalledWith(['soundboard', '100']);
