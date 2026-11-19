@@ -2,6 +2,7 @@
 import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -75,6 +76,10 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  guildScheduledEvents(guildId: string): Promise<GuildScheduledEvent[]>;
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent): Promise<GuildScheduledEvent>;
+  guildScheduledEventInterest(guildId: string, eventId: string): Promise<{ interested: boolean }>;
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean): Promise<void>;
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;

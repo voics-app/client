@@ -38,6 +38,7 @@ export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'in
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }
   | { kind: 'createGuild' }
+  | { kind: 'guildEvents'; guildId: string }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
   | { kind: 'createChannel'; guildId: string; parentId: string | null; type?: number }

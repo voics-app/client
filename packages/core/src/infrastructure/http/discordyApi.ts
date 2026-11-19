@@ -2,6 +2,7 @@
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
 import type {
   ApplicationCommand,
   ApplicationSummary,
@@ -62,6 +63,20 @@ const enc = encodeURIComponent;
 
 export class DiscordyApi implements ApiPort {
   constructor(private readonly http: HttpClient) {}
+
+  guildScheduledEvents(guildId: string) {
+    return this.get<GuildScheduledEvent[]>(`/guilds/${enc(guildId)}/scheduled-events`);
+  }
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent) {
+    return this.post<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events`, body);
+  }
+  guildScheduledEventInterest(guildId: string, eventId: string) {
+    return this.get<{ interested: boolean }>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`);
+  }
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean) {
+    const path = `/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`;
+    return interested ? this.put<void>(path) : this.del<void>(path);
+  }
 
   private get<T>(path: string, query?: RequestOptions['query']) {
     return this.http.request<T>('GET', path, { query });
