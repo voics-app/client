@@ -13,6 +13,9 @@ const user = (id: string, name: string): User => ({ id, username: name.toLowerCa
 const rel = (id: string, name: string, type: number): Relationship => ({ id, type, user: user(id, name) }) as Relationship;
 
 const mockApi = {
+  favouriteFriends: jest.fn(async () => []),
+  setFavouriteFriend: jest.fn(async (_id: string, _value: boolean) => undefined),
+  useFriendInvite: jest.fn(async (_token: string) => undefined),
   messages: jest.fn(async () => []),
   ack: jest.fn(async () => undefined),
   putRelationship: jest.fn(async (_id: string, _body?: object) => undefined),
@@ -64,6 +67,14 @@ describe('friends', () => {
     expect(screen.queryByLabelText('Sam, Offline')).toBeNull();
     await fireEvent.press(screen.getByLabelText('All 2'));
     expect(screen.getByLabelText('Sam, Offline')).toBeTruthy();
+  });
+
+  it('marks a friend as a favourite from the friend menu', async () => {
+    await openFriends(people);
+    await fireEvent.press(screen.getByLabelText('Pat, Online'));
+    await fireEvent.press(screen.getByText('Add favourite'));
+    await waitFor(() => expect(mockApi.setFavouriteFriend).toHaveBeenCalledWith('u2', true));
+    expect(await screen.findByText('FAVOURITES - 1')).toBeTruthy();
   });
 
   it('searches within a tab', async () => {
@@ -180,4 +191,14 @@ describe('add friend', () => {
     expect(alert).not.toHaveBeenCalled();
     alert.mockRestore();
   });
+});
+
+it('holds a friend invite until sign-in and then sends it', async () => {
+  const token = 'friend_token_1234567890ABC';
+  useSessionStore.setState({ status: 'signedOut' } as never);
+  await renderRouter('./app', { initialUrl: `/friend-invite/${token}` });
+  expect(await screen.findByText('Sign in to send this friend request.')).toBeTruthy();
+  expect(mockApi.useFriendInvite).not.toHaveBeenCalled();
+  act(() => useSessionStore.setState({ status: 'ready' } as never));
+  await waitFor(() => expect(mockApi.useFriendInvite).toHaveBeenCalledWith(token));
 });

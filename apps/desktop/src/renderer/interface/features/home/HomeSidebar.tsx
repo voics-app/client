@@ -107,7 +107,7 @@ export function HomeSidebar() {
     let active = true;
     useFavouriteFriendsStore.getState().set([]);
     const initial = useFavouriteFriendsStore.getState().ids;
-    void getRuntime().api.favouriteFriends().then((ids) => {
+    void Promise.resolve().then(() => getRuntime().api.favouriteFriends()).then((ids) => {
       if (active && useFavouriteFriendsStore.getState().ids === initial) useFavouriteFriendsStore.getState().set(ids);
     }).catch(() => {
       if (active) useUiStore.getState().toast({ tone: 'danger', title: 'Could not load favourites' });

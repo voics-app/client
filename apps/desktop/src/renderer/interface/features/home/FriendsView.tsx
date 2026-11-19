@@ -4,6 +4,8 @@ import { useFavouriteFriendsStore, usePresenceStore, useRelationshipStore } from
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { friendInviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useConnectionStore } from '../../app/connectionStore';
 import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
@@ -75,7 +77,7 @@ function AddFriend() {
   const [link, setLink] = useState<string | null>(null);
   const createLink = async () => {
     const invite = await attempt(() => getRuntime().api.createFriendInvite(), 'Could not create friend invite');
-    if (invite) setLink(`${BRAND.protocolScheme}://friend-invite/${invite.token}`);
+    if (invite) setLink(friendInviteWebUrl(invite.token, useConnectionStore.getState().apiUrl));
   };
   const revokeLink = async () => {
     const ok = await attempt(() => getRuntime().api.revokeFriendInvites().then(() => true), 'Could not revoke friend invite');
