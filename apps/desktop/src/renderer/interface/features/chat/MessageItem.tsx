@@ -27,6 +27,7 @@ import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { MessageAttachments, UploadProgress } from './AttachmentView';
 import { MessageEmbeds } from './EmbedView';
+import { MessagePoll } from './Poll';
 import { ForwardedMessage } from './ForwardedMessage';
 import { useMessageInteractions } from './useMessageInteractions';
 import { UserMenuTarget } from '../members/UserContextMenu';
@@ -294,6 +295,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
           {message.attachments.length > 0 && <MessageAttachments attachments={message.attachments} channelId={message.channel_id} />}
           {sending && message.nonce != null && <UploadProgress nonce={String(message.nonce)} />}
           <MessageEmbeds message={message} />
+          {message.poll && <MessagePoll message={message} />}
           <MessageComponents message={message} />
           <Reactions message={message} />
           {ephemeral && (

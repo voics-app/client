@@ -14,6 +14,7 @@ import { Avatar } from '../profile/Avatar';
 import { theme } from '../theme';
 import { AttachmentList } from './attachments/AttachmentList';
 import { MessageComponents } from './components/MessageComponents';
+import { MessagePoll } from './Poll';
 import { useChatContext } from './chatContext';
 import { InviteCards } from '../invites/InviteCards';
 import { MarkdownText } from './markdown/MarkdownText';
@@ -101,6 +102,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
         {message.content !== '' && <InviteCards content={message.content} />}
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
         {!message.localState && <MessageComponents message={message} />}
+        {message.poll && !message.localState && <MessagePoll message={message} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
           <View style={styles.reactions}>
             {message.reactions.map((r) => {

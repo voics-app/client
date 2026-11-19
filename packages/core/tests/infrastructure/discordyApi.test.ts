@@ -123,3 +123,16 @@ describe('DiscordyApi push token', () => {
     expect(request).toHaveBeenLastCalledWith('DELETE', '/users/@me/devices/voip', { reason: undefined });
   });
 });
+
+it('uses the poll snapshot, vote revision, and finalization endpoints', async () => {
+  const { http, request } = fakeHttp();
+  const api = new DiscordyApi(http);
+  await api.getPoll('2', '3');
+  expect(request).toHaveBeenLastCalledWith('GET', '/channels/2/polls/3', { query: undefined });
+  await api.setPollVote('2', '3', 1, true, '7');
+  expect(request).toHaveBeenLastCalledWith('PUT', '/channels/2/polls/3/answers/1/@me', { body: { expected_vote_version: '7' }, reason: undefined });
+  await api.setPollVote('2', '3', 1, false, '8');
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/channels/2/polls/3/answers/1/@me', { query: { expected_vote_version: '8' } });
+  await api.endPoll('2', '3');
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/polls/3/expire', { body: {}, reason: undefined });
+});

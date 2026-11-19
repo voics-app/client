@@ -1,3 +1,4 @@
+import { canForward } from '@discordy/core/domain/forward';
 import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { threadNameFor } from '@discordy/core/domain/threads';
 import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
@@ -199,7 +200,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
       canReact,
       canManageMessages: canManage,
       canCreateThread: Boolean(channel?.guild_id) && can(perms, Permission.CREATE_PUBLIC_THREADS),
-      forwardSupported: FORWARD_SUPPORTED,
+      forwardSupported: FORWARD_SUPPORTED && canForward(message, message.deliveryMode),
       canSpeak: speechSupported(),
       hasText: message.content.trim().length > 0,
       hasEditableAttachments: canEditAttachments(message, opts.me),
@@ -222,7 +223,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
     if (e.kind === 'submenu' && e.label === 'Add Reaction') e.entries.forEach((sub, i) => { if (sub.kind === 'item' && i < quick.length && quick[i]!.id) sub.icon = <EmojiGlyph emoji={quick[i]!} />; });
   }
 
-  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift, developerMode });
+  const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED && canForward(message, message.deliveryMode), pinned: Boolean(message.pinned), quick, shift, developerMode });
   const toolbar = visible ? (
     <div className="message-toolbar glass" role="toolbar" aria-label="Message actions" data-shift={shift || undefined}>
       {toolbarActions.map((a, i) => {

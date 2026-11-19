@@ -18,8 +18,8 @@ export function forwardSnapshot(message: Pick<Message, 'message_reference' | 'me
 }
 
 /** Whether a message can be forwarded: stored on the server and neither a system nor an ephemeral one. */
-export function canForward(message: Pick<Message, 'type' | 'flags'>, mode: DeliveryMode | undefined): boolean {
-  return (mode ?? 'standard') === 'standard' && (message.type === 0 || message.type === 19) && ((message.flags ?? 0) & MessageFlag.EPHEMERAL) === 0;
+export function canForward(message: Pick<Message, 'type' | 'flags' | 'poll'>, mode: DeliveryMode | undefined): boolean {
+  return !message.poll && (mode ?? 'standard') === 'standard' && (message.type === 0 || message.type === 19) && ((message.flags ?? 0) & MessageFlag.EPHEMERAL) === 0;
 }
 
 /** Body of the POST that forwards `message` into another channel. `comment` is the optional added text. */

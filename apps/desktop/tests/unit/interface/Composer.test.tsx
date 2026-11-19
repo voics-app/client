@@ -380,11 +380,11 @@ describe('Composer: send key preference, @here and format toolbar', () => {
     expect(input().value).toBe('**hello**');
   });
 
-  it('the plus menu offers Upload a file only', () => {
+  it('offers poll creation in standard DMs', () => {
     render(<Composer channel={dmChannel()} mode="standard" />);
     fireEvent.click(screen.getByRole('button', { name: 'Add to message' }));
     expect(screen.getByRole('menuitem', { name: /Upload a file/ })).toBeTruthy();
-    expect(screen.queryByRole('menuitem', { name: /poll/i })).toBeNull();
+    expect(screen.getByRole('menuitem', { name: /Create poll/i })).toBeTruthy();
   });
 });
 
