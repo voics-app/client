@@ -106,7 +106,7 @@ export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
       pending = packet.clone({ timestamp: packet.timestamp + offset });
     }
     if (!pending) throw new Error('The recording has no audio packets.');
-    const finalDuration = pending.duration > 0 ? pending.duration : opusPacketDuration(pending.data);
+    const finalDuration = opusPacketDuration(pending.data);
     if (finalDuration <= padding) throw new Error('Invalid final Opus packet duration.');
     await source.add(pending.clone({ duration: finalDuration - padding }), first ? { decoderConfig } : undefined);
     await output.finalize();
