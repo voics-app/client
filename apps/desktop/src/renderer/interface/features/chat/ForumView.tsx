@@ -1,5 +1,6 @@
 import { ChatsCircle, Plus } from '@phosphor-icons/react';
 import { useState } from 'react';
+import { useDraftStore } from '@discordy/core/application/stores/composerStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
@@ -28,6 +29,13 @@ export function ForumView({ channelId }: { channelId: string }) {
     setDraftPost(null);
     setTitle('');
     setBody('');
+  };
+
+  const openDraft = () => {
+    if (!draftPost) return;
+    if (draftPost.delivery_mode === 'standard') useDraftStore.getState().setDraft(draftPost.id, body, null);
+    setPanel({ kind: 'thread', threadId: draftPost.id });
+    close();
   };
 
   const create = async () => {
@@ -70,8 +78,8 @@ export function ForumView({ channelId }: { channelId: string }) {
           ))
         )}
       </div>
-      <Modal open={creating} onClose={close} title="New post" footer={<><Button variant="ghost" disabled={submitting} onClick={close}>Cancel</Button><Button variant="primary" disabled={submitting || !title.trim() || !body.trim()} onClick={() => void create()}>{draftPost ? 'Retry message' : 'Post'}</Button></>}>
-        {draftPost && <p>The post was created, but its first message could not be sent. Retry the message or cancel to leave the empty post.</p>}
+      <Modal open={creating} onClose={close} title="New post" footer={<><Button variant="ghost" disabled={submitting} onClick={close}>Cancel</Button>{draftPost ? <Button variant="primary" onClick={openDraft}>Open post</Button> : <Button variant="primary" disabled={submitting || !title.trim() || !body.trim()} onClick={() => void create()}>Post</Button>}</>}>
+        {draftPost && <p>The post was created, but message delivery could not be confirmed. Open the post to check it before trying again. Check the post before sending again; copy the text below if you need to keep it.</p>}
         <Field label="Title">{(id) => <Input id={id} data-autofocus value={title} maxLength={100} disabled={!!draftPost} onChange={(e) => setTitle(e.target.value)} />}</Field>
         <Field label="Message">{(id) => <TextArea id={id} value={body} onChange={(e) => setBody(e.target.value)} />}</Field>
       </Modal>

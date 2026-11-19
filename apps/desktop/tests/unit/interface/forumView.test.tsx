@@ -34,15 +34,16 @@ it('creates a post and sends its first message through the normal delivery path'
   await waitFor(() => expect(fixture.setSidePanel).toHaveBeenCalledWith({ kind: 'thread', threadId: 'post' }));
 });
 
-it('retains the message and retries without creating another post after delivery fails', async () => {
+it('retains the message and opens the post without resending after an ambiguous failure', async () => {
   fixture.send.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ id: 'message' });
   render(<ForumView channelId="forum" />);
   fireEvent.click(screen.getByRole('button', { name: 'New post' }));
   fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'A title' } });
   fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'First message' } });
   fireEvent.click(screen.getByRole('button', { name: 'Post' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry message' }));
+  expect((await screen.findByLabelText('Message') as HTMLTextAreaElement).value).toBe('First message');
+  fireEvent.click(await screen.findByRole('button', { name: 'Open post' }));
   await waitFor(() => expect(fixture.setSidePanel).toHaveBeenCalled());
   expect(fixture.createThread).toHaveBeenCalledTimes(1);
-  expect(fixture.send).toHaveBeenCalledTimes(2);
+  expect(fixture.send).toHaveBeenCalledTimes(1);
 });
