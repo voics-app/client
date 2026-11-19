@@ -63,7 +63,7 @@ const config: ExpoConfig = {
     ['@config-plugins/react-native-webrtc', { microphonePermission: MICROPHONE_USAGE, cameraPermission: CAMERA_USAGE }],
   ],
   experiments: { typedRoutes: true },
-  extra: { apiUrl: qa?.apiUrl ?? brand.apiUrl, gatewayUrl: qa?.gatewayUrl ?? brand.gatewayUrl, cdnUrl: qa?.cdnUrl ?? brand.cdnUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
+  extra: { voicePttFixture: Boolean(qa), apiUrl: qa?.apiUrl ?? brand.apiUrl, gatewayUrl: qa?.gatewayUrl ?? brand.gatewayUrl, cdnUrl: qa?.cdnUrl ?? brand.cdnUrl, pushEnvironment, eas: { projectId: '3f910372-91d1-4807-93ac-c678167b6c69' } },
 };
 
 export default config;
