@@ -22,8 +22,10 @@
 .stage-grid.is-audio-only .tile-label { position: static; max-width: 100%; padding: 2px 8px; background: transparent; color: var(--fg-muted); }
 .user-panel-actions { gap: 4px; }
 .split-control { gap: 2px; }
-.split-control .device-arrow { width: 20px; height: 28px; margin-left: 0; flex: none; }
-.stage-controls { gap: 8px; }
+.split-control > .icon-btn.device-arrow { width: 20px; height: 28px; margin-left: 0; flex: none; }
+.voice-stage .stage-controls { gap: 8px; }
 .stage-controls .icon-btn-lg { width: 42px; height: 42px; }
 .dm-call-stage .voice-stage, .guild-call-stage .voice-stage { overflow: auto; }
 .dm-call-stage .stage-grid { min-height: 100px; }
+
+.voice-stage-head { flex-wrap: wrap; gap: 8px; }
