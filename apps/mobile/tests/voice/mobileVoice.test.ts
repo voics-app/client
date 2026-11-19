@@ -1,4 +1,5 @@
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import type { MediaStreamLike, MediaTrackLike } from '@discordy/core/application/ports/media';
@@ -170,6 +171,11 @@ describe('mobile voice', () => {
   });
 
   it('shows you speaking from the level of the outgoing audio, and tells the others', async () => {
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'me', roles: [] } } as never,
+      channels: { v1: { id: 'v1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: { me: { roles: [] } } } as never,
+    });
     const { voice } = setup();
     await voice.controller.join({ guildId: 'g1', channelId: 'v1' });
     voice.controller.onVoiceServerUpdate(serverUpdate);
@@ -178,6 +184,7 @@ describe('mobile voice', () => {
     expect(useVoiceStore.getState().speaking.me).toBeCloseTo(0.3);
     expect(session.speakingFlags.at(-1)).toBe(1);
     voice.dispose();
+    useGuildStore.getState().reset();
   });
 
   it('mutes: the microphone goes silent, nobody sees you speaking, and the gateway is told', async () => {
