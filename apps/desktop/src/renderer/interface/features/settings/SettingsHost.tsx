@@ -1,3 +1,4 @@
+import { ServerStickers } from './server/ServerStickers';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MagnifyingGlass, SignOut } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -127,7 +128,7 @@ function ServerSettings({ guildId, tab, auditTarget }: { guildId: string; tab: S
   if (!guild) return null;
   const tabs = serverSettingsTabs(perms).filter((entry) => entry.show);
   const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
+  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, stickers: <ServerStickers guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
   return (
     <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
       const entries = tabs.filter((entry) => entry.group === group);

@@ -31,6 +31,7 @@ import type {
   AuthSession,
   Device,
   Emoji,
+  Sticker,
   Guild,
   VanityUrl,
   GuildNotificationSettings,
@@ -170,6 +171,10 @@ export interface ApiPort {
   auditLog(guildId: string, query?: { limit?: number; before?: string; user_id?: string; action_type?: number; target_id?: string }): Promise<AuditLog>;
   bulkDeleteMessages(channelId: string, messageIds: string[]): Promise<void>;
   emojis(guildId: string): Promise<Emoji[]>;
+  guildStickers(guildId: string): Promise<Sticker[]>;
+  createSticker(guildId: string, body: { name: string; tags: string; image: string }): Promise<Sticker>;
+  updateSticker(guildId: string, id: string, patch: { name?: string; tags?: string }): Promise<Sticker>;
+  deleteSticker(guildId: string, id: string): Promise<void>;
   createEmoji(guildId: string, body: { name: string; image: string }): Promise<Emoji>;
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;
   deleteEmoji(guildId: string, emojiId: string): Promise<void>;

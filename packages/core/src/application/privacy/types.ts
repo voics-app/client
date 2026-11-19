@@ -1,5 +1,5 @@
 /** Shared types and wire helpers for the private delivery modes (Ephemeral E2EE and P2P). */
-import type { Channel, DeliveryMode, User } from '../../contracts/rest';
+import type { Channel, DeliveryMode, StickerItem, User } from '../../contracts/rest';
 import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '../../domain/privateAttachment';
 import { decodeUtf8, encodeUtf8 } from '../../domain/utf8';
 import { parseTtl } from '../../domain/disappearing';
@@ -14,6 +14,7 @@ export interface SelfIdentity {
 
 export interface SendInput {
   content: string;
+  stickers?: StickerItem[];
   replyTo?: string | null;
   /** Private modes encrypt these on this device first; only ciphertext ever leaves it. */
   files?: File[];

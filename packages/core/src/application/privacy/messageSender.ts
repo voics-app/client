@@ -194,6 +194,7 @@ export class MessageSender {
   // ---- internals --------------------------------------------------------------------
 
   private async sendPrivate(channel: Channel, mode: Exclude<DeliveryMode, 'standard'>, input: SendInput): Promise<ChatMessage> {
+    if (input.stickers?.length) throw new PrivateDeliveryError('invalid_mode', 'Stickers can only be sent in standard chats.');
     const deviceReason = validateModeForDevice(mode, Boolean(useSessionStore.getState().deviceId));
     if (deviceReason) throw new PrivateDeliveryError('encryption_unavailable', deviceReason);
     return mode === 'ephemeral' ? this.deps.ephemeral.send(channel, input) : this.deps.p2p.send(channel, input);
@@ -218,6 +219,7 @@ export class MessageSender {
       mentions: [],
       mention_roles: [],
       attachments: [],
+      sticker_items: input.stickers,
       embeds: [],
       pinned: false,
       type: input.replyTo ? 19 : 0,
@@ -230,6 +232,7 @@ export class MessageSender {
     try {
       const body: CreateMessageBody = {
         content: input.content,
+        sticker_ids: input.stickers?.map((sticker) => sticker.id),
         nonce,
         ...(input.tts ? { tts: true } : {}),
         ...(input.silent ? { flags: MessageFlag.SUPPRESS_NOTIFICATIONS } : {}),

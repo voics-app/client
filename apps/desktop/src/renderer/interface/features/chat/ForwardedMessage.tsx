@@ -1,3 +1,4 @@
+import { StickerImage } from './StickerImage';
 import { ArrowBendUpRight } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -30,6 +31,7 @@ export function ForwardedMessage({ message, guildId }: { message: ChatMessage; g
         )}
       </div>
       {snapshot.content && <MarkdownView source={snapshot.content} guildId={guildId} />}
+      {snapshot.sticker_items?.map((sticker) => <StickerImage key={sticker.id} sticker={sticker} />)}
       {snapshot.attachments.length > 0 && <MessageAttachments attachments={snapshot.attachments} channelId={message.channel_id} />}
       {snapshot.embeds.length > 0 && <MessageEmbeds message={{ ...message, embeds: snapshot.embeds }} />}
     </div>

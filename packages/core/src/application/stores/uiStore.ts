@@ -33,7 +33,7 @@ export type UserSettingsTab =
   | 'authorizedApps'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'stickers' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }

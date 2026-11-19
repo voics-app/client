@@ -33,6 +33,7 @@ import type {
   VoipTokenBody,
   Device,
   Emoji,
+  Sticker,
   Guild,
   VanityUrl,
   DiscoveryPage,
@@ -354,6 +355,10 @@ export class DiscordyApi implements ApiPort {
   emojis(guildId: string) {
     return this.get<Emoji[]>(`/guilds/${guildId}/emojis`);
   }
+  guildStickers(guildId: string) { return this.get<Sticker[]>(`/guilds/${guildId}/stickers`); }
+  createSticker(guildId: string, body: { name: string; tags: string; image: string }) { return this.post<Sticker>(`/guilds/${guildId}/stickers`, body); }
+  updateSticker(guildId: string, id: string, patch: { name?: string; tags?: string }) { return this.patch<Sticker>(`/guilds/${guildId}/stickers/${id}`, patch); }
+  deleteSticker(guildId: string, id: string) { return this.del<void>(`/guilds/${guildId}/stickers/${id}`); }
   createEmoji(guildId: string, body: { name: string; image: string }) {
     return this.post<Emoji>(`/guilds/${guildId}/emojis`, body);
   }

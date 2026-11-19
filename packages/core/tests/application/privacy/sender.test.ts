@@ -82,6 +82,19 @@ describe('MessageSender routing', () => {
     expect(body).not.toHaveProperty('allowed_mentions');
   });
 
+  it('sends sticker IDs in standard chats and never retries them privately', async () => {
+    const sticker = { id: '42', name: 'wave', format_type: 1 as const };
+    const normal = setup();
+    normal.api.sendMessage.mockResolvedValue(serverMessage({ sticker_items: [sticker] }));
+    await normal.sender.send(dm('standard'), { content: '', stickers: [sticker] });
+    expect(normal.api.sendMessage.mock.calls[0]![1]).toEqual(expect.objectContaining({ sticker_ids: ['42'] }));
+    const switched = setup();
+    switched.api.sendMessage.mockRejectedValue(new ApiError(409, 50160, 'Channel uses ephemeral delivery'));
+    switched.api.channel.mockResolvedValue(dm('ephemeral'));
+    await expect(switched.sender.send(dm('standard'), { content: '', stickers: [sticker] })).rejects.toThrow('Stickers can only be sent in standard chats.');
+    expect(switched.ephemeral.send).not.toHaveBeenCalled();
+  });
+
   it('marks a failed standard send as failed', async () => {
     const { sender, api } = setup();
     api.sendMessage.mockRejectedValue(new Error('boom'));
