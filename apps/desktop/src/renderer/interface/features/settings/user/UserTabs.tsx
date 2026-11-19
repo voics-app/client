@@ -10,6 +10,7 @@ import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { RINGTONE_OPTIONS, type RingtoneId } from '@discordy/core/domain/ringtones';
 import { VIDEO_PRESETS, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
+import { useStreamerActive, useStreamerRuntime } from '../../../app/streamer';
 import { keyLabel, uiohookKeycode } from '@discordy/core/domain/uiohookKeys';
 import type { DeliveryMode } from '@discordy/core/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
@@ -46,6 +47,7 @@ function Page({ title, sub, children }: { title: string; sub?: string; children:
 
 export function AccountTab() {
   const user = useSessionStore((s) => s.user);
+  const streamer = useStreamerActive();
   const openSettings = useUiStore((s) => s.openSettings);
   if (!user) return null;
   return (
@@ -55,7 +57,7 @@ export function AccountTab() {
         <div>
           <h2>{displayName(user)}</h2>
           <p className="mono">{user.username}</p>
-          {user.email && <p className="setting-desc">{user.email}</p>}
+          {user.email && <p className="setting-desc">{streamer ? 'Hidden in streamer mode' : user.email}</p>}
         </div>
         <Button onClick={() => openSettings({ kind: 'user', tab: 'profile' })}>Edit profile</Button>
       </div>
@@ -375,7 +377,8 @@ export function AppearanceTab() {
 
 export function AccessibilityTab() {
   const prefs = usePrefsStore();
-  const test = () => speak('This is how text to speech sounds at this speed.', prefs.ttsRate);
+  const streamer = useStreamerActive();
+  const test = () => { if (!streamer) speak('This is how text to speech sounds at this speed.', prefs.ttsRate); };
   return (
     <Page title="Accessibility" sub="Applies at once and, except where noted, follows your account to every device.">
       <h3>Motion</h3>
@@ -416,15 +419,22 @@ function previewRingtone(tone: RingtoneId, volume: number, outputDeviceId: strin
 
 export function NotificationsTab() {
   const prefs = usePrefsStore();
+  const streamer = useStreamerActive();
+  const obsDetected = useStreamerRuntime((s) => s.detected);
+  useEffect(() => { if (streamer) preview.stop(); }, [streamer]);
+  useEffect(() => () => { preview.stop(); if (previewTimer) clearTimeout(previewTimer); }, []);
   return (
     <Page title="Notifications">
+      <SettingRow title="Streamer mode" description="Hide your email and invite codes, hide direct message notification content, and silence app sounds on this device."><Switch label="Streamer mode" checked={prefs.streamerMode} onChange={(v) => prefs.set('streamerMode', v)} /></SettingRow>
+      <SettingRow title="Detect OBS" description={!prefs.streamerAutoDetect ? 'Check for OBS every five seconds. Detection is delayed; turn streamer mode on manually before streaming.' : obsDetected === null ? 'Checking for OBS failed or is pending; streamer mode stays active.' : obsDetected ? 'OBS detected; streamer mode is active.' : 'OBS is not running. Detection is delayed; turn streamer mode on manually before streaming.'}><Switch label="Detect OBS" checked={prefs.streamerAutoDetect} disabled={!bridge} onChange={(v) => prefs.set('streamerAutoDetect', v)} /></SettingRow>
+      {streamer && <p role="status" className="setting-desc">Streamer mode is active.</p>}
       <SettingRow title="Desktop notifications" description="Shown for mentions and direct messages."><Switch label="Desktop notifications" checked={prefs.notifyDesktop} onChange={(v) => prefs.set('notifyDesktop', v)} /></SettingRow>
       <SettingRow title="Only mentions"><Switch label="Only mentions" checked={prefs.notifyOnlyMentions} onChange={(v) => prefs.set('notifyOnlyMentions', v)} /></SettingRow>
       <SettingRow title="Notification sounds" description="Master switch for call sounds, ringtone and message sounds. Do Not Disturb mutes them."><Switch label="Notification sounds" checked={prefs.notifySounds} onChange={(v) => prefs.set('notifySounds', v)} /></SettingRow>
       {SOUND_OPTIONS.map((o) => (
         <SettingRow key={o.id} title={`Sound: ${o.label}`}>
           <div className="setting-inline">
-            <Button variant="secondary" onClick={() => soundEffects.play(o.id, prefs.outputVolume, prefs.outputDeviceId)}>Preview</Button>
+            <Button variant="secondary" disabled={streamer} onClick={() => soundEffects.play(o.id, prefs.outputVolume, prefs.outputDeviceId)}>Preview</Button>
             <Switch label={`Sound: ${o.label}`} checked={prefs.notifySounds && prefs.soundToggles[o.id] !== false} onChange={(v) => prefs.set('soundToggles', { ...prefs.soundToggles, [o.id]: v })} />
           </div>
         </SettingRow>
@@ -435,7 +445,7 @@ export function NotificationsTab() {
             <Select id={id} value={prefs.ringtone} onChange={(e) => prefs.set('ringtone', e.target.value as RingtoneId)}>
               {RINGTONE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </Select>
-            <Button variant="secondary" onClick={() => previewRingtone(prefs.ringtone, prefs.ringtoneVolume, prefs.outputDeviceId)}>Preview</Button>
+            <Button variant="secondary" disabled={streamer} onClick={() => previewRingtone(prefs.ringtone, prefs.ringtoneVolume, prefs.outputDeviceId)}>Preview</Button>
           </div>
         )}
       </Field>

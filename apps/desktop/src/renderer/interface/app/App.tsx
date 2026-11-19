@@ -15,6 +15,7 @@ import { useActivityReporting } from './activity';
 import { useDesktopIntegration } from './desktopIntegration';
 import { UpdateBanner } from '../features/updates/UpdateBanner';
 import { useGlobalShortcuts } from './shortcuts';
+import { startObsDetection, useStreamerActive } from './streamer';
 import { useAppearance } from './appearance';
 import { useWindowResizing } from '../shared/hooks/useWindowResizing';
 import { createRuntime, type Runtime } from './runtime';
@@ -37,11 +38,14 @@ export function App() {
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const status = useSessionStore((s) => s.status);
+  const streamer = useStreamerActive();
   useAppearance();
   useWindowResizing();
   useGlobalShortcuts();
   useActivityReporting();
   useDesktopIntegration();
+  useEffect(() => startObsDetection(), []);
+  useEffect(() => { if (streamer) window.speechSynthesis?.cancel(); }, [streamer]);
 
   useEffect(() => {
     let alive = true;

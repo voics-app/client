@@ -4,6 +4,8 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
+
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
 10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
 ACKs and duplicate HELLOs do not extend authentication. A failed connection to the
