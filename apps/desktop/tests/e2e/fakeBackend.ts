@@ -231,6 +231,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       return json(res, 200, message);
     }
     if (/\/ack$/.test(path) || /\/typing$/.test(path)) return json(res, 204, null);
+    console.log(`Fake backend: unhandled ${req.method} ${path}`);
     return json(res, 404, { code: 0, message: `Unhandled ${req.method} ${path}` });
   });
 

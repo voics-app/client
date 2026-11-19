@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { startFakeBackend, type FakeBackend } from './fakeBackend';
 
+test.describe.configure({ mode: 'serial' });
+
 let backend: FakeBackend;
 let app: ElectronApplication;
 let page: Page;
@@ -23,6 +25,8 @@ test.beforeAll(async () => {
   delete env.ELECTRON_RENDERER_URL;
   app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
   page = await app.firstWindow();
+  page.on('pageerror', (error) => console.log('Renderer error:', error.message));
+  page.on('console', (message) => { if (message.type() === 'error') console.log('Renderer console:', message.text()); });
   await page.waitForLoadState('domcontentloaded');
 });
 
@@ -37,6 +41,8 @@ test('signs in and lands in the server shell', async () => {
   await page.getByLabel('Email').fill('ada@example.test');
   await page.getByLabel('Password').fill('correct horse battery');
   await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForTimeout(3000);
+  console.log('Sign-in view:', (await page.locator('body').innerText()).slice(0, 2000));
   await expect(page.getByRole('navigation', { name: 'Servers' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Nightglass HQ' })).toBeVisible();
 });
