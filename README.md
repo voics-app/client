@@ -217,3 +217,6 @@ MANAGE_GUILD_EXPRESSIONS. The Standard guild composer sends server stickers and
 message history renders PNG, APNG, GIF and Lottie items, including forwards.
 This draft requires the matching contracts, API, messages and gateway changes;
 the built-in pack is available in Standard guild channels and DMs; visual and end-to-end verification remain outstanding.
+
+Mobile displays PNG/GIF stickers and labels Lottie or paused animations;
+mobile sticker selection and Lottie playback are not yet implemented.

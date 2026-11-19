@@ -1,3 +1,4 @@
+import { StickerItems } from './StickerItems';
 import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -95,10 +96,12 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
           <View accessibilityLabel="Forwarded message" style={styles.forwarded}>
             <Text style={styles.forwardedLabel}>Forwarded</Text>
             {forwarded.content !== '' && <MarkdownText source={forwarded.content} />}
+            <StickerItems items={forwarded.sticker_items} />
             {forwarded.attachments.length > 0 && <AttachmentList attachments={forwarded.attachments} messageId={`${message.id}-fwd`} sending={false} />}
           </View>
         )}
         {message.content !== '' && <InviteCards content={message.content} />}
+        <StickerItems items={message.sticker_items} />
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
         {!message.localState && <MessageComponents message={message} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
