@@ -64,6 +64,11 @@ jobs:
               corepack pnpm --filter @discordy/desktop exec electron-vite build
               cd apps/desktop
               xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "cold start reaches the auth screen" --repeat-each=3 --workers=1 --retries=0
+              # Keep login separate from timing: print the synthetic test context on failure.
+              if ! xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "signs in and lands in the server shell" --workers=1 --retries=0; then
+                find test-results -name error-context.md -exec cat {} \;
+                exit 1
+              fi
             '
 
   docker:
