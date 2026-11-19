@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, Share } from 'react-native';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
@@ -16,6 +16,8 @@ const mockApi = {
   favouriteFriends: jest.fn(async () => []),
   setFavouriteFriend: jest.fn(async (_id: string, _value: boolean) => undefined),
   useFriendInvite: jest.fn(async (_token: string) => undefined),
+  createFriendInvite: jest.fn(async () => ({ token: 'friend_token_1234567890ABC', expires_at: '2030-01-01T00:00:00Z' })),
+  revokeFriendInvites: jest.fn(async () => undefined),
   messages: jest.fn(async () => []),
   ack: jest.fn(async () => undefined),
   putRelationship: jest.fn(async (_id: string, _body?: object) => undefined),
@@ -75,6 +77,17 @@ describe('friends', () => {
     await fireEvent.press(screen.getByText('Add favourite'));
     await waitFor(() => expect(mockApi.setFavouriteFriend).toHaveBeenCalledWith('u2', true));
     expect(await screen.findByText('FAVOURITES - 1')).toBeTruthy();
+  });
+
+  it('shares and revokes a personal friend link', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction, activityType: undefined });
+    await openFriends(people);
+    await fireEvent.press(screen.getByLabelText('Add friend'));
+    await fireEvent.press(screen.getByLabelText('Create and share friend link'));
+    await waitFor(() => expect(share).toHaveBeenCalledWith({ message: 'https://api.test/friend-invite/#friend_token_1234567890ABC' }));
+    await fireEvent.press(screen.getByLabelText('Revoke friend link'));
+    await waitFor(() => expect(mockApi.revokeFriendInvites).toHaveBeenCalled());
+    share.mockRestore();
   });
 
   it('searches within a tab', async () => {
@@ -199,6 +212,6 @@ it('holds a friend invite until sign-in and then sends it', async () => {
   await renderRouter('./app', { initialUrl: `/friend-invite/${token}` });
   expect(await screen.findByText('Sign in to send this friend request.')).toBeTruthy();
   expect(mockApi.useFriendInvite).not.toHaveBeenCalled();
-  act(() => useSessionStore.setState({ status: 'ready' } as never));
+  await act(async () => { useSessionStore.setState({ status: 'ready' } as never); });
   await waitFor(() => expect(mockApi.useFriendInvite).toHaveBeenCalledWith(token));
 });
