@@ -4,6 +4,10 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+The desktop Threads panel browses visible active or archived threads and lets members join,
+leave, mute, archive or lock where permitted. It requires the thread browse and membership API
+and the corresponding gateway membership events; server-side auto-archive remains separate work.
+
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
 10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
 ACKs and duplicate HELLOs do not extend authentication. A failed connection to the

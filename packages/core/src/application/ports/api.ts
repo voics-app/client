@@ -186,6 +186,10 @@ export interface ApiPort {
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
+  listThreads(channelId: string, archived: boolean): Promise<Channel[]>;
+  joinThread(threadId: string, userId?: string): Promise<void>;
+  leaveThread(threadId: string, userId?: string): Promise<void>;
+  updateThread(threadId: string, patch: { archived?: boolean; locked?: boolean; auto_archive_duration?: number }): Promise<Channel>;
 
   discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
   discoveryCategories(): Promise<string[]>;
