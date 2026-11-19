@@ -45,7 +45,7 @@ function useClose() {
   return () => useUiStore.getState().openDialog(null);
 }
 
-function JoinGuildDialog({ initial }: { initial?: string }) {
+export function JoinGuildDialog({ initial }: { initial?: string }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [appealQuestion, setAppealQuestion] = useState<string | null>(null);
