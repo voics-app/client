@@ -2,7 +2,7 @@ import { ChatsCircle, Plus } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { ChannelType } from '@discordy/core/contracts/rest';
+import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';
@@ -17,18 +17,39 @@ export function ForumView({ channelId }: { channelId: string }) {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [draftPost, setDraftPost] = useState<Channel | null>(null);
   const setPanel = useUiStore((s) => s.setSidePanel);
   const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD);
 
+  const close = () => {
+    if (submitting) return;
+    setCreating(false);
+    setDraftPost(null);
+    setTitle('');
+    setBody('');
+  };
+
   const create = async () => {
-    const thread = await attempt(() => getRuntime().api.createThread(channelId, { name: title.trim(), type: ChannelType.PUBLIC_THREAD, message: { content: body.trim() } }), 'Could not create post');
+    if (submitting) return;
+    setSubmitting(true);
+    const thread = draftPost ?? await attempt(() => getRuntime().api.createThread(channelId, { name: title.trim(), type: ChannelType.PUBLIC_THREAD }), 'Could not create post');
     if (thread) {
-      useGuildStore.getState().upsertChannel({ ...thread, guild_id: channel?.guild_id });
-      setCreating(false);
-      setTitle('');
-      setBody('');
-      setPanel({ kind: 'thread', threadId: thread.id });
+      const post = { ...thread, guild_id: channel?.guild_id };
+      useGuildStore.getState().upsertChannel(post);
+      setDraftPost(post);
+      // The thread endpoint currently ignores its message field. Use the normal
+      // message delivery path and retain the draft if delivery fails.
+      const sent = await attempt(async () => { await getRuntime().privacy.sender.send(post, { content: body.trim() }); return true; }, 'Could not send the first message');
+      if (sent) {
+        setCreating(false);
+        setTitle('');
+        setBody('');
+        setDraftPost(null);
+        setPanel({ kind: 'thread', threadId: thread.id });
+      }
     }
+    setSubmitting(false);
   };
 
   return (
@@ -49,8 +70,9 @@ export function ForumView({ channelId }: { channelId: string }) {
           ))
         )}
       </div>
-      <Modal open={creating} onClose={() => setCreating(false)} title="New post" footer={<><Button variant="ghost" onClick={() => setCreating(false)}>Cancel</Button><Button variant="primary" disabled={!title.trim() || !body.trim()} onClick={() => void create()}>Post</Button></>}>
-        <Field label="Title">{(id) => <Input id={id} data-autofocus value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />}</Field>
+      <Modal open={creating} onClose={close} title="New post" footer={<><Button variant="ghost" disabled={submitting} onClick={close}>Cancel</Button><Button variant="primary" disabled={submitting || !title.trim() || !body.trim()} onClick={() => void create()}>{draftPost ? 'Retry message' : 'Post'}</Button></>}>
+        {draftPost && <p>The post was created, but its first message could not be sent. Retry the message or cancel to leave the empty post.</p>}
+        <Field label="Title">{(id) => <Input id={id} data-autofocus value={title} maxLength={100} disabled={!!draftPost} onChange={(e) => setTitle(e.target.value)} />}</Field>
         <Field label="Message">{(id) => <TextArea id={id} value={body} onChange={(e) => setBody(e.target.value)} />}</Field>
       </Modal>
     </section>
