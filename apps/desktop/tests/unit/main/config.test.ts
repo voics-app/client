@@ -51,6 +51,14 @@ describe('resolveUpdateFeed', () => {
 });
 
 describe('routeFromDeepLink', () => {
+  it('opens supported bot consent links for the current and legacy schemes', () => {
+    const query = 'client_id=123&scope=bot+applications.commands&permissions=2048&guild_id=456';
+    expect(routeFromDeepLink(`voics://oauth2/authorize?${query}`)).toBe(`/oauth2/authorize?${query}`);
+    expect(routeFromDeepLink(`discordy://oauth2/authorize?${query}`)).toBe(`/oauth2/authorize?${query}`);
+    expect(routeFromDeepLink(`voics://oauth2/authorize?${query}&redirect_uri=https://example.invalid`)).toBeNull();
+    expect(routeFromDeepLink(`voics://oauth2/authorize?${query}#fragment`)).toBeNull();
+    expect(routeFromDeepLink('voics://oauth2/authorize?client_id=123&scope=identify')).toBeNull();
+  });
   it('maps invites and channels', () => {
     expect(routeFromDeepLink('voics://invite/AbC123')).toBe('/invite/AbC123');
     expect(routeFromDeepLink('voics://channels/1/2')).toBe('/channels/1/2');

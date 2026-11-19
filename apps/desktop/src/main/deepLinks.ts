@@ -1,7 +1,9 @@
 import { BRAND } from '../shared/brand';
+import { authorizationRoute } from '@discordy/core/domain/botAuthorization';
 /** Brand-scheme deep links → renderer routes. Anything unrecognised is dropped. */
 
 export const PROTOCOL = BRAND.protocolScheme;
+export const LEGACY_PROTOCOL = 'discordy'; // brand-check: allow (legacy installed deep links)
 
 const ID = /^\d{1,20}$/;
 const INVITE = /^[A-Za-z0-9-]{2,32}$/;
@@ -16,9 +18,10 @@ export function routeFromDeepLink(link: string): string | null {
   } catch {
     return null;
   }
-  if (url.protocol !== `${PROTOCOL}:`) return null;
+  if (![`${PROTOCOL}:`, `${LEGACY_PROTOCOL}:`].includes(url.protocol) || url.username || url.password || url.port || url.hash) return null;
   const parts = [url.hostname, ...url.pathname.split('/')].filter(Boolean);
   const [kind, a, b, c] = parts;
+  if (kind === 'oauth2' && a === 'authorize' && parts.length === 2) return authorizationRoute(url.searchParams);
   if ((kind === 'reset-password' || kind === 'verify-email') && parts.length === 1) {
     const token = url.searchParams.get('token');
     return token && ACCOUNT_TOKEN.test(token) ? `/${kind}/${token}` : null;
@@ -33,7 +36,7 @@ export function routeFromDeepLink(link: string): string | null {
 }
 
 export function findDeepLink(argv: readonly string[]): string | null {
-  return argv.find((arg) => arg.startsWith(`${PROTOCOL}://`)) ?? null;
+  return argv.find((arg) => arg.startsWith(`${PROTOCOL}://`) || arg.startsWith(`${LEGACY_PROTOCOL}://`)) ?? null;
 }
 
 /**

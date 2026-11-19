@@ -20,6 +20,35 @@ describe('DiscordyApi profile customization', () => {
   });
 });
 
+it('uses explicit consent and integration endpoints and never sends credentials in metadata edits', async () => {
+  const { http, request } = fakeHttp();
+  const api = new DiscordyApi(http);
+  const invite = { client_id: '11', guild_id: '7', scope: 'bot', permissions: '2048' };
+  await api.botAuthorizationInfo(invite);
+  expect(request).toHaveBeenLastCalledWith('GET', '/oauth2/authorize', { query: invite });
+  const submission = { ...invite, installation_revision: 'absent:0' };
+  await api.authorizeBot(submission);
+  expect(request).toHaveBeenLastCalledWith('POST', '/oauth2/authorize', { body: submission, reason: undefined });
+  await api.applicationAuthorizations();
+  expect(request).toHaveBeenLastCalledWith('GET', '/oauth2/tokens', { query: undefined });
+  await api.revokeApplicationAuthorization('31');
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/oauth2/tokens/31', { reason: undefined });
+  await api.guildIntegrations('7');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/integrations', { query: undefined });
+  await api.removeGuildIntegration('7', '11');
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/guilds/7/integrations/11', { reason: undefined });
+  await api.guildWebhooks('7');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/webhooks', { query: undefined });
+  await api.createWebhook('2', { name: 'Reminders' });
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/webhooks', { body: { name: 'Reminders' }, reason: undefined });
+  await api.updateWebhook('21', { avatar: null });
+  expect(request).toHaveBeenLastCalledWith('PATCH', '/webhooks/21', { body: { avatar: null } });
+  await api.resetWebhookToken('21');
+  expect(request).toHaveBeenLastCalledWith('POST', '/webhooks/21/reset-token', { body: {}, reason: undefined });
+  await api.deleteWebhook('21');
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/webhooks/21', { reason: undefined });
+});
+
 it('sends partial attachment metadata with explicit clear values', async () => {
   const { http, request } = fakeHttp();
   const patch = { attachments: [{ id: '7', description: null, flags: 0 }] };

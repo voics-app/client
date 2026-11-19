@@ -4,6 +4,14 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Desktop and mobile share gateway recovery in `packages/core`. Each socket has
+10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
+ACKs and duplicate HELLOs do not extend authentication. A failed connection to the
+advertised resume endpoint falls back to the configured gateway with the existing reconnect backoff, retaining
+the session, sequence and current token. The failed address is ignored until a
+fresh READY supplies one. Fatal authentication/intent errors still stop retries;
+manual disconnect cancels pending recovery. No extra origins are added to CSP.
+
 Standard mention counts use authoritative versioned snapshots when READY certifies
 `read_state_versioned` (contracts#48 / docs ADR0027). ACK and READ_STATE_UPDATE apply only newer
 channel versions; CREATE does not increment an already-included count. READ_STATE_SYNC after
@@ -79,7 +87,35 @@ Right-click a server icon or open its header menu for notification settings, Hid
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 
+The Forward picker uses each DM recipient's user ID for their global avatar, including animated images. Forwarding still targets the DM channel ID; recipients without an avatar retain their initials. The routing regression is covered by `apps/desktop/tests/unit/interface/ForwardDialog.test.tsx`.
+
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. The unavailable Widget page stays hidden until its API is implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
+
+## Webhooks and authorized applications
+
+Server Settings → Integrations lists installed application bots and incoming webhooks.
+Manage Server exposes application management; Manage Webhooks exposes webhook editing.
+Create or edit a webhook's name, avatar and channel, follow its audit entries, or confirm
+deletion and URL regeneration. Create/regenerate shows the execution URL once, with Copy
+and Hide controls. Leaving the editor discards it; it never enters the query cache or
+persistent settings. Failed saves retain the draft and show a persistent retry action.
+
+`voics://oauth2/authorize` and the legacy `discordy://oauth2/authorize` alias open a bot
+consent dialog. It supports `bot` and optional `applications.commands`, displays the
+server and permissions, and requires an explicit review before authorizing. Unsupported
+scopes and redirect/code-flow parameters are rejected. An already installed bot keeps
+its current permissions; the dialog acknowledges those permissions without changing them.
+Consent also binds to the selected server's exact installation revision from the preview.
+Removal or reinstall invalidates the review even when permission bits are unchanged;
+the API rejects stale revisions with 409 and requires a fresh preview. The POST field
+is required and non-null, so this client requires the matching API/contracts release.
+
+User Settings → Authorized apps lists personal consent records. Revoke consent removes
+only your record; the shared server bot stays installed. Server managers remove a bot
+through Integrations, with Kick Members and the normal role hierarchy. Developer settings
+continue to list applications you own. These flows require contracts#49, docs#178 and
+the corresponding API integration implementation with migration 0070.
+The local UI structure and behavior are recorded in [Integrations and authorized applications](docs/integrations.md).
 
 ## Mobile app
 
