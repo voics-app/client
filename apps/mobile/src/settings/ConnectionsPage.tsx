@@ -26,6 +26,7 @@ export function ConnectionsPage({ highlight }: { highlight: string | null }) {
     {error && <Text accessibilityRole="alert" style={{ color: theme.danger, paddingHorizontal: 16 }}>{error}</Text>}
     {accounts === null ? <SettingRow title="Connections"><Button label="Refresh" onPress={() => void load()} /></SettingRow> : github ? <>
       <SettingRow title="GitHub" description={`Linked as ${github.name}`}><Button label="Disconnect" disabled={busy} onPress={() => void run(() => getRuntime().api.deleteConnection('github'))} /></SettingRow>
+      <Hint>Disconnect removes the profile link. Revoke access separately in GitHub settings.</Hint>
       <SwitchRow title="Show on profile" value={github.visible} disabled={busy} onChange={(value) => void run(() => getRuntime().api.setConnectionVisibility('github', value))} />
     </> : <>
       <SettingRow title="GitHub" description="Authorize in your browser, then return and refresh."><Button label="Connect" disabled={busy} onPress={() => void run(async () => { const { url } = await getRuntime().api.authorizeGithubConnection(); if (!/^https:\/\/github\.com\/login\/oauth\/authorize(?:\?|$)/.test(url)) throw new Error('Unexpected authorization address'); await Linking.openURL(url); })} /></SettingRow>
