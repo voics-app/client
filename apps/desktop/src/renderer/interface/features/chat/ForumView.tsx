@@ -1,5 +1,5 @@
 import { ChatsCircle, Plus } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDraftStore } from '@discordy/core/application/stores/composerStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -18,6 +18,8 @@ export function ForumView({ channelId }: { channelId: string }) {
   const channel = useGuildStore((s) => s.channels[channelId]);
   const channels = useGuildStore((s) => s.channels);
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +28,18 @@ export function ForumView({ channelId }: { channelId: string }) {
   const [sort, setSort] = useState(channel?.default_sort_order === 1 ? 'created' : 'activity');
   const [layout, setLayout] = useState(channel?.default_forum_layout === 1 ? 'list' : 'gallery');
   const [draftPost, setDraftPost] = useState<Channel | null>(null);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadFailed(false);
+    void attempt(() => getRuntime().api.listForumPosts(channelId), 'Could not load forum posts').then((loaded) => {
+      if (!active) return;
+      if (loaded) loaded.forEach((post) => useGuildStore.getState().upsertChannel(post));
+      else setLoadFailed(true);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [channelId]);
   const setPanel = useUiStore((s) => s.setSidePanel);
   const mayManageThreads = can(useChannelPermissions(channelId), Permission.MANAGE_THREADS);
   const tags = channel?.available_tags ?? [];
@@ -88,7 +102,7 @@ export function ForumView({ channelId }: { channelId: string }) {
       </header>
       <div className="forum-controls"><label>Sort <select value={sort} onChange={(e) => setSort(e.target.value)}><option value="activity">Recent activity (when available)</option><option value="created">Newest posts</option></select></label><label>Filter tags <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}><option value="">All tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label><label>Layout <select value={layout} onChange={(e) => setLayout(e.target.value)}><option value="list">List</option><option value="gallery">Gallery</option></select></label></div>
       <div className={`forum-list${layout === 'list' ? ' forum-list--rows' : ''}`}>
-        {posts.length === 0 ? (
+        {loading && posts.length === 0 ? <p>Loading posts?</p> : loadFailed && posts.length === 0 ? <p>Could not load posts. Reopen the forum to try again.</p> : posts.length === 0 ? (
           <EmptyState icon={<ChatsCircle size={36} weight="light" />} title="No posts yet" body="Start a discussion. Every post is its own thread." action={<Button variant="primary" onClick={() => setCreating(true)}>Create the first post</Button>} />
         ) : (
           posts.map((p) => (

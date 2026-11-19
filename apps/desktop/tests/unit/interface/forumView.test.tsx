@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ForumView } from '@renderer/interface/features/chat/ForumView';
 
 const fixture = vi.hoisted(() => ({
-  createThread: vi.fn(), updateChannel: vi.fn(), send: vi.fn(), upsertChannel: vi.fn(), setSidePanel: vi.fn(), manages: false,
+  listForumPosts: vi.fn(), createThread: vi.fn(), updateChannel: vi.fn(), send: vi.fn(), upsertChannel: vi.fn(), setSidePanel: vi.fn(), manages: false,
   channels: { forum: { id: 'forum', name: 'Forum', guild_id: 'guild', type: 15, require_tags: false, available_tags: [{ id: '12', name: 'Help' }] } },
 }));
 vi.mock('@discordy/core/application/stores/guildStore', () => {
@@ -14,13 +14,14 @@ vi.mock('@discordy/core/application/stores/guildStore', () => {
 });
 vi.mock('@discordy/core/application/stores/uiStore', () => ({ useUiStore: (selector: (state: unknown) => unknown) => selector({ setSidePanel: fixture.setSidePanel }) }));
 vi.mock('@renderer/interface/shared/hooks/usePermissions', () => ({ useChannelPermissions: () => 0n, can: () => fixture.manages }));
-vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { createThread: fixture.createThread, updateChannel: fixture.updateChannel }, privacy: { sender: { send: fixture.send } } }) }));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { listForumPosts: fixture.listForumPosts, createThread: fixture.createThread, updateChannel: fixture.updateChannel }, privacy: { sender: { send: fixture.send } } }) }));
 vi.mock('@renderer/interface/app/actions', () => ({ attempt: async (fn: () => Promise<unknown>) => { try { return await fn(); } catch { return undefined; } } }));
 
 beforeEach(() => {
   vi.resetAllMocks();
   fixture.manages = false;
   fixture.channels.forum.require_tags = false;
+  fixture.listForumPosts.mockResolvedValue([]);
   fixture.createThread.mockResolvedValue({ id: 'post', type: 11, parent_id: 'forum', delivery_mode: 'standard' });
   fixture.send.mockResolvedValue({ id: 'message' });
 });
