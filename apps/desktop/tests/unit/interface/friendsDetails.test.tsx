@@ -9,8 +9,8 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { FriendsView } from '@renderer/interface/features/home/FriendsView';
 import { HomeSidebar } from '@renderer/interface/features/home/HomeSidebar';
 
-const calls = vi.hoisted(() => ({ join: vi.fn(), close: vi.fn() }));
-vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: {} }) }));
+const calls = vi.hoisted(() => ({ join: vi.fn(), close: vi.fn(), favouriteFriends: vi.fn(async () => []), setFavouriteFriend: vi.fn(async () => undefined) }));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { favouriteFriends: calls.favouriteFriends, setFavouriteFriend: calls.setFavouriteFriend } }) }));
 vi.mock('@renderer/interface/app/voiceActions', () => ({ openVoiceChannel: calls.join }));
 vi.mock('@renderer/interface/app/dmActions', () => ({ closeDm: calls.close }));
 
@@ -60,4 +60,12 @@ it('joins a known server voice activity and excludes inaccessible DM activities'
   useVoiceStore.setState({ states: { '@me': { friend: { user_id: 'friend', guild_id: null, channel_id: 'unknown-private' } } } as never });
   render(<FriendsView />);
   expect(screen.queryByRole('button', { name: 'Join voice' })).toBeNull();
+});
+
+it('marks a friend as a favourite and shows the section', async () => {
+  render(<FriendsView />);
+  fireEvent.click(screen.getByRole('button', { name: 'Add favourite' }));
+  expect(await screen.findByRole('button', { name: 'Remove favourite' })).toBeTruthy();
+  expect(screen.getByText('Favourites')).toBeTruthy();
+  expect(calls.setFavouriteFriend).toHaveBeenCalledWith('friend', true);
 });

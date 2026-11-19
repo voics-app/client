@@ -216,6 +216,13 @@ export class DiscordyApi implements ApiPort {
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
   }
+  favouriteFriends() { return this.get<string[]>('/users/@me/favourites'); }
+  setFavouriteFriend(userId: string, value: boolean) {
+    return value ? this.put<void>(`/users/@me/favourites/${userId}`, {}) : this.del<void>(`/users/@me/favourites/${userId}`);
+  }
+  createFriendInvite() { return this.post<{ token: string; expires_at: string }>('/users/@me/friend-invites', {}); }
+  revokeFriendInvites() { return this.del<void>('/users/@me/friend-invites'); }
+  useFriendInvite(token: string) { return this.post<void>('/friend-invites', { token }); }
   guildNotificationSettings(guildId: string | null) {
     return this.get<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`);
   }

@@ -67,6 +67,13 @@ describe('routeFromDeepLink', () => {
     expect(routeFromDeepLink('voics://channels/1/2/x')).toBeNull();
   });
 
+  it('maps personal friend links separately from server invites', () => {
+    const token = 'k3J9x_Qw-1Zp0aB7cD4eF6gH8iJ2lMnO';
+    expect(routeFromDeepLink(`voics://friend-invite/${token}`)).toBe(`/friend-invite/${token}`);
+    expect(routeFromDeepLink('voics://friend-invite/short')).toBeNull();
+    expect(routeFromDeepLink(`voics://friend-invite/${token}/extra`)).toBeNull();
+  });
+
   it('maps template links', () => {
     expect(routeFromDeepLink('voics://template/AbC123xyz')).toBe('/template/AbC123xyz');
     expect(routeFromDeepLink('voics://template/builtin-gaming')).toBe('/template/builtin-gaming');
