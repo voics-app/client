@@ -336,9 +336,9 @@ export class VoiceCallController {
     const channel = guildState.channels[target.channelId];
     const isPriority = (userId: string): boolean => {
       if (!target.guildId || !guild || !channel) return false;
-      const member = guildState.members[target.guildId]?.[userId];
-      if (!member) return false;
-      const permissions = computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? []);
+      const member = guildState.members[target.guildId]?.[userId] ?? voice.states[target.guildId]?.[userId]?.member;
+      if (!member && guild.owner_id !== userId) return false;
+      const permissions = computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? []);
       return hasPermission(permissions, Permission.PRIORITY_SPEAKER);
     };
     const active = new Set(users.filter((userId) => (voice.speaking[userId] ?? 0) > 0.02 && isPriority(userId)));

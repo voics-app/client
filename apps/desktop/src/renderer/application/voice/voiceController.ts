@@ -62,6 +62,9 @@ export class VoiceController extends VoiceCallController {
     };
     this.disposers.push(
       useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
+      useVoiceStore.subscribe((state, previous) => {
+        if (state.states !== previous.states) this.syncVoicePermissions(this.target);
+      }),
       prefs.subscribe((state, previous) => {
         if (DEVICE_KEYS.some((k) => state[k] !== previous[k])) void this.refreshDevices();
         if (state.cameraPreset !== previous.cameraPreset) void this.applyCameraPreset();
@@ -91,9 +94,9 @@ export class VoiceController extends VoiceCallController {
     const guild = state.guilds[target.guildId];
     const channel = state.channels[target.channelId];
     const user = useSessionStore.getState().user?.id;
-    const member = user ? state.members[target.guildId]?.[user] : undefined;
-    const permissions = guild && channel && user && member
-      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? [])
+    const member = user ? state.members[target.guildId]?.[user] ?? useVoiceStore.getState().states[target.guildId]?.[user]?.member : undefined;
+    const permissions = guild && channel && user && (member || guild.owner_id === user)
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? [])
       : 0n;
     this.desktop.mic.setForcePushToTalk?.(!hasPermission(permissions, Permission.USE_VAD));
   }

@@ -46,6 +46,7 @@ export class MobileCallController extends VoiceCallController {
       mobile.onBackground(() => { this.setPushToTalk(false); void this.setVideo(false).catch(() => undefined); }),
       useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
       useVoiceStore.subscribe((state, previous) => {
+        if (state.states !== previous.states) this.syncVoicePermissions(this.target);
         if (state.call.status !== previous.call.status && (state.call.status === 'idle' || state.call.status === 'failed')) {
           this.releaseCapture();
           void this.screenShare.stop();
@@ -80,9 +81,9 @@ export class MobileCallController extends VoiceCallController {
     const guild = target?.guildId ? state.guilds[target.guildId] : undefined;
     const channel = target ? state.channels[target.channelId] : undefined;
     const user = useSessionStore.getState().user?.id;
-    const member = target?.guildId && user ? state.members[target.guildId]?.[user] : undefined;
-    const permissions = target?.guildId && guild && channel && user && member
-      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? [])
+    const member = target?.guildId && user ? state.members[target.guildId]?.[user] ?? useVoiceStore.getState().states[target.guildId]?.[user]?.member : undefined;
+    const permissions = target?.guildId && guild && channel && user && (member || guild.owner_id === user)
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? [])
       : 0n;
     const forced = Boolean(target?.guildId) && !hasPermission(permissions, Permission.USE_VAD);
     this.mobile.mic.setForcePushToTalk?.(forced);

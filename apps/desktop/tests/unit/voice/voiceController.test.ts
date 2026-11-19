@@ -120,6 +120,21 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('VoiceController', () => {
+  it('uses a voice-state member when the guild member list was capped', async () => {
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) }] } } as never,
+      channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: {} },
+    });
+    const { controller, mic } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useVoiceStore.setState({ states: { g1: { me: { user_id: 'me', channel_id: 'c1', member: { roles: [] } } } } as never });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    controller.dispose();
+    useGuildStore.getState().reset();
+  });
+
   it('forces PTT and ducks other callers while a priority member speaks', async () => {
     useGuildStore.setState({
       guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [
