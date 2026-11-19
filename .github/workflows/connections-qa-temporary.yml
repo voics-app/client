@@ -28,6 +28,9 @@ jobs:
       - run: echo y | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'cmake;3.31.6'
       - run: pnpm exec expo prebuild --platform android --no-install
         working-directory: apps/mobile
+      - name: Bundle JavaScript into the QA debug APK
+        run: sed -i '/^react {/a\    debuggableVariants = []' app/build.gradle
+        working-directory: apps/mobile/android
       - run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 -Pandroid.cmakeVersion=3.31.6
         working-directory: apps/mobile/android
       - uses: actions/upload-artifact@v4
