@@ -88,6 +88,12 @@ class VoicsRecorderModule : Module() {
       val file = File(android.net.Uri.parse(uri).path ?: "")
       if (file.parentFile?.canonicalFile == context.cacheDir.canonicalFile && file.name.startsWith("voice-") && file.name.endsWith(".ogg")) file.delete()
     }
+    AsyncFunction("isOgg") { uri: String ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val file = File(android.net.Uri.parse(uri).path ?: "")
+      if (file.parentFile?.canonicalFile != context.cacheDir.canonicalFile || !file.name.startsWith("voice-") || !file.name.endsWith(".ogg")) false
+      else file.inputStream().use { input -> val header = ByteArray(4); input.read(header) == 4 && header.contentEquals(byteArrayOf(79, 103, 103, 83)) }
+    }
     OnActivityEntersBackground { release(true) }
     OnDestroy { release(true) }
   }

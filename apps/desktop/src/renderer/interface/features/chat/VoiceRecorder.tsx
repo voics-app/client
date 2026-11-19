@@ -14,6 +14,8 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
   const [draft, setDraft] = useState<Recording | null>(null);
   const [busy, setBusy] = useState(false);
   const active = useRef<{ recorder: MediaRecorder; stream: MediaStream; context: AudioContext; timer: ReturnType<typeof setInterval> } | null>(null);
+  const held = useRef(false);
+  const pointerStart = useRef(false);
   const mounted = useRef(true);
   const draftUrl = useRef<string | null>(null);
   useEffect(() => { mounted.current = true; return () => {
@@ -61,6 +63,7 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
       }, 100);
       active.current = { recorder, stream, context, timer };
       setRecording(true);
+      if (pointerStart.current && !held.current) recorder.stop();
     } catch (error) { stream?.getTracks().forEach((track) => track.stop()); reportError(error, 'Recording unavailable'); }
     finally { if (mounted.current) setBusy(false); }
   };
@@ -73,5 +76,5 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
     finally { if (mounted.current) setBusy(false); }
   };
   if (draft) return <div className="voice-recording-preview"><audio controls src={draft.url} aria-label="Preview voice message" /><IconButton label="Discard recording" disabled={busy} onClick={clear}><Trash size={18} /></IconButton><IconButton label="Send voice message" disabled={busy || disabled} onClick={() => void send()}><PaperPlaneRight size={18} /></IconButton></div>;
-  return <IconButton label={recording ? 'Stop recording' : 'Record voice message'} disabled={disabled || busy} onClick={() => recording ? stop() : void start()}>{recording ? <Stop size={20} /> : <Microphone size={20} />}</IconButton>;
+  return <IconButton label={recording ? 'Stop recording' : 'Hold to record voice message'} disabled={disabled} onPointerDown={(event) => { if (event.button !== 0 || recording) return; event.currentTarget.setPointerCapture(event.pointerId); held.current = true; pointerStart.current = true; void start(); }} onPointerUp={() => { held.current = false; if (pointerStart.current) stop(); }} onPointerCancel={() => { held.current = false; if (pointerStart.current) stop(); }} onClick={(event) => { if (event.detail !== 0) return; pointerStart.current = false; if (recording) stop(); else void start(); }}>{recording ? <Stop size={20} /> : <Microphone size={20} />}</IconButton>;
 }

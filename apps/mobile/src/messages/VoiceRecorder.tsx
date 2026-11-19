@@ -23,7 +23,7 @@ function Preview({ uri }: { uri: string }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={status.playing ? 'Pause preview' : 'Play preview'} onPress={() => status.playing ? player.pause() : player.play()}><Ionicons name={status.playing ? 'pause' : 'play'} size={22} color={theme.accent} /></Pressable>;
 }
 
-export function VoiceRecorder({ disabled, onSend }: { disabled: boolean; onSend(file: OutgoingFile, voice: { duration_secs: number; waveform: string }): Promise<boolean> }) {
+export function VoiceRecorder({ disabled, onSend, preserveOnSend = false }: { disabled: boolean; onSend(file: OutgoingFile, voice: { duration_secs: number; waveform: string }): Promise<boolean>; preserveOnSend?: boolean }) {
   const recorder = useRef(nativeRecorder()).current;
   const [recording, setRecording] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -53,7 +53,7 @@ export function VoiceRecorder({ disabled, onSend }: { disabled: boolean; onSend(
     setBusy(true);
     try {
       const ok = await onSend({ uri: draft.uri, name: 'voice-message.ogg', size: draft.size, mimeType: 'audio/ogg' }, { duration_secs: draft.duration_secs, waveform: draft.waveform });
-      if (ok) { void recorder.discard(draft.uri); draftUri.current = null; setDraft(null); }
+      if (ok) { if (!preserveOnSend) { void recorder.discard(draft.uri); draftUri.current = null; } setDraft(null); }
       else Alert.alert('Voice message not sent', 'Your recording is still available to retry.');
     } finally { setBusy(false); }
   };

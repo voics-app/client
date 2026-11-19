@@ -31,7 +31,7 @@ export type ReadBlob = (file: OutgoingFile) => Promise<Blob>;
 
 const readFromDevice: ReadBlob = async (file) => {
   const blob = await (await fetch(file.uri)).blob();
-  return blob.type ? blob : blob.slice(0, blob.size, file.mimeType);
+  return blob.type === file.mimeType ? blob : blob.slice(0, blob.size, file.mimeType);
 };
 
 /** The Ephemeral and P2P side of the sender; absent in Expo Go, where those chats cannot be opened. */
