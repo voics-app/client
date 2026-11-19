@@ -300,7 +300,7 @@ export interface PollAnswerCount { id: number; count: number; me_voted?: boolean
 export interface PollResults { answer_counts: PollAnswerCount[]; is_finalized: boolean; version: string; vote_version?: string }
 export interface Poll {
   question: { text: string };
-  answers: { answer_id: number; poll_media: { text?: string; emoji?: Emoji } }[];
+  answers: { answer_id: number; poll_media: { text: string; emoji?: { name: string } } }[];
   expiry: string;
   allow_multiselect: boolean;
   layout_type: 1;
