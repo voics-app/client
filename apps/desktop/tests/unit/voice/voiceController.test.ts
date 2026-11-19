@@ -145,6 +145,12 @@ describe('VoiceController', () => {
     expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.4);
     useVoiceStore.getState().setSpeaking('priority', 0);
     expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.8);
+    useGuildStore.getState().upsertChannel({ id: 'c2', guild_id: 'g1', type: 2, permission_overwrites: [
+      { id: 'g1', type: 0, allow: String(1n << 25n), deny: '0' },
+    ] } as never);
+    await controller.join({ guildId: 'g1', channelId: 'c2' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    expect(mic.stop.mock.invocationCallOrder.at(-1)!).toBeLessThan(mic.setForcePushToTalk.mock.invocationCallOrder.at(-1)!);
     controller.dispose();
     useGuildStore.getState().reset();
   });

@@ -55,16 +55,20 @@ export class MobileCallController extends VoiceCallController {
   }
 
   override async join(target: JoinTarget): Promise<void> {
+    if (this.target) await this.leave();
     this.syncVoicePermissions(target);
     await super.join(target);
     if (this.target) this.syncVoicePermissions(this.target);
   }
 
   override onVoiceServerUpdate(update: VoiceServerUpdate): void {
-    if (this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId)) {
-      this.syncVoicePermissions({ guildId: update.guild_id, channelId: update.channel_id });
+    const accepted = this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId);
+    if (accepted) {
+      this.mobile.mic.setPushToTalk?.(false);
+      this.mobile.mic.setForcePushToTalk?.(true);
     }
     super.onVoiceServerUpdate(update);
+    if (accepted) this.syncVoicePermissions(this.target);
   }
 
   setPushToTalk(pressed: boolean): void {
