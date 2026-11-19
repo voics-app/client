@@ -513,6 +513,9 @@ export class DiscordyApi implements ApiPort {
   followAnnouncement(channelId: string, targetChannelId: string) {
     return this.post<{ channel_id: string; webhook_id: string }>(`/channels/${enc(channelId)}/followers`, { webhook_channel_id: targetChannelId });
   }
+  publishAnnouncement(channelId: string, messageId: string) {
+    return this.post<Message>(`/channels/${enc(channelId)}/messages/${enc(messageId)}/crosspost`);
+  }
   followedChannels(guildId: string) {
     return this.get<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>(`/guilds/${enc(guildId)}/followed-channels`);
   }
