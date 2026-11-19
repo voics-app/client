@@ -15,6 +15,12 @@ describe('pushTargetOf', () => {
 describe('foregroundPresentation', () => {
   const data = { channel_id: '10' };
 
+  it('shows a scheduled-event push whether the gateway is connected or not', () => {
+    const event = { type: 'scheduled_event', dedupe_key: '1:9:10:0:2' };
+    expect(foregroundPresentation({ gateway: 'ready', viewing: null, data: event })).toBe('show');
+    expect(foregroundPresentation({ gateway: 'closed', viewing: null, data: event })).toBe('show');
+  });
+
   it('leaves the banner to the app while the gateway is live', () => {
     expect(foregroundPresentation({ gateway: 'ready', viewing: null, data })).toBe('suppress');
   });

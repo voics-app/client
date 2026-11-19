@@ -14,6 +14,12 @@ export interface PushTarget {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
+export function eventReminderKey(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const fields = data as Record<string, unknown>;
+  return fields.type === 'scheduled_event' ? text(fields.dedupe_key) : null;
+}
+
 /** The chat a tapped notification opens, from the custom keys the notifier puts in the payload; null when it names no chat. */
 export function pushTargetOf(data: unknown): PushTarget | null {
   if (typeof data !== 'object' || data === null) return null;
@@ -28,6 +34,8 @@ export function pushTargetOf(data: unknown): PushTarget | null {
  * show it twice; it only appears when the gateway is not live (the push is then the only notice) and never for the chat on screen.
  */
 export function foregroundPresentation(input: { gateway: GatewayState; viewing: string | null; data: unknown }): 'show' | 'suppress' {
+  // The mobile gateway has no event banner; its event-specific push is the foreground notice.
+  if (eventReminderKey(input.data)) return 'show';
   const target = pushTargetOf(input.data);
   if (target && target.channelId === input.viewing) return 'suppress';
   return input.gateway === 'ready' ? 'suppress' : 'show';

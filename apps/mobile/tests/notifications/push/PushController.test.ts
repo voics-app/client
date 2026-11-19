@@ -1,4 +1,5 @@
 import type { GatewayState } from '@discordy/core/application/ports/gateway';
+import { createDispatchRouter } from '@discordy/core/application/dispatchRouter';
 import type { PushTokenBody } from '@discordy/core/contracts/rest';
 import type { NativePush } from '../../../src/notifications/push/nativePush';
 import { PushController } from '../../../src/notifications/push/PushController';
@@ -68,6 +69,19 @@ function setup(initial: { permission?: PermissionState; offered?: boolean; nativ
 }
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+it('shows one event push when the gateway dispatch and duplicate push arrive together', () => {
+  const t = setup();
+  t.controller.attach();
+  const route = createDispatchRouter({ onVoiceServerUpdate: jest.fn(), onIncomingMessage: jest.fn(), invalidate: jest.fn() });
+  const key = '1:9:1000:0:2';
+  route('GUILD_SCHEDULED_EVENT_START', { guild_id: '1', guild_scheduled_event_id: '9', scheduled_start_time: '2026-12-01T12:00:00Z', revision: 0, dedupe_key: key });
+  const push = { type: 'scheduled_event', guild_id: '1', event_id: '9', dedupe_key: key };
+  expect(t.foreground(push)).toBe(true);
+  expect(t.foreground(push)).toBe(false);
+  t.setGateway('closed');
+  expect(t.foreground({ ...push, dedupe_key: '1:9:2000:1:2' })).toBe(true);
+});
 
 describe('PushController without the native module (Expo Go)', () => {
   it('does nothing and reports push as unavailable', async () => {
