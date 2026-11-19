@@ -18,7 +18,7 @@ export function ProfileBadges({ userId }: { userId: string }) {
   return <section aria-label="Profile badges">
     <h2>Profile badges</h2>
     <p className="setting-desc">Choose which badges others can see on your profile.</p>
-    {badges.isLoading && <p>Loading badges?</p>}
+    {badges.isLoading && <p>Loading badges...</p>}
     {badges.isError && <p role="alert">Could not load badges.</p>}
     {badges.data?.length === 0 && <p className="setting-desc">You have no badges yet.</p>}
     {badges.data?.map((badge) => <SettingRow key={badge.id} title={badgeLabel(badge.id)}>
