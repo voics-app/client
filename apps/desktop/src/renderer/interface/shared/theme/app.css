@@ -789,5 +789,5 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .sticker-picker-grid button:hover, .sticker-picker-grid button:focus-visible { background: var(--hover); }
 .sticker-manage { grid-template-columns: 1fr; }
 .sticker-manage li { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) auto; }
-.sticker-manage input { min-width: 0; }
-@media (max-width: 600px) { .sticker-manage li { grid-template-columns: 40px minmax(0, 1fr) auto; } .sticker-manage li input:nth-of-type(2) { grid-column: 2; } }
+.sticker-manage .input-shell { min-width: 0; }
+@media (max-width: 600px) { .sticker-manage li { grid-template-columns: 40px minmax(0, 1fr) auto; } .sticker-manage .sticker-tags { grid-column: 2; grid-row: 2; } .sticker-manage li > button { grid-column: 3; grid-row: 1 / 3; } }

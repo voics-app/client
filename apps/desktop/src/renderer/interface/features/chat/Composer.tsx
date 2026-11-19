@@ -537,7 +537,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
-          {standard && channel.guild_id && <IconButton label="Stickers" disabled={!canSend || slowmodeLeft > 0} onClick={(event) => stickers.open(event.currentTarget)}><Sticker size={22} /></IconButton>}
+          {standard && <IconButton label="Stickers" disabled={!canSend || slowmodeLeft > 0} onClick={(event) => stickers.open(event.currentTarget)}><Sticker size={22} /></IconButton>}
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />

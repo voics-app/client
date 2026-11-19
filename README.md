@@ -216,4 +216,4 @@ Desktop server settings expose sticker upload and management to members with
 MANAGE_GUILD_EXPRESSIONS. The Standard guild composer sends server stickers and
 message history renders PNG, APNG, GIF and Lottie items, including forwards.
 This draft requires the matching contracts, API, messages and gateway changes;
-the built-in pack and end-to-end verification are still outstanding.
+the built-in pack is available in Standard guild channels and DMs; visual and end-to-end verification remain outstanding.

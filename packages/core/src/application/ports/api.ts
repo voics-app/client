@@ -171,6 +171,7 @@ export interface ApiPort {
   auditLog(guildId: string, query?: { limit?: number; before?: string; user_id?: string; action_type?: number; target_id?: string }): Promise<AuditLog>;
   bulkDeleteMessages(channelId: string, messageIds: string[]): Promise<void>;
   emojis(guildId: string): Promise<Emoji[]>;
+  builtInStickers(): Promise<Sticker[]>;
   guildStickers(guildId: string): Promise<Sticker[]>;
   createSticker(guildId: string, body: { name: string; tags: string; image: string }): Promise<Sticker>;
   updateSticker(guildId: string, id: string, patch: { name?: string; tags?: string }): Promise<Sticker>;

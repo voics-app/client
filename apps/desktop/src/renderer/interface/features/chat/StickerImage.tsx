@@ -39,8 +39,10 @@ function LottieSticker({ url, name, size }: { url: string; name: string; size: n
 
 export function StickerImage({ sticker, size = 160 }: { sticker: StickerItem; size?: number }) {
   const cdn = useConnectionStore((state) => state.cdnUrl);
+  const api = useConnectionStore((state) => state.apiUrl);
   const extension = sticker.format_type === 4 ? 'gif' : sticker.format_type === 3 ? 'json' : 'png';
-  const url = `${cdn}/stickers/${sticker.id}.${extension}`;
+  const builtin = sticker.id === '1' || sticker.id === '2' || sticker.id === '3';
+  const url = builtin ? `${api}/api/v1/stickers/${sticker.id}/asset` : `${cdn}/stickers/${sticker.id}.${extension}`;
   if (sticker.format_type === 3) return <LottieSticker url={url} name={sticker.name} size={size} />;
   return <AnimatedImage kind="sticker" animated={sticker.format_type !== 1} src={url} width={size} height={size} alt={`Sticker: ${sticker.name}`} draggable={false} />;
 }
