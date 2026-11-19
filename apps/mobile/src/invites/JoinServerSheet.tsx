@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -8,7 +8,6 @@ import { BRAND } from '../brand';
 import { getRuntime } from '../runtime';
 import { ServerIcon } from '../shell/ServerIcon';
 import { theme } from '../theme';
-import { attempt } from '../ui/attempt';
 import { Button, Field } from '../ui/controls';
 import { Sheet } from '../ui/Sheet';
 import { inviteCodeOf, invitePreview } from './joinModel';
@@ -19,15 +18,32 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
+  const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const [welcome, setWelcome] = useState<{ guildId: string; description: string; channels: { channel_id: string; description: string }[] } | null>(null);
   const code = inviteCodeOf(text);
 
   const close = () => {
     setText('');
     setInvite(null);
     setError(null);
+    setScreening(null);
+    setJoinedGuildId(null);
+    setAgreed(false);
+    setWelcome(null);
     onClose();
   };
   const open = (guildId: string) => useUiStore.getState().navigate({ kind: 'guild', guildId, channelId: null });
+  const finishJoin = async (guildId: string, firstJoin: boolean) => {
+    if (firstJoin) {
+      try {
+        const screen = await getRuntime().api.welcomeScreen(guildId);
+        if (screen.enabled) { setScreening(null); setWelcome({ guildId, description: screen.description, channels: screen.channels }); return; }
+      } catch { /* A welcome screen must not prevent access to the server. */ }
+    }
+    close(); setTimeout(() => open(guildId), 300);
+  };
 
   const lookup = async (given: string | null = code) => {
     if (!given) return;
@@ -37,8 +53,9 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
       const found = await getRuntime().api.invite(given);
       const guildId = found.guild?.id;
       if (guildId && useGuildStore.getState().guilds[guildId]) {
-        close();
-        open(guildId);
+        const rules = await getRuntime().api.memberVerification(guildId);
+        if (rules.pending) setScreening({ guildId, rules: rules.rules, revision: rules.revision });
+        else { close(); open(guildId); }
         return;
       }
       setInvite(found);
@@ -52,13 +69,32 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
-    const joined = await attempt(() => getRuntime().api.acceptInvite(invite.code), 'Could not join the server');
-    setBusy(false);
-    if (!joined) return;
-    const guildId = joined.guild?.id ?? invite.guild?.id;
-    close();
-    // The server arrives over the gateway a moment after the invite is accepted.
-    if (guildId) setTimeout(() => open(guildId), 300);
+    setError(null);
+    try {
+      const joined = joinedGuildId ? null : await getRuntime().api.acceptInvite(invite.code);
+      const guildId = joinedGuildId ?? joined?.guild?.id ?? invite.guild?.id;
+      if (!guildId) throw new Error('The server was not returned by the invite.');
+      setJoinedGuildId(guildId);
+      const rules = await getRuntime().api.memberVerification(guildId);
+      if (rules.pending) setScreening({ guildId, rules: rules.rules, revision: rules.revision });
+      else await finishJoin(guildId, true);
+    } catch (e) { setError(errorMessage(e)); }
+    finally { setBusy(false); }
+  };
+
+  const acceptRules = async () => {
+    if (!screening || !agreed) return;
+    setBusy(true); setError(null);
+    try {
+      await getRuntime().api.acceptMemberVerification(screening.guildId, screening.revision);
+      await finishJoin(screening.guildId, !!joinedGuildId);
+    } catch (e) {
+      setError(errorMessage(e)); setAgreed(false);
+      try {
+        const latest = await getRuntime().api.memberVerification(screening.guildId);
+        setScreening({ guildId: screening.guildId, rules: latest.rules, revision: latest.revision });
+      } catch { /* Retain the rules for retry. */ }
+    } finally { setBusy(false); }
   };
 
   useEffect(() => {
@@ -75,7 +111,23 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
   return (
     <Sheet visible={visible} title="Join a server" closeLabel="Close join a server" onClose={close}>
       <View style={styles.body}>
-        {preview && invite ? (
+        {welcome ? (
+          <>
+            <Text style={styles.name}>Welcome</Text><Text style={styles.hint}>{welcome.description}</Text>
+            {welcome.channels.map((channel) => <Button key={channel.channel_id} label={channel.description} onPress={() => { const guildId = welcome.guildId; close(); useUiStore.getState().navigate({ kind: 'guild', guildId, channelId: channel.channel_id }); }} />)}
+            <Button label="Continue" tone="primary" onPress={() => { const guildId = welcome.guildId; close(); open(guildId); }} />
+          </>
+        ) : screening ? (
+          <>
+            <Text style={styles.name}>Server rules</Text>
+            {screening.rules.map((rule, index) => <Text key={index} style={styles.hint}>{index + 1}. {rule}</Text>)}
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: agreed }} accessibilityLabel="I agree to these rules" onPress={() => setAgreed(!agreed)}>
+              <Text style={styles.name}>{agreed ? 'Agreed to these rules' : 'I agree to these rules'}</Text>
+            </Pressable>
+            {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+            <Button label="Accept rules" tone="primary" busy={busy} disabled={!agreed} onPress={() => void acceptRules()} />
+          </>
+        ) : preview && invite ? (
           <>
             <View style={styles.card}>
               <View style={styles.icon}>
@@ -90,6 +142,7 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
             </View>
             <Button label="Accept invite" tone="primary" busy={busy} onPress={() => void accept()} />
             <Button label="Back" onPress={() => setInvite(null)} />
+            {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           </>
         ) : (
           <>
