@@ -554,7 +554,7 @@ export class VoiceSession implements VoiceSessionPort {
     const userId = video.user_id;
     if (!userId || userId === this.options.userId) return;
     if (video.audio_ssrc > 0) this.upsertSource(userId, 'audio', video.audio_ssrc, 0);
-    if (video.soundboard_ssrc && this.options.onSoundboardAudio) this.upsertSource(userId, 'soundboard', video.soundboard_ssrc, 0);
+    if (video.soundboard_ssrc !== undefined && this.options.onSoundboardAudio) this.upsertSource(userId, 'soundboard', video.soundboard_ssrc ?? 0, 0);
     const streams = video.streams.filter((s) => s.ssrc > 0 && s.active !== false);
     for (const stream of streams) this.upsertSource(userId, stream.type === 'screen' ? 'screen' : 'camera', stream.ssrc, stream.rtx_ssrc);
     if (streams.length === 0 && video.video_ssrc > 0) this.upsertSource(userId, 'camera', video.video_ssrc, video.rtx_ssrc);

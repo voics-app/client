@@ -65,6 +65,22 @@ describe('voiceUrl', () => {
 });
 
 describe('VoiceSession protocol', () => {
+  it('routes a separate soundboard stream and removes it without dropping microphone audio', async () => {
+    const received: [string, unknown][] = [];
+    const session = makeSession({ onSoundboardAudio: (user, stream) => received.push([user, stream]) });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, soundboard_ssrc: 4321, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+    await vi.advanceTimersByTimeAsync(10);
+    const stream = { id: 'u2:soundboard' };
+    FakePeerConnection.latest().track('3', stream);
+    expect(received).toEqual([['u2', stream]]);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, soundboard_ssrc: null, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+    expect(received).toEqual([['u2', stream], ['u2', null]]);
+    session.close();
+  });
+
   it('announces a camera once native outbound stats become available after replaceTrack', async () => {
     const session = makeSession();
     const socket = await connectToReady(session);
