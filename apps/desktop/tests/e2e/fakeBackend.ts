@@ -59,6 +59,7 @@ function guildPayload(g: Guild) {
 
 export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
+  let settings: Record<string, unknown> = { default_delivery_mode: 'standard', status: 'online', locale: 'en-US' };
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
   const sockets = new Set<WebSocket>();
@@ -177,7 +178,11 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (/^\/devices\/\d+\/key-packages$/.test(path)) return json(res, 204, null);
     if (/^\/users\/\d+\/devices$/.test(path)) return json(res, 200, []);
     if (path === '/users/@me') return json(res, 200, USER);
-    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
+    if (path === '/users/@me/settings') {
+      if (req.method === 'PATCH') settings = { ...settings, ...body };
+      return json(res, 200, settings);
+    }
+    if (path === '/oauth2/authorize' && req.method === 'GET') return json(res, 200, { application: { id: '11', name: 'Study helper', icon: null, description: 'Fixture app' }, user: USER, guilds: guilds.map((g) => ({ id: g.id, name: g.name, icon: null, permissions: '8', bot_permissions: null, installation_revision: 'absent:0' })), scopes: ['bot', 'applications.commands'], permissions: '2048' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
@@ -247,7 +252,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               guilds: guilds.map(guildPayload),
               private_channels: [],
               relationships: [],
-              user_settings: { default_delivery_mode: 'standard', status: 'online' },
+              user_settings: settings,
               read_state: [],
               presences: [],
             },

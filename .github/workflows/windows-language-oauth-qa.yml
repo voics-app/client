@@ -1,0 +1,30 @@
+﻿name: Windows language and OAuth fixture
+on:
+  push:
+    branches: [qa/windows-localization-oauth-20261119]
+permissions:
+  contents: read
+jobs:
+  fixture:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:native
+      - run: pnpm --filter @discordy/desktop exec electron-vite build
+      - run: pnpm --filter @discordy/desktop exec playwright test language-oauth-windows.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-language-oauth-failure
+          path: apps/desktop/test-results/
