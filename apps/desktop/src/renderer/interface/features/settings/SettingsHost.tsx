@@ -1,62 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { MagnifyingGlass, SignOut } from '@phosphor-icons/react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { confirmDeleteServer } from './server/deleteServer';
-import { useUiStore, type ServerSettingsTab, type SettingsTarget, type UserSettingsTab } from '@discordy/core/application/stores/uiStore';
-import { serverSettingsTabs } from '@discordy/core/domain/serverSettings';
-import { useGuildPermissions } from '../../shared/hooks/usePermissions';
-import { useDialogFocus } from '../../shared/hooks/useDialogFocus';
+import { useUiStore, type SettingsTarget, type UserSettingsTab } from '@discordy/core/application/stores/uiStore';
 import { gentle } from '../../shared/ui/motion';
-import { SettingsCloseButton } from './SettingsCloseButton';
+import { LazyFeature } from '../../shared/ui/LazyFeature';
+import { Layout, NavItem, guarded } from './SettingsLayout';
+
+const loadServerSettings = () => import('./server/ServerSettings').then(({ ServerSettings }) => ({ default: ServerSettings }));
 import { ChannelSettings } from './channel/ChannelSettings';
-import { ServerDiscovery } from './server/ServerDiscovery';
-import { ServerTemplate } from './server/ServerTemplate';
-import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers } from './server/ServerTabs';
-import { ServerSoundboard } from './server/ServerSoundboard';
-import { ServerOverview } from './server/ServerOverview';
-import { RolesEditor } from './server/RolesEditor';
-import { closeSettings, useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { confirmLogout } from './logout';
 import { searchSettings } from './searchIndex';
 import { USER_TABS } from './userTabs';
 import { AuthorizedApps } from '../integrations/AuthorizedApps';
-import { ServerIntegrations } from '../integrations/ServerIntegrations';
 import { DeveloperTab } from './user/DeveloperTab';
 import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
-
-function Layout({ title, nav, children, footer }: { title: string; nav: ReactNode; children: ReactNode; footer?: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useDialogFocus(ref);
-  useEffect(() => {
-    // Dialogs and menus opened on top of settings stop Escape in the capture phase, so only a bare Escape arrives here.
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSettings(true);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-  return (
-    <div ref={ref} tabIndex={-1} className="settings" role="dialog" aria-modal="true" aria-label={title}>
-      <nav className="settings-nav">{nav}{footer}</nav>
-      <div className="settings-content">
-        <div className="settings-inner">{children}</div>
-        <SettingsCloseButton onClose={() => closeSettings()} />
-      </div>
-    </div>
-  );
-}
-
-function NavGroup({ title, children }: { title: string; children: ReactNode }) {
-  return <div className="settings-group"><h3>{title}</h3>{children}</div>;
-}
-
-function NavItem({ active, onClick, children, danger }: { active: boolean; onClick: () => void; children: ReactNode; danger?: boolean }) {
-  return <button type="button" className={`settings-item${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}`} onClick={onClick} aria-current={active || undefined}>{children}</button>;
-}
-
-/** Switches tab unless the current page holds unsaved edits, in which case the bar shakes instead. */
-const guarded = (go: () => void) => () => { if (useUnsavedStore.getState().requestLeave()) go(); };
 
 /** Scrolls to a row after its tab has rendered and flashes it. Retries for a few frames while the tab mounts. */
 function revealRow(rowId: string, tries = 20): void {
@@ -120,25 +78,6 @@ function UserSettings({ tab }: { tab: UserSettingsTab }) {
   );
 }
 
-function ServerSettings({ guildId, tab, auditTarget }: { guildId: string; tab: ServerSettingsTab; auditTarget?: { id: string; name: string } }) {
-  const open = useUiStore((s) => s.openSettings);
-  const guild = useGuildStore((s) => s.guilds[guildId]);
-  const me = useSessionStore((s) => s.user?.id);
-  const perms = useGuildPermissions(guildId);
-  if (!guild) return null;
-  const tabs = serverSettingsTabs(perms).filter((entry) => entry.show);
-  const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, soundboard: <ServerSoundboard guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
-  return (
-    <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
-      const entries = tabs.filter((entry) => entry.group === group);
-      return entries.length > 0 && <NavGroup key={group} title={group === 'Server' ? guild.name : group}>{entries.map((entry) => <NavItem key={entry.id} active={selectedTab === entry.id} onClick={guarded(() => open({ kind: 'server', guildId, tab: entry.id }))}>{entry.label}</NavItem>)}</NavGroup>;
-    })}</>} footer={guild.owner_id === me ? <div className="settings-group settings-logout"><NavItem active={false} danger onClick={guarded(() => confirmDeleteServer(guildId))}>Delete server</NavItem></div> : undefined}>
-      {body}
-    </Layout>
-  );
-}
-
 export function SettingsHost() {
   const target = useUiStore((s) => s.settings);
   return createPortal(
@@ -155,6 +94,6 @@ export function SettingsHost() {
 
 function SettingsRouter({ target }: { target: SettingsTarget }) {
   if (target.kind === 'user') return <UserSettings tab={target.tab} />;
-  if (target.kind === 'server') return <ServerSettings guildId={target.guildId} tab={target.tab} auditTarget={target.auditTarget} />;
+  if (target.kind === 'server') return <LazyFeature load={loadServerSettings} props={target} close={() => useUiStore.getState().openSettings(null)} />;
   return <ChannelSettings channelId={target.channelId} tab={target.tab} />;
 }

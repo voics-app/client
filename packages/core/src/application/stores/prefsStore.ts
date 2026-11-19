@@ -70,6 +70,9 @@ export interface PrefsState {
   notifyDesktop: boolean;
   notifyOnlyMentions: boolean;
   notifySounds: boolean;
+  /** Device-local streamer privacy controls. */
+  streamerMode: boolean;
+  streamerAutoDetect: boolean;
   /** Per-sound switches under the master `notifySounds`; a missing entry means on. */
   soundToggles: Partial<Record<SoundId, boolean>>;
   ringtone: RingtoneId;
@@ -155,6 +158,8 @@ export const DEFAULT_PREFS: PrefsData = {
   notifyDesktop: true,
   notifyOnlyMentions: false,
   notifySounds: true,
+  streamerMode: false,
+  streamerAutoDetect: false,
   soundToggles: {},
   ringtone: DEFAULT_RINGTONE,
   ringtoneVolume: DEFAULT_RINGTONE_VOLUME,
