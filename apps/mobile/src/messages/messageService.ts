@@ -26,6 +26,10 @@ export interface SendInput {
   voice?: { duration_secs: number; waveform: string };
 }
 
+export function voiceMessageBody(nonce: string, attachment: NonNullable<CreateMessageBody['attachments']>[number], voice: NonNullable<SendInput['voice']>): CreateMessageBody {
+  return { content: '', nonce, attachments: [{ ...attachment, ...voice }], flags: MessageFlag.IS_VOICE_MESSAGE };
+}
+
 /** Reads a picked file into a Blob; React Native's fetch serves file URIs. */
 export type ReadBlob = (file: OutgoingFile) => Promise<Blob>;
 
@@ -188,8 +192,10 @@ export class MessageService {
         return true;
       }
       const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
-      if (input.voice && attachments?.[0]) Object.assign(attachments[0], input.voice);
-      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}), ...(input.voice ? { flags: MessageFlag.IS_VOICE_MESSAGE } : {}) };
+      if (input.voice && attachments?.length !== 1) throw new Error('A voice message needs one recording.');
+      const body: CreateMessageBody = input.voice && attachments?.[0]
+        ? { ...voiceMessageBody(nonce, attachments[0], input.voice), ...(reference ? { message_reference: reference } : {}) }
+        : { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
       this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });
