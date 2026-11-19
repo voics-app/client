@@ -189,6 +189,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (path === '/users/@me') return json(res, 200, USER);
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false, ...((body.preferences ?? {}) as object) } });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
+    if (/^\/channels\/\d+\/invites$/.test(path) && req.method === 'POST') return json(res, 201, { code: 'smoke-private-invite' });
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
       const payload = guildPayload(guild);
