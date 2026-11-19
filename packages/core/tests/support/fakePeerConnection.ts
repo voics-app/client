@@ -30,6 +30,8 @@ export class FakeSender {
 
 export function buildOffer(transceivers: readonly FakeTransceiver[]): string {
   const lines = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0', `a=group:BUNDLE ${transceivers.map((t) => t.mid).join(' ')}`];
+  let audioIndex = 0;
+  const audioCount = transceivers.filter((t) => t.kind === 'audio' && t.direction !== 'recvonly').length;
   for (const t of transceivers) {
     const transport = ['a=ice-ufrag:lufrag', 'a=ice-pwd:lpwd0123456789012345678', 'a=fingerprint:sha-256 AA:BB:CC', 'a=setup:actpass'];
     if (t.kind === 'audio') {
@@ -41,6 +43,7 @@ export function buildOffer(transceivers: readonly FakeTransceiver[]): string {
         'a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level',
         `a=${t.direction}`,
         'a=rtpmap:111 opus/48000/2',
+        ...(audioCount > 1 && t.direction !== 'recvonly' ? [`a=ssrc:${111 + audioIndex++} cname:test`] : []),
       );
     } else {
       lines.push(

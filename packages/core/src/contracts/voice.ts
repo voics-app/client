@@ -77,7 +77,7 @@ export interface SelectProtocol {
     fingerprint: string;
     setup: 'actpass';
     /** SSRCs from the client's offer. Browsers pick their own, so the node uses these instead of READY's. */
-    ssrcs?: { audio: number; video: number; rtx: number; screen?: number; screen_rtx?: number };
+    ssrcs?: { audio: number; soundboard?: number; video: number; rtx: number; screen?: number; screen_rtx?: number };
   };
   codecs: CodecDescriptor[];
 }
@@ -120,6 +120,7 @@ export interface ClientsConnect {
 
 export interface VideoPayload {
   audio_ssrc: number;
+  soundboard_ssrc?: number | null;
   video_ssrc: number;
   rtx_ssrc: number;
   streams: VoiceStreamDescriptor[];

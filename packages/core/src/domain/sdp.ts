@@ -45,6 +45,8 @@ export interface ParsedOffer {
   icePwd: string;
   fingerprint: string;
   audio: AudioSection;
+  /** Second outbound audio section, if present. */
+  soundboard: { mid: string; ssrc: number | null } | null;
   video: VideoSection | null;
   /** The screen share transceiver: the second video section, sent as its own stream. */
   screen: { mid: string; ssrc: number | null; rtxSsrc: number | null } | null;
@@ -118,6 +120,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec: string = DEFAU
   const audioRaw = media.find((m) => m.kind === 'audio');
   if (!audioRaw) throw new Error('offer has no audio section');
   const [videoRaw, screenRaw] = media.filter((m) => m.kind === 'video');
+  const soundboardRaw = media.filter((m) => m.kind === 'audio')[1];
   const pick = (name: string) => attr(audioRaw.lines, name) ?? attr(session, name);
 
   const iceUfrag = pick('ice-ufrag');
@@ -141,6 +144,7 @@ export function parseLocalOffer(sdp: string, preferredVideoCodec: string = DEFAU
     icePwd,
     fingerprint,
     audio: { mid: audioMid, payloadType: opus.pt, codec: 'opus', ssrc: ssrcsOf(audioRaw.lines).ssrc },
+    soundboard: soundboardRaw ? { mid: attr(soundboardRaw.lines, 'mid') ?? '', ssrc: ssrcsOf(soundboardRaw.lines).ssrc } : null,
     video: videoRaw ? parseVideo(videoRaw.lines, preferredVideoCodec) : null,
     screen: screenRaw ? { mid: attr(screenRaw.lines, 'mid') ?? '2', ...ssrcsOf(screenRaw.lines) } : null,
     audioLevelExtId: audioLevel?.id ?? null,

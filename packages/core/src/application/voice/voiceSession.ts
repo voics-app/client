@@ -58,6 +58,10 @@ export interface VoiceSessionOptions {
   /** Present when the runtime can protect media frames; required if the node announces E2EE. */
   cryptor?: FrameCryptorPort;
   createDave?: (send: (op: number, d: unknown) => void, hooks: MediaGroupHooks) => MediaGroupSession;
+  /** Separate soundboard track, present before the initial offer. */
+  soundboardTrack?: MediaTrackLike;
+  /** Separate receiver path; the platform must provide its own mute and gain. */
+  onSoundboardAudio?: (userId: string, stream: MediaStreamLike | null) => void;
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
@@ -69,7 +73,7 @@ const FATAL_CLOSE_CODES = new Set([4003, 4004, 4006, 4014]);
 const ZOMBIE_CLOSE = 4900;
 const VIDEO_SSRC_RETRY_MS = 250;
 
-const kindOf = (source: SourceKind): 'audio' | 'video' => (source === 'audio' ? 'audio' : 'video');
+const kindOf = (source: SourceKind): 'audio' | 'video' => (source === 'audio' || source === 'soundboard' ? 'audio' : 'video');
 
 export class VoiceSession implements VoiceSessionPort {
   private socket: SocketLike | null = null;
@@ -89,6 +93,7 @@ export class VoiceSession implements VoiceSessionPort {
   private negotiation: Promise<void> = Promise.resolve();
 
   private audioTransceiver: TransceiverLike | null = null;
+  private soundboardTransceiver: TransceiverLike | null = null;
   private cameraTransceiver: TransceiverLike | null = null;
   private screenTransceiver: TransceiverLike | null = null;
   private micTrack: MediaTrackLike | null = null;
@@ -203,7 +208,7 @@ export class VoiceSession implements VoiceSessionPort {
     this.pc?.close();
     this.pc = null;
     this.roster.clear();
-    this.audioTransceiver = this.cameraTransceiver = this.screenTransceiver = null;
+    this.audioTransceiver = this.soundboardTransceiver = this.cameraTransceiver = this.screenTransceiver = null;
     // The senders these tracks were on are gone. A platform puts its camera and screen back through setCameraTrack and setScreenTrack once the new connection is up, which keeps them on the protected path.
     this.cameraTrack = this.screenTrack = null;
     this.plans = [];
@@ -325,16 +330,22 @@ export class VoiceSession implements VoiceSessionPort {
     this.audioTransceiver = pc.addTransceiver(this.micTrack ?? 'audio', { direction: 'sendrecv' });
     this.cameraTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
     this.screenTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
+    if (this.options.soundboardTrack) this.soundboardTransceiver = pc.addTransceiver(this.options.soundboardTrack, { direction: 'sendonly' });
 
     const offer = await pc.createOffer();
     const sdp = offer.sdp ?? '';
     await pc.setLocalDescription({ type: 'offer', sdp });
     this.offerSdp = sdp;
     this.plans = [];
+    if (this.soundboardTransceiver?.mid) this.plans.push({ mid: this.soundboardTransceiver.mid, role: 'local-soundboard' });
     if (this.screenTransceiver.mid) this.plans.push({ mid: this.screenTransceiver.mid, role: 'local-screen' });
 
     const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.parsedOffer = parsed;
+    if (this.options.soundboardTrack && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
+      this.fail('This device could not negotiate a separate soundboard track.');
+      return;
+    }
     const codecs: CodecDescriptor[] = [{ name: 'opus', type: 'audio', priority: 1000, payload_type: parsed.audio.payloadType }];
     if (parsed.video) {
       codecs.push({
@@ -356,6 +367,7 @@ export class VoiceSession implements VoiceSessionPort {
           ? {
               ssrcs: {
                 audio: parsed.audio.ssrc,
+                ...(parsed.soundboard?.ssrc ? { soundboard: parsed.soundboard.ssrc } : {}),
                 video: parsed.video?.ssrc ?? 0,
                 rtx: parsed.video?.rtxSsrc ?? 0,
                 screen: parsed.screen?.ssrc ?? 0,
@@ -430,6 +442,7 @@ export class VoiceSession implements VoiceSessionPort {
     const codec = description.video_codec ?? this.codecName();
     const senders: [TransceiverLike | null, 'audio' | 'video', string, boolean][] = [
       [this.audioTransceiver, 'audio', 'opus', this.micTrack !== null],
+      [this.soundboardTransceiver, 'audio', 'opus', this.options.soundboardTrack !== undefined],
       [this.cameraTransceiver, 'video', codec, this.cameraTrack !== null],
       [this.screenTransceiver, 'video', codec, this.screenTrack !== null],
     ];
@@ -474,7 +487,7 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private bypassSenders(): void {
-    for (const transceiver of [this.audioTransceiver, this.cameraTransceiver, this.screenTransceiver]) {
+    for (const transceiver of [this.audioTransceiver, this.soundboardTransceiver, this.cameraTransceiver, this.screenTransceiver]) {
       if (transceiver) this.options.cryptor?.bypass(transceiver.sender);
     }
   }
@@ -541,6 +554,7 @@ export class VoiceSession implements VoiceSessionPort {
     const userId = video.user_id;
     if (!userId || userId === this.options.userId) return;
     if (video.audio_ssrc > 0) this.upsertSource(userId, 'audio', video.audio_ssrc, 0);
+    if (video.soundboard_ssrc && this.options.onSoundboardAudio) this.upsertSource(userId, 'soundboard', video.soundboard_ssrc, 0);
     const streams = video.streams.filter((s) => s.ssrc > 0 && s.active !== false);
     for (const stream of streams) this.upsertSource(userId, stream.type === 'screen' ? 'screen' : 'camera', stream.ssrc, stream.rtx_ssrc);
     if (streams.length === 0 && video.video_ssrc > 0) this.upsertSource(userId, 'camera', video.video_ssrc, video.rtx_ssrc);
@@ -557,7 +571,7 @@ export class VoiceSession implements VoiceSessionPort {
   private onClientDisconnect({ user_id }: ClientDisconnect): void {
     this.roster.delete(user_id);
     void this.dave?.participantLeft(user_id);
-    for (const source of ['audio', 'camera', 'screen'] as const) this.upsertSource(user_id, source, 0, 0);
+    for (const source of ['audio', 'soundboard', 'camera', 'screen'] as const) this.upsertSource(user_id, source, 0, 0);
     const store = useVoiceStore.getState();
     store.setSpeaking(user_id, 0);
   }
@@ -571,6 +585,7 @@ export class VoiceSession implements VoiceSessionPort {
 
   private dropRemote(source: RemoteSource): void {
     if (source.source === 'audio') this.remoteAudio.emit(source.userId, null);
+    else if (source.source === 'soundboard') this.options.onSoundboardAudio?.(source.userId, null);
     else useVoiceStore.getState().removeRemoteStreams(source.userId, source.source);
   }
 
@@ -591,7 +606,7 @@ export class VoiceSession implements VoiceSessionPort {
       return;
     }
     const pc = this.pc;
-    const attached = cryptor.attachReceiver(event.receiver, kindOf(source.source), source.source === 'audio' ? 'opus' : this.codecName(), source.userId);
+    const attached = cryptor.attachReceiver(event.receiver, kindOf(source.source), kindOf(source.source) === 'audio' ? 'opus' : this.codecName(), source.userId);
     const refuse = (error: unknown) => this.fail(`Could not protect the media this device receives: ${errorText(error)}`);
     if (!cryptor.gated) {
       this.deliver(source, stream);
@@ -603,13 +618,14 @@ export class VoiceSession implements VoiceSessionPort {
     void attached.then(() => {
       if (this.pc !== pc) return;
       // Audio is switched on by the mixer when it receives the stream (it also applies deafen).
-      if (source.source !== 'audio') event.track.enabled = true;
+      if (source.source !== 'audio' && source.source !== 'soundboard') event.track.enabled = true;
       this.deliver(source, stream);
     }, refuse);
   }
 
   private deliver(source: RemoteSource, stream: MediaStreamLike): void {
     if (source.source === 'audio') this.remoteAudio.emit(source.userId, stream);
+    else if (source.source === 'soundboard') this.options.onSoundboardAudio?.(source.userId, stream);
     else useVoiceStore.getState().setRemoteStream({ userId: source.userId, kind: source.source, stream: stream as MediaHandle });
   }
 
@@ -629,7 +645,7 @@ export class VoiceSession implements VoiceSessionPort {
    * requests. A receiver created afterwards starts mid-stream, finds no keyframe and asks for one itself.
    */
   private mayReceive(source: RemoteSource): boolean {
-    return source.source === 'audio' || !this.description?.e2ee || this.e2eeActive;
+    return kindOf(source.source) === 'audio' || !this.description?.e2ee || this.e2eeActive;
   }
 
   private async renegotiate(): Promise<void> {
@@ -645,7 +661,7 @@ export class VoiceSession implements VoiceSessionPort {
     const offer = await pc.createOffer();
     const sdp = offer.sdp ?? '';
     await pc.setLocalDescription({ type: 'offer', sdp });
-    this.plans = this.plans.filter((p) => p.role === 'local-screen');
+    this.plans = this.plans.filter((p) => p.role === 'local-screen' || p.role === 'local-soundboard');
     for (const [key, transceiver] of this.transceivers) {
       const source = this.sources.get(key);
       if (source && transceiver.mid) this.plans.push({ mid: transceiver.mid, role: 'remote', source });
@@ -785,7 +801,7 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private refreshKeyframes(): void {
-    const videos = [...this.sources.values()].filter((s) => s.active && s.source !== 'audio' && this.mayReceive(s));
+    const videos = [...this.sources.values()].filter((s) => s.active && kindOf(s.source) === 'video' && this.mayReceive(s));
     if (videos.length === 0) return;
     const off: MediaSinkWants = { ...this.wants };
     for (const video of videos) {
