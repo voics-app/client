@@ -205,7 +205,7 @@ export class DiscordyApi implements ApiPort {
     return this.patch<UserSettings>('/users/@me/settings', patch);
   }
   gifs(query?: string) {
-    return this.get<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string } } }[] }>(query ? `/gifs/search?q=${enc(query)}` : '/gifs/trending');
+    return this.get<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string } } }[] }>(query ? '/gifs/search' : '/gifs/trending', query ? { q: query } : undefined);
   }
   gifCategories() {
     return this.get<{ tags: { searchterm: string; name: string }[] }>('/gifs/categories');
