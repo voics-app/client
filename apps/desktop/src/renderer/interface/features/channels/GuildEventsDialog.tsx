@@ -5,17 +5,22 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import type { GuildScheduledEvent } from '@discordy/core/contracts/scheduledEvents';
+import { assetCandidates } from '@discordy/core/domain/assets';
 import { errorMessage } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
+import { useConnectionStore } from '../../app/connectionStore';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, Select, TextArea } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { AssetImage } from '../../shared/ui/AssetImage';
+import './guildEvents.css';
 
 const close = () => useUiStore.getState().openDialog(null);
 const queryKey = (guildId: string) => ['guild-events', guildId] as const;
 
 function EventRow({ event }: { event: GuildScheduledEvent }) {
+  const cdn = useConnectionStore((s) => s.cdnUrl);
   const cache = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +35,7 @@ function EventRow({ event }: { event: GuildScheduledEvent }) {
     } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   };
   return <li className="stack">
+    {event.image && <AssetImage candidates={assetCandidates(cdn, 'guild-events', event.id, event.image, 512)} className="guild-event-cover" />}
     <strong>{event.name}</strong>
     <span>{new Date(event.scheduled_start_time).toLocaleString()} · {event.entity_metadata?.location ?? 'Voice channel'}</span>
     {event.description && <p className="setting-desc">{event.description}</p>}
