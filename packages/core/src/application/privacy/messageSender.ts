@@ -232,7 +232,7 @@ export class MessageSender {
         content: input.content,
         nonce,
         ...(input.tts ? { tts: true } : {}),
-        ...(input.silent ? { flags: MessageFlag.SUPPRESS_NOTIFICATIONS } : {}),
+        ...((input.silent || input.voice) ? { flags: (input.silent ? MessageFlag.SUPPRESS_NOTIFICATIONS : 0) | (input.voice ? MessageFlag.IS_VOICE_MESSAGE : 0) } : {}),
         ...(input.replyTo && input.pingReplied === false ? { allowed_mentions: { replied_user: false } } : {}),
         message_reference: optimistic.message_reference,
         attachments: await this.uploadFiles(channel.id, nonce, input),
@@ -285,7 +285,7 @@ export class MessageSender {
       );
       return slots.map((slot, i) => {
         const description = input.fileOptions?.[i]?.description?.trim();
-        return { id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename, ...(description ? { description } : {}) };
+        return { id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename, ...(description ? { description } : {}), ...(i === 0 && input.voice ? input.voice : {}) };
       });
     } catch (error) {
       if (controller.signal.aborted) throw new UploadCancelled();

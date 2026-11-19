@@ -179,6 +179,21 @@ function TextPreview({ attachment, url }: { attachment: Attachment; url: string 
   );
 }
 
+function VoicePlayer({ attachment, url, onError }: { attachment: Attachment; url: string; onError(): void }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [speed, setSpeed] = useState(1);
+  let samples: number[] = [];
+  try { samples = [...atob(attachment.waveform ?? '')].map((c) => c.charCodeAt(0)); } catch { /* untrusted metadata */ }
+  return <div className="attachment-audio">
+    <span className="attachment-name">Voice message · {Math.ceil(attachment.duration_secs ?? 0)}s</span>
+    <svg width="192" height="32" viewBox="0 0 192 32" role="img" aria-label="Recording waveform">
+      {samples.slice(0, 64).map((sample, i) => <rect key={i} x={i * 3} y={16 - Math.max(1, sample / 16)} width="2" height={Math.max(2, sample / 8)} fill="currentColor" />)}
+    </svg>
+    <audio ref={ref} controls preload="metadata" src={url} aria-label="Play voice message" onError={onError} />
+    <button type="button" onClick={() => { const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; setSpeed(next); if (ref.current) ref.current.playbackRate = next; }} aria-label={`Playback speed ${speed} times`}>{speed}×</button>
+  </div>;
+}
+
 function MediaAttachment({ attachment: original, channelId, tile, siblings }: ItemProps) {
   const { url, refresh } = useFreshUrl(original, channelId);
   const inlineMedia = usePrefsStore((s) => s.inlineMedia);
@@ -195,10 +210,12 @@ function MediaAttachment({ attachment: original, channelId, tile, siblings }: It
   if (kind === 'audio') {
     return (
       <FileSpoiler attachment={attachment} channelId={channelId}>
+      {attachment.waveform && attachment.duration_secs ? <VoicePlayer attachment={attachment} url={url} onError={onError} /> :
       <div className="attachment-audio">
         <span className="attachment-name">{displayFilename(attachment.filename)}</span>
         <MediaPlayer kind="audio" src={url} label={attachment.filename} onError={onError} />
       </div>
+      }
       </FileSpoiler>
     );
   }

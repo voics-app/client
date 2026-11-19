@@ -32,6 +32,7 @@ import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { VoiceRecorder } from './VoiceRecorder';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -528,6 +529,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           )}
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
+          <VoiceRecorder channel={channel} disabled={!canSend || !canAttach || slowmodeLeft > 0 || Boolean(channel.guild_id && !can(perms, Permission.SEND_VOICE_MESSAGES))} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>

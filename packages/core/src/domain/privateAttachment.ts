@@ -27,6 +27,7 @@ export interface PrivateFileRef {
   key_b64: string;
   nonce_b64: string;
   source: PrivateFileSource;
+  voice?: { duration_secs: number; waveform: string };
 }
 
 /** Standard attachment shape plus the local-only decryption ref; `url` is empty until resolved to a blob URL. */
@@ -71,6 +72,8 @@ export function parseFileRef(raw: unknown, channelId: string, mode: PrivateMode)
   if (b64Length(r.key_b64) !== FILE_KEY_BYTES) return null;
   if (b64Length(r.nonce_b64) !== FILE_NONCE_BYTES) return null;
   if (b64Length(r.sha256_b64) !== FILE_HASH_BYTES) return null;
+  const voice = r.voice;
+  if (voice && (typeof voice.duration_secs !== 'number' || !Number.isFinite(voice.duration_secs) || voice.duration_secs <= 0 || voice.duration_secs > 600 || typeof voice.waveform !== 'string' || voice.waveform.length > 1024 || b64Length(voice.waveform) === null)) return null;
   const source = r.source;
   if (typeof source !== 'object' || source === null) return null;
   if (mode === 'p2p') {
@@ -89,6 +92,7 @@ export function parseFileRef(raw: unknown, channelId: string, mode: PrivateMode)
     key_b64: r.key_b64!,
     nonce_b64: r.nonce_b64!,
     source: source.kind === 'cdn' ? { kind: 'cdn', object_key: source.object_key } : { kind: 'p2p' },
+    ...(voice ? { voice } : {}),
   };
 }
 
@@ -104,7 +108,7 @@ export function checkOutgoingFiles(files: { name: string; size: number }[], mode
 }
 
 export function toAttachment(ref: PrivateFileRef): PrivateAttachment {
-  return { id: ref.id, filename: ref.name, content_type: ref.mime, size: ref.size, url: '', private: ref };
+  return { id: ref.id, filename: ref.name, content_type: ref.mime, size: ref.size, url: '', private: ref, ...(ref.voice ?? {}) };
 }
 
 export function privateRefOf(attachment: Attachment): PrivateFileRef | null {
