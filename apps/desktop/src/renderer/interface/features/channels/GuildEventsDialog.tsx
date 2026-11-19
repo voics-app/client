@@ -39,7 +39,7 @@ function EventRow({ event }: { event: GuildScheduledEvent }) {
     <strong>{event.name}</strong>
     <span>{new Date(event.scheduled_start_time).toLocaleString()} · {event.entity_metadata?.location ?? 'Voice channel'}</span>
     {event.description && <p className="setting-desc">{event.description}</p>}
-    <div className="row-end"><span>{event.user_count} interested</span><Button size="sm" loading={busy} disabled={interest.isPending || interest.isError || event.status !== 1} onClick={() => void toggle()}>{interest.data?.interested ? 'Remove interest' : 'Interested'}</Button></div>
+    <div className="row-end"><span>{event.user_count} interested</span><Button size="sm" loading={busy} disabled={interest.isPending || interest.isError || (event.status !== 1 && !interest.data?.interested) || (Date.parse(event.scheduled_start_time) <= Date.now() && !interest.data?.interested)} onClick={() => void toggle()}>{interest.data?.interested ? 'Remove interest' : 'Interested'}</Button></div>
     {interest.isError && <p role="alert">Could not load your interest. <button type="button" onClick={() => void interest.refetch()}>Retry</button></p>}
     {error && <p role="alert">{error}</p>}
   </li>;
