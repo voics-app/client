@@ -4,6 +4,11 @@
  * `onVoiceServerUpdate`.
  */
 import { SpeakingFlag } from '@discordy/core/contracts/voice';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import type { PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -56,11 +61,40 @@ export class VoiceController extends VoiceCallController {
       subscribe: (l: (s: PrefsData, p: PrefsData) => void) => usePrefsStore.subscribe(l),
     };
     this.disposers.push(
+      useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
       prefs.subscribe((state, previous) => {
         if (DEVICE_KEYS.some((k) => state[k] !== previous[k])) void this.refreshDevices();
         if (state.cameraPreset !== previous.cameraPreset) void this.applyCameraPreset();
       }),
     );
+  }
+
+  override async join(target: JoinTarget): Promise<void> {
+    this.syncVoicePermissions(target);
+    await super.join(target);
+  }
+
+  override onVoiceServerUpdate(update: VoiceServerUpdate): void {
+    if (this.target && update.guild_id === this.target.guildId) {
+      this.syncVoicePermissions({ guildId: update.guild_id, channelId: update.channel_id });
+    }
+    super.onVoiceServerUpdate(update);
+  }
+
+  private syncVoicePermissions(target: JoinTarget | null): void {
+    if (!target?.guildId) {
+      this.desktop.mic.setForcePushToTalk?.(false);
+      return;
+    }
+    const state = useGuildStore.getState();
+    const guild = state.guilds[target.guildId];
+    const channel = state.channels[target.channelId];
+    const user = useSessionStore.getState().user?.id;
+    const member = user ? state.members[target.guildId]?.[user] : undefined;
+    const permissions = guild && channel && user && member
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? [])
+      : 0n;
+    this.desktop.mic.setForcePushToTalk?.(!hasPermission(permissions, Permission.USE_VAD));
   }
 
   protected override async releaseLocalMedia(): Promise<void> {

@@ -7,6 +7,7 @@ import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 
 class FakeSession implements VoiceSessionPort {
@@ -50,6 +51,7 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     start: vi.fn(async () => ({ kind: 'audio' }) as MediaStreamTrack),
     stop: vi.fn(),
     setSelfMute: vi.fn(),
+    setForcePushToTalk: vi.fn(),
     setSoundshare: vi.fn(),
     reconfigure: vi.fn(async () => null),
     onLevel: vi.fn((l: (lv: number, t: boolean) => void) => {
@@ -118,6 +120,30 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('VoiceController', () => {
+  it('forces PTT and ducks other callers while a priority member speaks', async () => {
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [
+        { id: 'g1', permissions: String(1n << 10n) },
+        { id: 'priority', permissions: String(1n << 8n) },
+      ] } } as never,
+      channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: { me: { roles: [] }, priority: { roles: ['priority'] }, other: { roles: [] } } } as never,
+    });
+    const { controller, mic, mixer } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useVoiceStore.setState({ states: { g1: {
+      priority: { user_id: 'priority', channel_id: 'c1' },
+      other: { user_id: 'other', channel_id: 'c1' },
+    } } as never });
+    useVoiceStore.getState().setUserVolume('other', 0.8);
+    useVoiceStore.getState().setSpeaking('priority', 0.5);
+    expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.4);
+    useVoiceStore.getState().setSpeaking('priority', 0);
+    expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.8);
+    controller.dispose();
+    useGuildStore.getState().reset();
+  });
   it('joins: starts the mic, sends op 4, then opens a session when the server is allocated', async () => {
     const { controller, sent, sessions, mic } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });

@@ -43,6 +43,7 @@ export class MicPipeline implements MicPort {
   private timer: ReturnType<typeof setInterval> | null = null;
   private unsubscribePtt: (() => void) | null = null;
   private selfMute = false;
+  private forcePushToTalk = false;
   private open = false;
   private buffer = new Float32Array(1024);
   private soundshare: { source: MediaStreamAudioSourceNode } | null = null;
@@ -112,9 +113,21 @@ export class MicPipeline implements MicPort {
   }
 
   private applyGatePrefs(prefs: PrefsData): void {
-    this.gate.configure({ mode: prefs.inputMode, vadThreshold: prefs.vadThreshold, pttReleaseDelayMs: prefs.pttReleaseDelayMs });
+    const mode = this.forcePushToTalk ? 'ptt' : prefs.inputMode;
+    this.gate.configure({ mode, vadThreshold: prefs.vadThreshold, pttReleaseDelayMs: prefs.pttReleaseDelayMs });
     if (this.graph) this.graph.input.gain.value = prefs.inputVolume;
-    if (prefs.inputMode === 'ptt') void this.deps.setPushToTalkKey?.(prefs.pttKeycode);
+    if (mode === 'ptt') void this.deps.setPushToTalkKey?.(prefs.pttKeycode);
+  }
+
+  setForcePushToTalk(forced: boolean): void {
+    if (forced === this.forcePushToTalk) return;
+    this.forcePushToTalk = forced;
+    this.applyGatePrefs(this.deps.prefs());
+    if (forced && this.graph && this.open) {
+      this.open = false;
+      this.graph.gate.gain.setTargetAtTime(0, this.graph.context.currentTime, 0.005);
+      this.levelListeners.emit(0, false);
+    }
   }
 
   private tick(): void {

@@ -9,12 +9,15 @@
 import { GatewayOp, type VoiceServerUpdate, type VoiceStateUpdatePayload, type VoiceTelemetry } from '../../contracts/gateway';
 import type { VoiceState } from '../../contracts/rest';
 import { SpeakingFlag, type MediaSinkWants } from '../../contracts/voice';
+import { Permission } from '../../contracts/permissions';
+import { computeChannelPermissions, hasPermission } from '../../domain/permissions';
 import { screenSinkWants } from '../../domain/sinkWants';
 import type { GatewayPort } from '../ports/gateway';
 import type { MediaTrackLike } from '../ports/media';
 import type { MicPort, MixerPort, VoiceSessionPort } from '../ports/voice';
 import { usePrefsStore, type PrefsData } from '../stores/prefsStore';
 import { useLocalPeopleStore } from '../stores/localPeopleStore';
+import { useGuildStore } from '../stores/guildStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { useUiStore } from '../stores/uiStore';
 import { useVoiceStore } from '../stores/voiceStore';
@@ -74,7 +77,10 @@ export class VoiceCallController {
     this.disposers.push(
       useVoiceStore.subscribe((state, previous) => {
         if (state.watching !== previous.watching || state.screenSsrcs !== previous.screenSsrcs) this.syncSinkWants();
+        if (state.speaking !== previous.speaking || state.states !== previous.states || state.userVolumes !== previous.userVolumes) this.syncPriorityVolumes();
       }),
+      useGuildStore.subscribe(() => this.syncPriorityVolumes()),
+      useLocalPeopleStore.subscribe(() => this.syncPriorityVolumes()),
     );
   }
 
@@ -221,6 +227,7 @@ export class VoiceCallController {
         const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : undefined);
         if (volume !== undefined) this.deps.mixer.setUserVolume(userId, volume);
         this.deps.mixer.setStream(userId, stream);
+        this.syncPriorityVolumes();
       }),
     ];
     if (this.micTrack) void session.setMicTrack(this.micTrack);
@@ -312,6 +319,33 @@ export class VoiceCallController {
   setUserVolume(userId: string, volume: number): void {
     useVoiceStore.getState().setUserVolume(userId, volume);
     this.deps.mixer.setUserVolume(userId, useVoiceStore.getState().userVolumes[userId] ?? 1);
+    this.syncPriorityVolumes();
+  }
+
+  /** Duck other callers while a member with PRIORITY_SPEAKER is talking. */
+  private syncPriorityVolumes(): void {
+    const target = this.target;
+    if (!target) return;
+    const voice = useVoiceStore.getState();
+    const users = Object.values(voice.states[target.guildId ?? target.channelId] ?? {})
+      .filter((state) => state.channel_id === target.channelId)
+      .map((state) => state.user_id);
+    const guildState = useGuildStore.getState();
+    const guild = target.guildId ? guildState.guilds[target.guildId] : undefined;
+    const channel = guildState.channels[target.channelId];
+    const isPriority = (userId: string): boolean => {
+      if (!target.guildId || !guild || !channel) return false;
+      const member = guildState.members[target.guildId]?.[userId];
+      if (!member) return false;
+      const permissions = computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId, memberRoleIds: member.roles, roles: guild.roles }, channel.permission_overwrites ?? []);
+      return hasPermission(permissions, Permission.PRIORITY_SPEAKER);
+    };
+    const active = new Set(users.filter((userId) => (voice.speaking[userId] ?? 0) > 0.02 && isPriority(userId)));
+    const muted = useLocalPeopleStore.getState().mutedUsers;
+    for (const userId of users) {
+      const base = voice.userVolumes[userId] ?? (userId in muted ? 0 : 1);
+      this.deps.mixer.setUserVolume(userId, base * (active.size && !active.has(userId) ? 0.5 : 1));
+    }
   }
 
   setSinkWants(wants: MediaSinkWants): void {
