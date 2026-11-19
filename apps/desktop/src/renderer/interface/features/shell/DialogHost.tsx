@@ -52,8 +52,21 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
   const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
   const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
+  const [welcome, setWelcome] = useState<{ guildId: string; description: string; channels: { channel_id: string; description: string }[] } | null>(null);
   const close = useClose();
   const api = getRuntime().api;
+  const finishJoin = async (guildId: string, firstJoin: boolean) => {
+    if (firstJoin) {
+      try {
+        const screen = await api.welcomeScreen(guildId);
+        if (screen.enabled) { setWelcome({ guildId, description: screen.description, channels: screen.channels }); setScreening(null); return; }
+      } catch (err) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load the welcome screen', body: errorMessage(err) });
+      }
+    }
+    close();
+    setTimeout(() => openGuild(guildId), 300);
+  };
   useEffect(() => {
     if (!initialGuildId) return;
     setBusy(true);
@@ -113,7 +126,7 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       setJoinedGuildId(gid);
       const verification = await api.memberVerification(gid);
       if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
-      else { close(); setTimeout(() => openGuild(gid), 300); }
+      else await finishJoin(gid, true);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -129,8 +142,7 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       const userId = useSessionStore.getState().user?.id;
       const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
       if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
-      close();
-      openGuild(screening.guildId);
+      await finishJoin(screening.guildId, !!joinedGuildId);
     } catch (err) {
       setError(errorMessage(err));
       setAgreed(false);
@@ -141,8 +153,13 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
     } finally { setBusy(false); }
   };
   return (
-    <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
-      {initialGuildId && !screening ? (
+    <Modal open onClose={close} title="Join a server" description={screening ? 'Review the server rules to continue.' : welcome ? 'Find a place to start.' : 'Enter an invite link or code.'}>
+      {welcome ? (
+        <div className="stack"><h3>Welcome</h3><p>{welcome.description}</p>
+          {welcome.channels.map((channel) => <Button key={channel.channel_id} variant="ghost" onClick={() => { close(); openGuild(welcome.guildId); setTimeout(() => openChannel(channel.channel_id), 300); }}>{channel.description}</Button>)}
+          <Button variant="primary" onClick={() => { close(); openGuild(welcome.guildId); }}>Continue</Button>
+        </div>
+      ) : initialGuildId && !screening ? (
         <div className="stack"><p>{error ?? 'Loading server rules…'}</p><Button variant="ghost" onClick={close}>Close</Button></div>
       ) : screening ? (
         <div className="stack">

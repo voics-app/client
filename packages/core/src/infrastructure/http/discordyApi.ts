@@ -429,6 +429,12 @@ export class DiscordyApi implements ApiPort {
   acceptMemberVerification(guildId: string, revision: number) {
     return this.post<void>(`/guilds/${enc(guildId)}/member-verification/accept`, { revision });
   }
+  welcomeScreen(guildId: string) {
+    return this.get<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`);
+  }
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }) {
+    return this.put<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`, body);
+  }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }

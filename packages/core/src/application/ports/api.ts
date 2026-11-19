@@ -177,6 +177,8 @@ export interface ApiPort {
   memberVerification(guildId: string): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
   setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
   acceptMemberVerification(guildId: string, revision: number): Promise<void>;
+  welcomeScreen(guildId: string): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
 
   channel(channelId: string): Promise<Channel>;
   updateChannel(channelId: string, patch: Partial<Channel>): Promise<Channel>;
