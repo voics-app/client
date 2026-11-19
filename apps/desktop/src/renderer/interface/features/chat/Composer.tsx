@@ -32,6 +32,7 @@ import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { GifPicker } from './GifPicker';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -80,6 +81,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [running, setRunning] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const [pickingGif, setPickingGif] = useState(false);
   const plusMenu = useMenu();
   const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -529,6 +531,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
+          <IconButton label="GIF" disabled={!canSend} onClick={() => setPickingGif((open) => !open)}>GIF</IconButton>
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
@@ -540,6 +543,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {dragging && <div className="drop-overlay">Drop files to attach</div>}
       </div>
       {emoji.node}
+      {pickingGif && <GifPicker onClose={() => setPickingGif(false)} onPick={(url) => { setPickingGif(false); insertAtCaret(`${url} `); }} />}
       <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />
     </div>
   );

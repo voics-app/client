@@ -76,6 +76,7 @@ export interface UserPreferences {
   ringtone?: string;
   skin_tone?: string;
   recent_reactions?: { id: string | null; name: string; animated?: boolean }[];
+  favorite_gifs?: string[];
 }
 
 export interface UserSettings {

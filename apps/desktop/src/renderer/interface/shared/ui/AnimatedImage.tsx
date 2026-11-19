@@ -51,7 +51,7 @@ export function AnimatedImage({ kind, animated, src, ...rest }: ImgHTMLAttribute
   return (
     <img
       {...rest}
-      src={still && frame && !hover ? frame : src}
+      src={still && !hover ? (frame ?? undefined) : src}
       data-still={still && frame && !hover ? 'true' : undefined}
       onMouseEnter={(e) => { setHover(true); rest.onMouseEnter?.(e); }}
       onMouseLeave={(e) => { setHover(false); rest.onMouseLeave?.(e); }}

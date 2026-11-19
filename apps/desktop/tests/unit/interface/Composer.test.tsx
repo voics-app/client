@@ -11,8 +11,11 @@ import { Permission } from '@discordy/core/contracts/permissions';
 import type { Channel, Message, User } from '@discordy/core/contracts/rest';
 
 const send = vi.fn(async () => null);
+const gifs = vi.fn(async () => ({ results: [{ id: '1', content_description: 'Happy cat', media_formats: { gif: { url: 'https://example.test/cat.gif' } } }] }));
+const gifCategories = vi.fn(async () => ({ tags: [{ name: 'Cats', searchterm: 'cats' }] }));
+const updateSettings = vi.fn(async (patch: { preferences: { favorite_gifs: string[] } }) => ({ default_delivery_mode: 'standard', preferences: patch.preferences }));
 vi.mock('@renderer/interface/app/runtime', () => ({
-  getRuntime: () => ({ privacy: { sender: { send } }, api: { typing: async () => undefined }, interactions: {} }),
+  getRuntime: () => ({ privacy: { sender: { send } }, api: { typing: async () => undefined, gifs, gifCategories, updateSettings }, interactions: {} }),
 }));
 vi.mock('@renderer/interface/features/privacy/ModeSwitcher', () => ({ ModeSwitcher: () => null }));
 vi.mock('@renderer/interface/features/privacy/PeerStatus', () => ({ PeerStatus: () => null }));
@@ -53,6 +56,18 @@ afterEach(() => {
 });
 
 describe('Composer: sending and newlines', () => {
+  it('opens GIFs, saves a favorite, inserts a link and sends it', async () => {
+    const c = dmChannel();
+    render(<Composer channel={c} mode="standard" />);
+    fireEvent.click(screen.getByRole('button', { name: 'GIF' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cats' }));
+    const gif = await screen.findByRole('button', { name: 'Insert Happy cat' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add favorite' }));
+    expect(updateSettings).toHaveBeenCalledWith({ preferences: { favorite_gifs: ['https://example.test/cat.gif'] } });
+    fireEvent.click(gif);
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(send).toHaveBeenCalledWith(c, expect.objectContaining({ content: 'https://example.test/cat.gif' }));
+  });
   it('Enter sends and Shift+Enter does not', () => {
     const c = dmChannel();
     render(<Composer channel={c} mode="standard" />);

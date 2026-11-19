@@ -204,6 +204,12 @@ export class DiscordyApi implements ApiPort {
   updateSettings(patch: Partial<UserSettings>) {
     return this.patch<UserSettings>('/users/@me/settings', patch);
   }
+  gifs(query?: string) {
+    return this.get<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string } } }[] }>(query ? `/gifs/search?q=${enc(query)}` : '/gifs/trending');
+  }
+  gifCategories() {
+    return this.get<{ tags: { searchterm: string; name: string }[] }>('/gifs/categories');
+  }
   privateChannels() {
     return this.get<Channel[]>('/users/@me/channels');
   }
