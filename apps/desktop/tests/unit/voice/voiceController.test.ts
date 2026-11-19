@@ -132,6 +132,10 @@ describe('VoiceController', () => {
     const { controller, mic, mixer } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });
     expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useGuildStore.getState().upsertRole('g1', { id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) } as never);
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    useGuildStore.getState().upsertRole('g1', { id: 'g1', permissions: String(1n << 10n) } as never);
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
     useVoiceStore.setState({ states: { g1: {
       priority: { user_id: 'priority', channel_id: 'c1' },
       other: { user_id: 'other', channel_id: 'c1' },
