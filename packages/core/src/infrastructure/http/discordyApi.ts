@@ -366,6 +366,12 @@ export class DiscordyApi implements ApiPort {
   soundboardSounds(guildId: string) {
     return this.get<SoundboardSound[]>(`/guilds/${guildId}/soundboard-sounds`);
   }
+  soundboardAudio(guildId: string, soundId: string) {
+    return this.http.request<ArrayBuffer>('GET', `/guilds/${guildId}/soundboard-sounds/${soundId}/audio`, { responseType: 'arrayBuffer', headers: { Accept: 'audio/wav' } });
+  }
+  sendSoundboardSound(channelId: string, sourceGuildId: string, soundId: string) {
+    return this.post<void>(`/channels/${channelId}/send-soundboard-sound`, { sound_id: soundId, source_guild_id: sourceGuildId });
+  }
   createSoundboardSound(guildId: string, body: { name: string; sound: string; volume?: number }) {
     return this.post<SoundboardSound>(`/guilds/${guildId}/soundboard-sounds`, body);
   }

@@ -48,6 +48,8 @@ export interface RequestOptions {
   auth?: boolean;
   headers?: Record<string, string>;
   reason?: string;
+  /** Decode a successful binary response without attempting JSON parsing. */
+  responseType?: 'arrayBuffer';
 }
 
 const MAX_RATE_LIMIT_RETRIES = 3;
@@ -114,6 +116,7 @@ export class HttpClient {
     }
 
     if (response.status === 204) return null as T;
+    if (response.ok && options.responseType === 'arrayBuffer') return await response.arrayBuffer() as T;
     const text = await response.text();
     const parsed: unknown = text ? safeJson(text) : null;
     if (!response.ok) throw errorFromResponse(response.status, text);

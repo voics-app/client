@@ -182,6 +182,8 @@ export interface ApiPort {
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;
   deleteEmoji(guildId: string, emojiId: string): Promise<void>;
   soundboardSounds(guildId: string): Promise<SoundboardSound[]>;
+  soundboardAudio(guildId: string, soundId: string): Promise<ArrayBuffer>;
+  sendSoundboardSound(channelId: string, sourceGuildId: string, soundId: string): Promise<void>;
   createSoundboardSound(guildId: string, body: { name: string; sound: string; volume?: number }): Promise<SoundboardSound>;
   updateSoundboardSound(guildId: string, soundId: string, patch: { name?: string; volume?: number }): Promise<SoundboardSound>;
   deleteSoundboardSound(guildId: string, soundId: string): Promise<void>;

@@ -18,6 +18,18 @@ function tokens(initial = 'old') {
 }
 
 describe('HttpClient', () => {
+  it('returns binary bytes after the normal authentication retry', async () => {
+    const t = tokens();
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      const auth = (init?.headers as Record<string, string>).Authorization;
+      return auth === 'Bearer new' ? new Response(new Uint8Array([1, 2, 3])) : json(401, { message: 'expired' });
+    });
+    const client = new HttpClient({ baseUrl: 'https://api.test', fetch: fetchFn as unknown as typeof fetch, tokens: t });
+    const bytes = await client.request<ArrayBuffer>('GET', '/sound', { responseType: 'arrayBuffer' });
+    expect([...new Uint8Array(bytes)]).toEqual([1, 2, 3]);
+    expect(t.refresh).toHaveBeenCalledOnce();
+  });
+
   it('sends JSON with the bearer token to /api/v1', async () => {
     const fetchFn = vi.fn(async () => json(200, { ok: true }));
     const client = new HttpClient({ baseUrl: 'https://api.test/', fetch: fetchFn as unknown as typeof fetch, tokens: tokens() });
