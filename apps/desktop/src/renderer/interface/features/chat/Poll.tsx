@@ -76,7 +76,7 @@ export function MessagePoll({ message }: { message: ChatMessage }) {
     <span className="poll-meta">{closed ? 'Poll ended' : `Ends ${new Date(poll.expiry).toLocaleString()}`}{poll.allow_multiselect ? ' - Select multiple' : ' - Select one'}</span>
     {poll.answers.map((answer) => {
       const count = results?.answer_counts.find((entry) => entry.id === answer.answer_id);
-      return <button type="button" key={answer.answer_id} className={`poll-answer${count?.me_voted ? ' is-selected' : ''}`} disabled={busy || closed || results?.vote_version === undefined} aria-pressed={count?.me_voted ?? false} onClick={() => void vote(answer.answer_id, !count?.me_voted)}><span>{answer.poll_media.text}</span><span>{count ? `${count.count} ${count.count === 1 ? 'vote' : 'votes'}` : 'Unknown'}</span></button>;
+      return <button type="button" key={answer.answer_id} className={`poll-answer${count?.me_voted ? ' is-selected' : ''}`} disabled={busy || closed || results?.vote_version === undefined} aria-pressed={count?.me_voted ?? false} onClick={() => void vote(answer.answer_id, !count?.me_voted)}><span>{answer.poll_media.emoji?.name ? `${answer.poll_media.emoji.name} ` : ''}{answer.poll_media.text}</span><span>{count ? `${count.count} ${count.count === 1 ? 'vote' : 'votes'}` : 'Unknown'}</span></button>;
     })}
     {me === message.author.id && !closed && <Button size="sm" disabled={busy} onClick={() => void end()}>End poll</Button>}
   </section>;
