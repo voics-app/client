@@ -1,0 +1,44 @@
+﻿name: Windows installer verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'native/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/windows-installer-check.yml'
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dist:win
+      - name: Verify installer and feed metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          test -f "apps/desktop/release/Voics-Setup-${version}.exe"
+          grep -q "^version: ${version}$" apps/desktop/release/latest.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows-check
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.exe.blockmap
+            apps/desktop/release/latest.yml
+          retention-days: 7
