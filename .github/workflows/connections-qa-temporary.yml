@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: vm-runner
     timeout-minutes: 60
     env:
       VOICS_MOBILE_QA: '1'
@@ -25,17 +25,42 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: pnpm install --frozen-lockfile
-      - run: echo y | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'cmake;3.31.6'
+      - name: Inspect Android tooling
+        run: |
+          java -version
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          command -v sdkmanager || true
+          df -h "$RUNNER_TEMP"
+      - name: Prepare job-local Android SDK
+        run: |
+          set -euo pipefail
+          sdk="$RUNNER_TEMP/api46-android-sdk"
+          mkdir -p "$sdk/cmdline-tools"
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$RUNNER_TEMP/api46-commandlinetools.zip"
+          unzip -q "$RUNNER_TEMP/api46-commandlinetools.zip" -d "$sdk/cmdline-tools"
+          mv "$sdk/cmdline-tools/cmdline-tools" "$sdk/cmdline-tools/latest"
+          export ANDROID_HOME="$sdk" ANDROID_SDK_ROOT="$sdk"
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$sdk/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'cmake;3.31.6'
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+      - name: Remove development launcher in isolated QA checkout
+        run: |
+          node -e "const fs=require('fs'); const p='apps/mobile/package.json'; const j=JSON.parse(fs.readFileSync(p)); delete j.dependencies['expo-dev-client']; fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');"
+          sed -i "/^[[:space:]]*'expo-dev-client',/d" apps/mobile/app.config.ts
       - run: pnpm exec expo prebuild --platform android --no-install
         working-directory: apps/mobile
-      - name: Bundle JavaScript into the QA debug APK
-        run: sed -i '/^react {/a\    debuggableVariants = []' app/build.gradle
+      - run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 -Pandroid.cmakeVersion=3.31.6
         working-directory: apps/mobile/android
-      - run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 -Pandroid.cmakeVersion=3.31.6
-        working-directory: apps/mobile/android
+      - name: Verify QA package and debug signing
+        run: |
+          set -euo pipefail
+          apk=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | head -1 | grep "package: name='nl.voics.app.qa'"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
       - uses: actions/upload-artifact@v4
         with:
           name: voics-api46-qa-apk
-          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 2
