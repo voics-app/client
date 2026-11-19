@@ -43,7 +43,9 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId 
       try {
         const screen = await getRuntime().api.welcomeScreen(guildId);
         if (screen.enabled) { setScreening(null); setWelcome({ guildId, description: screen.description, channels: screen.channels }); return; }
-      } catch { /* A welcome screen must not prevent access to the server. */ }
+      } catch (e) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load the welcome screen', body: errorMessage(e) });
+      }
     }
     close(); setTimeout(() => useUiStore.getState().navigate({ kind: 'guild', guildId, channelId: suggestedChannel ?? null }), 300);
   };
@@ -54,7 +56,9 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId 
         if (data.config.enabled && data.config.questions.length) {
           setScreening(null); setOnboarding({ guildId, data, choices: data.config.questions.map(() => -1) }); return;
         }
-      } catch { /* Onboarding is optional if it cannot be loaded. */ }
+      } catch (e) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load onboarding', body: errorMessage(e) });
+      }
     }
     await finishWelcome(guildId, firstJoin);
   };
