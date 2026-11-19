@@ -16,7 +16,7 @@ import { useConnectionStore } from '@renderer/interface/app/connectionStore';
 
 const fixture = vi.hoisted(() => ({ permissions: 0n, api: {
   botAuthorizationInfo: vi.fn(), authorizeBot: vi.fn(), applicationAuthorizations: vi.fn(), revokeApplicationAuthorization: vi.fn(), applications: vi.fn(),
-  guildIntegrations: vi.fn(), removeGuildIntegration: vi.fn(), guildWebhooks: vi.fn(), createWebhook: vi.fn(), updateWebhook: vi.fn(), resetWebhookToken: vi.fn(), deleteWebhook: vi.fn(),
+  guildIntegrations: vi.fn(), removeGuildIntegration: vi.fn(), guildWebhooks: vi.fn(), followedChannels: vi.fn(), createWebhook: vi.fn(), updateWebhook: vi.fn(), resetWebhookToken: vi.fn(), deleteWebhook: vi.fn(),
 }, copyText: vi.fn(), openGuild: vi.fn(), readImageUpload: vi.fn() }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: fixture.api }) }));
 vi.mock('@renderer/interface/app/navigation', () => ({ openGuild: fixture.openGuild }));
@@ -45,9 +45,20 @@ beforeEach(() => {
   fixture.api.botAuthorizationInfo.mockResolvedValue(info);
   fixture.api.authorizeBot.mockResolvedValue({ location: '/channels/1' });
   fixture.api.applicationAuthorizations.mockResolvedValue([grant]);
-  fixture.api.guildIntegrations.mockResolvedValue([]); fixture.api.guildWebhooks.mockResolvedValue([]);
+  fixture.api.guildIntegrations.mockResolvedValue([]); fixture.api.guildWebhooks.mockResolvedValue([]); fixture.api.followedChannels.mockResolvedValue([]);
 });
 afterEach(cleanup);
+
+it('lists followed announcements and offers unfollow in server settings', async () => {
+  fixture.permissions = Permission.MANAGE_WEBHOOKS;
+  fixture.api.followedChannels.mockResolvedValue([{ channel_id: '3', webhook_channel_id: '2', webhook_id: '21' }]);
+  useGuildStore.setState({ channels: { '2': { id: '2', guild_id: '1', type: 0, name: 'general' }, '3': { id: '3', guild_id: '4', type: 5, name: 'news' } } });
+  mount(<ServerIntegrations guildId="1" />);
+  expect(await screen.findByText('#news')).toBeTruthy();
+  expect(screen.getByText('Posts to #general')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Unfollow' }));
+  expect(useUiStore.getState().dialog?.kind).toBe('confirm');
+});
 
 it.each(['consent', 'installed', 'authorized'] as const)('loads the application icon from its own namespace in %s applications', async (surface) => {
   const application = { ...app, icon: 'app-icon-hash' };

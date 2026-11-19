@@ -34,7 +34,7 @@ export function FollowAnnouncementDialog({ source, close }: { source: Channel; c
         {targets.map((target) => <li key={target.id}>
           <div className="pick-row forward-row">
             <span className="forward-label">#{target.name}<small> {guilds[target.guild_id!]?.name}</small></span>
-            <Button variant="ghost" size="sm" disabled={busy !== null} loading={busy === target.id} onClick={() => void follow(target)}>Follow</Button>
+            <Button variant="ghost" size="sm" disabled={busy !== null} loading={busy === target.id} onClick={() => void follow(target)} aria-label={`Follow into #${target.name}`}>Follow</Button>
           </div>
         </li>)}
         {targets.length === 0 && <li className="pick-empty">No eligible text channels. You need Manage Webhooks in another server.</li>}
