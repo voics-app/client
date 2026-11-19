@@ -10,14 +10,15 @@ import { useGuildMenuEntries } from '@renderer/interface/features/channels/Guild
 import { confirmDeleteServer } from '@renderer/interface/features/settings/server/deleteServer';
 import { ConfirmDialog } from '@renderer/interface/features/shell/DialogHost';
 
-const calls = vi.hoisted(() => ({ toggles: vi.fn(), deleteGuild: vi.fn(), copy: vi.fn() }));
+const calls = vi.hoisted(() => ({ toggles: vi.fn(), deleteGuild: vi.fn(), copy: vi.fn(), updateSettings: vi.fn() }));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { updateSettings: calls.updateSettings } }) }));
 vi.mock('@renderer/interface/app/notificationActions', () => ({ setGuildToggles: calls.toggles, muteGuild: vi.fn() }));
 vi.mock('@renderer/interface/app/actions', async (load) => ({ ...await load<object>(), deleteGuild: calls.deleteGuild, copyText: calls.copy }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   useGuildStore.setState({ guilds: { g: { id: 'g', name: 'Test server', owner_id: 'owner', roles: [] } } as never, channels: {}, members: {} });
-  useSessionStore.setState({ user: { id: 'owner' } as never });
+  useSessionStore.setState({ user: { id: 'owner' } as never, settings: { default_delivery_mode: 'standard', preferences: { default_guilds_restricted: true, guild_dm_restrictions: { other: false } } } });
   useNotificationSettingsStore.setState({ byScope: { g: emptySettings('g') } });
   useUiStore.setState({ dialog: null, settings: null });
 });
@@ -32,6 +33,21 @@ describe('server menu details', () => {
     expect(calls.toggles).toHaveBeenCalledWith('g', { hide_muted_channels: true });
     items.find((entry) => entry.label === 'Copy server ID')!.onSelect();
     expect(calls.copy).toHaveBeenCalledWith('g', 'Server ID copied');
+  });
+
+  it('resolves and saves the server DM override after explaining existing conversations', async () => {
+    const { result } = renderHook(() => useGuildMenuEntries('g'));
+    const entry = result.current.find((item) => item.kind === 'item' && item.label === 'Allow new DMs from server members');
+    if (!entry || entry.kind !== 'item') throw new Error('Missing privacy action');
+    expect(entry.checked).toBe(false);
+    entry.onSelect();
+    const dialog = useUiStore.getState().dialog;
+    if (dialog?.kind !== 'confirm') throw new Error('Expected privacy confirmation');
+    expect(dialog.body).toContain('existing DM conversations');
+    calls.updateSettings.mockResolvedValue({ default_delivery_mode: 'standard', preferences: { default_guilds_restricted: true, guild_dm_restrictions: { other: false, g: false } } });
+    await dialog.onConfirm();
+    expect(calls.updateSettings).toHaveBeenCalledWith({ preferences: { guild_dm_restrictions: { g: false } } });
+    expect(useSessionStore.getState().settings.preferences?.guild_dm_restrictions?.g).toBe(false);
   });
 
   it('requires the exact name before deleting and retains the confirmation on failure', async () => {
