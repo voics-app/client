@@ -12,7 +12,7 @@ describe('serverSettingsTabs', () => {
   it('opens a page per permission', () => {
     expect(shown(Permission.MANAGE_ROLES)).toEqual(['roles', 'members']);
     expect(shown(Permission.BAN_MEMBERS)).toEqual(['members', 'bans']);
-    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'members', 'invites', 'template', 'discovery', 'integrations']);
+    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'rules', 'members', 'invites', 'template', 'discovery', 'integrations']);
     expect(shown(Permission.MANAGE_WEBHOOKS)).toEqual(['members', 'integrations']);
   });
 });

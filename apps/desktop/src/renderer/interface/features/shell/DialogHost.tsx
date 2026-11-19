@@ -49,6 +49,9 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
+  const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
   const close = useClose();
   const api = getRuntime().api;
   const lookupCode = async (raw: string) => {
@@ -58,10 +61,9 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       const found = await api.invite(parseInviteCode(raw));
       const gid = found.guild?.id;
       if (gid && useGuildStore.getState().guilds[gid]) {
-        // Already a member: no accept step, just go there.
-        close();
-        openGuild(gid);
-        useUiStore.getState().toast({ tone: 'info', title: `You are already in ${found.guild?.name ?? 'this server'}` });
+        const verification = await api.memberVerification(gid);
+        if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
+        else { close(); openGuild(gid); }
         return;
       }
       setInvite(found);
@@ -89,17 +91,48 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
-    const joined = await attempt(() => api.acceptInvite(invite.code), 'Could not join server');
-    setBusy(false);
-    if (joined) {
-      close();
-      const gid = joined.guild?.id ?? invite.guild?.id;
-      if (gid) setTimeout(() => openGuild(gid), 300);
+    try {
+      const joined = joinedGuildId ? null : await api.acceptInvite(invite.code);
+      const gid = joinedGuildId ?? joined?.guild?.id ?? invite.guild?.id;
+      if (!gid) throw new Error('The server was not returned by the invite.');
+      setJoinedGuildId(gid);
+      const verification = await api.memberVerification(gid);
+      if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
+      else { close(); setTimeout(() => openGuild(gid), 300); }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
+  };
+  const acceptRules = async () => {
+    if (!screening || !agreed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.acceptMemberVerification(screening.guildId, screening.revision);
+      close();
+      openGuild(screening.guildId);
+    } catch (err) {
+      setError(errorMessage(err));
+      setAgreed(false);
+      try {
+        const latest = await api.memberVerification(screening.guildId);
+        setScreening({ guildId: screening.guildId, rules: latest.rules, revision: latest.revision });
+      } catch { /* Keep the displayed rules and allow another attempt. */ }
+    } finally { setBusy(false); }
   };
   return (
     <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
-      {invite ? (
+      {screening ? (
+        <div className="stack">
+          <h3>Server rules</h3>
+          <ol>{screening.rules.map((rule, index) => <li key={index}>{rule}</li>)}</ol>
+          <label><input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> I agree to these rules</label>
+          {error && <p role="alert">{error}</p>}
+          <div className="row-end"><Button variant="primary" loading={busy} disabled={!agreed} onClick={() => void acceptRules()}>Accept rules</Button></div>
+        </div>
+      ) : invite ? (
         <div className="stack">
           <div className="invite-card">
             <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
@@ -112,6 +145,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
             <Button variant="ghost" onClick={() => setInvite(null)}>Back</Button>
             <Button variant="primary" loading={busy} onClick={() => void accept()}>Accept invite</Button>
           </div>
+          {error && <p role="alert">{error}</p>}
         </div>
       ) : (
         <form onSubmit={lookup} className="stack">

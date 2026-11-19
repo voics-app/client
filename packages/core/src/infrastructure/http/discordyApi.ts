@@ -420,6 +420,15 @@ export class DiscordyApi implements ApiPort {
   acceptInvite(code: string) {
     return this.post<Invite>(`/invites/${enc(code)}`);
   }
+  memberVerification(guildId: string) {
+    return this.get<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`);
+  }
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }) {
+    return this.put<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`, body);
+  }
+  acceptMemberVerification(guildId: string, revision: number) {
+    return this.post<void>(`/guilds/${enc(guildId)}/member-verification/accept`, { revision });
+  }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }
