@@ -6,6 +6,7 @@ import type { User } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { FriendsSince } from '../members/FriendsSince';
+import { VisibleBadges } from '../members/ProfileDialog';
 import { ProfileAvatar } from '../members/ProfileAvatar';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
@@ -27,6 +28,7 @@ export function DmProfilePanel({ channelId }: { channelId: string }) {
         <h3>{displayName(u)}</h3>
         <p className="mono">{u.username}</p>
       </div>
+      <VisibleBadges userId={u.id} />
       {u.bio && <section className="profile-section"><h4>About me</h4><p className="selectable">{u.bio}</p></section>}
       <FriendsSince userId={u.id} />
       {profile.isLoading && <Skeleton height={48} />}

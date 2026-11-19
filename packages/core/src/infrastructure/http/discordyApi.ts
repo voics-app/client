@@ -198,6 +198,15 @@ export class DiscordyApi implements ApiPort {
   userProfile(userId: string) {
     return this.get<UserProfile>(`/users/${userId}/profile`);
   }
+  ownBadges() {
+    return this.get<Array<{ id: string; visible: boolean }>>('/users/@me/badges');
+  }
+  userBadges(userId: string) {
+    return this.get<string[]>(`/users/${enc(userId)}/badges`);
+  }
+  setBadgeVisibility(id: string, visible: boolean) {
+    return this.put<void>(`/users/@me/badges/${enc(id)}`, { visible });
+  }
   settings() {
     return this.get<UserSettings>('/users/@me/settings');
   }

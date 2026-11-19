@@ -123,3 +123,17 @@ describe('DiscordyApi push token', () => {
     expect(request).toHaveBeenLastCalledWith('DELETE', '/users/@me/devices/voip', { reason: undefined });
   });
 });
+
+
+describe('profile badges', () => {
+  it('uses separate owner and public routes and encodes badge IDs', async () => {
+    const { http, request } = fakeHttp();
+    const api = new DiscordyApi(http);
+    await api.ownBadges();
+    expect(request).toHaveBeenLastCalledWith('GET', '/users/@me/badges', { query: undefined });
+    await api.setBadgeVisibility('badge/one', false);
+    expect(request).toHaveBeenLastCalledWith('PUT', '/users/@me/badges/badge%2Fone', { body: { visible: false }, reason: undefined });
+    await api.userBadges('42');
+    expect(request).toHaveBeenLastCalledWith('GET', '/users/42/badges', { query: undefined });
+  });
+});
