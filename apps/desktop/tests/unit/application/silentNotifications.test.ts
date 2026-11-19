@@ -22,7 +22,7 @@ describe('notifyIncoming and @silent', () => {
     play.mockClear();
     useUiStore.setState({ view: { channelId: null } } as never);
     useSessionStore.setState({ user: me, settings: { status: 'online' } } as never);
-    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false } as never);
+    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false, streamerMode: false, streamerAutoDetect: false } as never);
     vi.stubGlobal('document', { hasFocus: () => false });
   });
 
@@ -37,6 +37,17 @@ describe('notifyIncoming and @silent', () => {
     usePrefsStore.setState({ notifyDesktop: false } as never);
     notifyIncoming(dm());
     expect(notify).not.toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it('redacts DM content and suppresses sound in streamer mode, restoring them when disabled', () => {
+    usePrefsStore.setState({ streamerMode: true });
+    notifyIncoming(dm());
+    expect(notify.mock.calls[0]?.[0]).toMatchObject({ body: 'New direct message', silent: true });
+    expect(play).not.toHaveBeenCalled();
+    usePrefsStore.setState({ streamerMode: false });
+    notifyIncoming(dm());
+    expect(notify.mock.calls[1]?.[0].body).toContain('hello');
     expect(play).toHaveBeenCalledTimes(1);
   });
 

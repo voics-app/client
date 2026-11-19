@@ -26,7 +26,7 @@ jobs:
       image-name: discordy-client
       lint-script: lint
       typecheck-script: typecheck
-      test-script: "test:unit"
+      test-script: "test:ci"
   docker:
     needs: [node]
     permissions:
