@@ -6,14 +6,18 @@ import { BRAND } from '../brand';
 interface InviteLinkState {
   /** The invite code of a link that was tapped, shown in the join sheet; null while nothing is open. */
   code: string | null;
+  guildId: string | null;
   open(code: string): void;
+  openScreening(guildId: string): void;
   close(): void;
 }
 
 export const useInviteLinkStore = create<InviteLinkState>((set) => ({
   code: null,
-  open: (code) => set({ code }),
-  close: () => set({ code: null }),
+  guildId: null,
+  open: (code) => set({ code, guildId: null }),
+  openScreening: (guildId) => set({ code: null, guildId }),
+  close: () => set({ code: null, guildId: null }),
 }));
 
 export const configuredApiUrl = (): string => {

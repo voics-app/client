@@ -1,5 +1,8 @@
 import { router } from 'expo-router';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useInviteLinkStore } from '../invites/inviteLinkStore';
 import { isWideNow } from '../shell/layoutModel';
 
 export interface ChatTarget {
@@ -21,6 +24,11 @@ export function openChat(target: ChatTarget): void {
 
 /** Selects a server in the rail. Beside the chat (tablet) it opens the channel you were last in, as on desktop; otherwise, and on a phone, it shows the server's channel list. */
 export function openGuild(guildId: string): void {
+  const userId = useSessionStore.getState().user?.id;
+  if (userId && useGuildStore.getState().members[guildId]?.[userId]?.pending) {
+    useInviteLinkStore.getState().openScreening(guildId);
+    return;
+  }
   const ui = useUiStore.getState();
   const last = ui.lastChannelByGuild[guildId];
   if (isWideNow() && last) openChat({ guildId, channelId: last });

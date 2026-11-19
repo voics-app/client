@@ -43,6 +43,8 @@ import type {
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -435,6 +437,9 @@ export class DiscordyApi implements ApiPort {
   setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }) {
     return this.put<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`, body);
   }
+  onboarding(guildId: string) { return this.get<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`); }
+  setOnboarding(guildId: string, body: OnboardingConfig) { return this.put<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`, body); }
+  completeOnboarding(guildId: string, revision: number, choices: number[]) { return this.post<{ channel_ids: string[] }>(`/guilds/${enc(guildId)}/onboarding/complete`, { revision, choices }); }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }

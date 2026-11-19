@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import type { Invite } from '@discordy/core/contracts/rest';
+import type { Invite, OnboardingResponse } from '@discordy/core/contracts/rest';
 import { resetStores, seedServer } from '../support/server';
 
 const invite = (extra: Partial<Invite> = {}) => ({ code: 'hTKzmak', guild: { id: 'g9', name: 'Chess Club', icon: null }, approximate_member_count: 12, approximate_presence_count: 3, ...extra }) as Invite;
@@ -13,6 +13,8 @@ const mockApi = {
   memberVerification: jest.fn(async (_guildId: string) => ({ enabled: false, rules: [] as string[], revision: 0, pending: false })),
   acceptMemberVerification: jest.fn(async (_guildId: string, _revision: number) => undefined),
   welcomeScreen: jest.fn(async (_guildId: string) => ({ enabled: false, description: '', channels: [] })),
+  onboarding: jest.fn(async (_guildId: string): Promise<OnboardingResponse> => ({ config: { enabled: false, questions: [] }, revision: 0 })),
+  completeOnboarding: jest.fn(async (_guildId: string, _revision: number, _choices: number[]) => ({ channel_ids: [] as string[] })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -110,5 +112,16 @@ describe('join a server', () => {
     await fireEvent.press(screen.getByLabelText('I agree to these rules'));
     await fireEvent.press(screen.getByLabelText('Accept rules'));
     await waitFor(() => expect(mockApi.acceptMemberVerification).toHaveBeenCalledWith('g9', 7));
+  });
+
+  it('submits the selected onboarding option and version', async () => {
+    mockApi.onboarding.mockResolvedValueOnce({ config: { enabled: true, questions: [{ title: 'Your interest?', options: [{ label: 'Chat', role_id: null, channel_id: null }] }] }, revision: 4 });
+    await openJoin();
+    await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await fireEvent.press(await screen.findByLabelText('Accept invite'));
+    await fireEvent.press(await screen.findByLabelText('Chat'));
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await waitFor(() => expect(mockApi.completeOnboarding).toHaveBeenCalledWith('g9', 4, [0]));
   });
 });

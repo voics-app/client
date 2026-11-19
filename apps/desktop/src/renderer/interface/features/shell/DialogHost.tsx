@@ -8,7 +8,7 @@ import { useRelationshipStore } from '@discordy/core/application/stores/peopleSt
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
-import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
+import { ChannelType, type Invite, type OnboardingResponse } from '@discordy/core/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -53,9 +53,10 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
   const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [welcome, setWelcome] = useState<{ guildId: string; description: string; channels: { channel_id: string; description: string }[] } | null>(null);
+  const [onboarding, setOnboarding] = useState<{ guildId: string; data: OnboardingResponse; choices: number[] } | null>(null);
   const close = useClose();
   const api = getRuntime().api;
-  const finishJoin = async (guildId: string, firstJoin: boolean) => {
+  const finishJoin = async (guildId: string, firstJoin: boolean, suggestedChannel?: string) => {
     if (firstJoin) {
       try {
         const screen = await api.welcomeScreen(guildId);
@@ -66,6 +67,22 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
     }
     close();
     setTimeout(() => openGuild(guildId), 300);
+    if (suggestedChannel) setTimeout(() => openChannel(suggestedChannel), 500);
+  };
+  const beginOnboarding = async (guildId: string, firstJoin: boolean) => {
+    if (firstJoin) {
+      try {
+        const data = await api.onboarding(guildId);
+        if (data.config.enabled && data.config.questions.length) {
+          setScreening(null);
+          setOnboarding({ guildId, data, choices: data.config.questions.map(() => -1) });
+          return;
+        }
+      } catch (err) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load onboarding', body: errorMessage(err) });
+      }
+    }
+    await finishJoin(guildId, firstJoin);
   };
   useEffect(() => {
     if (!initialGuildId) return;
@@ -126,7 +143,7 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       setJoinedGuildId(gid);
       const verification = await api.memberVerification(gid);
       if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
-      else await finishJoin(gid, true);
+      else await beginOnboarding(gid, true);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -142,7 +159,7 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       const userId = useSessionStore.getState().user?.id;
       const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
       if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
-      await finishJoin(screening.guildId, !!joinedGuildId);
+      await beginOnboarding(screening.guildId, !!joinedGuildId);
     } catch (err) {
       setError(errorMessage(err));
       setAgreed(false);
@@ -152,12 +169,35 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
       } catch { /* Keep the displayed rules and allow another attempt. */ }
     } finally { setBusy(false); }
   };
+  const completeOnboarding = async () => {
+    if (!onboarding || onboarding.choices.some((choice) => choice < 0)) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await api.completeOnboarding(onboarding.guildId, onboarding.data.revision, onboarding.choices);
+      setOnboarding(null);
+      await finishJoin(onboarding.guildId, true, result.channel_ids[0]);
+    } catch (err) {
+      setError(errorMessage(err));
+      try {
+        const data = await api.onboarding(onboarding.guildId);
+        setOnboarding({ guildId: onboarding.guildId, data, choices: data.config.questions.map(() => -1) });
+      } catch { /* Preserve the displayed choices for retry. */ }
+    } finally { setBusy(false); }
+  };
   return (
-    <Modal open onClose={close} title="Join a server" description={screening ? 'Review the server rules to continue.' : welcome ? 'Find a place to start.' : 'Enter an invite link or code.'}>
+    <Modal open onClose={close} title="Join a server" description={screening ? 'Review the server rules to continue.' : onboarding ? 'Choose what interests you.' : welcome ? 'Find a place to start.' : 'Enter an invite link or code.'}>
       {welcome ? (
         <div className="stack"><h3>Welcome</h3><p>{welcome.description}</p>
           {welcome.channels.map((channel) => <Button key={channel.channel_id} variant="ghost" onClick={() => { close(); openGuild(welcome.guildId); setTimeout(() => openChannel(channel.channel_id), 300); }}>{channel.description}</Button>)}
           <Button variant="primary" onClick={() => { close(); openGuild(welcome.guildId); }}>Continue</Button>
+        </div>
+      ) : onboarding ? (
+        <div className="stack">
+          {onboarding.data.config.questions.map((question, qi) => <fieldset key={qi}><legend>{question.title}</legend>
+            {question.options.map((option, oi) => <label key={oi}><input type="radio" name={`onboarding-${qi}`} checked={onboarding.choices[qi] === oi} onChange={() => setOnboarding({ ...onboarding, choices: onboarding.choices.map((choice, i) => i === qi ? oi : choice) })} /> {option.label}</label>)}
+          </fieldset>)}
+          {error && <p role="alert">{error}</p>}
+          <div className="row-end"><Button variant="ghost" onClick={() => { const id = onboarding.guildId; setOnboarding(null); void finishJoin(id, true); }}>Skip</Button><Button variant="primary" loading={busy} disabled={onboarding.choices.some((choice) => choice < 0)} onClick={() => void completeOnboarding()}>Continue</Button></div>
         </div>
       ) : initialGuildId && !screening ? (
         <div className="stack"><p>{error ?? 'Loading server rules…'}</p><Button variant="ghost" onClick={close}>Close</Button></div>
