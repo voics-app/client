@@ -25,7 +25,9 @@ try {
   assert.equal(probe.streams[0].codec_name, 'opus');
   assert.ok(Math.abs(Number(probe.format.duration) - 1.2) < 0.05, 'duration changed');
   const decode = (path) => run('ffmpeg', ['-v', 'error', '-i', path, '-f', 's16le', '-acodec', 'pcm_s16le', '-']);
-  assert.deepEqual(decode(output), decode(input), 'decoded audio changed or shifted');
+  const decodedOutput = decode(output);
+  const decodedInput = decode(input);
+  assert.ok(decodedOutput.equals(decodedInput), `decoded audio changed or shifted (${decodedOutput.length} vs ${decodedInput.length} bytes)`);
   run('ffplay', ['-v', 'error', '-nodisp', '-autoexit', output]);
   console.log('Ogg/Opus headers, pre-skip, duration and decoded samples verified');
 } finally { rmSync(dir, { recursive: true, force: true }); }

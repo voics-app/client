@@ -53,6 +53,20 @@ function finalWebmPadding(bytes: Uint8Array): number {
   return padding;
 }
 
+/** RFC 6716 packet TOC gives the duration when the WebM final packet omits it. */
+function opusPacketDuration(data: Uint8Array): number {
+  if (!data.length) throw new Error('Empty Opus packet.');
+  const toc = data[0]!;
+  const config = toc >> 3;
+  const milliseconds = config < 12 ? [10, 20, 40, 60][config % 4]!
+    : config < 16 ? [10, 20][config % 2]! : [2.5, 5, 10, 20][config % 4]!;
+  const code = toc & 3;
+  const frames = code === 0 ? 1 : code === 3 ? (data[1] ?? 0) & 0x3f : 2;
+  const duration = frames * milliseconds / 1000;
+  if (!frames || duration > 0.12) throw new Error('Invalid Opus packet duration.');
+  return duration;
+}
+
 /** Remux Chromium's Opus packets into Ogg without decoding or re-encoding them. */
 export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
   if (inputBlob.size > 25 * 1024 * 1024) throw new Error('Voice recording is too large.');
@@ -91,8 +105,10 @@ export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
       }
       pending = packet.clone({ timestamp: packet.timestamp + offset });
     }
-    if (!pending || pending.duration <= padding) throw new Error('Invalid final Opus packet duration.');
-    await source.add(pending.clone({ duration: pending.duration - padding }), first ? { decoderConfig } : undefined);
+    if (!pending) throw new Error('The recording has no audio packets.');
+    const finalDuration = pending.duration > 0 ? pending.duration : opusPacketDuration(pending.data);
+    if (finalDuration <= padding) throw new Error('Invalid final Opus packet duration.');
+    await source.add(pending.clone({ duration: finalDuration - padding }), first ? { decoderConfig } : undefined);
     await output.finalize();
     if (!target.buffer) throw new Error('The recording could not be converted to Ogg/Opus.');
     return new Blob([target.buffer], { type: 'audio/ogg' });

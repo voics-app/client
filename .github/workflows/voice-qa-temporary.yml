@@ -6,8 +6,26 @@ on:
 permissions:
   contents: read
 jobs:
+  probe:
+    if: ${{ contains(github.event.head_commit.message, '[probe-only]') }}
+    runs-on: vm-runner
+    steps:
+      - name: Inspect existing tools without changing host
+        run: |
+          command -v java || true
+          java -version || true
+          command -v node || true
+          node --version || true
+          command -v pnpm || true
+          command -v ffmpeg || true
+          printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$ANDROID_HOME" "$ANDROID_SDK_ROOT"
+          for dir in "$ANDROID_HOME" "$ANDROID_SDK_ROOT" "$HOME/Android/Sdk" /opt/android-sdk /usr/local/lib/android/sdk; do
+            if [ -n "$dir" ] && [ -d "$dir" ]; then printf 'SDK candidate: %s\n' "$dir"; ls "$dir"; fi
+          done
+          docker images --format '{{.Repository}}:{{.Tag}}' || true
   remux:
-    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[probe-only]') }}
+    runs-on: vm-runner
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,11 +35,11 @@ jobs:
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: ffmpeg -version && ffprobe -version
       - run: node apps/desktop/tests/voice-remux.mjs
   apk:
-    if: ${{ !contains(github.event.head_commit.message, '[remux-only]') }}
-    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[remux-only]') && !contains(github.event.head_commit.message, '[probe-only]') }}
+    runs-on: vm-runner
     timeout-minutes: 60
     env:
       VOICS_MOBILE_QA: '1'
