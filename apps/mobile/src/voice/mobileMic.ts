@@ -36,6 +36,7 @@ export class MobileMic implements MicPort {
 
   setSelfMute(muted: boolean): void {
     this.muted = muted;
+    if (muted) this.pressed = false;
     if (this.track) this.track.enabled = !muted && (!this.forcePtt || this.pressed);
     if (muted) {
       this.gate.reset();

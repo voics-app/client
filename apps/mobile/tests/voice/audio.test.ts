@@ -74,6 +74,8 @@ describe('MobileMic', () => {
     mic.setSelfMute(true);
     expect(t.enabled).toBe(false);
     mic.setSelfMute(false);
+    expect(t.enabled).toBe(false);
+    mic.setPushToTalk(true);
     expect(t.enabled).toBe(true);
     mic.setPushToTalk(false);
     expect(t.enabled).toBe(false);
