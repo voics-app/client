@@ -40,6 +40,7 @@ export type Dialog =
   | { kind: 'createGuild' }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
+  | { kind: 'memberScreening'; guildId: string }
   | { kind: 'createChannel'; guildId: string; parentId: string | null; type?: number }
   | { kind: 'invite'; guildId: string; channelId: string }
   | { kind: 'notifications'; targetId: string; name: string; category?: boolean }

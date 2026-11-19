@@ -21,6 +21,11 @@ export function openChannel(channelId: string): void {
 export function openGuild(guildId: string): void {
   const state = useGuildStore.getState();
   const ui = useUiStore.getState();
+  const userId = useSessionStore.getState().user?.id;
+  if (userId && state.members[guildId]?.[userId]?.pending) {
+    ui.openDialog({ kind: 'memberScreening', guildId });
+    return;
+  }
   const remembered = ui.lastChannelByGuild[guildId];
   const first = Object.values(state.channels)
     .filter((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT)

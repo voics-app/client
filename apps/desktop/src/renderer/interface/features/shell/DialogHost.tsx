@@ -44,7 +44,7 @@ function useClose() {
   return () => useUiStore.getState().openDialog(null);
 }
 
-function JoinGuildDialog({ initial }: { initial?: string }) {
+function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initialGuildId?: string }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,6 +54,21 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const [agreed, setAgreed] = useState(false);
   const close = useClose();
   const api = getRuntime().api;
+  useEffect(() => {
+    if (!initialGuildId) return;
+    setBusy(true);
+    api.memberVerification(initialGuildId).then((data) => {
+      if (data.pending) setScreening({ guildId: initialGuildId, rules: data.rules, revision: data.revision });
+      else {
+        const userId = useSessionStore.getState().user?.id;
+        const member = userId && useGuildStore.getState().members[initialGuildId]?.[userId];
+        if (member) useGuildStore.getState().upsertMember(initialGuildId, { ...member, pending: false });
+        close(); openGuild(initialGuildId);
+      }
+    }).catch((err: unknown) => setError(errorMessage(err))).finally(() => setBusy(false));
+    // This dialog loads its initial server once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGuildId]);
   const lookupCode = async (raw: string) => {
     setBusy(true);
     setError(null);
@@ -111,6 +126,9 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
     setError(null);
     try {
       await api.acceptMemberVerification(screening.guildId, screening.revision);
+      const userId = useSessionStore.getState().user?.id;
+      const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
+      if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
       close();
       openGuild(screening.guildId);
     } catch (err) {
@@ -124,7 +142,9 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   };
   return (
     <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
-      {screening ? (
+      {initialGuildId && !screening ? (
+        <div className="stack"><p>{error ?? 'Loading server rules…'}</p><Button variant="ghost" onClick={close}>Close</Button></div>
+      ) : screening ? (
         <div className="stack">
           <h3>Server rules</h3>
           <ol>{screening.rules.map((rule, index) => <li key={index}>{rule}</li>)}</ol>
@@ -424,6 +444,7 @@ function ActiveDialog() {
     case 'createGuild': return <CreateGuildDialog />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
+    case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
     case 'newDm': return <NewDmDialog preselect={dialog.preselect} />;
