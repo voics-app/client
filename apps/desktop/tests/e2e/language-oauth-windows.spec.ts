@@ -36,7 +36,8 @@ test('authenticated language persists and Windows protocol links open consent', 
     await expect(page.locator('html')).toHaveAttribute('lang', 'nl');
     for (const scheme of ['voics', 'discordy']) {
       const url = `${scheme}://oauth2/authorize?client_id=11&scope=bot%20applications.commands&permissions=2048`;
-      execFileSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Process', url]);
+      const command = Buffer.from(`Start-Process '${url}'`, 'utf16le').toString('base64');
+      execFileSync('powershell.exe', ['-NoProfile', '-EncodedCommand', command]);
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       await expect(dialog.getByText('Study helper')).toBeVisible();
