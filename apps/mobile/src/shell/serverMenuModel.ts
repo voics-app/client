@@ -16,7 +16,7 @@ export interface ServerMenuEntries {
 export function serverMenuEntries(perms: bigint, isOwner: boolean, hasInviteChannel: boolean): ServerMenuEntries {
   return {
     invite: hasPermission(perms, Permission.CREATE_INSTANT_INVITE) && hasInviteChannel,
-    settings: canOpenServerSettings(perms & ~Permission.MANAGE_BAN_APPEALS),
+    settings: canOpenServerSettings(perms),
     leave: !isOwner,
     delete: isOwner,
   };

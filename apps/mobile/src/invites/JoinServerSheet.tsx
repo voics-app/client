@@ -8,6 +8,7 @@ import { BRAND } from '../brand';
 import { getRuntime } from '../runtime';
 import { ServerIcon } from '../shell/ServerIcon';
 import { theme } from '../theme';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { attempt } from '../ui/attempt';
 import { Button, Field } from '../ui/controls';
 import { Sheet } from '../ui/Sheet';
@@ -17,6 +18,9 @@ import { inviteCodeOf, invitePreview } from './joinModel';
 export function JoinServerSheet({ visible, onClose, initialCode }: { visible: boolean; onClose(): void; initialCode?: string }) {
   const [text, setText] = useState('');
   const [invite, setInvite] = useState<Invite | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const code = inviteCodeOf(text);
@@ -24,6 +28,9 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
   const close = () => {
     setText('');
     setInvite(null);
+    setQuestion(null);
+    setAnswer('');
+    setSent(false);
     setError(null);
     onClose();
   };
@@ -51,14 +58,29 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
 
   const accept = async () => {
     if (!invite) return;
-    setBusy(true);
-    const joined = await attempt(() => getRuntime().api.acceptInvite(invite.code), 'Could not join the server');
-    setBusy(false);
-    if (!joined) return;
-    const guildId = joined.guild?.id ?? invite.guild?.id;
-    close();
-    // The server arrives over the gateway a moment after the invite is accepted.
-    if (guildId) setTimeout(() => open(guildId), 300);
+    setBusy(true); setError(null);
+    try {
+      const joined = await getRuntime().api.acceptInvite(invite.code);
+      const guildId = joined.guild?.id ?? invite.guild?.id;
+      close();
+      if (guildId) setTimeout(() => open(guildId), 300);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 40007 && invite.guild?.id) {
+        try { setQuestion((await getRuntime().api.appealForm(invite.guild.id)).question); }
+        catch (formError) { if (formError instanceof ApiError && formError.status === 404) setQuestion(''); else setError(errorMessage(formError)); }
+      } else await attempt(async () => { throw err; }, 'Could not join the server');
+    } finally { setBusy(false); }
+  };
+  const submitAppeal = async () => {
+    if (!invite?.guild?.id || !question) return;
+    setBusy(true); setError(null);
+    try { await getRuntime().api.submitBanAppeal(invite.guild.id, answer, question); setSent(true); }
+    catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        try { setQuestion((await getRuntime().api.appealForm(invite.guild.id)).question); } catch { /* Keep the draft and original error. */ }
+      }
+      setError(errorMessage(err));
+    } finally { setBusy(false); }
   };
 
   useEffect(() => {
@@ -75,7 +97,17 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
   return (
     <Sheet visible={visible} title="Join a server" closeLabel="Close join a server" onClose={close}>
       <View style={styles.body}>
-        {preview && invite ? (
+        {question !== null ? (
+          <>
+            <Text style={styles.name}>You are banned</Text>
+            {sent ? <Text style={styles.hint}>Your appeal has been submitted.</Text> : question ? <>
+              <Field label={question} value={answer} onChangeText={setAnswer} maxLength={2000} multiline />
+              {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+              <Button label="Submit appeal" tone="primary" busy={busy} disabled={!answer.trim()} onPress={() => void submitAppeal()} />
+            </> : <Text style={styles.hint}>This server has not enabled appeals.</Text>}
+            <Button label="Close" onPress={close} />
+          </>
+        ) : preview && invite ? (
           <>
             <View style={styles.card}>
               <View style={styles.icon}>
@@ -88,6 +120,7 @@ export function JoinServerSheet({ visible, onClose, initialCode }: { visible: bo
                 <Text style={styles.people}>{preview.people}</Text>
               </View>
             </View>
+            {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
             <Button label="Accept invite" tone="primary" busy={busy} onPress={() => void accept()} />
             <Button label="Back" onPress={() => setInvite(null)} />
           </>

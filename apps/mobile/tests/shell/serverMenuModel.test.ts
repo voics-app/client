@@ -33,6 +33,6 @@ describe('canDeleteWithName', () => {
 });
 
 
-it('does not expose mobile server settings for appeal-only access', () => {
-  expect(serverMenuEntries(Permission.MANAGE_BAN_APPEALS, false, false).settings).toBe(false);
+it('exposes mobile server settings for appeal-only access', () => {
+  expect(serverMenuEntries(Permission.MANAGE_BAN_APPEALS, false, false).settings).toBe(true);
 });

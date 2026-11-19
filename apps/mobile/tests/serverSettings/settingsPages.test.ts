@@ -28,7 +28,7 @@ describe('settingsPages', () => {
 });
 
 
-it('does not expose the mobile ban list to an appeal-only moderator', () => {
-  expect(ids(Permission.MANAGE_BAN_APPEALS)).not.toContain('bans');
+it('exposes appeals in mobile ban settings to an appeal-only moderator', () => {
+  expect(ids(Permission.MANAGE_BAN_APPEALS)).toContain('bans');
   expect(ids(Permission.BAN_MEMBERS | Permission.MANAGE_BAN_APPEALS)).toContain('bans');
 });

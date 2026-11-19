@@ -4,6 +4,7 @@ import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { Invite } from '@discordy/core/contracts/rest';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { resetStores, seedServer } from '../support/server';
 
 const invite = (extra: Partial<Invite> = {}) => ({ code: 'hTKzmak', guild: { id: 'g9', name: 'Chess Club', icon: null }, approximate_member_count: 12, approximate_presence_count: 3, ...extra }) as Invite;
@@ -11,6 +12,8 @@ const mockApi = {
   messages: jest.fn(async () => []),
   invite: jest.fn(async (_code: string) => invite()),
   acceptInvite: jest.fn(async (_code: string) => invite()),
+  appealForm: jest.fn(async (_guild: string) => ({ question: 'What changed?' })),
+  submitBanAppeal: jest.fn(async (_guild: string, _answer: string, _question: string) => ({ id: '77' })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -84,6 +87,19 @@ describe('join a server', () => {
     await waitFor(() => expect(useUiStore.getState().view).toMatchObject({ kind: 'guild', guildId: 'g1' }));
     expect(mockApi.acceptInvite).not.toHaveBeenCalled();
     expect(useGuildStore.getState().guilds['g1']).toBeDefined();
+  });
+
+  it('shows and submits the appeal after a banned invite', async () => {
+    mockApi.acceptInvite.mockRejectedValueOnce(new ApiError(403, 40007, 'You are banned'));
+    await openJoin();
+    await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await fireEvent.press(await screen.findByLabelText('Accept invite'));
+    expect(await screen.findByText('You are banned')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('What changed?'), 'I understand the rules');
+    await fireEvent.press(screen.getByLabelText('Submit appeal'));
+    await waitFor(() => expect(mockApi.submitBanAppeal).toHaveBeenCalledWith('g9', 'I understand the rules', 'What changed?'));
+    expect(await screen.findByText('Your appeal has been submitted.')).toBeTruthy();
   });
 
   it('tells you when accepting fails and keeps the preview', async () => {

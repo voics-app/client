@@ -25,7 +25,7 @@ const BUILT: Record<SettingsPageId, Omit<SettingsPage, 'id' | 'label'>> = {
 /** The server settings pages the mobile app has, in the desktop's order, each only for a user the desktop would show it to. Channels needs Manage Channels, as desktop's channel settings do. */
 export function settingsPages(perms: bigint): SettingsPage[] {
   const pages: SettingsPage[] = serverSettingsTabs(perms)
-    .filter((t) => t.show && t.id in BUILT && (t.id !== 'bans' || hasPermission(perms, Permission.BAN_MEMBERS)))
+    .filter((t) => t.show && t.id in BUILT)
     .map((t) => ({ id: t.id as SettingsPageId, label: t.label, ...BUILT[t.id as SettingsPageId] }));
   if (hasPermission(perms, Permission.MANAGE_CHANNELS)) pages.push({ id: 'channels', label: 'Channels', ...BUILT.channels });
   return pages;

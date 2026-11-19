@@ -8,8 +8,9 @@ import { getRuntime } from '../runtime';
 import { ServerIcon } from '../shell/ServerIcon';
 import { theme } from '../theme';
 import { attempt } from '../ui/attempt';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { Button } from '../ui/controls';
-import { configuredApiUrl } from './inviteLinkStore';
+import { configuredApiUrl, useInviteLinkStore } from './inviteLinkStore';
 import { invitePreview } from './joinModel';
 
 /** Lookups are cached per code for the session; a dead link is cached too, so scrolling does not fetch it again. */
@@ -45,11 +46,14 @@ function InviteCard({ code }: { code: string }) {
 
   const join = async () => {
     setBusy(true);
-    const accepted = await attempt(() => getRuntime().api.acceptInvite(code), 'Could not join the server');
-    setBusy(false);
-    const id = accepted?.guild?.id ?? guildId;
-    // The server arrives over the gateway a moment after the invite is accepted.
-    if (accepted && id) setTimeout(() => useUiStore.getState().navigate({ kind: 'guild', guildId: id, channelId: null }), 300);
+    try {
+      const accepted = await getRuntime().api.acceptInvite(code);
+      const id = accepted.guild?.id ?? guildId;
+      if (id) setTimeout(() => useUiStore.getState().navigate({ kind: 'guild', guildId: id, channelId: null }), 300);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 40007) useInviteLinkStore.getState().open(code);
+      else await attempt(async () => { throw err; }, 'Could not join the server');
+    } finally { setBusy(false); }
   };
 
   if (invite === null) {
