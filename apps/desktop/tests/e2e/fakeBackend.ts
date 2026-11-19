@@ -38,6 +38,7 @@ export interface FakeBackend {
   messages: Map<string, unknown[]>;
   /** Bodies received by `POST /interactions`. */
   interactions: Record<string, unknown>[];
+  events: Record<string, unknown>[];
   close(): Promise<void>;
 }
 
@@ -61,6 +62,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const events: Record<string, unknown>[] = [];
+  const interested = new Set<string>();
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -179,6 +182,25 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (path === '/users/@me') return json(res, 200, USER);
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
+    const eventInterest = /^\/guilds\/(\d+)\/scheduled-events\/(\d+)\/users\/@me$/.exec(path);
+    if (eventInterest) {
+      const id = eventInterest[2]!;
+      if (req.method === 'GET') return json(res, 200, { interested: interested.has(id) });
+      if (req.method === 'PUT') interested.add(id);
+      if (req.method === 'DELETE') interested.delete(id);
+      const event = events.find((item) => item.id === id);
+      if (event) event.user_count = interested.has(id) ? 1 : 0;
+      return json(res, 204, null);
+    }
+    const guildEvents = /^\/guilds\/(\d+)\/scheduled-events$/.exec(path);
+    if (guildEvents) {
+      const guildId = guildEvents[1]!;
+      if (req.method === 'GET') return json(res, 200, events.filter((event) => event.guild_id === guildId));
+      const event = { id: snowflake(), guild_id: guildId, creator_id: USER.id, status: 1, channel_id: null, entity_metadata: null, image: null, description: null, scheduled_end_time: null, user_count: 0, ...body };
+      events.push(event);
+      dispatch('GUILD_SCHEDULED_EVENT_CREATE', event);
+      return json(res, 201, event);
+    }
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
       const payload = guildPayload(guild);
@@ -264,6 +286,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     gatewayUrl: `ws://127.0.0.1:${port}`,
     messages,
     interactions,
+    events,
     close: () =>
       new Promise<void>((resolve) => {
         for (const ws of sockets) ws.terminate();
