@@ -1,6 +1,6 @@
 # Builds the iOS package of the crypto engine (XCFramework + Swift binding) on a macOS runner.
-# On demand only: GitHub-hosted macOS minutes cost 10x (the org is on the Free plan with 2000 included
-# minutes a month), so this never runs on push or pull request. Start it from the Actions tab or with
+# On demand only. Requires a dedicated macOS VM runner with Xcode and iOS SDKs, labelled
+# voics-macos-xcode. No hosted fallback is permitted. Start it from the Actions tab or with
 #   gh workflow run crypto-ios.yml --ref <branch>
 # The EAS build downloads the artifact `voics-crypto-ios` (apps/mobile/scripts/fetch-crypto-framework.mjs).
 name: crypto-ios
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   xcframework:
     name: Build the XCFramework
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64, voics-macos-xcode]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5

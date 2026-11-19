@@ -21,7 +21,10 @@ concurrency:
 
 jobs:
   native:
-    runs-on: macos-26
+    # Self-hosted execution is limited to trusted branches. The runner must be a disposable
+    # macOS ARM64 VM with Xcode 26.6 and the simulator runtime, labelled as below.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64, voics-macos-xcode26]
     timeout-minutes: 45
     env:
       # SDK 58's ExpoModulesJSI sources require the newer Swift ownership checker.

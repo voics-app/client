@@ -24,7 +24,7 @@ permissions:
 jobs:
   fetch:
     name: Fetch the APK from EAS
-    runs-on: ubuntu-latest
+    runs-on: vm-runner
     steps:
       - name: Download and check
         env:

@@ -34,8 +34,8 @@ env:
 jobs:
   windows:
     name: Build Windows installer
-    # Owner PC runner (label karma-win, .github/scripts/runner-win.ps1) when the repo variable is set; GitHub-hosted otherwise.
-    runs-on: ${{ vars.WINDOWS_RUNNER || 'windows-latest' }}
+    # Requires a dedicated Windows VM, never the owner's PC or a hosted runner.
+    runs-on: [self-hosted, Windows, X64, voics-windows-vm]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
