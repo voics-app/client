@@ -938,3 +938,5 @@ export interface GuildDiscoverySettings {
   member_count: number;
   blockers: string[];
 }
+
+export interface LinkedConnection { provider: string; account_id: string; name: string; visible: boolean }
