@@ -45,9 +45,9 @@ export function ServerSoundboard({ guildId }: { guildId: string }) {
       <h1>Soundboard</h1>
       <p className="page-sub">Add up to eight sounds for your server. Use a mono, 48 kHz, 16-bit PCM WAV up to five seconds long.</p>
       <input ref={input} type="file" accept="audio/wav,.wav" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file); }} />
-      <Button onClick={() => input.current?.click()} disabled={busy || (sounds.data?.length ?? 0) >= 8}><Upload size={16} /> Upload sound</Button>
+      <Button variant="primary" icon={<Upload size={15} />} loading={busy} onClick={() => input.current?.click()} disabled={(sounds.data?.length ?? 0) >= 8}>Upload sound</Button>
       {sounds.isPending ? <Skeleton height={44} radius={12} /> : sounds.isError ? <p role="alert">Could not load sounds. Try reopening settings.</p> : sounds.data.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title="No sounds yet" body="Upload a short WAV to add it to this server." /> : (
-        <ul className="emoji-list">
+        <ul className="emoji-manage">
           {sounds.data.map((sound) => <li key={sound.id}>
             <Input aria-label={`Name of ${sound.name}`} disabled={!canManage && sound.creator_id !== userId} defaultValue={sound.name} onBlur={(event) => { const name = event.target.value.trim(); if (name && name !== sound.name) void attempt(async () => { await api.updateSoundboardSound(guildId, sound.id, { name }); await refresh(); }, 'Could not rename sound'); }} />
             <IconButton label={`Delete ${sound.name}`} disabled={!canManage && sound.creator_id !== userId} tone="danger" onClick={() => void attempt(async () => { await api.deleteSoundboardSound(guildId, sound.id); await refresh(); }, 'Could not delete sound')}><Trash size={18} /></IconButton>
