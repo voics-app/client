@@ -26,4 +26,3 @@ export function ProfileBadges({ userId }: { userId: string }) {
     {update.isError && <p role="alert">Could not update badge visibility. Try again.</p>}
   </section>;
 }
-
