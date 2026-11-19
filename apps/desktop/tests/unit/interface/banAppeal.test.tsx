@@ -24,6 +24,6 @@ it('offers and submits an appeal after an invite is rejected for a ban', async (
   expect(await screen.findByText('You are banned')).toBeTruthy();
   fireEvent.change(screen.getByRole('textbox', { name: 'What changed?' }), { target: { value: 'I understand the rules.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Submit appeal' }));
-  await waitFor(() => expect(api.submitBanAppeal).toHaveBeenCalledWith('42', 'I understand the rules.'));
+  await waitFor(() => expect(api.submitBanAppeal).toHaveBeenCalledWith('42', 'I understand the rules.', 'What changed?'));
   expect(await screen.findByText('Your appeal has been submitted.')).toBeTruthy();
 });

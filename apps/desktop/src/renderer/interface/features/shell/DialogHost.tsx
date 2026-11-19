@@ -106,10 +106,15 @@ export function JoinGuildDialog({ initial }: { initial?: string }) {
     } finally { setBusy(false); }
   };
   const submitAppeal = async () => {
-    if (!invite?.guild?.id) return;
+    if (!invite?.guild?.id || !appealQuestion) return;
     setBusy(true); setError(null);
-    try { await api.submitBanAppeal(invite.guild.id, appealAnswer); setAppealSent(true); }
-    catch (err) { setError(errorMessage(err)); }
+    try { await api.submitBanAppeal(invite.guild.id, appealAnswer, appealQuestion); setAppealSent(true); }
+    catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        try { setAppealQuestion((await api.appealForm(invite.guild.id)).question); } catch { /* Retain the draft and original error. */ }
+      }
+      setError(errorMessage(err));
+    }
     finally { setBusy(false); }
   };
   return (
