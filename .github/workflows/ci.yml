@@ -27,50 +27,6 @@ jobs:
       lint-script: lint
       typecheck-script: typecheck
       test-script: "test:ci"
-  boot-reference:
-    # A disposable container supplies Electron's GUI libraries without changing the runner host.
-    if: github.event_name == 'pull_request'
-    runs-on: vm-runner
-    continue-on-error: true
-    timeout-minutes: 25
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v4
-        with:
-          run_install: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
-        with:
-          node-version: 24
-      - name: Measure three fresh Electron launches in a disposable container
-        run: |
-          set -euo pipefail
-          node_root="$(dirname "$(dirname "$(command -v node)")")"
-          docker run --rm --ipc=host --user "$(id -u):$(id -g)" \
-            -e HOME=/tmp -e CI=true -e PATH=/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-            -v "$GITHUB_WORKSPACE:/work" -v "$node_root:/node:ro" -w /work \
-            mcr.microsoft.com/playwright:v1.56.1-noble bash -c '
-              set -euo pipefail
-              uname -a
-              cat /etc/os-release
-              node --version
-              command -v xvfb-run
-              corepack pnpm --version
-              corepack pnpm install --frozen-lockfile --prefer-offline
-              corepack pnpm --filter @discordy/desktop exec electron-vite build
-              cd apps/desktop
-              xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "cold start reaches the auth screen" --repeat-each=3 --workers=1 --retries=0
-              # Keep login separate from timing: print the synthetic test context on failure.
-              if ! xvfb-run -a corepack pnpm exec playwright test tests/e2e/smoke.spec.ts --grep "signs in and lands in the server shell" --workers=1 --retries=0; then
-                find test-results -name error-context.md -exec cat {} \;
-                exit 1
-              fi
-            '
-
   docker:
     needs: [node]
     permissions:

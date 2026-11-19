@@ -67,7 +67,7 @@ Run these from this `client` folder (the parent `voics` folder is not a pnpm pro
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
 
-Desktop renderer builds defer settings, server administration, the emoji picker and slash-command panel until opened. Chunk failures retry with backoff, then offer retry, close or reload (reload can discard unsaved changes). The container CI build prints the entry and its static JavaScript imports and enforces a 3,000,000-byte uncompressed budget; run `node apps/desktop/scripts/check-renderer-budget.mjs` after a desktop build. CSS, workers, on-demand chunks and compressed transfer size are outside that budget. See [renderer performance](docs/renderer-performance.md) for measurement and acceptance.
+Desktop renderer builds defer settings, server administration, the emoji picker and slash-command panel until opened. Chunk failures retry with backoff, then offer retry, close or reload (reload can discard unsaved changes). The container CI build prints the entry and its static JavaScript imports and enforces a 2,800,000-byte uncompressed budget; run `node apps/desktop/scripts/check-renderer-budget.mjs` after a desktop build. CSS, workers, on-demand chunks and compressed transfer size are outside that budget. See [renderer performance](docs/renderer-performance.md) for measurement and acceptance.
 
 
 ## Desktop navigation and safety
