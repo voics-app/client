@@ -4,6 +4,7 @@ import type { Channel } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { reportError } from '../../app/actions';
 import { IconButton } from '../../shared/ui/IconButton';
+import { remuxVoiceMessage } from './remuxVoiceMessage';
 
 type Recording = { file: File; duration_secs: number; waveform: string; url: string };
 const MAX_MS = 300_000;
@@ -44,17 +45,23 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
       const chunks: Blob[] = [];
       const started = performance.now();
       recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
-      recorder.onstop = () => {
+      recorder.onstop = () => { void (async () => {
         const duration = Math.min(MAX_MS, performance.now() - started) / 1000;
         const session = active.current;
         if (session) { clearInterval(session.timer); session.stream.getTracks().forEach((track) => track.stop()); void session.context.close(); active.current = null; }
         if (!mounted.current || !chunks.length) return;
         const waveform = Array.from({ length: 64 }, (_, i) => samples[Math.min(samples.length - 1, Math.floor(i * samples.length / 64))] ?? 0);
-        const file = new File(chunks, mime.startsWith('audio/ogg') ? 'voice-message.ogg' : 'voice-message.webm', { type: mime.split(';')[0] });
-        const url = URL.createObjectURL(file); draftUrl.current = url;
-        setDraft({ file, duration_secs: Math.max(0.001, duration), waveform: btoa(String.fromCharCode(...waveform)), url });
-        setRecording(false);
-      };
+        try {
+          setBusy(true);
+          const raw = new Blob(chunks, { type: mime.split(';')[0] });
+          const ogg = mime.startsWith('audio/ogg') ? raw : await remuxVoiceMessage(raw);
+          if (!mounted.current) return;
+          const file = new File([ogg], 'voice-message.ogg', { type: 'audio/ogg' });
+          const url = URL.createObjectURL(file); draftUrl.current = url;
+          setDraft({ file, duration_secs: Math.max(0.001, duration), waveform: btoa(String.fromCharCode(...waveform)), url });
+        } catch (error) { if (mounted.current) reportError(error, 'Could not prepare voice recording'); }
+        finally { if (mounted.current) { setRecording(false); setBusy(false); } }
+      })(); };
       recorder.start();
       const timer = setInterval(() => {
         analyser.getByteTimeDomainData(bytes);
