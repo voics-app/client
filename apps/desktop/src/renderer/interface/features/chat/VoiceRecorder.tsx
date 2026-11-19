@@ -15,6 +15,8 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
   const [draft, setDraft] = useState<Recording | null>(null);
   const [busy, setBusy] = useState(false);
   const active = useRef<{ recorder: MediaRecorder; stream: MediaStream; context: AudioContext; timer: ReturnType<typeof setInterval> } | null>(null);
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
   const held = useRef(false);
   const pointerStart = useRef(false);
   const mounted = useRef(true);
@@ -25,18 +27,20 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
     if (session) { clearInterval(session.timer); session.recorder.onstop = null; if (session.recorder.state !== 'inactive') session.recorder.stop(); session.stream.getTracks().forEach((track) => track.stop()); void session.context.close(); }
     if (draftUrl.current) URL.revokeObjectURL(draftUrl.current);
   }; }, []);
+  useEffect(() => { if (disabled && active.current?.recorder.state === 'recording') active.current.recorder.stop(); }, [disabled]);
   const clear = () => { if (draftUrl.current) URL.revokeObjectURL(draftUrl.current); draftUrl.current = null; setDraft(null); };
   const start = async () => {
     if (disabled || busy || active.current) return;
     setBusy(true);
     let stream: MediaStream | null = null;
+    let context: AudioContext | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!mounted.current) { stream.getTracks().forEach((track) => track.stop()); return; }
+      if (!mounted.current || disabledRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       const mime = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus'].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mime) throw new Error('This device cannot record Opus audio.');
       const recorder = new MediaRecorder(stream, { mimeType: mime });
-      const context = new AudioContext();
+      context = new AudioContext();
       const analyser = context.createAnalyser();
       analyser.fftSize = 256;
       context.createMediaStreamSource(stream).connect(analyser);
@@ -45,6 +49,11 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
       const chunks: Blob[] = [];
       const started = performance.now();
       recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.onerror = () => {
+        const session = active.current;
+        if (session) { clearInterval(session.timer); session.recorder.onstop = null; session.stream.getTracks().forEach((track) => track.stop()); void session.context.close(); active.current = null; }
+        if (mounted.current) { setRecording(false); setBusy(false); reportError(new Error('The microphone recording stopped unexpectedly.'), 'Recording failed'); }
+      };
       recorder.onstop = () => { void (async () => {
         const duration = Math.min(MAX_MS, performance.now() - started) / 1000;
         const session = active.current;
@@ -71,7 +80,7 @@ export function VoiceRecorder({ channel, disabled }: { channel: Channel; disable
       active.current = { recorder, stream, context, timer };
       setRecording(true);
       if (pointerStart.current && !held.current) recorder.stop();
-    } catch (error) { stream?.getTracks().forEach((track) => track.stop()); reportError(error, 'Recording unavailable'); }
+    } catch (error) { stream?.getTracks().forEach((track) => track.stop()); if (context) void context.close(); reportError(error, 'Recording unavailable'); }
     finally { if (mounted.current) setBusy(false); }
   };
   const stop = () => { if (active.current?.recorder.state === 'recording') active.current.recorder.stop(); };
