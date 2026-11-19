@@ -13,14 +13,19 @@ jobs:
       VOICS_MOBILE_QA: '1'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.18.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - name: Prepare job-local Node and pnpm
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/api46-node"
+          curl -fsSL https://nodejs.org/dist/v24.11.1/node-v24.11.1-linux-x64.tar.xz -o "$RUNNER_TEMP/api46-node.tar.xz"
+          tar -xJf "$RUNNER_TEMP/api46-node.tar.xz" --strip-components=1 -C "$RUNNER_TEMP/api46-node"
+          export PATH="$RUNNER_TEMP/api46-node/bin:$PATH" COREPACK_HOME="$RUNNER_TEMP/api46-corepack"
+          corepack enable
+          echo "$RUNNER_TEMP/api46-node/bin" >> "$GITHUB_PATH"
+          echo "COREPACK_HOME=$RUNNER_TEMP/api46-corepack" >> "$GITHUB_ENV"
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/api46-gradle" >> "$GITHUB_ENV"
+          echo "ANDROID_USER_HOME=$RUNNER_TEMP/api46-android-user" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile --store-dir "$RUNNER_TEMP/api46-pnpm-store"
       - name: Inspect Android tooling
         run: |
           java -version || true
