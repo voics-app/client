@@ -34,8 +34,9 @@ env:
 jobs:
   windows:
     name: Build Windows installer
-    # Requires a dedicated Windows VM, never the owner's PC or a hosted runner.
-    runs-on: [self-hosted, Windows, X64, voics-windows-vm]
+    # Only the explicitly authorised native Windows runner or a dedicated Windows VM.
+    # Unknown variable values fail closed on the unprovisioned VM label, never hosted.
+    runs-on: ${{ vars.WINDOWS_RUNNER == 'karma-win' && 'karma-win' || 'voics-windows-vm' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
