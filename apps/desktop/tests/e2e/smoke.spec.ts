@@ -49,14 +49,14 @@ test('signs in and lands in the server shell', async () => {
 });
 
 test('manages a stage and shows audience entry', async () => {
-  await page.getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click();
   await page.getByRole('button', { name: /Town hall/ }).first().click();
   await expect(page.getByText('No stage is live.')).toBeVisible();
   await expect(page.getByText('Audience members join muted.')).toBeVisible();
   await page.getByLabel('Stage topic').fill('Community questions');
   await page.getByRole('button', { name: 'Start stage' }).click();
   await expect(page.getByText('Stage is live.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Join as audience' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Join stage' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('stage-live.png') });
   await page.getByLabel('Stage topic').fill('Open discussion');
   await page.getByRole('button', { name: 'Save topic' }).click();
@@ -66,7 +66,7 @@ test('manages a stage and shows audience entry', async () => {
 });
 
 test('sends a message in a channel', async () => {
-  await page.getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click();
   await page.getByRole('button', { name: /general/ }).first().click();
   const composer = page.getByRole('textbox', { name: /Message #general/ });
   await composer.fill('hello from playwright');

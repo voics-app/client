@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -27,7 +27,7 @@ it('starts, edits and ends a stage with audience entry', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Start stage' }));
   await waitFor(() => expect(api.startStage).toHaveBeenCalledWith('c', 'Town hall'));
   await screen.findByText('Stage is live.');
-  expect(screen.getByRole('button', { name: 'Join as audience' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Join stage' })).toBeTruthy();
   fireEvent.change(screen.getByLabelText('Stage topic'), { target: { value: 'Questions' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save topic' }));
   await waitFor(() => expect(api.updateStage).toHaveBeenCalledWith('c', 'Questions'));

@@ -1,4 +1,4 @@
-﻿import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -57,7 +57,7 @@ export function StageChannelView({ channelId }: { channelId: string }) {
             {stage.data && <p>{stage.data.topic}</p>}
             {stage.data && channel?.guild_id && (connected
               ? <Button onClick={() => void leaveVoice()}>Leave stage</Button>
-              : <Button onClick={() => void joinStageAudience(channel.guild_id!, channelId)}>Join as audience</Button>)}
+              : <Button onClick={() => void joinStageAudience(channel.guild_id!, channelId)}>Join stage</Button>)}
             <p className="setting-desc">Audience members join muted.</p>
             {canManage && <>
               <Field label="Stage topic" hint="Up to 120 characters.">
