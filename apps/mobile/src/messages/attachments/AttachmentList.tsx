@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import type { Attachment } from '@discordy/core/contracts/rest';
@@ -11,9 +11,11 @@ import { theme } from '../../theme';
 import { openLink } from '../markdown/links';
 import { singleMediaSize, tileRows, uploadLabel } from './attachmentModel';
 import { MediaViewer } from './MediaViewer';
+import { privateRefOf } from '@discordy/core/domain/privateAttachment';
+import { getRuntime } from '../../runtime';
 
 /** The attachments of one message: an image and video grid, then audio and file rows; unsent messages show their upload progress with Cancel. */
-export function AttachmentList({ attachments, messageId, sending }: { attachments: Attachment[]; messageId: string; sending: boolean }) {
+export function AttachmentList({ attachments, messageId, sending, channelId }: { attachments: Attachment[]; messageId: string; sending: boolean; channelId?: string }) {
   const { width } = useWindowDimensions();
   const [viewing, setViewing] = useState<{ items: Attachment[]; index: number } | null>(null);
   const inlineMedia = usePrefsStore((s) => s.inlineMedia);
@@ -34,7 +36,7 @@ export function AttachmentList({ attachments, messageId, sending }: { attachment
   return (
     <View style={styles.wrap}>
       {media.length > 0 && <MediaGrid media={media} width={available} onOpen={openMedia} />}
-      {files.map((file) => <FileSpoiler key={file.id} attachment={file}>{previewKind(file) === 'audio' ? <AudioRow attachment={file} /> : <FileRow attachment={file} />}</FileSpoiler>)}
+      {files.map((file) => <FileSpoiler key={file.id} attachment={file}>{previewKind(file) === 'audio' ? <AudioRow attachment={file} channelId={channelId} /> : <FileRow attachment={file} />}</FileSpoiler>)}
       {sending && upload && (
         <View style={styles.progress}>
           <View style={styles.track}>
@@ -147,10 +149,18 @@ function FileRow({ attachment }: { attachment: Attachment }) {
 }
 
 /** Audio plays through a player that is only created when the row is first tapped, so a long chat does not hold dozens of players. */
-function AudioRow({ attachment }: { attachment: Attachment }) {
-  const [started, setStarted] = useState(false);
-  if (!started) return <AudioShell attachment={attachment} playing={false} onToggle={() => setStarted(true)} />;
-  return <ActiveAudio attachment={attachment} />;
+function AudioRow({ attachment, channelId }: { attachment: Attachment; channelId?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!url) return <AudioShell attachment={attachment} playing={false} onToggle={() => {
+    if (busy) return;
+    setBusy(true);
+    const privateRef = privateRefOf(attachment);
+    const service = getRuntime().privacy?.attachments;
+    const resolve = privateRef ? (service && channelId ? service.resolve(attachment, channelId) : Promise.reject(new Error('Private audio is unavailable on this device.'))) : Promise.resolve(attachment.url);
+    void resolve.then(setUrl).catch((error: unknown) => Alert.alert('Could not play audio', error instanceof Error ? error.message : 'Audio unavailable')).finally(() => setBusy(false));
+  }} />;
+  return <ActiveAudio attachment={{ ...attachment, url }} />;
 }
 
 function ActiveAudio({ attachment }: { attachment: Attachment }) {

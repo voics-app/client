@@ -58,6 +58,7 @@ export class AttachmentService {
     for (const [i, file] of files.entries()) {
       this.track(ids[i]!, { state: 'encrypting', loaded: 0, total: file.size });
       const bytes = this.deps.platform ? await this.deps.platform.read(file) : new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size) throw new AttachmentError('size_mismatch', 'The attachment changed while it was being sent.');
       encrypted.push(await (this.deps.platform ? this.deps.platform.encrypt(bytes) : encryptFile(bytes)));
     }
     try {
@@ -89,6 +90,7 @@ export class AttachmentService {
       const id = `${messageId}:${i}`;
       this.track(id, { state: 'encrypting', loaded: 0, total: file.size });
       const bytes = this.deps.platform ? await this.deps.platform.read(file) : new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size) throw new AttachmentError('size_mismatch', 'The attachment changed while it was being sent.');
       const enc = await (this.deps.platform ? this.deps.platform.encrypt(bytes) : encryptFile(bytes));
       out.push({ attachment: await this.remember(file, id, enc, { kind: 'p2p' }), ciphertext: enc.ciphertext });
     }
@@ -168,6 +170,11 @@ export class AttachmentService {
       this.urls.delete(id);
       this.blobs.delete(id);
     }
+  }
+
+  async clear(): Promise<void> {
+    const messageIds = new Set([...this.urls.keys(), ...this.blobs.keys()].map((id) => id.slice(0, id.lastIndexOf(':'))));
+    for (const id of messageIds) await this.removeMessage(id);
   }
 
   private async remember(file: File, id: string, enc: EncryptedFile, source: PrivateFileRef['source']): Promise<PrivateAttachment> {

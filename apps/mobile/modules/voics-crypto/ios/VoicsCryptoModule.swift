@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import Foundation
+import CryptoKit
 
 /// Raised to JavaScript with a plain message. Messages never contain keys, plaintext or tokens:
 /// the Rust layer reports error kinds only, and the vault reports Keychain status codes.
@@ -14,9 +15,74 @@ public class VoicsCryptoModule: Module {
   private let vault = StoreKeyVault()
   private let lock = NSLock()
   private var engine: MobileCrypto?
+  private var attachmentFiles: [String: URL] = [:]
+  private let attachmentDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("voics-private-attachments", isDirectory: true)
 
   public func definition() -> ModuleDefinition {
     Name("VoicsCrypto")
+
+    OnCreate {
+      try? FileManager.default.removeItem(at: self.attachmentDirectory)
+    }
+
+    AsyncFunction("readAttachment") { (uri: String) -> String in
+      guard let url = URL(string: uri), url.isFileURL else { throw CryptoFailure("Invalid local attachment") }
+      let data = try Data(contentsOf: url, options: .mappedIfSafe)
+      guard data.count > 0 && data.count <= 64 * 1024 * 1024 else { throw CryptoFailure("Invalid attachment size") }
+      return data.base64EncodedString()
+    }
+
+    AsyncFunction("encryptAttachment") { (plainB64: String) -> [String: String] in
+      guard let plain = Data(base64Encoded: plainB64), !plain.isEmpty, plain.count <= 64 * 1024 * 1024 else { throw CryptoFailure("Invalid attachment") }
+      let key = SymmetricKey(size: .bits256)
+      let sealed = try AES.GCM.seal(plain, using: key)
+      let keyData = key.withUnsafeBytes { Data($0) }
+      return ["ciphertext": (sealed.ciphertext + sealed.tag).base64EncodedString(), "key_b64": keyData.base64EncodedString(), "nonce_b64": Data(sealed.nonce).base64EncodedString(), "sha256_b64": Data(SHA256.hash(data: plain)).base64EncodedString()]
+    }
+
+    AsyncFunction("decryptAttachment") { (cipherB64: String, keyB64: String, nonceB64: String, hashB64: String, size: Int) -> String in
+      guard size > 0, size <= 64 * 1024 * 1024, let data = Data(base64Encoded: cipherB64), data.count == size + 16,
+            let key = Data(base64Encoded: keyB64), key.count == 32, let nonce = Data(base64Encoded: nonceB64), nonce.count == 12,
+            let hash = Data(base64Encoded: hashB64), hash.count == 32 else { throw CryptoFailure("Invalid attachment") }
+      let sealed = try AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: nonce), ciphertext: data.dropLast(16), tag: data.suffix(16))
+      let plain = try AES.GCM.open(sealed, using: SymmetricKey(data: key))
+      guard Data(SHA256.hash(data: plain)) == hash else { throw CryptoFailure("Attachment integrity check failed") }
+      return plain.base64EncodedString()
+    }
+
+    AsyncFunction("uploadAttachment") { (urlString: String, cipherB64: String) async throws in
+      guard let url = URL(string: urlString), ["https", "http"].contains(url.scheme ?? ""), let data = Data(base64Encoded: cipherB64), data.count > 16, data.count <= 64 * 1024 * 1024 + 16 else { throw CryptoFailure("Invalid encrypted upload") }
+      var request = URLRequest(url: url)
+      request.httpMethod = "PUT"
+      request.httpShouldHandleCookies = false
+      request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+      let (_, response) = try await URLSession.shared.upload(for: request, from: data)
+      guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw CryptoFailure("Encrypted upload failed") }
+    }
+
+    AsyncFunction("downloadAttachment") { (urlString: String) async throws -> String in
+      guard let url = URL(string: urlString), ["https", "http"].contains(url.scheme ?? "") else { throw CryptoFailure("Invalid encrypted download") }
+      var request = URLRequest(url: url)
+      request.httpShouldHandleCookies = false
+      let (data, response) = try await URLSession.shared.data(for: request)
+      guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode), data.count <= 64 * 1024 * 1024 + 16 else { throw CryptoFailure("Encrypted download failed") }
+      return data.base64EncodedString()
+    }
+
+    AsyncFunction("storeAttachment") { (id: String, plainB64: String) -> String in
+      guard let plain = Data(base64Encoded: plainB64), !plain.isEmpty, plain.count <= 64 * 1024 * 1024 else { throw CryptoFailure("Invalid attachment") }
+      try FileManager.default.createDirectory(at: self.attachmentDirectory, withIntermediateDirectories: true)
+      let url = self.attachmentDirectory.appendingPathComponent(UUID().uuidString + ".ogg")
+      try plain.write(to: url, options: [.atomic, .completeFileProtection])
+      self.lock.lock(); defer { self.lock.unlock() }
+      if let old = self.attachmentFiles.updateValue(url, forKey: id) { try? FileManager.default.removeItem(at: old) }
+      return url.absoluteString
+    }
+
+    AsyncFunction("removeAttachment") { (id: String) in
+      self.lock.lock(); defer { self.lock.unlock() }
+      if let url = self.attachmentFiles.removeValue(forKey: id) { try? FileManager.default.removeItem(at: url) }
+    }
 
     AsyncFunction("initialise") { (userId: String, deviceLabel: String) -> String in
       let opened = try self.open(userId: userId, deviceLabel: deviceLabel)

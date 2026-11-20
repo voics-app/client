@@ -53,6 +53,7 @@ export class MessageService {
     private readonly readBlob: ReadBlob = readFromDevice,
     private readonly cache: MessageCache = messageCache,
     private readonly privateChat: PrivateChat | null = null,
+    private readonly privateAttachments = false,
   ) {}
 
   /** The channel when it delivers over Ephemeral or P2P and this build can open such chats; null for standard chats. */
@@ -185,8 +186,9 @@ export class MessageService {
     this.unsent.set(nonce, input);
     try {
       if (encrypted) {
-        if (input.files?.length) throw new Error('Private file sending is not available on this device.');
-        await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}) });
+        if (input.files?.length && (!this.privateAttachments || !input.voice || input.files.length !== 1)) throw new Error('Private file sending is not available on this device.');
+        const files = input.files?.map((f) => ({ uri: f.uri, name: f.name, size: f.size, type: f.mimeType }) as unknown as File);
+        await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}), ...(files?.length ? { files } : {}), ...(input.voice ? { voice: input.voice } : {}) });
         this.unsent.delete(nonce);
         useMessageStore.getState().remove(channel.id, nonce);
         return true;

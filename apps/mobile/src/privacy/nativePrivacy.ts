@@ -5,6 +5,8 @@
  * showing that these modes are not in the test version.
  */
 import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
+import type { AttachmentPlatform } from '@discordy/core/application/privacy/attachmentService';
+import { AttachmentError, fromB64, toB64 } from '@discordy/core/application/privacy/attachmentCipher';
 import { isNativeBuild } from '../native/isNativeBuild';
 import { createMobileCryptoBridge, type VoicsCryptoNative } from './cryptoBridge';
 import { createReactNativePeerConnection, type PeerConnectionFactory, type WebRtcPeerModule } from './reactNativePeerConnection';
@@ -14,12 +16,36 @@ export const PEER_UNAVAILABLE = 'Peer-to-peer needs the calling module, which is
 export interface NativePrivacy {
   crypto: CryptoBridge;
   createPeerConnection: PeerConnectionFactory;
+  attachmentPlatform?: AttachmentPlatform;
+  fetchAttachmentBytes?: (url: string) => Promise<Uint8Array>;
 }
 
 /** Builds the pieces from the loaded modules; they are passed in so tests can fake them. */
 export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPeerModule | null): NativePrivacy {
+  const supported = crypto.readAttachment && crypto.encryptAttachment && crypto.decryptAttachment && crypto.uploadAttachment && crypto.downloadAttachment && crypto.storeAttachment && crypto.removeAttachment;
   return {
     crypto: createMobileCryptoBridge(crypto),
+    ...(supported ? {
+      attachmentPlatform: {
+        read: async (file: File) => {
+          const uri = (file as File & { uri?: string }).uri;
+          if (!uri) throw new Error('Local attachment is unavailable.');
+          return fromB64(await crypto.readAttachment!(uri));
+        },
+        encrypt: async (plain: Uint8Array) => { const out = await crypto.encryptAttachment!(toB64(plain)); return { ...out, ciphertext: fromB64(out.ciphertext) }; },
+        decrypt: async (ciphertext: Uint8Array, material: import('@discordy/core/application/privacy/attachmentCipher').FileKeyMaterial) => {
+          try { return fromB64(await crypto.decryptAttachment!(toB64(ciphertext), material.key_b64, material.nonce_b64, material.sha256_b64, material.size)); }
+          catch { throw new AttachmentError('integrity', 'The file failed its integrity check and was discarded.'); }
+        },
+        upload: (url: string, ciphertext: Uint8Array) => crypto.uploadAttachment!(url, toB64(ciphertext)),
+        store: (id: string, plain: Uint8Array, mime: string) => {
+          if (mime !== 'audio/ogg') throw new Error('Only voice recordings are supported on this device.');
+          return crypto.storeAttachment!(id, toB64(plain));
+        },
+        remove: (id: string) => crypto.removeAttachment!(id),
+      },
+      fetchAttachmentBytes: async (url: string) => fromB64(await crypto.downloadAttachment!(url)),
+    } : {}),
     createPeerConnection: webrtc
       ? createReactNativePeerConnection(webrtc)
       : () => {

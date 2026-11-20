@@ -103,6 +103,7 @@ export class PrivateMessaging {
     this.sweeper = undefined;
     this.ephemeral.stop();
     this.p2p.stop();
+    void this.attachments.clear().catch(() => undefined);
   }
 
   /** Feed gateway op frames (op 20 and 22; other ops are ignored). */

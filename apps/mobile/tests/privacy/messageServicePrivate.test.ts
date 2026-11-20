@@ -46,6 +46,26 @@ describe('MessageService with private chats', () => {
     useGuildStore.getState().upsertChannel(standard);
   });
 
+  it.each(['ephemeral', 'p2p'] as const)('routes voice to the %s encrypted sender only when native attachment support exists', async (mode) => {
+    const channel = { ...ephemeral, delivery_mode: mode } as Channel;
+    useGuildStore.getState().upsertChannel(channel);
+    const { api, privateChat } = setup();
+    const service = new MessageService(api as never, Date.now, undefined, messageCache, privateChat as PrivateChat, true);
+    const voice = { duration_secs: 1.5, waveform: 'AQID' };
+    const file = { uri: 'file:///voice.ogg', name: 'voice.ogg', mimeType: 'audio/ogg', size: 12 };
+    await expect(service.send(channel, { content: '', files: [file], voice })).resolves.toBe(true);
+    expect(privateChat.send).toHaveBeenCalledWith(channel, { content: '', files: [{ uri: file.uri, name: file.name, type: file.mimeType, size: file.size }], voice });
+    expect(api.createAttachmentSlots).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the native private attachment adapter is missing', async () => {
+    const { api, privateChat, service } = setup();
+    await expect(service.send(ephemeral, { content: '', files: [{ uri: 'file:///voice.ogg', name: 'voice.ogg', mimeType: 'audio/ogg', size: 12 }], voice: { duration_secs: 1, waveform: 'AQID' } })).resolves.toBe(false);
+    expect(privateChat.send).not.toHaveBeenCalled();
+    expect(api.createAttachmentSlots).not.toHaveBeenCalled();
+  });
+
   it('loads an ephemeral chat from the local store and leaves the server out of it', async () => {
     const { api, privateChat, service } = setup();
     await service.loadLatest('c1');
