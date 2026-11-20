@@ -19,6 +19,7 @@ vi.mock('@renderer/interface/features/privacy/ModeSwitcher', () => ({ ModeSwitch
 vi.mock('@renderer/interface/features/privacy/PeerStatus', () => ({ PeerStatus: () => null }));
 
 import { Composer } from '@renderer/interface/features/chat/Composer';
+import { useFailedSendQueue } from '@renderer/interface/features/chat/failedSendQueue';
 
 const ME = 'me';
 const G = 'g1';
@@ -41,6 +42,7 @@ const input = () => screen.getByRole('textbox') as HTMLTextAreaElement;
 const type = (value: string) => fireEvent.change(input(), { target: { value, selectionStart: value.length } });
 
 beforeEach(() => {
+  useFailedSendQueue.getState().clear();
   send.mockClear();
   useDraftStore.setState({ drafts: {} });
   useSlowmodeStore.setState({ lastSent: {} });
@@ -147,6 +149,11 @@ describe('Composer: reply ping and @silent', () => {
     await act(async () => reject(new Error('Offline')));
     expect(input().value).toBe('new draft');
     expect(useUiStore.getState().replyTo[c.id]).toBeNull();
+    expect((screen.getByRole('button', { name: 'Restore failed message' }) as HTMLButtonElement).disabled).toBe(true);
+    type('');
+    fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+    expect(input().value).toBe('first answer');
+    expect(useUiStore.getState().replyTo[c.id]?.id).toBe('m9');
   });
 
   it('does not restore failed text into a newly selected reply', async () => {
@@ -162,6 +169,25 @@ describe('Composer: reply ping and @silent', () => {
     await act(async () => reject(new Error('Offline')));
     expect(input().value).toBe('');
     expect(useUiStore.getState().replyTo[c.id]?.id).toBe('m10');
+    expect((screen.getByRole('button', { name: 'Restore failed message' }) as HTMLButtonElement).disabled).toBe(true);
+    act(() => useUiStore.getState().setReplyTo(c.id, null));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+    expect(input().value).toBe('answer to Bob');
+    expect(useUiStore.getState().replyTo[c.id]?.id).toBe('m9');
+  });
+
+  it('does not restore a late failure into another account', async () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    let reject!: (error: Error) => void;
+    send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    render(<Composer channel={c} mode="standard" />);
+    type('private account draft');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    act(() => useSessionStore.setState({ user: user('other') } as never));
+    await act(async () => reject(new Error('Offline')));
+    expect(input().value).toBe('');
+    expect(screen.queryByRole('button', { name: 'Restore failed message' })).toBeNull();
   });
 
   it('keeps explicit mention tokens when retrying a ping-off reply', async () => {

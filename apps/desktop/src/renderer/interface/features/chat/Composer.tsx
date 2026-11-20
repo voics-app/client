@@ -1,6 +1,6 @@
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
 import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
@@ -21,6 +21,7 @@ import { speak } from '@renderer/infrastructure/tts';
 import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
 import { reportError } from '../../app/actions';
 import { getRuntime } from '../../app/runtime';
+import { useConnectionStore } from '../../app/connectionStore';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -32,6 +33,7 @@ import { useEmojiPopover } from './EmojiPopover';
 import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { captureFailedSendScope, currentFailedSendScope, failedSendKey, useFailedSendQueue, type FailedDraft } from './failedSendQueue';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -69,6 +71,10 @@ function initialDraft(channelId: string, standard: boolean) {
 }
 
 function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const mounted = useRef(true);
+  useLayoutEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [text, setText] = useState(() => initialDraft(channel.id, mode === 'standard')?.text ?? '');
   const [files, setFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<Descriptions>(new Map());
@@ -96,8 +102,26 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const editing = useUiStore((s) => s.editing);
   const setEditing = useUiStore((s) => s.setEditing);
   const me = useSessionStore((s) => s.user?.id ?? null);
+  // Recompute the queue scope after session or endpoint changes, even for the same user.
+  useSessionStore((s) => s.sessionId);
+  useSessionStore((s) => s.deviceId);
+  useSessionStore((s) => s.status);
+  useConnectionStore((s) => s.apiUrl);
   const pingReplied = useReplyPingStore((s) => s.ping);
   const setPingReplied = useReplyPingStore((s) => s.setPing);
+  const recoveryScope = captureFailedSendScope(channel.id, mode);
+  const recoveryKey = failedSendKey(recoveryScope);
+  const failed = useFailedSendQueue((state) => state.byScope[recoveryKey]);
+  const restoreFailed = (draft: FailedDraft) => {
+    textRef.current = draft.text;
+    filesRef.current = draft.files;
+    setText(draft.text);
+    setFiles(draft.files);
+    setDescriptions(draft.descriptions);
+    setReplyTo(channel.id, draft.replyTo);
+    setPingReplied(draft.pingReplied);
+    mentionMap.current = new Map(draft.mentions);
+  };
   const lastSent = useSlowmodeStore((s) => s.lastSent[channel.id]);
   const [now, setNow] = useState(() => Date.now());
   const members = useGuildStore((s) => (channel.guild_id ? s.members[channel.guild_id] : undefined));
@@ -347,7 +371,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       silent,
       pingReplied: replyTo && replyTo.author.id !== me ? pingReplied : true,
     };
-    const draft = { text, files, descriptions, mentions: new Map(mentionMap.current) };
+    const draft: FailedDraft = { text, files, descriptions, mentions: new Map(mentionMap.current), replyTo: replyTo ?? null, pingReplied };
+    const failureScope = captureFailedSendScope(channel.id, mode);
     setText('');
     setFiles([]);
     setDescriptions(new Map());
@@ -362,13 +387,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       const cancelled = e instanceof Error && e.name === 'UploadCancelled';
       if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, 'Message not sent');
       // Restore the whole message together, without combining it with a newer draft or reply.
-      if (!textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id]) {
-        setText(draft.text);
-        setFiles(draft.files);
-        setDescriptions(draft.descriptions);
-        setReplyTo(channel.id, replyTo ?? null);
-        mentionMap.current = draft.mentions;
-      }
+      if (currentFailedSendScope(failureScope) && mounted.current && modeRef.current === failureScope.mode
+        && !textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id]
+        && useUiStore.getState().editing?.channelId !== channel.id) restoreFailed(draft);
+      else useFailedSendQueue.getState().add(failureScope, draft);
     }
   };
 
@@ -438,6 +460,15 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   return (
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
+      {failed && failed.length > 0 && <div className="field-hint" role="status">
+        {failed.length} failed {failed.length === 1 ? 'message is' : 'messages are'} kept for this chat.
+        <button type="button" disabled={Boolean(text || files.length || replyTo || editing?.channelId === channel.id)} onClick={() => {
+          const item = failed[0];
+          if (!item || !currentFailedSendScope(recoveryScope) || textRef.current || filesRef.current.length || useUiStore.getState().replyTo[channel.id] || useUiStore.getState().editing?.channelId === channel.id) return;
+          restoreFailed(item.draft);
+          useFailedSendQueue.getState().remove(recoveryScope, item.id);
+        }}>Restore failed message</button>
+      </div>}
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={commandSearch !== null ? 'Commands' : 'Suggestions'}>
           {suggestions.map((s, i) => (
