@@ -7,6 +7,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { reportError } from './actions';
 import { openChannel } from './navigation';
+import { getRuntime } from './runtime';
 
 export type ShareResult = { ok: true } | { ok: false; reason: 'protected_content' | 'cancelled' | 'error'; message?: string };
 
@@ -16,6 +17,7 @@ export interface VoiceFacade {
   setMute(muted: boolean): Promise<void>;
   setDeaf(deafened: boolean): Promise<void>;
   setCamera(enabled: boolean): Promise<void>;
+  requestToSpeak(requested: boolean): Promise<void>;
   startScreenShare(options: { sourceId: string; audio: boolean; preset: VideoPresetId }): Promise<ShareResult>;
   stopScreenShare(): Promise<void>;
   setScreenPreset(preset: VideoPresetId): Promise<void>;
@@ -56,6 +58,18 @@ export async function joinStageAudience(guildId: string, channelId: string): Pro
     await voice.join(guildId, channelId);
   } catch (error) {
     reportError(error, 'Could not join stage');
+  }
+}
+
+export async function requestStageSpeak(requested: boolean): Promise<void> {
+  await run(() => require()?.requestToSpeak(requested));
+}
+
+export async function setStageAudience(guildId: string, userId: string, suppress: boolean): Promise<void> {
+  try {
+    await getRuntime().api.updateMember(guildId, userId, { suppress });
+  } catch (error) {
+    reportError(error, suppress ? 'Could not move member to audience' : 'Could not invite member to speak');
   }
 }
 

@@ -316,7 +316,7 @@ export class DiscordyApi implements ApiPort {
   members(guildId: string, query: { limit?: number; after?: string } = {}) {
     return this.get<GuildMember[]>(`/guilds/${guildId}/members`, { limit: query.limit ?? 1000, after: query.after });
   }
-  updateMember(guildId: string, userId: string, patch: Partial<GuildMember> & { channel_id?: string | null }) {
+  updateMember(guildId: string, userId: string, patch: Partial<GuildMember> & { channel_id?: string | null; suppress?: boolean }) {
     return this.patch<GuildMember>(`/guilds/${guildId}/members/${userId}`, patch);
   }
   kickMember(guildId: string, userId: string, reason?: string) {

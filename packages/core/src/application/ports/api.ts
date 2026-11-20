@@ -156,7 +156,7 @@ export interface ApiPort {
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null; suppress?: boolean }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
