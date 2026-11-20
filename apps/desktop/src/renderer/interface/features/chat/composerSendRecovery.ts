@@ -6,6 +6,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { Channel, DeliveryMode } from '@discordy/core/contracts/rest';
 import { useConnectionStore } from '../../app/connectionStore';
+import { captureFailedSendScope, useFailedSendQueue, type FailedSendScope } from './failedSendQueue';
 
 export interface SendDraft {
   text: string;
@@ -24,9 +25,10 @@ export interface SendScope {
   channelBinding: string;
   knownChannel: boolean;
   mode: DeliveryMode;
+  queueScope: FailedSendScope;
 }
 export interface SendRecoveryReceiver { empty(): boolean; matchesSaved(draft: SendDraft): boolean; restore(draft: SendDraft): void }
-interface Waiting { draft: SendDraft; expires: number; bytes: number }
+interface Waiting { draft: SendDraft; expires: number; bytes: number; delivered?: boolean }
 interface Entry { scope: SendScope; revision: number; inFlight: number; receiver?: SendRecoveryReceiver; waiting?: Waiting; restoring?: boolean }
 export interface SendAttempt { scope: SendScope; entry: Entry; revision: number }
 
@@ -56,13 +58,18 @@ useUiStore.subscribe((next, previous) => {
   for (const entry of entries.values()) {
     if (!entry.restoring && next.replyTo[entry.scope.channelId] !== previous.replyTo[entry.scope.channelId]) {
       entry.revision++;
-      delete entry.waiting;
+      preserveWaiting(entry);
     }
   }
 });
 
 export function captureSendScope(channel: Channel, mode: DeliveryMode): SendScope {
-  return { epoch, ownerId: useSessionStore.getState().user?.id ?? null, channelId: channel.id, channelBinding: channelBinding(channel), knownChannel: Boolean(useGuildStore.getState().channels[channel.id]), mode };
+  return { epoch, ownerId: useSessionStore.getState().user?.id ?? null, channelId: channel.id, channelBinding: channelBinding(channel), knownChannel: Boolean(useGuildStore.getState().channels[channel.id]), mode, queueScope: captureFailedSendScope(channel.id, mode) };
+}
+
+function preserveWaiting(entry: Entry): void {
+  if (entry.waiting && !entry.waiting.delivered) useFailedSendQueue.getState().add(entry.scope.queueScope, entry.waiting.draft);
+  delete entry.waiting;
 }
 
 export function isSendScopeCurrent(scope: SendScope): boolean {
@@ -105,9 +112,10 @@ function deliver(entry: Entry): void {
   const waiting = entry.waiting;
   const receiver = entry.receiver;
   if (!waiting || !receiver) return;
-  if (!isSendScopeCurrent(entry.scope) || !receiver.empty() && !receiver.matchesSaved(waiting.draft)) { delete entry.waiting; return; }
+  if (!isSendScopeCurrent(entry.scope)) { delete entry.waiting; return; }
+  if (!receiver.empty() && !receiver.matchesSaved(waiting.draft)) { preserveWaiting(entry); return; }
   entry.restoring = true;
-  try { receiver.restore(waiting.draft); }
+  try { receiver.restore(waiting.draft); waiting.delivered = true; }
   finally { entry.restoring = false; }
 }
 
@@ -116,7 +124,7 @@ export function editedAfterSend(scope: SendScope): void {
   const entry = entries.get(key(scope));
   if (!entry) return;
   entry.revision++;
-  delete entry.waiting;
+  preserveWaiting(entry);
   prune();
 }
 
@@ -131,21 +139,22 @@ export function receiveFailedSends(scope: SendScope, receiver: SendRecoveryRecei
 
 export function beginSend(scope: SendScope): SendAttempt {
   const entry = entryFor(scope);
-  delete entry.waiting;
+  preserveWaiting(entry);
   entry.inFlight++;
   return { scope, entry, revision: ++entry.revision };
 }
 
 export function recoverFailedSend(attempt: SendAttempt, draft: SendDraft): void {
   const { entry, scope, revision } = attempt;
-  if (scope.mode !== 'standard' || !isSendScopeCurrent(scope) || entry.revision !== revision) return;
+  if (scope.mode !== 'standard' || !isSendScopeCurrent(scope)) return;
+  if (entry.revision !== revision) { useFailedSendQueue.getState().add(scope.queueScope, draft); return; }
   const ui = useUiStore.getState();
-  if (ui.replyTo[scope.channelId] || ui.editing?.channelId === scope.channelId) return;
+  if (ui.replyTo[scope.channelId] || ui.editing?.channelId === scope.channelId) { useFailedSendQueue.getState().add(scope.queueScope, draft); return; }
   if (entry.receiver) {
-    if (!entry.receiver.empty()) return;
+    if (!entry.receiver.empty()) { useFailedSendQueue.getState().add(scope.queueScope, draft); return; }
   } else {
     const saved = useDraftStore.getState().drafts[scope.channelId];
-    if (saved?.text || saved?.replyTo) return;
+    if (saved?.text || saved?.replyTo) { useFailedSendQueue.getState().add(scope.queueScope, draft); return; }
   }
   entry.waiting = { draft, expires: Date.now() + RETAIN_MS, bytes: draft.files.reduce((total, file) => total + file.size, 0) };
   deliver(entry);
