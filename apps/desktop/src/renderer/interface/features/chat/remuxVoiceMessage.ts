@@ -67,6 +67,44 @@ function opusPacketDuration(data: Uint8Array): number {
   return duration;
 }
 
+/** Mediabunny derives packet durations from the Opus TOC, so apply WebM's final trim to the Ogg EOS granule. */
+function applyOggEndTrim(buffer: ArrayBuffer, padding: number, preSkip: number): void {
+  const trim = Math.round(padding * 48_000);
+  if (!trim) return;
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let pos = 0;
+  let last = -1;
+  let previousGranule = 0n;
+  let lastGranule = 0n;
+  let serial: number | null = null;
+  while (pos < bytes.length) {
+    if (pos + 27 > bytes.length || bytes[pos] !== 0x4f || bytes[pos + 1] !== 0x67 || bytes[pos + 2] !== 0x67 || bytes[pos + 3] !== 0x53 || bytes[pos + 4] !== 0) throw new Error('Invalid Ogg output.');
+    const pageSerial = view.getUint32(pos + 14, true);
+    if (serial !== null && serial !== pageSerial) throw new Error('Unexpected Ogg stream.');
+    serial = pageSerial;
+    const segments = bytes[pos + 26]!;
+    if (pos + 27 + segments > bytes.length) throw new Error('Truncated Ogg page.');
+    let length = 27 + segments;
+    for (let i = 0; i < segments; i++) length += bytes[pos + 27 + i]!;
+    if (pos + length > bytes.length) throw new Error('Truncated Ogg page.');
+    const granule = view.getBigInt64(pos + 6, true);
+    if (granule >= 0n) { previousGranule = lastGranule; lastGranule = granule; }
+    last = pos;
+    pos += length;
+  }
+  const finalGranule = lastGranule - BigInt(trim);
+  if (last < 0 || !(bytes[last + 5]! & 4) || view.getBigInt64(last + 6, true) !== lastGranule || finalGranule < previousGranule || finalGranule <= BigInt(preSkip)) throw new Error('Invalid Ogg end trim.');
+  view.setBigInt64(last + 6, finalGranule, true);
+  view.setUint32(last + 22, 0, true);
+  let crc = 0;
+  for (let i = last; i < bytes.length; i++) {
+    crc = (crc ^ (bytes[i]! << 24)) >>> 0;
+    for (let bit = 0; bit < 8; bit++) crc = ((crc << 1) ^ (crc & 0x80000000 ? 0x04c11db7 : 0)) >>> 0;
+  }
+  view.setUint32(last + 22, crc, true);
+}
+
 /** Remux Chromium's Opus packets into Ogg without decoding or re-encoding them. */
 export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
   if (inputBlob.size > 25 * 1024 * 1024) throw new Error('Voice recording is too large.');
@@ -111,6 +149,7 @@ export async function remuxVoiceMessage(inputBlob: Blob): Promise<Blob> {
     await source.add(pending.clone({ duration: finalDuration - padding }), first ? { decoderConfig } : undefined);
     await output.finalize();
     if (!target.buffer) throw new Error('The recording could not be converted to Ogg/Opus.');
+    applyOggEndTrim(target.buffer, padding, preSkip);
     return new Blob([target.buffer], { type: 'audio/ogg' });
   } finally { input.dispose(); }
 }
