@@ -54,6 +54,27 @@ it('explains and saves disabling Community', async () => {
   await screen.findByText('Community settings saved.');
 });
 
+it('preserves the discovery draft when saving Community refreshes listing status', async () => {
+  const listing = { enabled: false, category: null, tags: [], member_count: 5, blockers: ['COMMUNITY_REQUIRED'] };
+  api.guildDiscovery.mockResolvedValueOnce(listing).mockResolvedValue({ ...listing, blockers: [] });
+  api.discoveryCategories.mockResolvedValue(['community', 'gaming']);
+  api.updateGuild.mockResolvedValue({ id: 'g1', features: ['COMMUNITY'], rules_channel_id: 'c1', public_updates_channel_id: 'c2' });
+  renderQuery(<ServerDiscovery guildId="g1" />);
+  await screen.findByText(/not listed/);
+  fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'gaming' } });
+  fireEvent.change(screen.getByLabelText('Tags'), { target: { value: 'new, draft' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Community' }));
+  fireEvent.change(screen.getByLabelText('Rules channel'), { target: { value: 'c1' } });
+  fireEvent.change(screen.getByLabelText('Updates channel'), { target: { value: 'c2' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Community' }));
+  await screen.findByText('Community settings saved.');
+  await waitFor(() => expect(api.guildDiscovery).toHaveBeenCalledTimes(2));
+  expect((screen.getByLabelText('Category') as HTMLSelectElement).value).toBe('gaming');
+  expect((screen.getByLabelText('Tags') as HTMLInputElement).value).toBe('new, draft');
+  fireEvent.click(screen.getByRole('button', { name: 'List in Discover' }));
+  await waitFor(() => expect(api.putGuildDiscovery).toHaveBeenCalledWith('g1', { enabled: true, category: 'gaming', tags: ['new', 'draft'] }));
+});
+
 it('labels an ineligible opted-in listing as paused and still allows removal', async () => {
   api.guildDiscovery.mockResolvedValue({ enabled: true, category: 'community', tags: [], member_count: 5, blockers: ['COMMUNITY_REQUIRED'] });
   api.putGuildDiscovery.mockResolvedValue({ enabled: false, category: null, tags: [], member_count: 5, blockers: ['COMMUNITY_REQUIRED'] });

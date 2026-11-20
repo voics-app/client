@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { blockerMessage, categoryLabel, memberCountLabel, parseTags } from '@discordy/core/domain/discoveryModel';
 import { attempt } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
@@ -13,15 +13,12 @@ export function ServerDiscovery({ guildId }: { guildId: string }) {
   const key = ['guild', guildId, 'discovery'];
   const settings = useQuery({ queryKey: key, queryFn: () => getRuntime().api.guildDiscovery(guildId) });
   const categories = useQuery({ queryKey: ['discovery', 'categories'], queryFn: () => getRuntime().api.discoveryCategories(), staleTime: 300_000 });
-  const [category, setCategory] = useState('');
-  const [tags, setTags] = useState('');
+  const [draft, setDraft] = useState<{ guildId: string; category: string; tags: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const data = settings.data;
-  useEffect(() => {
-    if (!data) return;
-    setCategory(data.category ?? '');
-    setTags(data.tags.join(', '));
-  }, [data]);
+  const value = draft?.guildId === guildId ? draft : { guildId, category: data?.category ?? '', tags: data?.tags.join(', ') ?? '' };
+  const { category, tags } = value;
+  const change = (next: Partial<Pick<typeof value, 'category' | 'tags'>>) => setDraft({ ...value, ...next });
 
   const save = async (enabled: boolean) => {
     setSaving(true);
@@ -29,6 +26,7 @@ export function ServerDiscovery({ guildId }: { guildId: string }) {
     setSaving(false);
     if (updated) {
       qc.setQueryData(key, updated);
+      setDraft((current) => current?.guildId === guildId ? null : current);
       void qc.invalidateQueries({ queryKey: ['discovery', 'guilds'] });
     }
   };
@@ -52,14 +50,14 @@ export function ServerDiscovery({ guildId }: { guildId: string }) {
           )}
           <Field label="Category">
             {(id) => (
-              <Select id={id} disabled={saving} value={category} onChange={(e) => setCategory(e.target.value)}>
+              <Select id={id} disabled={saving} value={category} onChange={(e) => change({ category: e.target.value })}>
                 <option value="">Choose a category</option>
                 {categories.data?.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
               </Select>
             )}
           </Field>
           <Field label="Tags" hint="Up to 5, separated by commas or spaces. Letters, digits and dashes.">
-            {(id) => <Input id={id} disabled={saving} value={tags} placeholder="rust, open-source" onChange={(e) => setTags(e.target.value)} />}
+            {(id) => <Input id={id} disabled={saving} value={tags} placeholder="rust, open-source" onChange={(e) => change({ tags: e.target.value })} />}
           </Field>
           <div className="discovery-actions">
             <Button variant="primary" loading={saving} disabled={!category || data.blockers.length > 0} onClick={() => void save(true)}>
