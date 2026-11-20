@@ -1,0 +1,11 @@
+# Desktop streamer mode
+
+In Settings → Notifications, enable **Streamer mode** before sharing the app. It hides the account email and server invite codes in the account, invite and server settings screens; direct-message notification bodies become “New direct message”. Message and friend-request sounds, voice event sounds, incoming and outgoing call tones, and app text-to-speech are suppressed. A title-bar indicator shows when the mode is active. The setting is local to this desktop. Settings → Keybinds can assign a shortcut, including a global shortcut when the native hook is available.
+
+**Detect OBS** optionally activates protection while an OBS process is running. The desktop checks process names locally every five seconds; it does not transmit process information. Detection is delayed, so enable streamer mode manually before sharing. If detection fails or has not yet completed, protection remains active until a successful check says OBS is absent. Manual mode and automatic detection are independent: disabling the manual switch does not deactivate protection while OBS is detected. Disable detection as well to turn that protection off.
+
+The mode does not hide messages, account names, email addresses or invite URLs that appear in user-authored content, clipboard contents, other applications or notifications already shown by the OS. Copying an invite still copies the real link. It does not mute other people in calls or media playback. Verify the content and source being shared before broadcasting.
+
+## Acceptance check
+
+On a disposable test account, open account settings and a generated invite, enable the mode and confirm the email and invite disappear without closing the screens. Deliver a DM while the app is unfocused and check that the OS notification contains no message body and no sound plays. Start and stop an incoming and outgoing test call and check tones are muted; disable the mode and verify normal behavior returns. Assign the toggle in Keybinds and test it in the focused window and, when available, globally. Enable OBS detection, start and stop OBS, allow at least five seconds after each change and observe the title-bar indicator. Check failure handling by temporarily making process enumeration unavailable: protection must remain on. Do not use real personal information or broadcast during this check.
