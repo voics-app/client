@@ -155,6 +155,31 @@ it('retains a failed reply separately when a newer reply is selected', async () 
   expect(useUiStore.getState().replyTo[channel.id]?.id).toBe('old-reply');
 });
 
+it('retains attachments and mention tokens beside a newer draft after the gate closes', async () => {
+  let reject!: (error: Error) => void;
+  send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  mount();
+  act(() => useMentionStore.getState().requestMention(channel.id, 'Ada', '123'));
+  fireEvent.change(input(), { target: { value: `${input().value}old answer` } });
+  const oldText = input().value;
+  const file = new File(['draft'], 'retained.txt', { type: 'text/plain' });
+  fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  const original = send.mock.calls[0]?.[1];
+  hide(true);
+  hide(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.change(input(), { target: { value: 'new draft' } });
+  await act(async () => reject(new Error('Offline')));
+  expect(input().value).toBe('new draft');
+  fireEvent.change(input(), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+  expect(input().value).toBe(oldText);
+  expect(screen.getByText('retained.txt')).toBeTruthy();
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(send.mock.calls[1]?.[1]).toEqual(original);
+});
+
 const changeOwner = {
   account: () => useSessionStore.getState().setUser({ ...me, id: 'other' }),
   session: () => useSessionStore.setState({ sessionId: 'new-session' }),
