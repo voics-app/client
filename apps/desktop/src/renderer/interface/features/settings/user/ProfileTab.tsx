@@ -35,7 +35,7 @@ function ServerProfile({ user, guildId, apiUrl, sessionId }: { user: User; guild
   const client = useQueryClient();
   const member = useGuildStore((s) => s.members[guildId]?.[user.id]);
   const queryKey = ['profile-member', apiUrl, sessionId, guildId, user.id];
-  const query = useQuery({ queryKey, queryFn: () => getRuntime().api.member(guildId, user.id), initialData: member, staleTime: 0 });
+  const query = useQuery({ queryKey, queryFn: async ({ signal }) => { const result = await getRuntime().api.member(guildId, user.id); signal.throwIfAborted(); return result; }, initialData: member, staleTime: 0 });
   if (!query.data) return query.isError
     ? <div role="alert"><p>{errorMessage(query.error)}</p><Button onClick={() => void query.refetch()}>Retry loading profile</Button></div>
     : <p role="status">Loading server profile…</p>;

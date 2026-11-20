@@ -72,6 +72,22 @@ describe('profile customization', () => {
     await waitFor(() => expect((screen.getByLabelText('About me') as HTMLTextAreaElement).value).toBe('new instance'));
   });
 
+  it('discards a member lookup after switching away and back to an instance', async () => {
+    let resolve!: (value: GuildMember) => void;
+    useGuildStore.setState({ members: {} });
+    f.api.member.mockReturnValueOnce(new Promise<GuildMember>((done) => { resolve = done; }))
+      .mockResolvedValueOnce({ ...member, bio: 'instance B' })
+      .mockResolvedValueOnce({ ...member, bio: 'fresh instance A' });
+    mount(<ProfileTab initialGuildId="9" />);
+    await waitFor(() => expect(f.api.member).toHaveBeenCalledTimes(1));
+    act(() => { useConnectionStore.setState({ apiUrl: 'https://instance-b' }); });
+    await waitFor(() => expect((screen.getByLabelText('About me') as HTMLTextAreaElement).value).toBe('instance B'));
+    act(() => { useConnectionStore.setState({ apiUrl: 'https://instance' }); });
+    await waitFor(() => expect(f.api.member).toHaveBeenCalledTimes(3));
+    await act(async () => { resolve({ ...member, bio: 'stale instance A' }); });
+    await waitFor(() => expect((screen.getByLabelText('About me') as HTMLTextAreaElement).value).toBe('fresh instance A'));
+  });
+
   it('counts Unicode characters consistently with the API limits', async () => {
     mount();
     const pronouns = screen.getByLabelText('Pronouns') as HTMLInputElement;
