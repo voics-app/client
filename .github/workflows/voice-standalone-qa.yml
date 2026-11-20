@@ -1,5 +1,7 @@
 name: Temporary standalone voice QA
-on: workflow_dispatch
+
+on:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -9,6 +11,7 @@ jobs:
     env:
       VOICS_MOBILE_QA: '1'
       GRADLE_USER_HOME: ${{ runner.temp }}/voice-gradle
+      CARGO_TARGET_DIR: ${{ runner.temp }}/voice-rust-target
     steps:
       - uses: actions/checkout@v4
       - name: Verify existing toolchain
@@ -16,8 +19,11 @@ jobs:
           node --version
           pnpm --version
           java -version
+          cargo --version
           test -n "$ANDROID_HOME"
           test -d "$ANDROID_HOME/cmake/3.31.6"
+          test -d "$ANDROID_HOME/ndk"
+          rustup target list --installed | grep -qx x86_64-linux-android
       - run: pnpm install --frozen-lockfile --store-dir "$RUNNER_TEMP/voice-pnpm-store"
       - name: Disable development launcher in this QA checkout
         run: |
@@ -33,6 +39,15 @@ jobs:
           if (after === before) throw new Error('Development client plugin not found');
           fs.writeFileSync(config, after);
           NODE
+      - name: Build isolated Android crypto package
+        run: |
+          ndk_dir="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          test -n "$ndk_dir"
+          ANDROID_NDK_HOME="$ndk_dir" VOICS_ANDROID_ABIS=x86_64 \
+            ./native/crypto/android/build-package.sh "$RUNNER_TEMP/voice-crypto-package"
+          cp -R "$RUNNER_TEMP/voice-crypto-package/Generated" apps/mobile/modules/voics-crypto/android/
+          cp -R "$RUNNER_TEMP/voice-crypto-package/jniLibs" apps/mobile/modules/voics-crypto/android/
+          test -f apps/mobile/modules/voics-crypto/android/jniLibs/x86_64/libdiscordy_crypto.so
       - run: pnpm exec expo prebuild --platform android --no-install
         working-directory: apps/mobile
       - name: Verify QA identity and debug signing
