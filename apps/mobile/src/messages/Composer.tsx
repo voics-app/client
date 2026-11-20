@@ -6,7 +6,7 @@ import { useDraftStore } from '@discordy/core/application/stores/composerStores'
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
-import type { Channel } from '@discordy/core/contracts/rest';
+import type { Channel, Sticker } from '@discordy/core/contracts/rest';
 import type { SlashEntry } from '@discordy/core/domain/slashCommand';
 import { CommandSheet } from '../commands/CommandSheet';
 import { SlashSuggestions } from '../commands/SlashSuggestions';
@@ -18,6 +18,7 @@ import { AttachMenu } from './AttachMenu';
 import { addFiles } from './attachmentPicker';
 import type { OutgoingFile } from './outgoingFile';
 import { PendingFiles } from './PendingFiles';
+import { StickerPicker } from './StickerPicker';
 
 /** Lets the keyboard gesture area find the input it hands the keyboard back to while the list is dragged. */
 export const COMPOSER_INPUT_ID = 'composer-input';
@@ -40,14 +41,16 @@ export interface ComposerProps {
   slashChannel?: Channel | undefined;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
+  onSticker?(sticker: Sticker): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onSubmit, onCancelMode, onSticker }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [stickersOpen, setStickersOpen] = useState(false);
   const [command, setCommand] = useState<SlashEntry | null>(null);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
@@ -134,6 +137,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
           </Pressable>
         )}
         <TextInput nativeID={COMPOSER_INPUT_ID} accessibilityLabel="Message" style={styles.input} value={text} onChangeText={setText} placeholder={placeholder} placeholderTextColor={theme.subtle} multiline selection={forcedSelection} onSelectionChange={(e) => { setSelection(e.nativeEvent.selection); setForcedSelection(undefined); }} onContentSizeChange={(e) => setMultiline(isMultiline(e.nativeEvent.contentSize.height))} />
+        {onSticker && mode.kind !== 'edit' && <Pressable accessibilityRole="button" accessibilityLabel="Add sticker" hitSlop={6} onPress={() => setStickersOpen(true)} style={styles.plus}><Ionicons name="images-outline" size={22} color={theme.muted} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel="Add emoji" hitSlop={6} onPress={() => setEmojiOpen(true)} style={styles.plus}>
           <Ionicons name="happy-outline" size={24} color={theme.muted} />
         </Pressable>
@@ -144,6 +148,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
         )}
       </View>
       {slashChannel && <CommandSheet entry={command} channel={slashChannel} onClose={() => setCommand(null)} />}
+      {onSticker && <StickerPicker visible={stickersOpen} guildId={guildId} onClose={() => setStickersOpen(false)} onPick={onSticker} />}
       <EmojiPicker visible={emojiOpen} guildId={guildId} onClose={() => setEmojiOpen(false)} onPick={insertEmoji} />
       <AttachMenu visible={attachOpen} onClose={() => setAttachOpen(false)} onPicked={pick} />
       {showCounter(remaining) && <Text style={[styles.counter, remaining < 0 && styles.over]}>{remaining}</Text>}
