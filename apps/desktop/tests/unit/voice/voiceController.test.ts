@@ -43,6 +43,8 @@ class FakeSession implements VoiceSessionPort {
   }
 }
 
+const controllers: VoiceController[] = [];
+
 function setup(prefsOver: Partial<PrefsData> = {}) {
   const sent: { op: number; d: Record<string, unknown> }[] = [];
   const sessions: FakeSession[] = [];
@@ -92,6 +94,7 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     serverUpdateTimeoutMs: 15000,
   };
   const controller = new VoiceController(deps);
+  controllers.push(controller);
   return {
     controller,
     sent,
@@ -122,7 +125,13 @@ beforeEach(() => {
     members: { g1: { me: { roles: [] } } } as never,
   });
 });
-afterEach(() => vi.useRealTimers());
+afterEach(async () => {
+  for (const controller of controllers.splice(0)) {
+    await controller.leave();
+    controller.dispose();
+  }
+  vi.useRealTimers();
+});
 
 describe('VoiceController', () => {
   it('refuses camera and screen capture without STREAM', async () => {
