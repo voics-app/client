@@ -190,6 +190,21 @@ describe('Composer: reply ping and @silent', () => {
     expect(screen.queryByRole('button', { name: 'Restore failed message' })).toBeNull();
   });
 
+  it('retains a failure after its channel composer unmounts', async () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME) } as never);
+    let reject!: (error: Error) => void;
+    send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    const view = render(<Composer channel={c} mode="standard" />);
+    type('send before navigation');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    view.unmount();
+    await act(async () => reject(new Error('Offline')));
+    render(<Composer channel={c} mode="standard" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+    expect(input().value).toBe('send before navigation');
+  });
+
   it('keeps explicit mention tokens when retrying a ping-off reply', async () => {
     const c = dmChannel();
     useSessionStore.setState({ user: user(ME) } as never);
