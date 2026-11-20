@@ -33,7 +33,7 @@ export function ServerOnboarding({ guildId }: { guildId: string }) {
     <p className="page-sub">Ask new members what interests them. Options may suggest a channel or grant a non-moderation role you can manage.</p>
     <div className="stack">
       <label><input type="checkbox" checked={config.enabled} disabled={!ready} onChange={(event) => setConfig({ ...config, enabled: event.target.checked })} /> Ask new members</label>
-      {config.questions.map((question, qi) => <fieldset key={qi}><legend>Question {qi + 1}</legend>
+      {config.questions.map((question, qi) => <fieldset key={qi} className="stack"><legend>Question {qi + 1}</legend>
         <Field label="Question">{(id) => <Input id={id} value={question.title} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, title: event.target.value }))} />}</Field>
         {question.options.map((option, oi) => <div key={oi} className="stack">
           <Field label="Option">{(id) => <Input id={id} value={option.label} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, label: event.target.value } : o) }))} />}</Field>
