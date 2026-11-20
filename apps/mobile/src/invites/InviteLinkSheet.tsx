@@ -5,6 +5,7 @@ import { useInviteLinkStore } from './inviteLinkStore';
 export function InviteLinkSheet() {
   const code = useInviteLinkStore((s) => s.code);
   const guildId = useInviteLinkStore((s) => s.guildId);
+  const firstJoin = useInviteLinkStore((s) => s.firstJoin);
   const close = useInviteLinkStore((s) => s.close);
-  return <JoinServerSheet visible={code !== null || guildId !== null} {...(code ? { initialCode: code } : {})} {...(guildId ? { initialGuildId: guildId } : {})} onClose={close} />;
+  return <JoinServerSheet visible={code !== null || guildId !== null} {...(code ? { initialCode: code } : {})} {...(guildId ? { initialGuildId: guildId, initialFirstJoin: firstJoin } : {})} onClose={close} />;
 }

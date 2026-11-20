@@ -45,7 +45,7 @@ function useClose() {
   return () => useUiStore.getState().openDialog(null);
 }
 
-function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initialGuildId?: string }) {
+function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initial?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
@@ -94,12 +94,12 @@ function JoinGuildDialog({ initial, initialGuildId }: { initial?: string; initia
         const userId = useSessionStore.getState().user?.id;
         const member = userId && useGuildStore.getState().members[initialGuildId]?.[userId];
         if (member) useGuildStore.getState().upsertMember(initialGuildId, { ...member, pending: false });
-        close(); openGuild(initialGuildId);
+        void beginOnboarding(initialGuildId, !!initialFirstJoin);
       }
     }).catch((err: unknown) => setError(errorMessage(err))).finally(() => setBusy(false));
     // This dialog loads its initial server once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialGuildId]);
+  }, [initialGuildId, initialFirstJoin]);
   const lookupCode = async (raw: string) => {
     setBusy(true);
     setError(null);
@@ -503,7 +503,7 @@ function ActiveDialog() {
     case 'createGuild': return <CreateGuildDialog />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
-    case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} />;
+    case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} initialFirstJoin={dialog.firstJoin} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
     case 'newDm': return <NewDmDialog preselect={dialog.preselect} />;

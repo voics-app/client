@@ -14,7 +14,7 @@ import { Sheet } from '../ui/Sheet';
 import { inviteCodeOf, invitePreview } from './joinModel';
 
 /** Desktop's Join a server dialog: paste an invite link or code, look at the server, then accept. A server you are already in just opens. */
-export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId }: { visible: boolean; onClose(): void; initialCode?: string; initialGuildId?: string }) {
+export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId, initialFirstJoin }: { visible: boolean; onClose(): void; initialCode?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
   const [text, setText] = useState('');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
@@ -152,12 +152,12 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId 
         const userId = useSessionStore.getState().user?.id;
         const member = userId && useGuildStore.getState().members[initialGuildId]?.[userId];
         if (member) useGuildStore.getState().upsertMember(initialGuildId, { ...member, pending: false });
-        close(); open(initialGuildId);
+        void finishJoin(initialGuildId, !!initialFirstJoin);
       }
     }).catch((e: unknown) => setError(errorMessage(e))).finally(() => setBusy(false));
     // Load the selected server when the sheet opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, initialGuildId]);
+  }, [visible, initialGuildId, initialFirstJoin]);
 
   const preview = invite ? invitePreview(invite) : null;
   return (
