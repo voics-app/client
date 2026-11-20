@@ -45,6 +45,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
+      - name: Select Git for Windows Bash
+        run: |
+          $gitBin = Join-Path $env:ProgramFiles 'Git\bin'
+          if (-not (Test-Path (Join-Path $gitBin 'bash.exe'))) { throw 'Git for Windows Bash is required' }
+          [System.IO.File]::AppendAllText($env:GITHUB_PATH, "$gitBin`n", [System.Text.UTF8Encoding]::new($false))
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
