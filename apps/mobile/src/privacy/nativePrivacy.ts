@@ -21,8 +21,10 @@ export interface NativePrivacy {
 }
 
 /** Builds the pieces from the loaded modules; they are passed in so tests can fake them. */
-export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPeerModule | null): NativePrivacy {
-  const supported = crypto.readAttachment && crypto.encryptAttachment && crypto.decryptAttachment && crypto.uploadAttachment && crypto.downloadAttachment && crypto.storeAttachment && crypto.removeAttachment;
+type NativeAttachments = Pick<VoicsCryptoNative, 'readAttachment' | 'encryptAttachment' | 'decryptAttachment' | 'uploadAttachment' | 'downloadAttachment' | 'storeAttachment' | 'removeAttachment'>;
+
+export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPeerModule | null, attachments: NativeAttachments = crypto): NativePrivacy {
+  const supported = attachments.readAttachment && attachments.encryptAttachment && attachments.decryptAttachment && attachments.uploadAttachment && attachments.downloadAttachment && attachments.storeAttachment && attachments.removeAttachment;
   return {
     crypto: createMobileCryptoBridge(crypto),
     ...(supported ? {
@@ -30,21 +32,21 @@ export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPee
         read: async (file: File) => {
           const uri = (file as File & { uri?: string }).uri;
           if (!uri) throw new Error('Local attachment is unavailable.');
-          return fromB64(await crypto.readAttachment!(uri));
+          return fromB64(await attachments.readAttachment!(uri));
         },
-        encrypt: async (plain: Uint8Array) => { const out = await crypto.encryptAttachment!(toB64(plain)); return { ...out, ciphertext: fromB64(out.ciphertext) }; },
+        encrypt: async (plain: Uint8Array) => { const out = await attachments.encryptAttachment!(toB64(plain)); return { ...out, ciphertext: fromB64(out.ciphertext) }; },
         decrypt: async (ciphertext: Uint8Array, material: import('@discordy/core/application/privacy/attachmentCipher').FileKeyMaterial) => {
-          try { return fromB64(await crypto.decryptAttachment!(toB64(ciphertext), material.key_b64, material.nonce_b64, material.sha256_b64, material.size)); }
+          try { return fromB64(await attachments.decryptAttachment!(toB64(ciphertext), material.key_b64, material.nonce_b64, material.sha256_b64, material.size)); }
           catch { throw new AttachmentError('integrity', 'The file failed its integrity check and was discarded.'); }
         },
-        upload: (url: string, ciphertext: Uint8Array) => crypto.uploadAttachment!(url, toB64(ciphertext)),
+        upload: (url: string, ciphertext: Uint8Array) => attachments.uploadAttachment!(url, toB64(ciphertext)),
         store: async (id: string, plain: Uint8Array, mime: string) => {
           if (mime !== 'audio/ogg') throw new Error('Only voice recordings are supported on this device.');
-          return crypto.storeAttachment!(id, toB64(plain));
+          return attachments.storeAttachment!(id, toB64(plain));
         },
-        remove: (id: string) => crypto.removeAttachment!(id),
+        remove: (id: string) => attachments.removeAttachment!(id),
       },
-      fetchAttachmentBytes: async (url: string) => fromB64(await crypto.downloadAttachment!(url)),
+      fetchAttachmentBytes: async (url: string) => fromB64(await attachments.downloadAttachment!(url)),
     } : {}),
     createPeerConnection: webrtc
       ? createReactNativePeerConnection(webrtc)
@@ -77,5 +79,13 @@ function loadCryptoModule(): VoicsCryptoNative | null {
 export function loadNativePrivacy(): NativePrivacy | null {
   if (!isNativeBuild) return null;
   const crypto = loadCryptoModule();
-  return crypto ? createNativePrivacy(crypto, loadWebRtc()) : null;
+  if (!crypto) return null;
+  try {
+    // Android hosts the file adapter in the recorder module; iOS exposes it on VoicsCrypto.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { requireOptionalNativeModule } = require('expo') as { requireOptionalNativeModule<T>(name: string): T | null };
+    const recorder = requireOptionalNativeModule<NativeAttachments>('VoicsRecorder');
+    const fileModule = recorder?.encryptAttachment ? recorder : crypto;
+    return createNativePrivacy(crypto, loadWebRtc(), fileModule);
+  } catch { return createNativePrivacy(crypto, loadWebRtc()); }
 }

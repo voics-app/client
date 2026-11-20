@@ -13,11 +13,21 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.util.UUID
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class VoicsRecorderModule : Module() {
   @Volatile private var recorder: MediaRecorder? = null
   private var output: File? = null
   private var started = 0L
+  private val attachmentFiles = mutableMapOf<String, File>()
+  private val attachmentLock = Any()
+  private val maxAttachment = 64 * 1024 * 1024
   private val samples = mutableListOf<Int>()
   private val handler = Handler(Looper.getMainLooper())
   private val sample = object : Runnable {
@@ -38,6 +48,91 @@ class VoicsRecorderModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("VoicsRecorder")
+    OnCreate {
+      appContext.reactContext?.let { context ->
+        File(context.cacheDir, "voice-private").listFiles()?.forEach { if (it.isFile) it.delete() }
+      }
+    }
+    AsyncFunction("readAttachment") { uri: String ->
+      val file = File(android.net.Uri.parse(uri).path ?: throw IllegalArgumentException("Invalid local attachment"))
+      require(android.net.Uri.parse(uri).scheme == "file" && file.length() in 1..maxAttachment.toLong())
+      Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+    }
+    AsyncFunction("encryptAttachment") { plaintext: String ->
+      val plain = Base64.decode(plaintext, Base64.NO_WRAP)
+      require(plain.isNotEmpty() && plain.size <= maxAttachment)
+      val key = ByteArray(32).also { SecureRandom().nextBytes(it) }
+      val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
+      val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+      cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+      fun b64(bytes: ByteArray) = Base64.encodeToString(bytes, Base64.NO_WRAP)
+      mapOf("ciphertext" to b64(cipher.doFinal(plain)), "key_b64" to b64(key), "nonce_b64" to b64(nonce), "sha256_b64" to b64(MessageDigest.getInstance("SHA-256").digest(plain)))
+    }
+    AsyncFunction("decryptAttachment") { ciphertext: String, keyB64: String, nonceB64: String, hashB64: String, size: Int ->
+      val encrypted = Base64.decode(ciphertext, Base64.NO_WRAP)
+      val key = Base64.decode(keyB64, Base64.NO_WRAP)
+      val nonce = Base64.decode(nonceB64, Base64.NO_WRAP)
+      val hash = Base64.decode(hashB64, Base64.NO_WRAP)
+      require(size in 1..maxAttachment && encrypted.size.toLong() == size.toLong() + 16 && key.size == 32 && nonce.size == 12 && hash.size == 32)
+      val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+      cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+      val plain = cipher.doFinal(encrypted)
+      require(MessageDigest.isEqual(MessageDigest.getInstance("SHA-256").digest(plain), hash))
+      Base64.encodeToString(plain, Base64.NO_WRAP)
+    }
+    AsyncFunction("uploadAttachment") { address: String, ciphertext: String ->
+      val data = Base64.decode(ciphertext, Base64.NO_WRAP)
+      require(data.size in 17..(maxAttachment + 16))
+      val url = URL(address)
+      require(url.protocol == "https" || url.protocol == "http")
+      val connection = url.openConnection() as HttpURLConnection
+      try {
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "PUT"
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/octet-stream")
+        connection.setFixedLengthStreamingMode(data.size)
+        connection.outputStream.use { it.write(data) }
+        require(connection.responseCode in 200..299)
+      } finally { connection.disconnect() }
+    }
+    AsyncFunction("downloadAttachment") { address: String ->
+      val url = URL(address)
+      require(url.protocol == "https" || url.protocol == "http")
+      val connection = url.openConnection() as HttpURLConnection
+      try {
+        connection.instanceFollowRedirects = false
+        require(connection.responseCode in 200..299)
+        val output = java.io.ByteArrayOutputStream()
+        connection.inputStream.use { input ->
+          val buffer = ByteArray(8192)
+          while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            require(output.size().toLong() + count <= maxAttachment.toLong() + 16)
+            output.write(buffer, 0, count)
+          }
+        }
+        Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+      } finally { connection.disconnect() }
+    }
+    AsyncFunction("storeAttachment") { id: String, plaintext: String ->
+      val plain = Base64.decode(plaintext, Base64.NO_WRAP)
+      require(plain.isNotEmpty() && plain.size <= maxAttachment)
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val folder = File(context.cacheDir, "voice-private")
+      require(folder.isDirectory || folder.mkdirs())
+      val file = File(folder, "${UUID.randomUUID()}.ogg")
+      try {
+        file.writeBytes(plain)
+        synchronized(attachmentLock) { attachmentFiles.put(id, file)?.delete() }
+        "file://${file.absolutePath}"
+      } catch (error: Exception) { file.delete(); throw error }
+    }
+    AsyncFunction("removeAttachment") { id: String ->
+      synchronized(attachmentLock) { attachmentFiles.remove(id)?.delete() }
+      Unit
+    }
     AsyncFunction("start") {
       if (Build.VERSION.SDK_INT < 29) throw IllegalStateException("Ogg/Opus recording requires Android 10 or later")
       if (recorder != null) throw IllegalStateException("Recording already in progress")

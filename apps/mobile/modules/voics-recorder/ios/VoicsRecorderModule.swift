@@ -1,6 +1,7 @@
 import AVFoundation
 import ExpoModulesCore
 import Foundation
+import UIKit
 
 /// Captures PCM and encodes Opus using the platform codec. Ogg packaging is performed at stop.
 public final class VoicsRecorderModule: Module {
@@ -12,10 +13,14 @@ public final class VoicsRecorderModule: Module {
   private var frames: Double = 0
   private var failed = false
   private let playbackDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("voics-voice-playback", isDirectory: true)
+  private var backgroundObserver: NSObjectProtocol?
 
   public func definition() -> ModuleDefinition {
     Name("VoicsRecorder")
-    OnCreate { try? FileManager.default.removeItem(at: self.playbackDirectory) }
+    OnCreate {
+      try? FileManager.default.removeItem(at: self.playbackDirectory)
+      self.backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.cancel() }
+    }
     AsyncFunction("start") { try self.start() }
     AsyncFunction("stop") { try self.stop() }
     AsyncFunction("cancel") { self.cancel() }
@@ -42,7 +47,10 @@ public final class VoicsRecorderModule: Module {
       guard let url = URL(string: uri), url.isFileURL, url.standardizedFileURL.deletingLastPathComponent() == self.playbackDirectory.standardizedFileURL, url.pathExtension == "caf" else { return }
       try? FileManager.default.removeItem(at: url)
     }
-    OnDestroy { self.cancel() }
+    OnDestroy {
+      self.cancel()
+      if let observer = self.backgroundObserver { NotificationCenter.default.removeObserver(observer); self.backgroundObserver = nil }
+    }
   }
 
   private func start() throws {
