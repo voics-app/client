@@ -25,10 +25,10 @@ jobs:
   fetch:
     name: Fetch the APK from EAS
     runs-on: vm-runner
-    env:
-      OUT_DIR: ${{ runner.temp }}/android-apk-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v5
+      - name: Select a fresh output directory
+        run: echo "OUT_DIR=$RUNNER_TEMP/android-apk-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
       - name: Verify isolated artifact collection
         run: bash scripts/test-collect-android-apk.sh
       - name: Download and check
