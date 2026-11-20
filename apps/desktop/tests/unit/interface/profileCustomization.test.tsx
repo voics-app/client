@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -24,7 +24,8 @@ function mount(ui: React.ReactNode = <ProfileTab />) {
 beforeEach(() => {
   vi.resetAllMocks(); f.permissions = 0n;
   useSessionStore.getState().setUser(user);
-  useConnectionStore.setState({ cdnUrl: 'https://cdn' });
+  useConnectionStore.setState({ apiUrl: 'https://instance', cdnUrl: 'https://cdn' });
+  useSessionStore.setState({ sessionId: null });
   useUnsavedStore.setState({ sources: {}, shake: 0, escBlocked: false });
   useGuildStore.setState({ guilds: { '9': { id: '9', name: 'Study club', owner_id: '8', icon: null, roles: [], emojis: [], features: [] } } as never, members: { '9': { '7': member } } });
   f.api.member.mockResolvedValue(member);
@@ -35,6 +36,42 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('profile customization', () => {
+  it('does not overwrite a new account with a delayed global profile save', async () => {
+    let resolve!: (value: User) => void;
+    f.api.updateMe.mockReturnValue(new Promise<User>((done) => { resolve = done; }));
+    mount();
+    fireEvent.change(screen.getByLabelText('Pronouns'), { target: { value: 'pending' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const nextUser = { ...user, id: '8', username: 'other', pronouns: 'new' };
+    act(() => { useSessionStore.getState().setUser(nextUser); });
+    await act(async () => { resolve({ ...user, pronouns: 'pending' }); });
+    expect(useSessionStore.getState().user).toEqual(nextUser);
+  });
+
+  it('does not write a delayed server profile save into a different instance', async () => {
+    let resolve!: (value: GuildMember) => void;
+    f.api.updateMember.mockReturnValue(new Promise<GuildMember>((done) => { resolve = done; }));
+    mount(<ProfileTab initialGuildId="9" />);
+    fireEvent.change(await screen.findByLabelText('About me'), { target: { value: 'old instance' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const nextMember = { ...member, bio: 'new instance' };
+    act(() => { useConnectionStore.setState({ apiUrl: 'https://new-instance' }); useGuildStore.setState({ members: { '9': { '7': nextMember } } }); });
+    await act(async () => { resolve({ ...member, bio: 'old instance' }); });
+    expect(useGuildStore.getState().members['9']?.['7']?.bio).toBe('new instance');
+  });
+
+  it('keeps an old instance member lookup out of the new instance profile', async () => {
+    let resolve!: (value: GuildMember) => void;
+    useGuildStore.setState({ members: {} });
+    f.api.member.mockReturnValueOnce(new Promise<GuildMember>((done) => { resolve = done; })).mockResolvedValue({ ...member, bio: 'new instance' });
+    mount(<ProfileTab initialGuildId="9" />);
+    await waitFor(() => expect(f.api.member).toHaveBeenCalledTimes(1));
+    act(() => { useConnectionStore.setState({ apiUrl: 'https://new-instance' }); });
+    await waitFor(() => expect(f.api.member).toHaveBeenCalledTimes(2));
+    await act(async () => { resolve({ ...member, bio: 'old instance' }); });
+    await waitFor(() => expect((screen.getByLabelText('About me') as HTMLTextAreaElement).value).toBe('new instance'));
+  });
+
   it('counts Unicode characters consistently with the API limits', async () => {
     mount();
     const pronouns = screen.getByLabelText('Pronouns') as HTMLInputElement;

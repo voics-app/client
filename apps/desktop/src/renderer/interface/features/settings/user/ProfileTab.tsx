@@ -6,12 +6,15 @@ import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore'
 import type { User } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
+import { useConnectionStore } from '../../../app/connectionStore';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Select } from '../../../shared/ui/Form';
 import { ProfileEditor } from './ProfileEditor';
 
 export function ProfileTab({ initialGuildId }: { initialGuildId?: string }) {
   const user = useSessionStore((s) => s.user);
+  const sessionId = useSessionStore((s) => s.sessionId);
+  const apiUrl = useConnectionStore((s) => s.apiUrl);
   const guilds = useGuildStore((s) => s.guilds);
   const [scope, setScope] = useState(initialGuildId ?? '');
   if (!user) return null;
@@ -24,14 +27,14 @@ export function ProfileTab({ initialGuildId }: { initialGuildId?: string }) {
       <option value="">Global profile</option>
       {Object.values(guilds).map((guild) => <option key={guild.id} value={guild.id}>{guild.name}</option>)}
     </Select>}</Field>
-    {scope ? <ServerProfile key={scope} user={user} guildId={scope} /> : <ProfileEditor key="global" user={user} />}
+    {scope ? <ServerProfile key={`${apiUrl}:${user.id}:${sessionId}:${scope}`} user={user} guildId={scope} apiUrl={apiUrl} sessionId={sessionId} /> : <ProfileEditor key={`${apiUrl}:${user.id}:${sessionId}:global`} user={user} />}
   </div>;
 }
 
-function ServerProfile({ user, guildId }: { user: User; guildId: string }) {
+function ServerProfile({ user, guildId, apiUrl, sessionId }: { user: User; guildId: string; apiUrl: string; sessionId: string | null }) {
   const client = useQueryClient();
   const member = useGuildStore((s) => s.members[guildId]?.[user.id]);
-  const queryKey = ['profile-member', guildId, user.id];
+  const queryKey = ['profile-member', apiUrl, sessionId, guildId, user.id];
   const query = useQuery({ queryKey, queryFn: () => getRuntime().api.member(guildId, user.id), initialData: member, staleTime: 0 });
   if (!query.data) return query.isError
     ? <div role="alert"><p>{errorMessage(query.error)}</p><Button onClick={() => void query.refetch()}>Retry loading profile</Button></div>

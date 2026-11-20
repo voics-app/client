@@ -7,6 +7,7 @@ import type { GuildMember, User } from '@discordy/core/contracts/rest';
 import { BIO_MAX_LENGTH, PRONOUNS_MAX_LENGTH, profileColor } from '@discordy/core/domain/profile';
 import { errorMessage } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
+import { useConnectionStore } from '../../../app/connectionStore';
 import { can, useGuildPermissions } from '../../../shared/hooks/usePermissions';
 import { Button } from '../../../shared/ui/Button';
 import { Field, Input, TextArea } from '../../../shared/ui/Form';
@@ -45,20 +46,37 @@ export function ProfileEditor({ user, member, guildId, onMemberSaved }: Props) {
   const save = async () => {
     if (saving || reading) return;
     setSaving(true); setError(null);
+    const session = useSessionStore.getState();
+    const userId = session.user?.id;
+    const sessionId = session.sessionId;
+    const apiUrl = useConnectionStore.getState().apiUrl;
+    let current = userId === user.id;
+    const stopSession = useSessionStore.subscribe((next) => {
+      if (next.user?.id !== userId || next.sessionId !== sessionId) current = false;
+    });
+    const stopConnection = useConnectionStore.subscribe((next) => {
+      if (next.apiUrl !== apiUrl) current = false;
+    });
     try {
       if (guildId) {
         const updated = await getRuntime().api.updateMember(guildId, user.id, patch);
+        if (!current) return;
         useGuildStore.getState().upsertMember(guildId, updated);
         onMemberSaved?.(updated);
       } else {
         const updated = await getRuntime().api.updateMe(patch);
+        if (!current) return;
         useSessionStore.getState().setUser(updated);
         client.setQueryData(['user', user.id], updated);
         void client.invalidateQueries({ queryKey: ['user-profile', user.id] });
       }
       setPatch({}); setSaved(true);
-    } catch (cause) { setError(errorMessage(cause)); }
-    finally { setSaving(false); }
+    } catch (cause) { if (current) setError(errorMessage(cause)); }
+    finally {
+      stopSession();
+      stopConnection();
+      if (current) setSaving(false);
+    }
   };
   return <>
     {guildId && <p className="setting-desc">Only shown in this server. Empty fields and removed images use your global profile.</p>}
