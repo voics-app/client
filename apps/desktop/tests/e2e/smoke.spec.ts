@@ -68,7 +68,7 @@ test('creates a server event and marks interest', async () => {
   await list.getByRole('button', { name: 'Interested', exact: true }).click();
   await expect(list.getByRole('button', { name: 'Remove interest' })).toBeVisible();
   expect(backend.events[0]).toMatchObject({ name: 'Community meetup', entity_type: 3, entity_metadata: { location: 'The park' }, user_count: 1 });
-  await list.getByRole('button', { name: 'Close' }).click();
+  await list.getByRole('button', { name: 'Done' }).click();
 });
 
 test('runs slash commands and renders interaction responses', async () => {

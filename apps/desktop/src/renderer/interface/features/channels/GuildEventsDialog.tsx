@@ -95,7 +95,7 @@ export function GuildEventsDialog({ guildId }: { guildId: string }) {
       {events.isError && <p role="alert">Could not load events. <button type="button" onClick={() => void events.refetch()}>Retry</button></p>}
       {events.data?.length === 0 && <p>No events scheduled yet.</p>}
       {events.data && events.data.length > 0 && <ul className="stack">{events.data.map((event) => <EventRow key={event.id} event={event} />)}</ul>}
-      <div className="row-end">{mayCreate && <Button variant="primary" onClick={() => setCreating(true)}>Create event</Button>}<Button variant="ghost" onClick={close}>Close</Button></div>
+      <div className="row-end">{mayCreate && <Button variant="primary" onClick={() => setCreating(true)}>Create event</Button>}<Button variant="ghost" onClick={close}>Done</Button></div>
     </div>}
   </Modal>;
 }
