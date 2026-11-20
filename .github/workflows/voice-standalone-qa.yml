@@ -10,10 +10,12 @@ jobs:
     timeout-minutes: 60
     env:
       VOICS_MOBILE_QA: '1'
-      GRADLE_USER_HOME: ${{ runner.temp }}/voice-gradle
-      CARGO_TARGET_DIR: ${{ runner.temp }}/voice-rust-target
     steps:
       - uses: actions/checkout@v4
+      - name: Configure job-local build paths
+        run: |
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/voice-gradle" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_DIR=$RUNNER_TEMP/voice-rust-target" >> "$GITHUB_ENV"
       - name: Verify existing toolchain
         run: |
           node --version
