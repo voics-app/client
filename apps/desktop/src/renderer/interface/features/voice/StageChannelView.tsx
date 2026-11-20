@@ -1,16 +1,19 @@
 ﻿import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { errorMessage } from '../../app/actions';
+import { joinStageAudience, leaveVoice } from '../../app/voiceActions';
 import { getRuntime } from '../../app/runtime';
 import { can, useChannelPermissions } from '../../shared/hooks/usePermissions';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input } from '../../shared/ui/Form';
 
-/** Stage metadata can be managed while voice publishing enforcement is being completed. */
+/** Stage topic and audience entry. */
 export function StageChannelView({ channelId }: { channelId: string }) {
   const channel = useGuildStore((s) => s.channels[channelId]);
+  const connected = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
   const canManage = can(useChannelPermissions(channelId), Permission.MANAGE_CHANNELS);
   const queryClient = useQueryClient();
   const key = ['stage-instance', channelId];
@@ -52,7 +55,10 @@ export function StageChannelView({ channelId }: { channelId: string }) {
           <div className="stack">
             <p role="status">{stage.data ? 'Stage is live.' : 'No stage is live.'}</p>
             {stage.data && <p>{stage.data.topic}</p>}
-            <p className="setting-desc">Joining stage audio is unavailable while audience controls are being completed.</p>
+            {stage.data && channel?.guild_id && (connected
+              ? <Button onClick={() => void leaveVoice()}>Leave stage</Button>
+              : <Button onClick={() => void joinStageAudience(channel.guild_id!, channelId)}>Join as audience</Button>)}
+            <p className="setting-desc">Audience members join muted.</p>
             {canManage && <>
               <Field label="Stage topic" hint="Up to 120 characters.">
                 {(id) => <Input id={id} maxLength={120} value={topic} disabled={saving} onChange={(event) => setDraft(event.target.value)} />}

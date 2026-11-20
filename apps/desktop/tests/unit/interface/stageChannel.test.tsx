@@ -16,17 +16,18 @@ const api = vi.hoisted(() => ({
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
-it('starts, edits and ends a stage while audio remains unavailable', async () => {
+it('starts, edits and ends a stage with audience entry', async () => {
   useSessionStore.setState({ user: { id: 'owner', username: 'owner', global_name: null, avatar: null } } as never);
   useGuildStore.setState({ guilds: { g: { id: 'g', owner_id: 'owner', roles: [{ id: 'g', permissions: ALL_PERMISSIONS.toString() }] } }, members: { g: {} }, channels: { c: { id: 'c', guild_id: 'g', type: 13, name: 'Town hall' } } } as never);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><StageChannelView channelId="c" /></QueryClientProvider>);
   await screen.findByText('No stage is live.');
-  expect(screen.getByText(/Joining stage audio is unavailable/)).toBeTruthy();
+  expect(screen.getByText('Audience members join muted.')).toBeTruthy();
   fireEvent.change(screen.getByLabelText('Stage topic'), { target: { value: 'Town hall' } });
   fireEvent.click(screen.getByRole('button', { name: 'Start stage' }));
   await waitFor(() => expect(api.startStage).toHaveBeenCalledWith('c', 'Town hall'));
   await screen.findByText('Stage is live.');
+  expect(screen.getByRole('button', { name: 'Join as audience' })).toBeTruthy();
   fireEvent.change(screen.getByLabelText('Stage topic'), { target: { value: 'Questions' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save topic' }));
   await waitFor(() => expect(api.updateStage).toHaveBeenCalledWith('c', 'Questions'));
