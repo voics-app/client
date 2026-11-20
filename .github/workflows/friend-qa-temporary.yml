@@ -11,6 +11,9 @@ jobs:
     timeout-minutes: 60
     env:
       VOICS_MOBILE_QA: '1'
+      VOICS_QA_API_URL: 'http://10.0.2.2:28135'
+      VOICS_QA_GATEWAY_URL: 'ws://10.0.2.2:28135/gateway'
+      VOICS_QA_CDN_URL: 'http://10.0.2.2:28135/cdn'
     steps:
       - uses: actions/checkout@v4
       - name: Prepare job-local Node and pnpm
@@ -67,7 +70,8 @@ jobs:
           set -euo pipefail
           apk=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | head -1 | grep "package: name='nl.voics.app.qa'"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/api103-signer.txt"
+          grep -F 'Signer #1 certificate DN: CN=Android Debug' "$RUNNER_TEMP/api103-signer.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: voics-api103-qa-apk
