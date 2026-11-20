@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   fixture.manages = false;
   fixture.channels.forum.require_tags = false;
+  fixture.channels.forum.delivery_mode = 'standard';
   fixture.drafts = {};
   fixture.listForumPosts.mockResolvedValue([]);
   fixture.createThread.mockResolvedValue({ id: 'post', type: 11, parent_id: 'forum', delivery_mode: 'standard', forum_post_status: 'published' });
@@ -64,4 +65,14 @@ it('requires a selected tag and sends it with a new post', async () => {
   fireEvent.click(screen.getByLabelText('Help'));
   fireEvent.click(screen.getByRole('button', { name: 'Post' }));
   await waitFor(() => expect(fixture.createThread).toHaveBeenCalledWith('forum', expect.objectContaining({ applied_tags: ['12'] })));
+});
+
+
+it('does not submit plaintext for a private forum', () => {
+  fixture.channels.forum.delivery_mode = 'ephemeral';
+  render(<ForumView channelId="forum" />);
+  fillPost();
+  expect((screen.getByRole('button', { name: 'Post' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText('New posts are not yet available in private delivery mode.')).toBeTruthy();
+  expect(fixture.createThread).not.toHaveBeenCalled();
 });

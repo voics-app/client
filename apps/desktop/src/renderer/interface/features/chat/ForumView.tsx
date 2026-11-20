@@ -48,20 +48,20 @@ export function ForumView({ channelId }: { channelId: string }) {
     setLoadFailed(false);
     void attempt(() => getRuntime().api.listForumPosts(channelId), 'Could not load forum posts').then((loaded) => {
       if (!active) return;
-      if (loaded) loaded.forEach((post) => useGuildStore.getState().upsertChannel(post));
+      if (loaded) loaded.forEach((post) => useGuildStore.getState().upsertChannel({ ...post, forum_first_message: post.forum_first_message ?? null, message_count: post.message_count, last_message_id: post.last_message_id ?? null }));
       else setLoadFailed(true);
       setLoading(false);
     });
     return () => { active = false; };
-  }, [channelId]);
+  }, [channelId, channel?.delivery_mode]);
   const setPanel = useUiStore((s) => s.setSidePanel);
   const mayManageThreads = can(useChannelPermissions(channelId), Permission.MANAGE_THREADS);
   const tags = channel?.available_tags ?? [];
   const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD && (!filterTag || c.applied_tags?.includes(filterTag)));
   posts.sort((a, b) => {
     const pinOrder = Number(Boolean((b.flags ?? 0) & 2)) - Number(Boolean((a.flags ?? 0) & 2));
-    const aKey = sort === 'activity' ? (a.last_message_id ?? a.id) : a.id;
-    const bKey = sort === 'activity' ? (b.last_message_id ?? b.id) : b.id;
+    const aKey = sort === 'activity' && channel?.delivery_mode === 'standard' ? (a.last_message_id ?? a.id) : a.id;
+    const bKey = sort === 'activity' && channel?.delivery_mode === 'standard' ? (b.last_message_id ?? b.id) : b.id;
     return pinOrder || (aKey === bKey ? 0 : BigInt(aKey) > BigInt(bKey) ? -1 : 1);
   });
   const togglePin = async (post: Channel) => {
@@ -112,10 +112,10 @@ export function ForumView({ channelId }: { channelId: string }) {
               <button type="button" onClick={() => setPanel({ kind: 'thread', threadId: p.id })}>
                 {(p.flags ?? 0) & 2 ? <span>Pinned - </span> : null}<strong>{p.name}</strong>
               </button>
-              {p.forum_first_message?.content && <p className="forum-preview">{p.forum_first_message.content}</p>}
-              {layout === 'gallery' && p.forum_first_message?.attachments.filter((attachment) => attachment.content_type?.startsWith('image/') && !((attachment.flags ?? 0) & AttachmentFlag.IS_SPOILER)).slice(0, 1).map((attachment) => <img key={attachment.id} className="forum-cover" src={attachment.proxy_url ?? attachment.url} alt={attachment.description ?? ''} loading="lazy" />)}
+              {channel?.delivery_mode === 'standard' && p.forum_first_message?.content && <p className="forum-preview">{p.forum_first_message.content}</p>}
+              {channel?.delivery_mode === 'standard' && layout === 'gallery' && p.forum_first_message?.attachments?.filter((attachment) => attachment.content_type?.startsWith('image/') && !((attachment.flags ?? 0) & AttachmentFlag.IS_SPOILER)).slice(0, 1).map((attachment) => <img key={attachment.id} className="forum-cover" src={attachment.proxy_url ?? attachment.url} alt={attachment.description ?? ''} loading="lazy" />)}
               <span>{p.applied_tags?.map((id) => tags.find((tag) => tag.id === id)?.name).filter(Boolean).join(', ')}</span>
-              {p.message_count != null && <span className="tnum">{Math.max(0, p.message_count - 1)} replies</span>}
+              {channel?.delivery_mode === 'standard' && p.message_count != null && <span className="tnum">{Math.max(0, p.message_count - 1)} replies</span>}
               {mayManageThreads && <Button size="sm" onClick={() => void togglePin(p)}>{(p.flags ?? 0) & 2 ? 'Unpin' : 'Pin'}</Button>}
             </article>
           ))

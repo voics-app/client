@@ -75,10 +75,10 @@ export function ForumScreen({ guildId, channelId }: { guildId: string; channelId
   useEffect(() => {
     let active = true;
     void attempt(() => getRuntime().api.listForumPosts(channelId), 'Could not load forum posts').then((posts) => {
-      if (active && posts) posts.forEach((post) => useGuildStore.getState().upsertChannel(post));
+      if (active && posts) posts.forEach((post) => useGuildStore.getState().upsertChannel({ ...post, forum_first_message: post.forum_first_message ?? null, message_count: post.message_count, last_message_id: post.last_message_id ?? null }));
     });
     return () => { active = false; };
-  }, [channelId]);
+  }, [channelId, channel?.delivery_mode]);
   const posts = useMemo(() => forumPosts(channels, channelId), [channels, channelId]);
   if (!channel || !guild || !me) return <Notice>This channel is not available.</Notice>;
   // Starting a post is starting a public thread in the forum: needs Create Public Threads and View Channel, from the same algorithm as desktop.
@@ -93,9 +93,9 @@ export function ForumScreen({ guildId, channelId }: { guildId: string; channelId
         keyExtractor={(p) => p.id}
         ListEmptyComponent={<Notice>{canCreate ? 'No posts yet. Start a discussion: every post is its own thread.' : 'No posts yet.'}</Notice>}
         renderItem={({ item }) => {
-          const count = item.message_count;
+          const count = channel.delivery_mode === 'standard' ? item.message_count : undefined;
           const archived = item.thread_metadata?.archived === true;
-          const cover = item.forum_first_message?.attachments.find((attachment) => attachment.content_type?.startsWith('image/') && !((attachment.flags ?? 0) & AttachmentFlag.IS_SPOILER));
+          const cover = channel.delivery_mode === 'standard' ? item.forum_first_message?.attachments?.find((attachment) => attachment.content_type?.startsWith('image/') && !((attachment.flags ?? 0) & AttachmentFlag.IS_SPOILER)) : undefined;
           return (
             <Pressable accessibilityRole="button" accessibilityLabel={`Open post ${item.name ?? 'post'}${archived ? ', archived' : ''}`} onPress={() => router.push(`/servers/${guildId}/${item.id}`)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
               <Ionicons name="chatbubbles-outline" size={22} color={archived ? theme.subtle : theme.text} />
@@ -103,7 +103,7 @@ export function ForumScreen({ guildId, channelId }: { guildId: string; channelId
                 <Text numberOfLines={2} style={[styles.name, archived && styles.archived]}>
                   {item.name ?? 'post'}
                 </Text>
-                {item.forum_first_message?.content && <Text numberOfLines={2} style={styles.sub}>{item.forum_first_message.content}</Text>}
+                {channel.delivery_mode === 'standard' && item.forum_first_message?.content && <Text numberOfLines={2} style={styles.sub}>{item.forum_first_message.content}</Text>}
                 <Text style={styles.sub}>{`${count == null ? 'Post' : `${Math.max(0, count - 1)} replies`}${archived ? ' - Archived' : ''}`}</Text>
               </View>
               {cover && <Image source={{ uri: cover.proxy_url ?? cover.url }} accessibilityLabel={cover.description ?? 'Post cover'} style={styles.cover} />}
