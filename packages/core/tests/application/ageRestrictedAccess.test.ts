@@ -11,7 +11,7 @@ import { useUiStore } from '../../src/application/stores/uiStore';
 import type { Message } from '../../src/contracts/rest';
 
 const user = (id: string): User => ({ id, username: id, discriminator: '0', global_name: null, avatar: null });
-const channel = (id: string, extra: Partial<Channel> = {}): Channel => ({ id, type: ChannelType.GUILD_TEXT, guild_id: 'guild', delivery_mode: 'standard', ...extra });
+const channel = (id: string, extra: Partial<Channel> = {}): Channel => ({ id, type: ChannelType.GUILD_TEXT, guild_id: 'guild', delivery_mode: 'standard', nsfw: false, ...extra });
 const put = (...channels: Channel[]) => channels.forEach((c) => useGuildStore.getState().upsertChannel(c));
 
 beforeEach(() => {
@@ -97,13 +97,17 @@ describe('restricted channel access', () => {
   });
 
   it('fails closed for malformed restriction flags, cycles and cross-guild ancestry', () => {
+    put(channel('missing-flag', { nsfw: undefined }));
+    put(channel('child-of-missing', { parent_id: 'missing-flag' }));
+    put({ id: 'dm', type: ChannelType.DM, delivery_mode: 'standard' });
     put(channel('bad', { nsfw: 'false' as unknown as boolean }));
     put(channel('cycle', { parent_id: 'cycle' }));
     put(channel('foreign', { guild_id: 'other-guild', nsfw: true }));
     put(channel('child', { parent_id: 'foreign' }));
     put(channel('empty-parent', { parent_id: '' }));
     put(channel('future-type', { type: 99 as Channel['type'] }));
-    for (const id of ['bad', 'cycle', 'child', 'empty-parent', 'future-type']) expect(getAgeRestrictedAccess(id).kind).toBe('unavailable');
+    for (const id of ['missing-flag', 'child-of-missing', 'bad', 'cycle', 'child', 'empty-parent', 'future-type']) expect(getAgeRestrictedAccess(id).kind).toBe('unavailable');
+    expect(getAgeRestrictedAccess('dm').kind).toBe('open');
   });
 });
 
