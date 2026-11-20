@@ -25,10 +25,14 @@ jobs:
         run: |
           if ($env:RUNNER_OS -ne 'Windows') { throw 'Expected a native Windows runner' }
           Write-Host "Runner: $env:RUNNER_NAME; OS: $env:RUNNER_OS; Version: $([Environment]::OSVersion.VersionString)"
+          $gitBin = Join-Path $env:ProgramFiles 'Git\bin'
+          if (-not (Test-Path (Join-Path $gitBin 'bash.exe'))) { throw 'Git for Windows Bash is required' }
+          [System.IO.File]::AppendAllText($env:GITHUB_PATH, "$gitBin`n", [System.Text.UTF8Encoding]::new($false))
       - name: Verify release Bash
         shell: bash
         timeout-minutes: 2
         run: |
+          command -v bash
           case "$(uname -s)" in MINGW*|MSYS*) ;; *) echo 'Git for Windows Bash is required'; exit 1 ;; esac
           node --version
           rustc --version
