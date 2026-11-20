@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { EmojiPicker, type PickedEmoji } from './EmojiPicker';
+import type { PickedEmoji } from './EmojiPicker';
+import { LazyFeature } from '../../shared/ui/LazyFeature';
+
+const loadEmojiPicker = () => import('./EmojiPicker').then(({ EmojiPicker }) => ({ default: EmojiPicker }));
 
 interface Anchor {
   x: number;
@@ -17,7 +20,7 @@ export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: 
   useEffect(() => {
     if (!anchor) return;
     const onDown = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.emoji-picker')) close();
+      if (!(e.target as HTMLElement).closest('.emoji-popover')) close();
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     document.addEventListener('mousedown', onDown, true);
@@ -38,14 +41,7 @@ export function useEmojiPopover(guildId: string | null | undefined, onPick: (e: 
   const node = anchor
     ? createPortal(
         <div className="emoji-popover" style={{ left: anchor.x, top: anchor.y, transform: `translate(-100%, ${anchor.up ? '-100%' : '0'})` }}>
-          <EmojiPicker
-            guildId={guildId}
-            channelId={channelId}
-            onPick={(e) => {
-              onPick(e);
-              close();
-            }}
-          />
+          <LazyFeature load={loadEmojiPicker} close={close} props={{ guildId, channelId, onPick: (e: PickedEmoji) => { onPick(e); close(); } }} />
         </div>,
         document.body,
       )

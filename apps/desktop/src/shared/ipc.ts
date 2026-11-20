@@ -91,6 +91,7 @@ export interface DiscordyBridge {
     /** Reports self mute/deafen for the tray menu. */
     setVoiceState(state: VoiceState): void;
     onTrayCommand(listener: (command: TrayCommand) => void): () => void;
+    obsRunning(): Promise<boolean | null>;
   };
   desktop: {
     get(): Promise<DesktopSettings>;
@@ -151,6 +152,7 @@ export const IpcChannel = {
   appFlash: 'app:flash',
   appVoiceState: 'app:voice-state',
   appTrayCommand: 'app:tray-command',
+  obsRunning: 'app:obs-running',
   desktopGet: 'desktop:get',
   desktopSet: 'desktop:set',
   desktopRelaunch: 'desktop:relaunch',

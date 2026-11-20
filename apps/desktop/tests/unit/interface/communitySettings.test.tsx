@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ServerVanity } from '@renderer/interface/features/settings/server/ServerVanity';
 import { ServerAuditPolicy } from '@renderer/interface/features/settings/server/ServerAuditPolicy';
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 
 const fixture = vi.hoisted(() => ({
   permissions: 40n,
@@ -24,6 +25,7 @@ function mount(element: React.ReactNode) {
 }
 
 beforeEach(() => {
+  usePrefsStore.setState({ streamerMode: false, streamerAutoDetect: false });
   vi.resetAllMocks();
   fixture.permissions = 40n;
   fixture.api.guildVanityUrl.mockResolvedValue({ code: null, uses: 0 });
@@ -32,6 +34,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('permanent invite settings', () => {
+  it('hides an already-open invite and retains its draft when streamer mode ends', async () => {
+    fixture.api.guildVanityUrl.mockResolvedValue({ code: 'secret-code', uses: 0 });
+    mount(<ServerVanity guildId="1" />);
+    const input = await screen.findByLabelText('Invite code') as HTMLInputElement;
+    expect(input.value).toBe('secret-code');
+    fireEvent.change(input, { target: { value: 'new-secret' } });
+    act(() => usePrefsStore.getState().set('streamerMode', true));
+    expect(screen.queryByLabelText('Invite code')).toBeNull();
+    expect(screen.getByText('Hidden in streamer mode.')).toBeTruthy();
+    act(() => usePrefsStore.getState().set('streamerMode', false));
+    expect((screen.getByLabelText('Invite code') as HTMLInputElement).value).toBe('new-secret');
+  });
   it('saves the server-normalized code, copies its link and removes it', async () => {
     fixture.api.updateGuildVanityUrl.mockResolvedValueOnce({ code: 'study-club', uses: 0 }).mockResolvedValueOnce({ code: null, uses: 0 });
     mount(<ServerVanity guildId="1" />);
