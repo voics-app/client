@@ -49,7 +49,7 @@ describe('openVoiceChannel', () => {
     await joinStageAudience('g1', 'stage');
     expect(voice.setMute).toHaveBeenCalledWith(true);
     expect(voice.join).toHaveBeenCalledWith('g1', 'stage');
-    expect(vi.mocked(voice.setMute).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(voice.join).mock.invocationCallOrder[0]);
+    expect(vi.mocked(voice.setMute).mock.invocationCallOrder[0]!).toBeLessThan(vi.mocked(voice.join).mock.invocationCallOrder[0]!);
   });
 
   it('does not unmute a stage audience member without an unsuppressed voice state', async () => {

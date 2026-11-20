@@ -6,11 +6,12 @@ import { isLinkPreview, SUPPRESS_EMBEDS_FLAG } from '@discordy/core/domain/media
 import { attempt } from './actions';
 import { googleSearchUrl, openExternalUrl } from './links';
 import { getRuntime } from './runtime';
+import { streamerActive } from './streamer';
 
 export const speechSupported = (): boolean => typeof window !== 'undefined' && 'speechSynthesis' in window;
 
 export function speakText(text: string): void {
-  if (!speechSupported()) return;
+  if (!speechSupported() || streamerActive()) return;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
