@@ -470,6 +470,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           restoreFailed(item.draft);
           useFailedSendQueue.getState().remove(recoveryScope, item.id);
         }}>Restore failed message</button>
+        <button type="button" onClick={() => { const item = failed[0]; if (item) useFailedSendQueue.getState().remove(recoveryScope, item.id); }}>Discard failed message</button>
       </div>}
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={commandSearch !== null ? 'Commands' : 'Suggestions'}>
