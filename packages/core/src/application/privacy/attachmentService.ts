@@ -17,12 +17,23 @@ import {
 import type { ApiPort } from '../ports/api';
 import { useTransferStore } from '../stores/transferStore';
 import type { AttachmentFailure } from '../../domain/attachmentFailure';
-import { AttachmentError, decryptFile, encryptFile, type EncryptedFile } from './attachmentCipher';
+import { AttachmentError, decryptFile, encryptFile, type EncryptedFile, type FileKeyMaterial } from './attachmentCipher';
+
+/** Native runtimes supply all operations together; they must never fall back to plaintext transport. */
+export interface AttachmentPlatform {
+  read(file: File): Promise<Uint8Array>;
+  encrypt(plaintext: Uint8Array): Promise<EncryptedFile>;
+  decrypt(ciphertext: Uint8Array, material: FileKeyMaterial): Promise<Uint8Array>;
+  upload(url: string, ciphertext: Uint8Array): Promise<void>;
+  store(id: string, plaintext: Uint8Array, mime: string): Promise<string>;
+  remove(id: string): Promise<void>;
+}
 
 export interface AttachmentDeps {
   api: Pick<ApiPort, 'createAttachmentSlots' | 'refreshAttachmentUrls' | 'upload'>;
   fetchBytes: (url: string) => Promise<Uint8Array>;
   createObjectUrl?: (blob: Blob) => string;
+  platform?: AttachmentPlatform;
 }
 
 export interface OutgoingP2PFile {
@@ -46,7 +57,8 @@ export class AttachmentService {
     const encrypted: EncryptedFile[] = [];
     for (const [i, file] of files.entries()) {
       this.track(ids[i]!, { state: 'encrypting', loaded: 0, total: file.size });
-      encrypted.push(await encryptFile(new Uint8Array(await file.arrayBuffer())));
+      const bytes = this.deps.platform ? await this.deps.platform.read(file) : new Uint8Array(await file.arrayBuffer());
+      encrypted.push(await (this.deps.platform ? this.deps.platform.encrypt(bytes) : encryptFile(bytes)));
     }
     try {
       const { attachments: slots } = await this.deps.api.createAttachmentSlots(
@@ -57,11 +69,12 @@ export class AttachmentService {
       await Promise.all(
         slots.map(async (slot, i) => {
           this.track(ids[i]!, { state: 'uploading', loaded: 0, total: files[i]!.size });
-          await this.deps.api.upload(slot.upload_url, new Blob([encrypted[i]!.ciphertext as BlobPart], { type: 'application/octet-stream' }));
+          if (this.deps.platform) await this.deps.platform.upload(slot.upload_url, encrypted[i]!.ciphertext);
+          else await this.deps.api.upload(slot.upload_url, new Blob([encrypted[i]!.ciphertext as BlobPart], { type: 'application/octet-stream' }));
           this.track(ids[i]!, { state: 'done', loaded: files[i]!.size });
         }),
       );
-      return slots.map((slot, i) => this.remember(files[i]!, ids[i]!, encrypted[i]!, { kind: 'cdn', object_key: slot.upload_filename }));
+      return await Promise.all(slots.map((slot, i) => this.remember(files[i]!, ids[i]!, encrypted[i]!, { kind: 'cdn', object_key: slot.upload_filename })));
     } catch (error) {
       const failure = this.fail(ids, 'upload_failed', `Upload failed: ${error instanceof Error ? error.message : String(error)}`);
       throw failure;
@@ -75,8 +88,9 @@ export class AttachmentService {
     for (const [i, file] of files.entries()) {
       const id = `${messageId}:${i}`;
       this.track(id, { state: 'encrypting', loaded: 0, total: file.size });
-      const enc = await encryptFile(new Uint8Array(await file.arrayBuffer()));
-      out.push({ attachment: this.remember(file, id, enc, { kind: 'p2p' }), ciphertext: enc.ciphertext });
+      const bytes = this.deps.platform ? await this.deps.platform.read(file) : new Uint8Array(await file.arrayBuffer());
+      const enc = await (this.deps.platform ? this.deps.platform.encrypt(bytes) : encryptFile(bytes));
+      out.push({ attachment: await this.remember(file, id, enc, { kind: 'p2p' }), ciphertext: enc.ciphertext });
     }
     return out;
   }
@@ -85,8 +99,9 @@ export class AttachmentService {
   async accept(ref: PrivateFileRef, ciphertext: Uint8Array): Promise<void> {
     this.track(ref.id, { state: 'decrypting', loaded: ref.size, total: ref.size });
     try {
-      const plain = await decryptFile(ciphertext, ref);
-      this.blobs.set(ref.id, new Blob([plain as BlobPart], { type: ref.mime }));
+      const plain = await (this.deps.platform ? this.deps.platform.decrypt(ciphertext, ref) : decryptFile(ciphertext, ref));
+      if (this.deps.platform) this.urls.set(ref.id, await this.deps.platform.store(ref.id, plain, ref.mime));
+      else this.blobs.set(ref.id, new Blob([plain as BlobPart], { type: ref.mime }));
       this.track(ref.id, { state: 'done' });
     } catch (error) {
       this.fail([ref.id], error instanceof AttachmentError ? error.reason : 'transfer_failed', error instanceof Error ? error.message : String(error));
@@ -144,8 +159,20 @@ export class AttachmentService {
     return url;
   }
 
-  private remember(file: File, id: string, enc: EncryptedFile, source: PrivateFileRef['source']): PrivateAttachment {
-    this.blobs.set(id, file);
+  async removeMessage(messageId: string): Promise<void> {
+    const ids = new Set([...this.urls.keys(), ...this.blobs.keys()].filter((id) => id.startsWith(`${messageId}:`)));
+    for (const id of ids) {
+      const url = this.urls.get(id);
+      if (this.deps.platform) await this.deps.platform.remove(id);
+      else if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+      this.urls.delete(id);
+      this.blobs.delete(id);
+    }
+  }
+
+  private async remember(file: File, id: string, enc: EncryptedFile, source: PrivateFileRef['source']): Promise<PrivateAttachment> {
+    if (this.deps.platform) this.urls.set(id, await this.deps.platform.store(id, await this.deps.platform.read(file), file.type));
+    else this.blobs.set(id, file);
     return toAttachment({
       id,
       name: sanitizeFileName(file.name),

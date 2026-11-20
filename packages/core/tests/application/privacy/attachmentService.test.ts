@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AttachmentService } from '../../../src/application/privacy/attachmentService';
-import { AttachmentError } from '../../../src/application/privacy/attachmentCipher';
+import { AttachmentError, decryptFile, encryptFile } from '../../../src/application/privacy/attachmentCipher';
 import { useTransferStore } from '../../../src/application/stores/transferStore';
 import { EPHEMERAL_MAX_FILE_BYTES, privateRefOf } from '../../../src/domain/privateAttachment';
 import { decodePayload, encodePayload } from '../../../src/application/privacy/types';
@@ -87,6 +87,26 @@ describe('AttachmentService ephemeral upload', () => {
 
 describe('AttachmentService receiving', () => {
   beforeEach(() => useTransferStore.getState().reset());
+
+  it('interoperates with a native attachment platform and deletes cached plaintext', async () => {
+    const ctx = setup();
+    const local = new Map<string, Uint8Array>();
+    const platform = {
+      read: async (f: File) => new Uint8Array(await f.arrayBuffer()),
+      encrypt: encryptFile,
+      decrypt: decryptFile,
+      upload: async (url: string, bytes: Uint8Array) => ctx.api.upload(url, new Blob([bytes as BlobPart])),
+      store: async (id: string, bytes: Uint8Array) => { local.set(id, bytes); return `file://private/${id}`; },
+      remove: async (id: string) => { local.delete(id); },
+    };
+    const mobile = new AttachmentService({ api: ctx.api, fetchBytes: ctx.fetchBytes, platform });
+    const [outgoing] = await mobile.prepareCdn('500', [file('voice.ogg', 'private audio', 'audio/ogg')], '9001');
+    const receiver = new AttachmentService({ api: ctx.api, fetchBytes: ctx.fetchBytes, platform });
+    await expect(receiver.resolve(outgoing!, '500')).resolves.toBe('file://private/9001:0');
+    expect(new TextDecoder().decode(local.get('9001:0'))).toBe('private audio');
+    await receiver.removeMessage('9001');
+    expect(local.has('9001:0')).toBe(false);
+  });
 
   async function sentAttachment() {
     const ctx = setup();
