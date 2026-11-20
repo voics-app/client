@@ -194,7 +194,7 @@ export function ServerBans({ guildId }: { guildId: string }) {
               <Avatar id={b.user.id} name={displayName(b.user)} avatar={b.user.avatar} size={34} />
               <div className="manage-copy"><strong>{displayName(b.user)}</strong><span>{b.reason ?? 'No reason given'}</span></div>
               <Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openDialog({ kind: 'modView', guildId, userId: b.user.id })}>Mod View</Button>
-              <Button size="sm" onClick={() => void attempt(async () => { await getRuntime().api.unban(guildId, b.user.id); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'bans'] }); }, 'Could not unban')}>Unban</Button>
+              <Button size="sm" onClick={() => void attempt(async () => { await getRuntime().api.unban(guildId, b.user.id); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'bans'] }); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'appeals'] }); }, 'Could not unban')}>Unban</Button>
             </li>
           ))}
         </ul>
