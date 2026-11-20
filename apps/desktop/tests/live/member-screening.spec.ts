@@ -11,6 +11,8 @@ test('a new member accepts current rules before sending the first message', asyn
   const channels = await rest<{ id: string; type: number }[]>('GET', `/guilds/${guild.id}/channels`, owner.access_token);
   const channel = channels.find((entry) => entry.type === 0)!;
   await rest('PUT', `/guilds/${guild.id}/member-verification`, owner.access_token, { enabled: true, rules: ['Be kind'] });
+  await rest('PUT', `/guilds/${guild.id}/onboarding`, owner.access_token, { enabled: true, questions: [{ title: 'What interests you?', options: [{ label: 'Chat', role_id: null, channel_id: channel.id }] }] });
+  await rest('PUT', `/guilds/${guild.id}/welcome-screen`, owner.access_token, { enabled: true, description: 'Welcome to the server', channels: [{ channel_id: channel.id, description: 'Say hello' }] });
   const invite = await rest<{ code: string }>('POST', `/channels/${channel.id}/invites`, owner.access_token, {});
   const all: Instance[] = [];
   try {
@@ -29,6 +31,10 @@ test('a new member accepts current rules before sending the first message', asyn
     expect(rejected.status).toBe(403);
     await b.page.getByRole('checkbox', { name: 'I agree to these rules' }).check();
     await b.page.getByRole('button', { name: 'Accept rules' }).click();
+    await b.page.getByRole('radio', { name: 'Chat' }).check();
+    await b.page.getByRole('button', { name: 'Continue' }).click();
+    await expect(b.page.getByText('Welcome to the server')).toBeVisible();
+    await b.page.getByRole('button', { name: 'Say hello' }).click();
     await a.page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: `screen${id}` }).click();
     const text = `first message ${id}`;
     await say(b.page, text);
