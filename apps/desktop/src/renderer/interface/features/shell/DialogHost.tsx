@@ -194,7 +194,7 @@ function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initia
         </div>
       ) : onboarding ? (
         <div className="stack">
-          {onboarding.data.config.questions.map((question, qi) => <fieldset key={qi} className="stack"><legend>{question.title}</legend>
+          {onboarding.data.config.questions.map((question, qi) => <fieldset key={qi} className="stack onboarding-question"><legend>{question.title}</legend>
             {question.options.map((option, oi) => <label key={oi}><input type="radio" name={`onboarding-${qi}`} checked={onboarding.choices[qi] === oi} onChange={() => setOnboarding({ ...onboarding, choices: onboarding.choices.map((choice, i) => i === qi ? oi : choice) })} /> {option.label}</label>)}
           </fieldset>)}
           {error && <p role="alert">{error}</p>}

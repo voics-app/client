@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { startFakeBackend } from './fakeBackend';
 
-test('joins, accepts rules, chooses onboarding and sends the first message', async () => {
+test('joins, accepts rules, chooses onboarding and sends the first message', async ({}, testInfo) => {
   const backend = await startFakeBackend();
   const userData = mkdtempSync(join(tmpdir(), 'screening-e2e-'));
   const env = { ...process.env, DISCORDY_E2E: '1', DISCORDY_USER_DATA_DIR: userData, DISCORDY_API_URL: backend.apiUrl, DISCORDY_GATEWAY_URL: backend.gatewayUrl, DISCORDY_CDN_URL: `${backend.apiUrl}/cdn` } as Record<string, string>;
@@ -20,14 +20,17 @@ test('joins, accepts rules, chooses onboarding and sends the first message', asy
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByRole('button', { name: 'Accept invite' }).click();
     await expect(page.getByText('Be kind')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('rules.png') });
     const invite = await (await fetch(`${backend.apiUrl}/api/v1/invites/screening-fixture`)).json() as { channel: { id: string } };
     const denied = await fetch(`${backend.apiUrl}/api/v1/channels/${invite.channel.id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: 'before rules' }) });
     expect(denied.status).toBe(403);
     await page.getByRole('checkbox', { name: 'I agree to these rules' }).check();
     await page.getByRole('button', { name: 'Accept rules' }).click();
     await page.getByRole('radio', { name: 'Chat' }).check();
+    await page.screenshot({ path: testInfo.outputPath('onboarding.png') });
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByText('Welcome to the server')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('welcome.png') });
     await page.getByRole('button', { name: 'Say hello' }).click();
     const composer = page.getByRole('textbox', { name: /Message #general/ });
     await composer.fill('first screened message');
