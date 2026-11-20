@@ -1,6 +1,10 @@
 import { badgeOf, environmentOf, foregroundPresentation, permissionPlan, pushTargetOf, registrationOf, statusLabel } from '../../../src/notifications/push/pushModel';
 
 describe('pushTargetOf', () => {
+  it('routes scheduled event payloads only with both identifiers', () => {
+    expect(pushTargetOf({ type: 'scheduled_event', guild_id: '1', event_id: '9', channel_id: '10' })).toEqual({ kind: 'scheduled_event', guildId: '1', eventId: '9' });
+    expect(pushTargetOf({ type: 'scheduled_event', guild_id: '1', channel_id: '10' })).toBeNull();
+  });
   it('reads the chat and message the notifier put in the payload', () => {
     expect(pushTargetOf({ channel_id: '10', guild_id: '1', message_id: '100' })).toEqual({ guildId: '1', channelId: '10', messageId: '100' });
   });

@@ -213,6 +213,15 @@ describe('the permission prompt', () => {
 describe('tapping a notification', () => {
   const data = { channel_id: '10', guild_id: '1', message_id: '100' };
 
+  it('retains an event tap at launch until sign-in', async () => {
+    const t = setup({ launchedBy: { type: 'scheduled_event', guild_id: '1', event_id: '9' } });
+    t.controller.attach();
+    await tick();
+    expect(t.opened).toEqual([]);
+    await t.controller.signedInStart(false);
+    expect(t.opened).toEqual([{ kind: 'scheduled_event', guildId: '1', eventId: '9' }]);
+  });
+
   it('opens the chat and message when signed in', async () => {
     const t = setup({ permission: 'granted' });
     t.controller.attach();
