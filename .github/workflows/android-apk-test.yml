@@ -15,3 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: bash scripts/test-collect-android-apk.sh
+  windows-routing:
+    # Match the production release selector without installing or modifying anything.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.WINDOWS_RUNNER == 'karma-win' && 'karma-win' || 'voics-windows-vm' }}
+    steps:
+      - name: Verify native Windows runner
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_OS -ne 'Windows') { throw 'Expected a native Windows runner' }
+          Write-Host "Runner: $env:RUNNER_NAME; OS: $env:RUNNER_OS; Version: $([Environment]::OSVersion.VersionString)"
