@@ -112,7 +112,7 @@ export function ForumScreen({ guildId, channelId }: { guildId: string; channelId
           );
         }}
       />
-      <NewPostSheet guildId={guildId} forum={channel} userId={me} visible={creating} onClose={() => setCreating(false)} />
+      <NewPostSheet key={`${me}:${channelId}`} guildId={guildId} forum={channel} userId={me} visible={creating} onClose={() => setCreating(false)} />
     </View>
   );
 }

@@ -6,7 +6,7 @@ export const POST_TITLE_MAX = 100;
 /** The posts of a forum: its public threads, newest first (a thread's id is a snowflake, so id order is creation order). Archived ones come after the active ones. */
 export function forumPosts(channels: Record<string, Channel>, forumId: string): Channel[] {
   const byNewest = (a: Channel, b: Channel) => (a.id.length === b.id.length ? (a.id < b.id ? 1 : -1) : b.id.length - a.id.length);
-  const posts = Object.values(channels).filter((c) => c.parent_id === forumId && c.type === ChannelType.PUBLIC_THREAD);
+  const posts = Object.values(channels).filter((c) => c.parent_id === forumId && c.type === ChannelType.PUBLIC_THREAD && c.delivery_mode === channels[forumId]?.delivery_mode);
   const archived = (c: Channel) => c.thread_metadata?.archived === true;
   return [...posts.filter((c) => !archived(c)).sort(byNewest), ...posts.filter(archived).sort(byNewest)];
 }

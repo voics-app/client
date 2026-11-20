@@ -57,7 +57,7 @@ export function ForumView({ channelId }: { channelId: string }) {
   const setPanel = useUiStore((s) => s.setSidePanel);
   const mayManageThreads = can(useChannelPermissions(channelId), Permission.MANAGE_THREADS);
   const tags = channel?.available_tags ?? [];
-  const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD && (!filterTag || c.applied_tags?.includes(filterTag)));
+  const posts = Object.values(channels).filter((c) => c.parent_id === channelId && c.type === ChannelType.PUBLIC_THREAD && c.delivery_mode === channel?.delivery_mode && (!filterTag || c.applied_tags?.includes(filterTag)));
   posts.sort((a, b) => {
     const pinOrder = Number(Boolean((b.flags ?? 0) & 2)) - Number(Boolean((a.flags ?? 0) & 2));
     const aKey = sort === 'activity' && channel?.delivery_mode === 'standard' ? (a.last_message_id ?? a.id) : a.id;

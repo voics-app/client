@@ -6,11 +6,11 @@ import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { canPost, forumPosts, newPostBody } from '../../src/forum/forumModel';
 import { resetStores, seedServer } from '../support/server';
 
-const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'ideas', name: `post ${id}`, message_count: 2, ...extra }) as Channel;
+const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'ideas', name: `post ${id}`, message_count: 2, delivery_mode: 'standard', ...extra }) as Channel;
 
 describe('forumPosts', () => {
   it('lists the public threads of the forum, newest first, archived after the active ones', () => {
-    const channels = Object.fromEntries([post('100'), post('300'), post('200', { thread_metadata: { archived: true } as never }), post('999', { parent_id: 'other' }), post('400', { type: ChannelType.GUILD_TEXT })].map((c) => [c.id, c]));
+    const channels = Object.fromEntries([post('ideas', { type: ChannelType.GUILD_FORUM, parent_id: null }), post('100'), post('300'), post('200', { thread_metadata: { archived: true } as never }), post('999', { parent_id: 'other' }), post('400', { type: ChannelType.GUILD_TEXT }), post('500', { delivery_mode: 'ephemeral' })].map((c) => [c.id, c]));
     expect(forumPosts(channels, 'ideas').map((c) => c.id)).toEqual(['300', '100', '200']);
   });
 
