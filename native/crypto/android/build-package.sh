@@ -16,6 +16,7 @@ test -x "$toolchain/aarch64-linux-android24-clang"
 mkdir -p "$out/Generated" "$out/jniLibs"
 for item in 'aarch64-linux-android:arm64-v8a:aarch64-linux-android24' 'armv7-linux-androideabi:armeabi-v7a:armv7a-linux-androideabi24' 'x86_64-linux-android:x86_64:x86_64-linux-android24'; do
   IFS=: read -r target abi clang <<< "$item"
+  case ",${VOICS_ANDROID_ABIS:-arm64-v8a,armeabi-v7a,x86_64}," in *",$abi,"*) ;; *) continue ;; esac
   export "CC_${target//-/_}=$toolchain/$clang-clang"
   linker="CARGO_TARGET_${target^^}_LINKER"; linker="${linker//-/_}"
   export "$linker=$toolchain/$clang-clang"
@@ -23,6 +24,7 @@ for item in 'aarch64-linux-android:arm64-v8a:aarch64-linux-android24' 'armv7-lin
   mkdir -p "$out/jniLibs/$abi"
   cp "${CARGO_TARGET_DIR:-target}/$target/release/libdiscordy_crypto.so" "$out/jniLibs/$abi/"
 done
+if ! find "$out/jniLibs" -name libdiscordy_crypto.so -print -quit | grep -q .; then echo "No requested Android ABI was built" >&2; exit 1; fi
 cargo build --release --lib --locked --no-default-features --features uniffi-cli
 case "$host" in linux-*) library=libdiscordy_crypto.so ;; darwin-*) library=libdiscordy_crypto.dylib ;; esac
 cargo run --release --locked --no-default-features --features uniffi-cli --bin uniffi-bindgen -- \
