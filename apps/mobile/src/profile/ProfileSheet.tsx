@@ -63,15 +63,19 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
     };
   }, [user]);
 
+  const shownId = shown?.id;
+  const shownIsBot = shown?.bot;
   useEffect(() => {
-    if (!user || user.bot) return;
+    setConnections(null);
+    if (!shownId || shownIsBot) return;
     let current = true;
-    void Promise.resolve().then(() => getRuntime().api.userConnections(user.id))
-      .then((items) => { if (current) setConnections({ id: user.id, items }); }).catch(() => undefined);
+    void Promise.resolve().then(() => getRuntime().api.userConnections(shownId))
+      .then((items) => { if (current) setConnections({ id: shownId, items }); }).catch(() => undefined);
     return () => { current = false; };
-  }, [user]);
+  }, [shownId, shownIsBot]);
 
   const close = () => {
+    setConnections(null);
     setConfirmBlock(false);
     onClose();
   };
@@ -144,7 +148,7 @@ export function ProfileSheet({ user: shown, guildId, onClose }: { user: User | n
             )}
           </View>
           <View style={styles.fields}>
-          {connections?.id === user.id && connections.items.length > 0 && <ProfileField label="Connections">{connections.items.map((item) => `${item.provider === 'github' ? 'GitHub' : item.provider}: ${item.name}`).join('\n')}</ProfileField>}
+          {shown && connections?.id === user.id && connections.items.length > 0 && <ProfileField label="Connections">{connections.items.map((item) => `${item.provider === 'github' ? 'GitHub' : item.provider}: ${item.name}`).join('\n')}</ProfileField>}
           {view.bio !== '' && <ProfileField label="About me">{view.bio}</ProfileField>}
           {view.roles.length > 0 && <ProfileField label="Roles">{view.roles.join(', ')}</ProfileField>}
           {view.memberSince && <ProfileField label="Member since">{view.memberSince.toLocaleDateString()}</ProfileField>}
