@@ -82,6 +82,8 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [selected, setSelected] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [command, setCommand] = useState<SlashEntry | null>(null);
+  const commandRef = useRef(command);
+  commandRef.current = command;
   const [commandValues, setCommandValues] = useState<OptionValues>({});
   const [running, setRunning] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
@@ -389,7 +391,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       // Restore the whole message together, without combining it with a newer draft or reply.
       if (currentFailedSendScope(failureScope) && mounted.current && modeRef.current === failureScope.mode
         && !textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id]
-        && useUiStore.getState().editing?.channelId !== channel.id) restoreFailed(draft);
+        && !commandRef.current && useUiStore.getState().editing?.channelId !== channel.id) restoreFailed(draft);
       else if (failureScope.mode === 'standard') useFailedSendQueue.getState().add(failureScope, draft);
     }
   };
@@ -462,9 +464,9 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       <PeerStatus channel={channel} mode={mode} />
       {failed && failed.length > 0 && <div className="field-hint" role="status">
         {failed.length} failed {failed.length === 1 ? 'message is' : 'messages are'} kept for this chat.
-        <button type="button" disabled={Boolean(text || files.length || replyTo || editing?.channelId === channel.id)} onClick={() => {
+        <button type="button" disabled={Boolean(text || files.length || replyTo || command || editing?.channelId === channel.id)} onClick={() => {
           const item = failed[0];
-          if (!item || !currentFailedSendScope(recoveryScope) || textRef.current || filesRef.current.length || useUiStore.getState().replyTo[channel.id] || useUiStore.getState().editing?.channelId === channel.id) return;
+          if (!item || !currentFailedSendScope(recoveryScope) || textRef.current || filesRef.current.length || commandRef.current || useUiStore.getState().replyTo[channel.id] || useUiStore.getState().editing?.channelId === channel.id) return;
           restoreFailed(item.draft);
           useFailedSendQueue.getState().remove(recoveryScope, item.id);
         }}>Restore failed message</button>
