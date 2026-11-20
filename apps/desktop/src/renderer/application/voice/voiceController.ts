@@ -38,7 +38,12 @@ export class VoiceController extends VoiceCallController {
     super(desktop);
     const host: ScreenShareHost = {
       attach: async (track, options, audio) => {
+        if (!this.canStream()) throw new Error('You do not have permission to share your screen in this channel.');
         await this.session?.setScreenTrack(track, options);
+        if (!this.canStream()) {
+          await this.session?.setScreenTrack(null);
+          throw new Error('You do not have permission to share your screen in this channel.');
+        }
         this.desktop.mic.setSoundshare(audio);
         this.soundshare = audio !== null;
         this.pushSpeaking();
@@ -99,6 +104,10 @@ export class VoiceController extends VoiceCallController {
       ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? [])
       : 0n;
     this.desktop.mic.setForcePushToTalk?.(!hasPermission(permissions, Permission.USE_VAD));
+    if (this.target && !this.canStream()) {
+      if (useVoiceStore.getState().selfVideo) void this.setVideo(false).catch(() => undefined);
+      if (this.screenShare.active) void this.stopScreenShare().catch(() => undefined);
+    }
   }
 
   protected override async releaseLocalMedia(): Promise<void> {
@@ -132,11 +141,21 @@ export class VoiceController extends VoiceCallController {
       this.sendState();
       return;
     }
+    if (!this.canStream()) throw new Error('You do not have permission to use video in this channel.');
     const { cameraDeviceId, cameraPreset } = this.prefs();
     const stream = await this.desktop.openCamera(cameraDeviceId, cameraPreset);
+    if (!this.canStream()) {
+      for (const track of stream.getTracks()) track.stop();
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     const track = stream.getVideoTracks()[0];
     if (!track) throw new Error('camera produced no video track');
     await this.session?.setCameraTrack(track, presetConstraints(cameraPreset));
+    if (!this.canStream()) {
+      await this.session?.setCameraTrack(null);
+      for (const captured of stream.getTracks()) captured.stop();
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     useVoiceStore.getState().setLocalMedia({ localCamera: stream });
     useVoiceStore.getState().setSelf({ selfVideo: true });
     this.sendState();
@@ -168,7 +187,12 @@ export class VoiceController extends VoiceCallController {
 
   async startScreenShare(request: StartScreenShare): Promise<ScreenShareOutcome> {
     if (!this.session) throw new Error('Join a voice channel before sharing your screen');
+    if (!this.canStream()) throw new Error('You do not have permission to share your screen in this channel.');
     const outcome = await this.screenShare.start(request);
+    if (!this.canStream()) {
+      await this.screenShare.stop();
+      throw new Error('You do not have permission to share your screen in this channel.');
+    }
     this.sendState();
     return outcome;
   }

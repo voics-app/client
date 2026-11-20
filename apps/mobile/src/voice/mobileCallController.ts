@@ -41,7 +41,7 @@ export class MobileCallController extends VoiceCallController {
 
   constructor(private readonly mobile: MobileCallDeps) {
     super(mobile);
-    this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState() });
+    this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState(), canPublish: () => this.canStream() });
     this.disposers.push(
       mobile.onBackground(() => { this.setPushToTalk(false); void this.setVideo(false).catch(() => undefined); }),
       useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
@@ -88,6 +88,10 @@ export class MobileCallController extends VoiceCallController {
     const forced = Boolean(target?.guildId) && !hasPermission(permissions, Permission.USE_VAD);
     this.mobile.mic.setForcePushToTalk?.(forced);
     if (useVoiceStore.getState().requiresPtt !== forced) useVoiceStore.getState().setSelf({ requiresPtt: forced });
+    if (this.target && !this.canStream()) {
+      if (useVoiceStore.getState().selfVideo) void this.setVideo(false).catch(() => undefined);
+      if (this.screenShare.status !== 'idle') void this.screenShare.stop().catch(() => undefined);
+    }
   }
 
   get facing(): CameraFacing {
@@ -158,7 +162,12 @@ export class MobileCallController extends VoiceCallController {
     if (generation !== this.captureGeneration) return;
     const session = this.session;
     if (!session || useVoiceStore.getState().call.status !== 'connected') throw new Error('The camera needs a connected call.');
+    if (!this.canStream()) throw new Error('You do not have permission to use video in this channel.');
     const stream = await this.mobile.openCamera(facing);
+    if (!this.canStream()) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     if (generation !== this.captureGeneration || this.session !== session || useVoiceStore.getState().call.status !== 'connected') {
       stream.getTracks().forEach((track) => track.stop());
       return;
@@ -170,7 +179,7 @@ export class MobileCallController extends VoiceCallController {
     }
     try {
       await session.setCameraTrack(track, CAMERA_PRESET);
-      if (generation !== this.captureGeneration || this.session !== session) {
+      if (generation !== this.captureGeneration || this.session !== session || !this.canStream()) {
         stream.getTracks().forEach((t) => t.stop());
         await session.setCameraTrack(null);
         return;

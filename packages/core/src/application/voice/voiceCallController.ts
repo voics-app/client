@@ -88,6 +88,21 @@ export class VoiceCallController {
     return this.deps.prefs?.get() ?? usePrefsStore.getState();
   }
 
+  /** Whether this caller may start camera or screen media in the current channel. */
+  protected canStream(): boolean {
+    const target = this.target;
+    if (!target) return false;
+    if (!target.guildId) return true;
+    const state = useGuildStore.getState();
+    const guild = state.guilds[target.guildId];
+    const channel = state.channels[target.channelId];
+    const userId = useSessionStore.getState().user?.id;
+    if (!guild || !channel || !userId) return false;
+    const member = state.members[target.guildId]?.[userId] ?? useVoiceStore.getState().states[target.guildId]?.[userId]?.member;
+    if (!member && guild.owner_id !== userId) return false;
+    return hasPermission(computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? []), Permission.STREAM);
+  }
+
   // ---- hooks for platforms that do more ----------------------------------
 
   /** Releases local media a platform added (camera, screen share) before the session closes. */

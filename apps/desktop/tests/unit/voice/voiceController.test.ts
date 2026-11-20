@@ -116,10 +116,53 @@ beforeEach(() => {
   useVoiceStore.getState().resetCall();
   useVoiceStore.setState({ states: {}, selfMute: false, selfDeaf: false, userVolumes: {}, speaking: {}, localCamera: null, localScreen: null });
   useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
+  useGuildStore.setState({
+    guilds: { g1: { id: 'g1', owner_id: 'me', roles: [] } } as never,
+    channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+    members: { g1: { me: { roles: [] } } } as never,
+  });
 });
 afterEach(() => vi.useRealTimers());
 
 describe('VoiceController', () => {
+  it('refuses camera and screen capture without STREAM', async () => {
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    const { controller, openCamera } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await expect(controller.setVideo(true)).rejects.toThrow(/permission/i);
+    await expect(controller.startScreenShare({ sourceId: 'screen', audio: false, preset: '720p30' })).rejects.toThrow(/permission/i);
+    expect(openCamera).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it('stops an active camera when STREAM is revoked', async () => {
+    const { controller, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await controller.setVideo(true);
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(null);
+    controller.dispose();
+  });
+
+  it('stops a camera obtained after STREAM was revoked', async () => {
+    const { controller, openCamera, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    let resolveCapture!: (stream: MediaStream) => void;
+    openCamera.mockImplementationOnce(() => new Promise((resolve) => { resolveCapture = resolve; }));
+    const pending = controller.setVideo(true);
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    const stop = vi.fn();
+    resolveCapture({ getTracks: () => [{ stop }], getVideoTracks: () => [{ stop }] } as unknown as MediaStream);
+    await expect(pending).rejects.toThrow(/permission/i);
+    expect(stop).toHaveBeenCalled();
+    expect(sessions[0]!.setCameraTrack).not.toHaveBeenCalled();
+    controller.dispose();
+  });
   it('uses a voice-state member when the guild member list was capped', async () => {
     useGuildStore.setState({
       guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) }] } } as never,

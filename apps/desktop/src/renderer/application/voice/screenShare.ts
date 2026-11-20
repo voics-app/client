@@ -89,11 +89,17 @@ export class ScreenShare {
     video.contentHint = hintFor(request.preset);
     video.addEventListener('ended', () => void this.stop().then(() => this.endedListeners.forEach((l) => l())));
     const audioTracks = stream.getAudioTracks();
-    await this.deps.host.attach(
-      video,
-      { constraints: presetConstraints(request.preset), contentHint: hintFor(request.preset) },
-      audioTracks.length > 0 ? new MediaStream(audioTracks) : null,
-    );
+    try {
+      await this.deps.host.attach(
+        video,
+        { constraints: presetConstraints(request.preset), contentHint: hintFor(request.preset) },
+        audioTracks.length > 0 ? new MediaStream(audioTracks) : null,
+      );
+    } catch (error) {
+      this.stream = null;
+      for (const track of stream.getTracks()) track.stop();
+      throw error;
+    }
     useVoiceStore.getState().setLocalMedia({ localScreen: stream });
     useVoiceStore.getState().setSelf({ selfStream: true, streamPreset: request.preset });
     return { status: 'sharing' };

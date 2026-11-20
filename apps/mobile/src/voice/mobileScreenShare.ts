@@ -13,6 +13,7 @@ interface ScreenShareDeps {
   driver?: ScreenShareDriver;
   session(): VoiceSessionPort | null;
   announce(): void;
+  canPublish?(): boolean;
 }
 
 const SCREEN_OPTIONS = { constraints: presetConstraints('720p30'), contentHint: 'detail' as const };
@@ -35,6 +36,7 @@ export class MobileScreenShare {
   };
 
   start(): Promise<void> {
+    if (this.deps.canPublish && !this.deps.canPublish()) return Promise.reject(new Error('You do not have permission to share your screen in this channel.'));
     if (this.opening) return this.opening;
     if (this.held) return Promise.resolve();
     const task = this.open(++this.generation);
@@ -51,11 +53,11 @@ export class MobileScreenShare {
     try {
       stream = await this.deps.driver.open();
       if (!stream) return;
-      if (generation !== this.generation || session !== this.deps.session() || useVoiceStore.getState().call.status !== 'connected') return;
+      if (generation !== this.generation || session !== this.deps.session() || useVoiceStore.getState().call.status !== 'connected' || (this.deps.canPublish && !this.deps.canPublish())) return;
       const track = stream.getVideoTracks()[0];
       if (!track || track.readyState === 'ended') throw new Error('Screen capture ended before it could start.');
       await session.setScreenTrack(track, SCREEN_OPTIONS);
-      if (generation !== this.generation || session !== this.deps.session()) {
+      if (generation !== this.generation || session !== this.deps.session() || (this.deps.canPublish && !this.deps.canPublish())) {
         await session.setScreenTrack(null);
         return;
       }
