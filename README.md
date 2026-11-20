@@ -1,5 +1,7 @@
 # Voics client
 
+Standard forum posts retain their request ID and draft while delivery is pending. Reopen the forum and check the same request after an uncertain result. The forum feed shows stored previews, covers, tags, reply counts and activity when the server can supply them. Private-mode forum creation and first-message attachments are not yet available.
+
 Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
 ## Layout
