@@ -19,7 +19,8 @@ export type KeybindAction =
   | 'nextUnread'
   | 'historyBack'
   | 'historyForward'
-  | 'toggleMembers';
+  | 'toggleMembers'
+  | 'toggleStreamerMode';
 
 export interface Keybind {
   id: string;
@@ -63,6 +64,7 @@ export const ACTION_CATALOG: readonly ActionInfo[] = [
   a('search', 'search', 'Search', 'General', 'Ctrl+F'),
   a('upload', 'upload', 'Upload a file', 'General', 'Ctrl+Shift+U'),
   a('toggleMembers', 'toggleMembers', 'Toggle member list', 'General', 'Ctrl+U'),
+  a('toggleStreamerMode', 'toggleStreamerMode', 'Toggle streamer mode', 'General', '', true),
 ];
 
 export const ACTION_LABELS: Record<string, string> = Object.fromEntries(ACTION_CATALOG.map((i) => [i.action, i.label]));

@@ -4,6 +4,8 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
+
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
 10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
 ACKs and duplicate HELLOs do not extend authentication. A failed connection to the
@@ -66,6 +68,9 @@ Run these from this `client` folder (the parent `voics` folder is not a pnpm pro
 **Dev clients and production:** production's CORS list only allows the packaged app (`null` origin). So in dev builds only, the main process rewrites `Access-Control-Allow-Origin` on cross-origin responses to the dev server origin (`withDevServerCors` in `src/main/window.ts`). Without that, every request fails with status 0 and the client shows "You appear to be offline". The **Local** connection needs the local backend running (docs `runbooks/local-development.md`).
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
+
+Desktop renderer builds defer settings, server administration, the emoji picker and slash-command panel until opened. Chunk failures retry with backoff, then offer retry, close or reload (reload can discard unsaved changes). The container CI build prints the entry and its static JavaScript imports and enforces a 2,800,000-byte uncompressed budget; run `node apps/desktop/scripts/check-renderer-budget.mjs` after a desktop build. CSS, workers, on-demand chunks and compressed transfer size are outside that budget. See [renderer performance](docs/renderer-performance.md) for measurement and acceptance.
+
 
 ## Desktop navigation and safety
 

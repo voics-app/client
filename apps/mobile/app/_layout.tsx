@@ -1,11 +1,12 @@
 import '../src/install';
 import { appliedAppearance } from '../src/appearance/boot';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { useFavouriteFriendsStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { getRuntime } from '../src/runtime';
 import { watchForeground } from '../src/runtime/foreground';
@@ -18,6 +19,7 @@ import { InviteLinkSheet } from '../src/invites/InviteLinkSheet';
 import { WideShell } from '../src/shell/WideShell';
 import { useWideLayout } from '../src/shell/layoutModel';
 import { CallKitHost } from '../src/voice/callkit/CallKitHost';
+import { useFriendInviteStore } from '../src/friends/friendInviteStore';
 import { IncomingCall } from '../src/voice/IncomingCall';
 
 /** A deep link to a chat opens with the main screen (rail and column) underneath, so back and the edge swipe have somewhere to go. */
@@ -29,12 +31,33 @@ const pushed = { animation: 'slide_from_right' } as const;
 export default function RootLayout() {
   const status = useSessionStore((s) => s.status);
   const wide = useWideLayout();
+  const friendToken = useFriendInviteStore((s) => s.token);
 
   useEffect(() => {
     const { session, gateway } = getRuntime();
     void session.boot();
     return watchForeground(AppState, gateway);
   }, []);
+
+  useEffect(() => {
+    if (status !== 'ready') { useFavouriteFriendsStore.getState().set([]); return; }
+    let active = true;
+    const initial = useFavouriteFriendsStore.getState().ids;
+    void Promise.resolve().then(() => getRuntime().api.favouriteFriends()).then((ids) => {
+      if (active && useFavouriteFriendsStore.getState().ids === initial) useFavouriteFriendsStore.getState().set(ids);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !friendToken) return;
+    useFriendInviteStore.getState().set(null);
+    void getRuntime().api.useFriendInvite(friendToken).then(
+      () => Alert.alert('Friend request sent'),
+      () => Alert.alert('Could not send friend request', 'The link may have expired or been revoked.'),
+    );
+    router.replace('/');
+  }, [status, friendToken]);
 
   const signedIn = status === 'connecting' || status === 'ready';
   return (
@@ -52,6 +75,7 @@ export default function RootLayout() {
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="verify-email" options={{ headerShown: false }} />
             <Stack.Screen name="voice-qa" options={{ title: 'Voice QA fixture' }} />
+            <Stack.Screen name="friend-invite/[token]" options={{ title: 'Friend invite' }} />
             <Stack.Protected guard={!signedIn}>
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             </Stack.Protected>

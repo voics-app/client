@@ -26,6 +26,7 @@ export function routeFromDeepLink(link: string): string | null {
     const token = url.searchParams.get('token');
     return token && ACCOUNT_TOKEN.test(token) ? `/${kind}/${token}` : null;
   }
+  if (kind === 'friend-invite' && a && ACCOUNT_TOKEN.test(a) && parts.length === 2) return `/friend-invite/${a}`;
   if (kind === 'invite' && a && INVITE.test(a) && parts.length === 2) return `/invite/${a}`;
   if (kind === 'template' && a && TEMPLATE.test(a) && parts.length === 2) return `/template/${a}`;
   if (kind === 'channels' && a && b && (a === '@me' || ID.test(a)) && ID.test(b)) {
