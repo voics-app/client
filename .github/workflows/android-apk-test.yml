@@ -8,6 +8,9 @@ on:
       - 'scripts/test-collect-android-apk.sh'
 permissions:
   contents: read
+concurrency:
+  group: android-artifact-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   isolation:
     if: github.event.pull_request.head.repo.full_name == github.repository
