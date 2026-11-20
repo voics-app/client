@@ -1,6 +1,9 @@
 import type { MessageId } from './en';
 
 export const nl = {
+  "chat.failedSendWaiting": "{count, plural, one {# mislukt bericht wordt} other {# mislukte berichten worden}} voor deze chat bewaard.",
+  "chat.restoreFailedSend": "Mislukt bericht herstellen",
+  "chat.discardFailedSend": "Mislukt bericht verwijderen",
   "age.report": "Kanaal melden",
   "report.channel": "#{name} melden",
   "report.discloseChannel": "Moderators ontvangen je account, categorie en toelichting, plus de kanaal-ID, server-ID, bovenliggende kanaal-ID, naam, type en leeftijdsbeperking zoals opgeslagen op de server. Berichten, onderwerpen, bijlagen en ledenlijsten worden niet opgehaald of meegestuurd. De servereigenaar op het moment van melden wordt als context vastgelegd.",

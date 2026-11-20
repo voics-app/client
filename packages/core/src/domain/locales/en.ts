@@ -1,5 +1,8 @@
 /** English is the canonical catalog and fallback. Values use ICU MessageFormat. */
 export const en = {
+  "chat.failedSendWaiting": "{count, plural, one {# failed message is} other {# failed messages are}} kept for this chat.",
+  "chat.restoreFailedSend": "Restore failed message",
+  "chat.discardFailedSend": "Discard failed message",
   "age.report": "Report channel",
   "report.channel": "Report #{name}",
   "report.discloseChannel": "Moderators receive your account, category and note, plus the channel ID, server ID, parent ID, name, type and age-restricted flag copied by the server. No messages, topics, attachments or member lists are fetched or included. The server owner at filing is recorded for context.",

@@ -35,6 +35,8 @@ import { SlashCommandPanel } from './SlashCommandPanel';
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
 import { beginSend, captureSendScope, editedAfterSend, finishSend, isSendScopeCurrent, receiveFailedSends, recoverFailedSend, type SendDraft, type SendRecoveryReceiver } from './composerSendRecovery';
+import { captureFailedSendScope, currentFailedSendScope, failedSendKey, useFailedSendQueue } from './failedSendQueue';
+import { useConnectionStore } from '../../app/connectionStore';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -106,6 +108,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const editing = useUiStore((s) => s.editing);
   const setEditing = useUiStore((s) => s.setEditing);
   const me = useSessionStore((s) => s.user?.id ?? null);
+  useSessionStore((s) => s.sessionId);
+  useSessionStore((s) => s.deviceId);
+  useSessionStore((s) => s.status);
+  useConnectionStore((s) => s.runtimeVersion);
   const pingReplied = useReplyPingStore((s) => s.ping);
   const setPingReplied = useReplyPingStore((s) => s.setPing);
   const lastSent = useSlowmodeStore((s) => s.lastSent[channel.id]);
@@ -128,6 +134,9 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const remainingChars = charsRemaining(text);
   const tooLong = remainingChars < 0;
   const sendScope = captureSendScope(channel, mode);
+  const recoveryScope = captureFailedSendScope(channel.id, mode);
+  const recoveryKey = failedSendKey(recoveryScope);
+  const failed = useFailedSendQueue((state) => state.byScope[recoveryKey]);
   const recoveryReceiver = useRef<SendRecoveryReceiver>({ empty: () => false, matchesSaved: () => false, restore: () => undefined });
   recoveryReceiver.current = {
     empty: () => !textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id] && useUiStore.getState().editing?.channelId !== channel.id && !command,
@@ -477,6 +486,16 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   return (
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(msg("settings.composer.files"))) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
+      {failed && failed.length > 0 && <div className="field-hint" role="status">
+        {msg('chat.failedSendWaiting', { count: failed.length })}
+        <button type="button" disabled={!recoveryReceiver.current.empty()} onClick={() => {
+          const item = failed[0];
+          if (!item || !currentFailedSendScope(recoveryScope) || !canShowChannelContent(channel.id) || !recoveryReceiver.current.empty()) return;
+          recoveryReceiver.current.restore(item.draft);
+          useFailedSendQueue.getState().remove(recoveryScope, item.id);
+        }}>{msg('chat.restoreFailedSend')}</button>
+        <button type="button" onClick={() => { const item = failed[0]; if (item) useFailedSendQueue.getState().remove(recoveryScope, item.id); }}>{msg('chat.discardFailedSend')}</button>
+      </div>}
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={t(commandSearch !== null ? 'composer.commands' : 'composer.suggestions')}>
           {suggestions.map((s, i) => (

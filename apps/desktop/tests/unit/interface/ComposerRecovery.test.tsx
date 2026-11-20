@@ -131,6 +131,28 @@ it('never overwrites a newer remounted draft inside the persistence debounce win
   await act(async () => reject(new Error('Offline')));
   expect(input().value).toBe('New live text');
   expect(useUiStore.getState().replyTo[channel.id]).toBeNull();
+  const restore = screen.getByRole('button', { name: 'Restore failed message' }) as HTMLButtonElement;
+  expect(restore.disabled).toBe(true);
+  fireEvent.change(input(), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+  expect(input().value).toBe('@silent old answer');
+});
+
+it('retains a failed reply separately when a newer reply is selected', async () => {
+  let reject!: (error: Error) => void;
+  send.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  const oldReply = { id: 'old-reply', channel_id: channel.id, author: { id: 'bob', username: 'bob', global_name: null, avatar: null }, content: 'old' };
+  const newReply = { ...oldReply, id: 'new-reply', content: 'new' };
+  useUiStore.getState().setReplyTo(channel.id, oldReply as never);
+  mountAndSend('old answer');
+  act(() => useUiStore.getState().setReplyTo(channel.id, newReply as never));
+  await act(async () => reject(new Error('Offline')));
+  expect(useUiStore.getState().replyTo[channel.id]?.id).toBe('new-reply');
+  expect((screen.getByRole('button', { name: 'Restore failed message' }) as HTMLButtonElement).disabled).toBe(true);
+  act(() => useUiStore.getState().setReplyTo(channel.id, null));
+  fireEvent.click(screen.getByRole('button', { name: 'Restore failed message' }));
+  expect(input().value).toBe('old answer');
+  expect(useUiStore.getState().replyTo[channel.id]?.id).toBe('old-reply');
 });
 
 const changeOwner = {
