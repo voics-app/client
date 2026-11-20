@@ -339,6 +339,13 @@ describe('dispatchRouter', () => {
     for (const event of ['SOUNDBOARD_SOUND_CREATE', 'SOUNDBOARD_SOUND_UPDATE', 'SOUNDBOARD_SOUND_DELETE']) route(event, { guild_id: '100' });
     expect(ctx.invalidate).toHaveBeenCalledTimes(3);
     expect(ctx.invalidate).toHaveBeenCalledWith(['soundboard', '100']);
+    });
+
+  it('invalidates the affected stage for each lifecycle event', () => {
+    const { route, ctx } = setup();
+    for (const event of ['STAGE_INSTANCE_CREATE', 'STAGE_INSTANCE_UPDATE', 'STAGE_INSTANCE_DELETE']) route(event, { channel_id: 'stage' });
+    expect(ctx.invalidate).toHaveBeenCalledTimes(3);
+    expect(ctx.invalidate).toHaveBeenCalledWith(['stage-instance', 'stage']);
   });
 
   it('ignores unknown events', () => {

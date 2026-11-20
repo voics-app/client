@@ -154,6 +154,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
   if (!can(perms, Permission.VIEW_CHANNEL)) return null;
 
   const select = () => {
+    if (kind === 'stage' && channel.guild_id) { navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id }); return; }
     if (capacity?.joinBlocked && !occupants.some((o) => o.user_id === me)) return;
     if (isVoice) void openVoiceChannel(channel.guild_id ?? null, channel.id);
     else if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
@@ -163,7 +164,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
   return (
     <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined} className={(hoverClass(dnd, dropKey({ kind: 'channel', id: channel.id })).trim() + (moveHover ? ' is-move-target' : '')).trim() || undefined}
       onDragOver={(e) => {
-        if (!isVoice || !draggedOccupant || !canDropOccupant(draggedOccupant, channel)) return;
+        if (kind === 'stage' || !isVoice || !draggedOccupant || !canDropOccupant(draggedOccupant, channel)) return;
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -175,7 +176,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
       onDrop={(e) => {
         setMoveHover(false);
         const dragged = draggedOccupant;
-        if (!isVoice || !dragged || !canDropOccupant(dragged, channel) || !channel.guild_id || !can(guildPerms, Permission.MOVE_MEMBERS)) return;
+        if (kind === 'stage' || !isVoice || !dragged || !canDropOccupant(dragged, channel) || !channel.guild_id || !can(guildPerms, Permission.MOVE_MEMBERS)) return;
         e.preventDefault();
         e.stopPropagation();
         draggedOccupant = null;

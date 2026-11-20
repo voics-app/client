@@ -51,6 +51,7 @@ import type {
   UserProfile,
   UserSettings,
   VoiceRegion,
+  StageInstance,
 } from '../../contracts/rest';
 
 export interface MessageQuery {
@@ -127,6 +128,11 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  favouriteFriends(): Promise<string[]>;
+  setFavouriteFriend(userId: string, value: boolean): Promise<void>;
+  createFriendInvite(): Promise<{ token: string; expires_at: string }>;
+  revokeFriendInvites(): Promise<void>;
+  useFriendInvite(token: string): Promise<void>;
   /** `guildId` null addresses the user's DMs (`@me`). */
   guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
   updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;
@@ -163,7 +169,7 @@ export interface ApiPort {
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null; suppress?: boolean }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
@@ -230,6 +236,10 @@ export interface ApiPort {
   upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;
+  stageInstance(channelId: string): Promise<StageInstance | null>;
+  startStage(channelId: string, topic: string): Promise<StageInstance>;
+  updateStage(channelId: string, topic: string): Promise<StageInstance>;
+  endStage(channelId: string): Promise<void>;
 
   applications(): Promise<ApplicationSummary[]>;
   botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;

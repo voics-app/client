@@ -23,6 +23,15 @@ export const ChannelType = {
 } as const;
 export type ChannelType = (typeof ChannelType)[keyof typeof ChannelType];
 
+export interface StageInstance {
+  id: Snowflake;
+  guild_id: Snowflake;
+  channel_id: Snowflake;
+  topic: string;
+  privacy_level: 2;
+  discoverable_disabled: boolean;
+}
+
 export interface User {
   id: Snowflake;
   username: string;

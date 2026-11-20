@@ -273,6 +273,14 @@ export class VoiceCallController {
     if (this.target) this.deps.gateway.send(GatewayOp.VOICE_STATE_UPDATE, this.statePayload(this.target));
   }
 
+  requestToSpeak(requested: boolean): void {
+    if (!this.target?.guildId) return;
+    this.deps.gateway.send(GatewayOp.VOICE_STATE_UPDATE, {
+      ...this.statePayload(this.target),
+      request_to_speak_timestamp: requested ? new Date().toISOString() : null,
+    });
+  }
+
   protected pushSpeaking(): void {
     const flags = (this.transmitting ? SpeakingFlag.MICROPHONE : 0) | this.extraSpeakingFlags();
     this.session?.setSpeaking(flags);
