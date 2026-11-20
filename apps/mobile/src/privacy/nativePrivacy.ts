@@ -6,7 +6,7 @@
  */
 import type { CryptoBridge } from '@discordy/core/application/ports/crypto';
 import type { AttachmentPlatform } from '@discordy/core/application/privacy/attachmentService';
-import { AttachmentError, fromB64, toB64 } from '@discordy/core/application/privacy/attachmentCipher';
+import { AttachmentError, fromB64, toB64, type FileKeyMaterial } from '@discordy/core/application/privacy/attachmentCipher';
 import { isNativeBuild } from '../native/isNativeBuild';
 import { createMobileCryptoBridge, type VoicsCryptoNative } from './cryptoBridge';
 import { createReactNativePeerConnection, type PeerConnectionFactory, type WebRtcPeerModule } from './reactNativePeerConnection';
@@ -35,7 +35,7 @@ export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPee
           return fromB64(await attachments.readAttachment!(uri));
         },
         encrypt: async (plain: Uint8Array) => { const out = await attachments.encryptAttachment!(toB64(plain)); return { ...out, ciphertext: fromB64(out.ciphertext) }; },
-        decrypt: async (ciphertext: Uint8Array, material: import('@discordy/core/application/privacy/attachmentCipher').FileKeyMaterial) => {
+        decrypt: async (ciphertext: Uint8Array, material: FileKeyMaterial) => {
           try { return fromB64(await attachments.decryptAttachment!(toB64(ciphertext), material.key_b64, material.nonce_b64, material.sha256_b64, material.size)); }
           catch { throw new AttachmentError('integrity', 'The file failed its integrity check and was discarded.'); }
         },
