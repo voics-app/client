@@ -27,6 +27,7 @@ jobs:
           Write-Host "Runner: $env:RUNNER_NAME; OS: $env:RUNNER_OS; Version: $([Environment]::OSVersion.VersionString)"
       - name: Verify release Bash
         shell: bash
+        timeout-minutes: 2
         run: |
           case "$(uname -s)" in MINGW*|MSYS*) ;; *) echo 'Git for Windows Bash is required'; exit 1 ;; esac
           node --version
