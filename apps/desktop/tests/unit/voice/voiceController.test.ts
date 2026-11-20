@@ -172,6 +172,25 @@ describe('VoiceController', () => {
     expect(sessions[0]!.setCameraTrack).not.toHaveBeenCalled();
     controller.dispose();
   });
+
+  it('detaches and stops camera if STREAM is revoked during sender attachment', async () => {
+    const { controller, openCamera, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const stop = vi.fn();
+    const track = { stop };
+    openCamera.mockResolvedValueOnce({ getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream);
+    let finishAttach!: () => void;
+    sessions[0]!.setCameraTrack.mockImplementationOnce(() => new Promise<void>((resolve) => { finishAttach = resolve; }));
+    const pending = controller.setVideo(true);
+    await Promise.resolve();
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    finishAttach();
+    await expect(pending).rejects.toThrow(/permission/i);
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(null);
+    expect(stop).toHaveBeenCalled();
+    controller.dispose();
+  });
   it('uses a voice-state member when the guild member list was capped', async () => {
     useGuildStore.setState({
       guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) }] } } as never,
