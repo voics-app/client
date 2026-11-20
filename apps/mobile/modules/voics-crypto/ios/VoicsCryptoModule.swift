@@ -1,6 +1,5 @@
 import ExpoModulesCore
 import Foundation
-import CryptoKit
 
 /// Raised to JavaScript with a plain message. Messages never contain keys, plaintext or tokens:
 /// the Rust layer reports error kinds only, and the vault reports Keychain status codes.
@@ -34,19 +33,14 @@ public class VoicsCryptoModule: Module {
 
     AsyncFunction("encryptAttachment") { (plainB64: String) -> [String: String] in
       guard let plain = Data(base64Encoded: plainB64), !plain.isEmpty, plain.count <= 64 * 1024 * 1024 else { throw CryptoFailure("Invalid attachment") }
-      let key = SymmetricKey(size: .bits256)
-      let sealed = try AES.GCM.seal(plain, using: key)
-      let keyData = key.withUnsafeBytes { Data($0) }
-      return ["ciphertext": (sealed.ciphertext + sealed.tag).base64EncodedString(), "key_b64": keyData.base64EncodedString(), "nonce_b64": Data(sealed.nonce).base64EncodedString(), "sha256_b64": Data(SHA256.hash(data: plain)).base64EncodedString()]
+      return try AttachmentCipher.encrypt(plain)
     }
 
     AsyncFunction("decryptAttachment") { (cipherB64: String, keyB64: String, nonceB64: String, hashB64: String, size: Int) -> String in
       guard size > 0, size <= 64 * 1024 * 1024, let data = Data(base64Encoded: cipherB64), data.count == size + 16,
             let key = Data(base64Encoded: keyB64), key.count == 32, let nonce = Data(base64Encoded: nonceB64), nonce.count == 12,
             let hash = Data(base64Encoded: hashB64), hash.count == 32 else { throw CryptoFailure("Invalid attachment") }
-      let sealed = try AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: nonce), ciphertext: data.dropLast(16), tag: data.suffix(16))
-      let plain = try AES.GCM.open(sealed, using: SymmetricKey(data: key))
-      guard Data(SHA256.hash(data: plain)) == hash else { throw CryptoFailure("Attachment integrity check failed") }
+      let plain = try AttachmentCipher.decrypt(data, key: key, nonce: nonce, hash: hash, size: size)
       return plain.base64EncodedString()
     }
 
