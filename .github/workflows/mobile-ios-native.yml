@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - 'apps/mobile/modules/voics-recorder/**'
+      - 'apps/mobile/modules/voics-crypto/ios/**'
       - 'apps/mobile/modules/voics-screen-share/**'
       - 'apps/mobile/plugins/withIosScreenShare.js'
       - 'apps/mobile/plugins/broadcast/**'
