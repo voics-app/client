@@ -33,6 +33,7 @@ export function registerEngines(runtime: Runtime): Engines {
 
   const voice = createVoiceController({
     gateway: runtime.gateway,
+    api: runtime.api,
     platform: runtime.info.platform,
     iceServers: () => runtime.iceServers(),
     identityKeysOf: async (userId) => (await runtime.api.listUserDevices(userId)).map((d) => d.identity_key_b64),
@@ -67,5 +68,6 @@ function toFacade(voice: VoiceController): VoiceFacade {
     stopScreenShare: () => voice.stopScreenShare(),
     setScreenPreset: (preset) => voice.setScreenPreset(preset),
     setUserVolume: (userId, volume) => voice.setUserVolume(userId, volume),
+    playSoundboard: (guildId, soundId, volume) => voice.playSoundboard(guildId, soundId, volume),
   };
 }

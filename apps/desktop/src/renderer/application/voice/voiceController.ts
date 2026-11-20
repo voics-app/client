@@ -4,6 +4,7 @@
  * `onVoiceServerUpdate`.
  */
 import { SpeakingFlag } from '@discordy/core/contracts/voice';
+import { SoundboardPlayback, type SoundboardPlaybackDeps } from '@discordy/core/application/voice/soundboardPlayback';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import type { PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -16,6 +17,7 @@ export type { JoinTarget, SessionParams };
 
 export interface VoiceControllerDeps extends VoiceCallDeps {
   mic: MicPort;
+  soundboard?: Omit<SoundboardPlaybackDeps, 'call'> & { dispose(): void };
   openCamera(deviceId: string | null, preset: VideoPresetId): Promise<MediaStream>;
   screen: Omit<ScreenShareDeps, 'host'>;
 }
@@ -27,10 +29,17 @@ const videoTrackOf = (stream: MediaStream | null | undefined): MediaStreamTrack 
 
 export class VoiceController extends VoiceCallController {
   private soundshare = false;
+  private soundboardGeneration = 0;
+  private soundboardAllowed = false;
+  private readonly soundboard: SoundboardPlayback | null;
   private readonly screenShare: ScreenShare;
 
   constructor(private readonly desktop: VoiceControllerDeps) {
     super(desktop);
+    this.soundboard = desktop.soundboard ? new SoundboardPlayback({
+      ...desktop.soundboard,
+      call: () => this.target && this.session ? { sessionId: String(this.soundboardGeneration), channelId: this.target.channelId, canPublish: this.soundboardAllowed, mediaReady: this.soundboardAllowed } : null,
+    }) : null;
     const host: ScreenShareHost = {
       attach: async (track, options, audio) => {
         await this.session?.setScreenTrack(track, options);
@@ -64,11 +73,14 @@ export class VoiceController extends VoiceCallController {
   }
 
   protected override async releaseLocalMedia(): Promise<void> {
+    this.setSoundboardCapability(false);
     await this.screenShare.stop();
     await this.stopCamera();
   }
 
   protected override onSessionStarted(session: VoiceSessionPort): void {
+    this.soundboardGeneration += 1;
+    this.setSoundboardCapability(false);
     void this.restoreLocalMedia(session);
   }
 
@@ -84,6 +96,23 @@ export class VoiceController extends VoiceCallController {
       const options: ScreenTrackOptions = { constraints: presetConstraints(this.screenShare.currentPreset), contentHint: 'motion' };
       await session.setScreenTrack(screen, options);
     }
+  }
+
+  setSoundboardCapability(allowed: boolean): void {
+    this.soundboardAllowed = allowed;
+    useVoiceStore.getState().setSoundboardAvailable(allowed);
+    if (!allowed) this.soundboard?.cancel();
+  }
+
+  async playSoundboard(guildId: string, soundId: string, volume: number): Promise<void> {
+    if (!this.soundboard) throw new Error('Soundboard is unavailable on this device.');
+    await this.soundboard.play(guildId, soundId, volume);
+  }
+
+  override dispose(): void {
+    this.setSoundboardCapability(false);
+    this.desktop.soundboard?.dispose();
+    super.dispose();
   }
 
   // ---- camera ------------------------------------------------------------

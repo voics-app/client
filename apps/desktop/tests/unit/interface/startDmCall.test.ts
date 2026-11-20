@@ -20,6 +20,7 @@ function fakeVoice(): VoiceFacade {
     stopScreenShare: vi.fn(async () => undefined),
     setScreenPreset: vi.fn(async () => undefined),
     setUserVolume: vi.fn(),
+    playSoundboard: vi.fn(async () => undefined),
   };
 }
 

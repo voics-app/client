@@ -17,6 +17,7 @@ export interface VoiceFacade {
   stopScreenShare(): Promise<void>;
   setScreenPreset(preset: VideoPresetId): Promise<void>;
   setUserVolume(userId: string, volume: number): void;
+  playSoundboard(guildId: string, soundId: string, volume: number): Promise<void>;
 }
 
 let facade: VoiceFacade | null = null;
@@ -86,6 +87,11 @@ export async function stopShare(): Promise<void> {
 export async function changePreset(preset: VideoPresetId): Promise<void> {
   useVoiceStore.getState().setSelf({ streamPreset: preset });
   if (useVoiceStore.getState().selfStream) await run(() => require()?.setScreenPreset(preset));
+}
+
+export async function playSoundboard(guildId: string, soundId: string, volume: number): Promise<void> {
+  try { await require()?.playSoundboard(guildId, soundId, volume); }
+  catch (error) { reportError(error, 'Could not play sound'); }
 }
 
 export function setUserVolume(userId: string, volume: number): void {

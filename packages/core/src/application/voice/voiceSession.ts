@@ -360,8 +360,9 @@ export class VoiceSession implements VoiceSessionPort {
     const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.parsedOffer = parsed;
     if (this.soundboardTransceiver && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
-      this.fail('This device could not negotiate a separate soundboard track.');
-      return;
+      // Answer this extra section inactive; ordinary voice remains usable.
+      this.soundboardTransceiver = null;
+      this.plans = this.plans.filter((plan) => plan.role !== 'local-soundboard');
     }
     const codecs: CodecDescriptor[] = [{ name: 'opus', type: 'audio', priority: 1000, payload_type: parsed.audio.payloadType }];
     if (parsed.video) {
