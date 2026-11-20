@@ -25,3 +25,10 @@ jobs:
         run: |
           if ($env:RUNNER_OS -ne 'Windows') { throw 'Expected a native Windows runner' }
           Write-Host "Runner: $env:RUNNER_NAME; OS: $env:RUNNER_OS; Version: $([Environment]::OSVersion.VersionString)"
+      - name: Verify release Bash
+        shell: bash
+        run: |
+          case "$(uname -s)" in MINGW*|MSYS*) ;; *) echo 'Git for Windows Bash is required'; exit 1 ;; esac
+          node --version
+          rustc --version
+          cargo --version
