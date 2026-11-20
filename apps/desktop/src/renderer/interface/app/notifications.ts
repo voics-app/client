@@ -14,6 +14,7 @@ import { shouldPlaySound } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { bridge } from './bridge';
+import { streamerActive } from './streamer';
 
 const recentEventReminders = new Set<string>();
 
@@ -85,13 +86,13 @@ export function notifyIncoming(message: ChatMessage): void {
   if (!alert) return;
   // The sound is ours (a toast's own sound depends on the OS and is off for background apps), so it
   // plays whether or not desktop notifications are enabled.
-  if (shouldPlaySound('message', { enabled: prefs.notifySounds, toggles: prefs.soundToggles, doNotDisturb })) {
+  if (shouldPlaySound('message', { enabled: prefs.notifySounds && !streamerActive(), toggles: prefs.soundToggles, doNotDisturb })) {
     soundEffects.play('message', prefs.outputVolume, prefs.outputDeviceId);
   }
   if (!prefs.notifyDesktop) return;
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
   // Private (E2EE/P2P) plaintext never goes to the OS notification centre (alertBody hides it).
-  const body = alertBody(message);
+  const body = streamerActive() && !message.guild_id ? 'New direct message' : alertBody(message);
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
   bridge?.app.notify({ title, body, route, silent: true });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();
@@ -101,7 +102,7 @@ export function notifyIncoming(message: ChatMessage): void {
 export function playFriendRequestSound(): void {
   const prefs = usePrefsStore.getState();
   const doNotDisturb = useSessionStore.getState().settings.status === 'dnd';
-  if (shouldPlaySound('friendRequest', { enabled: prefs.notifySounds, toggles: prefs.soundToggles, doNotDisturb })) {
+  if (shouldPlaySound('friendRequest', { enabled: prefs.notifySounds && !streamerActive(), toggles: prefs.soundToggles, doNotDisturb })) {
     soundEffects.play('friendRequest', prefs.outputVolume, prefs.outputDeviceId);
   }
 }

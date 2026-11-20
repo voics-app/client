@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Permission } from '@discordy/core/contracts/permissions';
 import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useStreamerActive } from '../../../app/streamer';
 import { copyText, errorMessage } from '../../../app/actions';
 import { useConnectionStore } from '../../../app/connectionStore';
 import { getRuntime } from '../../../app/runtime';
@@ -16,6 +17,7 @@ function inviteError(error: unknown): string {
 }
 
 export function ServerVanity({ guildId }: { guildId: string }) {
+  const streamer = useStreamerActive();
   const qc = useQueryClient();
   const allowed = can(useGuildPermissions(guildId), Permission.MANAGE_GUILD);
   const apiUrl = useConnectionStore((s) => s.apiUrl);
@@ -26,6 +28,7 @@ export function ServerVanity({ guildId }: { guildId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   if (!allowed) return null;
+  if (streamer) return <section className="overview-section" aria-label="Permanent invite"><h2>Permanent invite</h2><p>Hidden in streamer mode.</p></section>;
   const code = draft ?? vanity.data?.code ?? '';
   const savedCode = vanity.data?.code;
   const dirty = code.toLowerCase() !== (vanity.data?.code ?? '');

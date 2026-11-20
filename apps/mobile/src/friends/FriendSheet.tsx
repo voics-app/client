@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useFavouriteFriendsStore } from '@discordy/core/application/stores/peopleStores';
+import { getRuntime } from '../runtime';
+import { attempt } from '../ui/attempt';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
 import { openConversation } from '../dms/dmActions';
 import { useLastValue } from '../sheets/useLastValue';
@@ -27,6 +30,15 @@ export function FriendSheet({ rel: shown, onClose, onMessage, onProfile }: Frien
   };
   const name = rel ? rel.nickname || rel.user.global_name || rel.user.username : '';
   const isFriend = rel?.type === RelationshipType.FRIEND;
+  const favourite = useFavouriteFriendsStore((s) => !!rel && s.ids.includes(rel.id));
+  const toggleFavourite = async () => {
+    if (!rel) return;
+    const ok = await attempt(() => getRuntime().api.setFavouriteFriend(rel.id, !favourite).then(() => true), 'Could not update favourite');
+    if (ok) {
+      const store = useFavouriteFriendsStore.getState();
+      store.set(favourite ? store.ids.filter((id) => id !== rel.id) : [...store.ids, rel.id]);
+    }
+  };
   return (
     <Sheet visible={shown !== null} title={name} closeLabel="Close friend menu" onClose={close}>
       {rel && step === 'menu' && (
@@ -49,6 +61,7 @@ export function FriendSheet({ rel: shown, onClose, onMessage, onProfile }: Frien
               onProfile(rel);
             }}
           />
+          {isFriend && <SheetOption label={favourite ? 'Remove favourite' : 'Add favourite'} icon={icon(favourite ? 'star' : 'star-outline')} onPress={() => { close(); void toggleFavourite(); }} />}
           {isFriend && <SheetOption label="Remove friend" icon={icon('person-remove-outline')} onPress={() => setStep('remove')} />}
           {rel.type !== RelationshipType.BLOCKED && <SheetOption label="Block" danger icon={icon('ban-outline', theme.danger)} onPress={() => setStep('block')} />}
         </>

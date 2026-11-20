@@ -8,6 +8,7 @@ let backend: FakeBackend;
 let app: ElectronApplication;
 let page: Page;
 let userData: string;
+let launchStarted: number;
 
 test.beforeAll(async () => {
   backend = await startFakeBackend();
@@ -21,6 +22,7 @@ test.beforeAll(async () => {
     DISCORDY_CDN_URL: `${backend.apiUrl}/cdn`,
   } as Record<string, string>;
   delete env.ELECTRON_RENDERER_URL;
+  launchStarted = performance.now();
   app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
   page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
@@ -32,6 +34,11 @@ test.afterAll(async () => {
   rmSync(userData, { recursive: true, force: true });
 });
 
+test('cold start reaches the auth screen', async () => {
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30_000 });
+  console.log(`Electron cold launch to auth: ${Math.round(performance.now() - launchStarted)} ms`);
+});
+
 test('signs in and lands in the server shell', async () => {
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel('Email').fill('ada@example.test');
@@ -39,6 +46,25 @@ test('signs in and lands in the server shell', async () => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('navigation', { name: 'Servers' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Nightglass HQ' })).toBeVisible();
+});
+
+test('favourites a friend and opens a personal friend invite', async () => {
+  await page.getByRole('button', { name: 'Friends', exact: false }).first().click();
+  await page.getByRole('tab', { name: /All/ }).click();
+  await page.getByRole('button', { name: 'Add favourite' }).click();
+  await expect(page.getByRole('button', { name: 'Remove favourite' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Direct messages' }).getByText('Favourites')).toBeVisible();
+  await page.getByRole('tab', { name: /Add friend/ }).click();
+  await page.getByRole('button', { name: 'Create link' }).click();
+  const link = await page.getByLabel('Friend invite link').inputValue();
+  expect(link).toMatch(/\/friend-invite\/#/);
+  const appLink = `voics://friend-invite/${new URL(link).hash.slice(1)}`;
+  await app.evaluate(({ app }, url) => app.emit('open-url', { preventDefault() {} } as Electron.Event, url), appLink);
+  await expect.poll(() => backend.friendRequests.length).toBe(1);
+  await page.getByRole('button', { name: 'Revoke link' }).click();
+  await app.evaluate(({ app }, url) => app.emit('open-url', { preventDefault() {} } as Electron.Event, url), appLink);
+  await expect(page.getByText('Could not send friend request')).toBeVisible();
+  expect(backend.friendRequests).toHaveLength(1);
 });
 
 test('sends a message in a channel', async () => {
@@ -69,6 +95,25 @@ test('creates a server event and marks interest', async () => {
   await expect(list.getByRole('button', { name: 'Remove interest' })).toBeVisible();
   expect(backend.events[0]).toMatchObject({ name: 'Community meetup', entity_type: 3, entity_metadata: { location: 'The park' }, user_count: 1 });
   await list.getByRole('button', { name: 'Done' }).click();
+});
+
+test('opens settings and the emoji picker on demand', async () => {
+  await page.getByRole('button', { name: 'User settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'User settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'User settings' })).toBeHidden();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Server settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.getByRole('dialog', { name: 'Server settings' })).toBeHidden();
+  await page.getByRole('button', { name: 'Emoji', exact: true }).click();
+  const picker = page.getByRole('dialog', { name: 'Emoji picker' });
+  await expect(picker).toBeVisible();
+  await picker.getByPlaceholder('Search emoji').fill('smile');
+  await expect(picker.getByPlaceholder('Search emoji')).toHaveValue('smile');
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeHidden();
 });
 
 test('runs slash commands and renders interaction responses', async () => {

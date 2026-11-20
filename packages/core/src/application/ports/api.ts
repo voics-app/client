@@ -125,6 +125,11 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  favouriteFriends(): Promise<string[]>;
+  setFavouriteFriend(userId: string, value: boolean): Promise<void>;
+  createFriendInvite(): Promise<{ token: string; expires_at: string }>;
+  revokeFriendInvites(): Promise<void>;
+  useFriendInvite(token: string): Promise<void>;
   /** `guildId` null addresses the user's DMs (`@me`). */
   guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
   updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;

@@ -24,6 +24,8 @@ const COMMANDS = [
   { id: snowflake(), application_id: APP_ID, name: 'feedback', description: 'Open a feedback form', options: [] },
 ];
 
+const FRIEND = { id: snowflake(), username: 'grace', global_name: 'Grace Hopper', avatar: null };
+const DM_ID = snowflake();
 const USER = { id: snowflake(), username: 'ada', global_name: 'Ada Lovelace', avatar: null, email: 'ada@example.test' };
 
 interface Guild {
@@ -39,6 +41,7 @@ export interface FakeBackend {
   /** Bodies received by `POST /interactions`. */
   interactions: Record<string, unknown>[];
   events: Record<string, unknown>[];
+  friendRequests: string[];
   close(): Promise<void>;
 }
 
@@ -64,6 +67,9 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const interactions: Record<string, unknown>[] = [];
   const events: Record<string, unknown>[] = [];
   const interested = new Set<string>();
+  const friendRequests: string[] = [];
+  const favourites = new Set<string>();
+  let invite = '';
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -180,6 +186,23 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (/^\/devices\/\d+\/key-packages$/.test(path)) return json(res, 204, null);
     if (/^\/users\/\d+\/devices$/.test(path)) return json(res, 200, []);
     if (path === '/users/@me') return json(res, 200, USER);
+    if (path === '/users/@me/favourites' && req.method === 'GET') return json(res, 200, [...favourites]);
+    const favourite = /^\/users\/@me\/favourites\/(\d+)$/.exec(path);
+    if (favourite) {
+      if (req.method === 'PUT') favourites.add(favourite[1]!);
+      if (req.method === 'DELETE') favourites.delete(favourite[1]!);
+      return json(res, 204, null);
+    }
+    if (path === '/users/@me/friend-invites' && req.method === 'POST') {
+      invite = 'fake-token-0123456789_1234567890';
+      return json(res, 200, { token: invite, expires_at: new Date(Date.now() + 86400000).toISOString() });
+    }
+    if (path === '/users/@me/friend-invites' && req.method === 'DELETE') { invite = ''; return json(res, 204, null); }
+    if (path === '/friend-invites' && req.method === 'POST') {
+      if (body.token !== invite || !invite) return json(res, 404, { code: 10006, message: 'Unknown invite' });
+      friendRequests.push(String(body.token));
+      return json(res, 204, null);
+    }
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
     const eventInterest = /^\/guilds\/(\d+)\/scheduled-events\/(\d+)\/users\/@me$/.exec(path);
@@ -201,6 +224,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       dispatch('GUILD_SCHEDULED_EVENT_CREATE', event);
       return json(res, 201, event);
     }
+    if (/^\/channels\/\d+\/invites$/.test(path) && req.method === 'POST') return json(res, 201, { code: 'smoke-private-invite' });
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
       const payload = guildPayload(guild);
@@ -267,8 +291,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               user: USER,
               session_id: 'session-e2e',
               guilds: guilds.map(guildPayload),
-              private_channels: [],
-              relationships: [],
+              private_channels: [{ id: DM_ID, type: 1, recipients: [FRIEND], delivery_mode: 'standard', last_message_id: null }],
+              relationships: [{ id: FRIEND.id, type: 1, user: FRIEND }],
               user_settings: { default_delivery_mode: 'standard', status: 'online' },
               read_state: [],
               presences: [],
@@ -287,6 +311,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     messages,
     interactions,
     events,
+    friendRequests,
     close: () =>
       new Promise<void>((resolve) => {
         for (const ws of sockets) ws.terminate();

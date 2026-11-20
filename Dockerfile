@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter @discordy/desktop... --ignore-scripts
 COPY packages/core packages/core
 COPY apps/desktop apps/desktop
-RUN pnpm --filter @discordy/desktop exec electron-vite build
+RUN pnpm --filter @discordy/desktop exec electron-vite build && node apps/desktop/scripts/check-renderer-budget.mjs
 
 # --- runtime: unprivileged nginx serving the static renderer ---
 FROM nginxinc/nginx-unprivileged:1.27-alpine
