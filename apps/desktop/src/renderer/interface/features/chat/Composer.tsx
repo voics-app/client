@@ -390,7 +390,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       if (currentFailedSendScope(failureScope) && mounted.current && modeRef.current === failureScope.mode
         && !textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id]
         && useUiStore.getState().editing?.channelId !== channel.id) restoreFailed(draft);
-      else useFailedSendQueue.getState().add(failureScope, draft);
+      else if (failureScope.mode === 'standard') useFailedSendQueue.getState().add(failureScope, draft);
     }
   };
 

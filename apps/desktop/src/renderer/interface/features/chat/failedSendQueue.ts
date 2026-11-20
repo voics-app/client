@@ -27,7 +27,7 @@ export const currentFailedSendScope = (scope: FailedSendScope): boolean => scope
 export const useFailedSendQueue = create<State>((set) => ({
   byScope: {},
   add: (scope, draft) => {
-    if (!currentFailedSendScope(scope)) return;
+    if (scope.mode !== 'standard' || !currentFailedSendScope(scope)) return;
     const key = failedSendKey(scope);
     set((state) => ({ byScope: { ...state.byScope, [key]: [...(state.byScope[key] ?? []), { id: ++nextId, draft }] } }));
   },
