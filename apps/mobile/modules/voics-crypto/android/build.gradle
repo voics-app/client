@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'nl.voics.crypto'
+version = '0.1.0'
+def packagePresent = file('Generated').isDirectory() && file('jniLibs').isDirectory()
+android {
+  namespace 'nl.voics.crypto'
+  sourceSets {
+    main {
+      java.srcDirs += (packagePresent ? ['src/full/java', 'Generated'] : ['src/stub/java'])
+      if (packagePresent) jniLibs.srcDirs += ['jniLibs']
+    }
+  }
+}
+dependencies {
+  if (packagePresent) implementation 'net.java.dev.jna:jna:5.14.0@aar'
+}

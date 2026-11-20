@@ -80,6 +80,7 @@ export function loadNativePrivacy(): NativePrivacy | null {
   if (!isNativeBuild) return null;
   const crypto = loadCryptoModule();
   if (!crypto) return null;
+  try { if (crypto.isAvailable && !crypto.isAvailable()) return null; } catch { return null; }
   try {
     // Android hosts the file adapter in the recorder module; iOS exposes it on VoicsCrypto.
     // eslint-disable-next-line @typescript-eslint/no-require-imports

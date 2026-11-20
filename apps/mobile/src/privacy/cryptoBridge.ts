@@ -7,6 +7,7 @@ import type { CryptoBridge, IncomingMlsResult, LocalMessageRecord } from '@disco
 
 /** What the Swift module exposes; mirrors modules/voics-crypto/ios/VoicsCryptoModule.swift one to one. */
 export interface VoicsCryptoNative {
+  isAvailable?(): boolean;
   readAttachment?(uri: string): Promise<string>;
   encryptAttachment?(plaintext: string): Promise<{ ciphertext: string; key_b64: string; nonce_b64: string; sha256_b64: string }>;
   decryptAttachment?(ciphertext: string, key: string, nonce: string, hash: string, size: number): Promise<string>;

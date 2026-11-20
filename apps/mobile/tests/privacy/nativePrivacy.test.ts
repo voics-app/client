@@ -142,6 +142,12 @@ describe('loadNativePrivacy', () => {
     ).toBeNull();
   });
 
+  it('fails closed when the Android crypto package is absent', () => {
+    expect(load('bare', () => {
+      jest.doMock('expo', () => ({ requireOptionalNativeModule: () => ({ isAvailable: () => false }) }));
+    })).toBeNull();
+  });
+
   it('still offers encrypted chats when only the calling module is missing', () => {
     const result = load('bare', () => {
       jest.doMock('expo', () => ({ requireOptionalNativeModule: () => fakeNative() }));
