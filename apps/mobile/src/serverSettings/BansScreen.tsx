@@ -37,12 +37,12 @@ function Body({ guildId }: { guildId: string }) {
   }, [guildId, mayBan, mayAppeal]);
   const shown = useMemo(() => filterBans(bans ?? [], query), [bans, query]);
   const unban = (ban: Ban) => confirmDestructive(`Unban ${nameOf(ban)}?`, 'They will be able to rejoin with an invite.', 'Unban', () => {
-    void attempt(async () => { await getRuntime().api.unban(guildId, ban.user.id); setBans((current) => current?.filter((b) => b.user.id !== ban.user.id) ?? null); if (mayAppeal) setAppeals(await getRuntime().api.banAppeals(guildId)); }, 'Could not unban');
+    void attempt(async () => { await getRuntime().api.unban(guildId, ban.user.id); setBans((current) => current?.filter((b) => b.user.id !== ban.user.id) ?? null); if (mayAppeal) { try { setAppeals(await getRuntime().api.banAppeals(guildId)); } catch { setAppealsFailed(true); } } }, 'Could not unban');
   });
   const review = (id: string, decision: 'accept' | 'deny') => void attempt(async () => {
     await getRuntime().api.resolveBanAppeal(guildId, id, decision);
-    setAppeals(await getRuntime().api.banAppeals(guildId));
-    if (mayBan) setBans(await getRuntime().api.bans(guildId));
+    try { setAppeals(await getRuntime().api.banAppeals(guildId)); setAppealsFailed(false); } catch { setAppealsFailed(true); }
+    if (mayBan) { try { setBans(await getRuntime().api.bans(guildId)); } catch { setFailed(true); } }
   }, 'Could not review appeal');
   const header = <View style={styles.appeals}>
     {mayAppeal && <>
