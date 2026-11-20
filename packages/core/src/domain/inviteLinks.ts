@@ -47,3 +47,8 @@ export function instanceInviteCodes(text: string, apiUrl: string): string[] {
   }
   return codes;
 }
+
+/** The fragment keeps the bearer token out of HTTP requests and access logs. */
+export function friendInviteWebUrl(token: string, apiUrl: string): string {
+  return `${landingOrigin(apiUrl)}/friend-invite/#${encodeURIComponent(token)}`;
+}
