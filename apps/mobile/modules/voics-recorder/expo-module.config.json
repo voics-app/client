@@ -1,1 +1,1 @@
-{"platforms":["android"],"android":{"modules":["expo.modules.voicsrecorder.VoicsRecorderModule"]}}
+{"platforms":["android","apple"],"android":{"modules":["expo.modules.voicsrecorder.VoicsRecorderModule"]},"apple":{"modules":["VoicsRecorderModule"]}}
