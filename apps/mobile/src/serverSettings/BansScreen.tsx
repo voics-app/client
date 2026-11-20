@@ -29,11 +29,14 @@ function Body({ guildId }: { guildId: string }) {
   useEffect(() => {
     let live = true;
     if (mayBan) getRuntime().api.bans(guildId).then((list) => live && setBans(list)).catch(() => live && setFailed(true));
+    let refresh: ReturnType<typeof setInterval> | undefined;
     if (mayAppeal) {
       getRuntime().api.appealForm(guildId).then((form) => live && setCurrentQuestion(form.question)).catch(() => undefined);
-      getRuntime().api.banAppeals(guildId).then((list) => live && setAppeals(list)).catch(() => live && setAppealsFailed(true));
+      const load = () => getRuntime().api.banAppeals(guildId).then((list) => { if (live) { setAppeals(list); setAppealsFailed(false); } }).catch(() => { if (live) setAppealsFailed(true); });
+      void load();
+      refresh = setInterval(() => { void load(); }, 15_000);
     }
-    return () => { live = false; };
+    return () => { live = false; if (refresh) clearInterval(refresh); };
   }, [guildId, mayBan, mayAppeal]);
   const shown = useMemo(() => filterBans(bans ?? [], query), [bans, query]);
   const unban = (ban: Ban) => confirmDestructive(`Unban ${nameOf(ban)}?`, 'They will be able to rejoin with an invite.', 'Unban', () => {
