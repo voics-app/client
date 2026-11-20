@@ -51,6 +51,15 @@ function setup(channel: Channel = dm('standard')) {
 describe('MessageSender routing', () => {
   beforeEach(() => resetStores());
 
+  it('rejects malformed voice messages before any delivery path', async () => {
+    const { sender, api, ephemeral } = setup();
+    const file = new File(['opus'], 'voice.ogg', { type: 'audio/ogg' });
+    await expect(sender.send(dm('standard'), { content: 'text', files: [file], voice: { duration_secs: 1, waveform: 'AQID' } })).rejects.toThrow(/one audio recording/);
+    await expect(sender.send(dm('ephemeral'), { content: '', files: [file], voice: { duration_secs: 1, waveform: '!' } })).rejects.toThrow(/valid duration/);
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(ephemeral.send).not.toHaveBeenCalled();
+  });
+
   it('sends standard messages optimistically and reconciles by nonce', async () => {
     const { sender, api } = setup();
     api.sendMessage.mockImplementation(async (_c: string, body: { nonce: string; content: string }) =>

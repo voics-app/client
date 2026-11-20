@@ -70,6 +70,14 @@ export class MessageSender {
   }
 
   async send(channel: Channel, input: SendInput): Promise<ChatMessage | null> {
+    if (input.voice) {
+      const { duration_secs, waveform } = input.voice;
+      let validWaveform = false;
+      try { validWaveform = waveform.length > 0 && waveform.length <= 1024 && atob(waveform).length > 0; } catch { /* reject malformed input */ }
+      if (input.content.trim() || input.tts || input.files?.length !== 1 || !input.files?.[0]?.type.startsWith('audio/') || !Number.isFinite(duration_secs) || duration_secs <= 0 || duration_secs > 600 || !validWaveform) {
+        throw new Error('A voice message needs one audio recording with valid duration and waveform.');
+      }
+    }
     const mode = this.resolveMode(channel);
     if (mode === 'standard') return this.sendStandard(channel, input);
     return this.sendPrivate(channel, mode, input);

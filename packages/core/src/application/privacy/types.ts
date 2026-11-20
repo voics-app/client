@@ -100,6 +100,7 @@ export function validFiles(raw: unknown, bind: { channelId: string; mode: Privat
     const ref = parseFileRef(item, bind.channelId, bind.mode);
     if (ref && ref.id.startsWith(`${bind.messageId}:`) && !refs.some((r) => r.id === ref.id)) refs.push(ref);
   }
+  if (refs.length !== 1 && refs.some((ref) => ref.voice)) return [];
   return refs;
 }
 
