@@ -53,6 +53,8 @@ export interface VoiceStreamDescriptor {
 }
 
 export interface VoiceReady {
+  /** Present and true only for a node with the enforced soundboard transport. */
+  soundboard_transport?: boolean;
   ssrc: number;
   ip: string;
   port: number;

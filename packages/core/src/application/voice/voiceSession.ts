@@ -347,7 +347,7 @@ export class VoiceSession implements VoiceSessionPort {
     this.audioTransceiver = pc.addTransceiver(this.micTrack ?? 'audio', { direction: 'sendrecv' });
     this.cameraTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
     this.screenTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
-    if (this.options.soundboardTrack) this.soundboardTransceiver = pc.addTransceiver(this.options.soundboardTrack, { direction: 'sendonly' });
+    if (ready.soundboard_transport === true && this.options.soundboardTrack) this.soundboardTransceiver = pc.addTransceiver(this.options.soundboardTrack, { direction: 'sendonly' });
 
     const offer = await pc.createOffer();
     const sdp = offer.sdp ?? '';
@@ -359,7 +359,7 @@ export class VoiceSession implements VoiceSessionPort {
 
     const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.parsedOffer = parsed;
-    if (this.options.soundboardTrack && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
+    if (this.soundboardTransceiver && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
       this.fail('This device could not negotiate a separate soundboard track.');
       return;
     }
@@ -582,7 +582,7 @@ export class VoiceSession implements VoiceSessionPort {
   private updatePublishReady(): void {
     const p = this.publishPermissions;
     const allowed = Boolean(p && p.expires_at > Date.now() && p.can_publish_audio && p.can_publish_soundboard
-      && this.options.soundboardTrack && this.mediaNegotiated && this.description && (!this.description.e2ee || this.e2eeActive));
+      && this.soundboardTransceiver && this.mediaNegotiated && this.description && (!this.description.e2ee || this.e2eeActive));
     if (allowed === this.publishReady) return;
     this.publishReady = allowed;
     this.options.onSoundboardCapability?.(allowed);
