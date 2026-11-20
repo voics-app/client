@@ -18,6 +18,8 @@ describe('failed-send queue', () => {
     const scope = captureFailedSendScope('channel', 'standard');
     const file = new File(['x'], 'note.txt', { type: 'text/plain' });
     const draft: FailedDraft = { text: 'first', files: [file], descriptions: new Map([[file, 'caption']]), mentions: new Map([['@Ada', '<@1>']]), replyTo: null, pingReplied: false };
+    useFailedSendQueue.getState().add(captureFailedSendScope('channel', 'ephemeral'), draft);
+    expect(useFailedSendQueue.getState().byScope).toEqual({});
     useFailedSendQueue.getState().add(scope, draft);
     useFailedSendQueue.getState().add(scope, { ...draft, text: 'second' });
     expect(useFailedSendQueue.getState().byScope[failedSendKey(scope)]?.map((item) => item.draft.text)).toEqual(['first', 'second']);
