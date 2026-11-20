@@ -30,6 +30,13 @@ public final class VoicsRecorderModule: Module {
       let file = url.standardizedFileURL
       if file.deletingLastPathComponent() == folder && file.lastPathComponent.hasPrefix("voice-") && file.pathExtension == "ogg" { try? FileManager.default.removeItem(at: file) }
     }
+    AsyncFunction("isOgg") { (uri: String) -> Bool in
+      guard let url = URL(string: uri), url.isFileURL,
+            url.standardizedFileURL.deletingLastPathComponent() == FileManager.default.temporaryDirectory.standardizedFileURL,
+            url.lastPathComponent.hasPrefix("voice-"), url.pathExtension == "ogg",
+            let data = try? Data(contentsOf: url), (try? OggOpusReader.read(data)) != nil else { return false }
+      return true
+    }
     AsyncFunction("preparePlayback") { (uri: String) async throws -> String in
       guard let url = URL(string: uri) else { throw RecorderError.unavailable }
       let data: Data
