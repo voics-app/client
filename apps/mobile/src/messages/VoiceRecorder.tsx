@@ -4,12 +4,13 @@ import { AudioModule, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import type { OutgoingFile } from './outgoingFile';
+import { discardVoicePlayback, prepareVoicePlayback } from './voicePlayback';
 
 type Draft = { uri: string; size: number; duration_secs: number; waveform: string };
 type Recorder = { start(): Promise<void>; stop(): Promise<Draft>; cancel(): Promise<void>; discard(uri: string): Promise<void> };
 
 function nativeRecorder(): Recorder | null {
-  if (Platform.OS !== 'android') return null;
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { requireOptionalNativeModule } = require('expo') as { requireOptionalNativeModule<T>(name: string): T | null };
@@ -18,6 +19,17 @@ function nativeRecorder(): Recorder | null {
 }
 
 function Preview({ uri }: { uri: string }) {
+  const [playable, setPlayable] = useState<string | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    let prepared: string | null = null;
+    void prepareVoicePlayback(uri).then((result) => { prepared = result; if (mounted) setPlayable(result); else void discardVoicePlayback(result); }).catch((error: unknown) => Alert.alert('Preview unavailable', error instanceof Error ? error.message : 'Could not decode recording.'));
+    return () => { mounted = false; if (prepared) void discardVoicePlayback(prepared); };
+  }, [uri]);
+  return playable ? <ReadyPreview uri={playable} /> : <Ionicons name="hourglass-outline" size={22} color={theme.muted} />;
+}
+
+function ReadyPreview({ uri }: { uri: string }) {
   const player = useAudioPlayer({ uri });
   const status = useAudioPlayerStatus(player);
   return <Pressable accessibilityRole="button" accessibilityLabel={status.playing ? 'Pause preview' : 'Play preview'} onPress={() => status.playing ? player.pause() : player.play()}><Ionicons name={status.playing ? 'pause' : 'play'} size={22} color={theme.accent} /></Pressable>;

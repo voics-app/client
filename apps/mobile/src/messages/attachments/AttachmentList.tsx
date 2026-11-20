@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
@@ -13,6 +13,7 @@ import { singleMediaSize, tileRows, uploadLabel } from './attachmentModel';
 import { MediaViewer } from './MediaViewer';
 import { privateRefOf } from '@discordy/core/domain/privateAttachment';
 import { getRuntime } from '../../runtime';
+import { discardVoicePlayback, prepareVoicePlayback } from '../voicePlayback';
 
 /** The attachments of one message: an image and video grid, then audio and file rows; unsent messages show their upload progress with Cancel. */
 export function AttachmentList({ attachments, messageId, sending, channelId }: { attachments: Attachment[]; messageId: string; sending: boolean; channelId?: string }) {
@@ -152,13 +153,20 @@ function FileRow({ attachment }: { attachment: Attachment }) {
 function AudioRow({ attachment, channelId }: { attachment: Attachment; channelId?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  const prepared = useRef<string | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (prepared.current) void discardVoicePlayback(prepared.current); }; }, []);
   if (!url) return <AudioShell attachment={attachment} playing={false} onToggle={() => {
     if (busy) return;
     setBusy(true);
     const privateRef = privateRefOf(attachment);
     const service = getRuntime().privacy?.attachments;
     const resolve = privateRef ? (service && channelId ? service.resolve(attachment, channelId) : Promise.reject(new Error('Private audio is unavailable on this device.'))) : Promise.resolve(attachment.url);
-    void resolve.then(setUrl).catch((error: unknown) => Alert.alert('Could not play audio', error instanceof Error ? error.message : 'Audio unavailable')).finally(() => setBusy(false));
+    const isVoice = Boolean(attachment.waveform) || attachment.content_type === 'audio/ogg';
+    void resolve.then((source) => isVoice ? prepareVoicePlayback(source) : source).then((result) => {
+      if (isVoice) prepared.current = result;
+      if (mounted.current) setUrl(result); else if (isVoice) void discardVoicePlayback(result);
+    }).catch((error: unknown) => Alert.alert('Could not play audio', error instanceof Error ? error.message : 'Audio unavailable')).finally(() => { if (mounted.current) setBusy(false); });
   }} />;
   return <ActiveAudio attachment={{ ...attachment, url }} />;
 }

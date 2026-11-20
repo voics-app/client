@@ -31,6 +31,9 @@ try {
   assert.equal(pages[1].payload.subarray(0, 8).toString(), 'OpusTags');
   assert.equal(pages[3].flags, 4);
   assert.equal(pages[3].granule, 1800n);
+  const playback = join(dir, 'playback');
+  execFileSync('swiftc', [join(here, '../ios/OggOpusWriter.swift'), join(here, '../ios/OggOpusReader.swift'), join(here, '../ios/OggOpusPlayback.swift'), join(here, 'OggOpusPlaybackFixture.swift'), '-o', playback]);
+  execFileSync(playback, { stdio: 'inherit' });
   const probe = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' });
   if (probe.status === 0) {
     const path = join(dir, 'fixture.ogg'); writeFileSync(path, file);

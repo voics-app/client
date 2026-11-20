@@ -11,9 +11,11 @@ public final class VoicsRecorderModule: Module {
   private var levels: [UInt8] = []
   private var frames: Double = 0
   private var failed = false
+  private let playbackDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("voics-voice-playback", isDirectory: true)
 
   public func definition() -> ModuleDefinition {
     Name("VoicsRecorder")
+    OnCreate { try? FileManager.default.removeItem(at: self.playbackDirectory) }
     AsyncFunction("start") { try self.start() }
     AsyncFunction("stop") { try self.stop() }
     AsyncFunction("cancel") { self.cancel() }
@@ -22,6 +24,23 @@ public final class VoicsRecorderModule: Module {
       let folder = FileManager.default.temporaryDirectory.standardizedFileURL
       let file = url.standardizedFileURL
       if file.deletingLastPathComponent() == folder && file.lastPathComponent.hasPrefix("voice-") && file.pathExtension == "ogg" { try? FileManager.default.removeItem(at: file) }
+    }
+    AsyncFunction("preparePlayback") { (uri: String) async throws -> String in
+      guard let url = URL(string: uri) else { throw RecorderError.unavailable }
+      let data: Data
+      if url.isFileURL { data = try Data(contentsOf: url, options: .mappedIfSafe) }
+      else {
+        guard ["https", "http"].contains(url.scheme ?? "") else { throw RecorderError.unavailable }
+        var request = URLRequest(url: url); request.httpShouldHandleCookies = false
+        let (downloaded, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw RecorderError.unavailable }
+        data = downloaded
+      }
+      return try OggOpusPlayback.makeFile(data, in: self.playbackDirectory).absoluteString
+    }
+    AsyncFunction("discardPlayback") { (uri: String) in
+      guard let url = URL(string: uri), url.isFileURL, url.standardizedFileURL.deletingLastPathComponent() == self.playbackDirectory.standardizedFileURL, url.pathExtension == "caf" else { return }
+      try? FileManager.default.removeItem(at: url)
     }
     OnDestroy { self.cancel() }
   }
@@ -57,7 +76,7 @@ public final class VoicsRecorderModule: Module {
     if let channel = buffer.floatChannelData?[0], buffer.frameLength > 0 {
       var peak: Float = 0
       for i in 0..<Int(buffer.frameLength) { peak = max(peak, abs(channel[i])) }
-      levels.append(UInt8(min(255, max(0, Int(peak * 255)))))
+      levels.append(peak.isFinite ? UInt8(min(255, max(0, Int(peak * 255)))) : 0)
     }
     var offset: AVAudioFrameCount = 0
     while offset < buffer.frameLength {
