@@ -1,5 +1,5 @@
 import { ChannelType, RelationshipType, type Channel, type Relationship, type User } from '@discordy/core/contracts/rest';
-import { dmRows } from '../../src/dms/dmModel';
+import { dmListItems, dmRows } from '../../src/dms/dmModel';
 
 const user = (id: string, extra: Partial<User> = {}): User => ({ id, username: `user${id}`, global_name: null, avatar: null, ...extra });
 const dm = (id: string, extra: Partial<Channel> = {}): Channel => ({ id, type: ChannelType.DM, delivery_mode: 'standard', recipients: [user('2')], ...extra }) as Channel;
@@ -39,4 +39,10 @@ describe('dmRows', () => {
     const rows = dmRows({ channels, closed: { '1001': '' }, relationships: {} });
     expect(rows.map((r) => [r.id, r.private])).toEqual([['1000', true]]);
   });
+});
+
+it('puts a favourite direct message before pinned and other conversations', () => {
+  const rows = dmRows({ channels: { a: dm('1000'), b: dm('1001', { recipients: [user('3')] }) }, closed: {}, relationships: {} });
+  const items = dmListItems(rows, ['1001'], ['2']);
+  expect(items.map((item) => item.kind === 'header' ? item.title : item.row.id)).toEqual(['Favourites', '1000', 'Pinned', '1001']);
 });
