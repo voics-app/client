@@ -1,15 +1,17 @@
-import { LockKey, Monitor, MonitorArrowUp, PhoneDisconnect, VideoCamera, VideoCameraSlash, WifiHigh } from '@phosphor-icons/react';
+import { LockKey, Monitor, MonitorArrowUp, PhoneDisconnect, SpeakerHigh, VideoCamera, VideoCameraSlash, WifiHigh } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
-import { stopShare, toggleCamera, leaveVoice } from '../../app/voiceActions';
+import { stopShare, toggleCamera, leaveVoice, playSoundboard } from '../../app/voiceActions';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { Spinner } from '../../shared/ui/Spinner';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getRuntime } from '../../app/runtime';
 import { connectionRows, qualityTone } from '@discordy/core/domain/voicePanel';
-import { Menu } from '../../shared/ui/Menu';
+import { Menu, type MenuEntry } from '../../shared/ui/Menu';
 import { DeviceArrow, NoiseSuppressionButton, useKeyHint } from './DeviceMenus';
 
 const STATUS_LABEL = { idle: '', requesting: 'Requesting', connecting: 'Connecting', connected: 'Voice connected', reconnecting: 'Reconnecting', failed: 'Connection failed' } as const;
@@ -24,11 +26,19 @@ export function VoiceDock() {
   const cameraKeys = useKeyHint('toggleCamera');
   const shareKeys = useKeyHint('toggleScreenShare');
   const [details, setDetails] = useState<{ x: number; y: number } | null>(null);
+  const [soundboard, setSoundboard] = useState<{ x: number; y: number } | null>(null);
+  const soundboardAvailable = useVoiceStore((s) => s.soundboardAvailable);
+  const sounds = useQuery({ queryKey: ['soundboard', call.guildId], queryFn: () => getRuntime().api.soundboardSounds(call.guildId!), enabled: soundboard !== null && call.guildId !== null });
   const openDialog = useUiStore((s) => s.openDialog);
   const navigate = useUiStore((s) => s.navigate);
   if (call.status === 'idle') return null;
   const connected = call.status === 'connected';
   const tone = call.quality ? qualityTone(call.quality.rttMs, call.quality.lossPct) : 'good';
+  const soundEntries: MenuEntry[] = [
+    { kind: 'label', label: 'Soundboard' },
+    ...(!soundboardAvailable ? [{ kind: 'label' as const, label: 'Playback unavailable in this call' }] : []),
+    ...(sounds.isLoading ? [{ kind: 'label' as const, label: 'Loading sounds?' }] : sounds.isError ? [{ kind: 'item' as const, label: 'Could not load sounds ? retry', onSelect: () => void sounds.refetch() }] : sounds.data?.length ? sounds.data.map((sound) => ({ kind: 'item' as const, label: sound.name, disabled: !soundboardAvailable, onSelect: () => void playSoundboard(call.guildId!, sound.id, sound.volume) })) : [{ kind: 'label' as const, label: 'No sounds in this server' }]),
+  ];
 
   return (
     <div className={`voice-dock glass is-${call.status}`} role="region" aria-label="Voice connection">
@@ -99,8 +109,11 @@ export function VoiceDock() {
           },
         ]}
       />
+      <Menu open={soundboard !== null} x={soundboard?.x ?? 0} y={soundboard?.y ?? 0} minWidth={220} onClose={() => setSoundboard(null)} entries={soundEntries} />
       <div className="voice-dock-actions">
         <NoiseSuppressionButton />
+        <IconButton label="Soundboard" size="sm" active={soundboard !== null} aria-haspopup="menu" aria-expanded={soundboard !== null} disabled={!connected || !call.guildId} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setSoundboard(soundboard ? null : { x: rect.left, y: rect.top - 260 }); }}><SpeakerHigh size={20} /></IconButton>
+
         <span className="split-control">
           <IconButton label={selfVideo ? 'Turn off camera' : 'Turn on camera'} hint={cameraKeys} active={selfVideo} onClick={() => void toggleCamera()} disabled={!connected}>
             {selfVideo ? <VideoCamera size={20} weight="fill" /> : <VideoCameraSlash size={20} />}

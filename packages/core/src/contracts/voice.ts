@@ -14,6 +14,7 @@ export const VoiceOp = {
   CLIENT_DISCONNECT: 13,
   MEDIA_SINK_WANTS: 15,
   STREAM_VIEWERS: 40,
+  PUBLISH_PERMISSIONS: 41,
   DAVE_PREPARE_TRANSITION: 21,
   DAVE_EXECUTE_TRANSITION: 22,
   DAVE_MLS_EXTERNAL_SENDER: 25,
@@ -52,6 +53,8 @@ export interface VoiceStreamDescriptor {
 }
 
 export interface VoiceReady {
+  /** Present and true only for a node with the enforced soundboard transport. */
+  soundboard_transport?: boolean;
   ssrc: number;
   ip: string;
   port: number;
@@ -86,6 +89,16 @@ export interface IceCandidateDescriptor {
   ip: string;
   port: number;
   protocol: 'udp';
+}
+
+/** Server-to-session announcement after the SFU has applied an ordered capability. */
+export interface PublishPermissions {
+  session_id: string;
+  revision: number;
+  expires_at: number;
+  can_publish_audio: boolean;
+  can_publish_video: boolean;
+  can_publish_soundboard: boolean;
 }
 
 export interface SessionDescription {

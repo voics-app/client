@@ -12,6 +12,7 @@ import {
   type ClientsConnect,
   type CodecDescriptor,
   type MediaSinkWants,
+  type PublishPermissions,
   type SelectProtocol,
   type SessionDescription,
   type Speaking,
@@ -62,6 +63,8 @@ export interface VoiceSessionOptions {
   soundboardTrack?: MediaTrackLike;
   /** Separate receiver path; the platform must provide its own mute and gain. */
   onSoundboardAudio?: (userId: string, stream: MediaStreamLike | null) => void;
+  /** Effective, confirmed capability; false on missing, invalid, expired or disconnected state. */
+  onSoundboardCapability?: (allowed: boolean) => void;
   preferredVideoCodec?: string;
   statsIntervalMs?: number;
   renegotiationDelayMs?: number;
@@ -85,6 +88,12 @@ export class VoiceSession implements VoiceSessionPort {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   private renegotiateTimer: ReturnType<typeof setTimeout> | null = null;
+  private publishTimer: ReturnType<typeof setTimeout> | null = null;
+  private publishPermissions: PublishPermissions | null = null;
+  private publishReady = false;
+  private publishRevision = 0;
+  private publishFingerprint = '';
+  private mediaNegotiated = false;
 
   private ready: VoiceReady | null = null;
   private parsedOffer: ParsedOffer | null = null;
@@ -168,6 +177,7 @@ export class VoiceSession implements VoiceSessionPort {
       this.sendFrame(VoiceOp.IDENTIFY, identify);
     };
     socket.onmessage = (event) => {
+      if (socket !== this.socket) return;
       try {
         const frame = JSON.parse(event.data) as VoiceFrame;
         void this.handle(frame).catch((error: unknown) => console.error('voice frame failed', frame.op, error));
@@ -201,6 +211,10 @@ export class VoiceSession implements VoiceSessionPort {
   }
 
   private closePeerConnection(): void {
+    this.clearPublishPermissions();
+    this.publishRevision = 0;
+    this.publishFingerprint = '';
+    this.mediaNegotiated = false;
     if (this.videoAnnouncementTimer) clearTimeout(this.videoAnnouncementTimer);
     this.videoAnnouncementTimer = null;
     this.lastVideoAnnouncement = null;
@@ -275,6 +289,9 @@ export class VoiceSession implements VoiceSessionPort {
       case VoiceOp.VIDEO:
         this.onVideo(frame.d as VideoPayload);
         return;
+      case VoiceOp.PUBLISH_PERMISSIONS:
+        this.onPublishPermissions(frame.d);
+        return;
       case VoiceOp.STREAM_VIEWERS:
         this.onStreamViewers(frame.d as StreamViewers);
         return;
@@ -330,7 +347,7 @@ export class VoiceSession implements VoiceSessionPort {
     this.audioTransceiver = pc.addTransceiver(this.micTrack ?? 'audio', { direction: 'sendrecv' });
     this.cameraTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
     this.screenTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
-    if (this.options.soundboardTrack) this.soundboardTransceiver = pc.addTransceiver(this.options.soundboardTrack, { direction: 'sendonly' });
+    if (ready.soundboard_transport === true && this.options.soundboardTrack) this.soundboardTransceiver = pc.addTransceiver(this.options.soundboardTrack, { direction: 'sendonly' });
 
     const offer = await pc.createOffer();
     const sdp = offer.sdp ?? '';
@@ -342,9 +359,10 @@ export class VoiceSession implements VoiceSessionPort {
 
     const parsed = parseLocalOffer(sdp, this.options.preferredVideoCodec ?? DEFAULT_VIDEO_CODEC);
     this.parsedOffer = parsed;
-    if (this.options.soundboardTrack && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
-      this.fail('This device could not negotiate a separate soundboard track.');
-      return;
+    if (this.soundboardTransceiver && (!parsed.audio.ssrc || !parsed.soundboard?.ssrc)) {
+      // Answer this extra section inactive; ordinary voice remains usable.
+      this.soundboardTransceiver = null;
+      this.plans = this.plans.filter((plan) => plan.role !== 'local-soundboard');
     }
     const codecs: CodecDescriptor[] = [{ name: 'opus', type: 'audio', priority: 1000, payload_type: parsed.audio.payloadType }];
     if (parsed.video) {
@@ -400,6 +418,8 @@ export class VoiceSession implements VoiceSessionPort {
       }
     } else this.bypassSenders();
     await this.applyAnswer(this.offerSdp, this.parsedOffer, description);
+    this.mediaNegotiated = true;
+    this.updatePublishReady();
     if (required) this.beginDave(description);
     if (this.sources.size > 0) this.scheduleRenegotiation();
   }
@@ -519,7 +539,54 @@ export class VoiceSession implements VoiceSessionPort {
     if (this.e2eeActive === active) return;
     this.e2eeActive = active;
     this.e2ee.emit(active);
+    this.updatePublishReady();
     if (active && this.sources.size > 0) this.scheduleRenegotiation();
+  }
+
+  private clearPublishPermissions(): void {
+    if (this.publishTimer) clearTimeout(this.publishTimer);
+    this.publishTimer = null;
+    this.publishPermissions = null;
+    this.publishFingerprint = '';
+    if (this.publishReady) {
+      this.publishReady = false;
+      this.options.onSoundboardCapability?.(false);
+    }
+  }
+
+  private onPublishPermissions(raw: unknown): void {
+    const p = raw as Partial<PublishPermissions> | null;
+    if (!p || p.session_id !== this.options.sessionId || !Number.isSafeInteger(p.revision) || (p.revision ?? 0) <= 0
+      || !Number.isSafeInteger(p.expires_at) || (p.expires_at ?? 0) <= Date.now()
+      || typeof p.can_publish_audio !== 'boolean' || typeof p.can_publish_video !== 'boolean' || typeof p.can_publish_soundboard !== 'boolean') {
+      this.clearPublishPermissions();
+      return;
+    }
+    const fingerprint = JSON.stringify([p.session_id, p.revision, p.expires_at, p.can_publish_audio, p.can_publish_video, p.can_publish_soundboard]);
+    if (p.revision! < this.publishRevision || (p.revision === this.publishRevision && fingerprint !== this.publishFingerprint)) {
+      this.clearPublishPermissions();
+      return;
+    }
+    this.publishRevision = p.revision!;
+    this.publishFingerprint = fingerprint;
+    this.publishPermissions = p as PublishPermissions;
+    if (this.publishTimer) clearTimeout(this.publishTimer);
+    const expire = (): void => {
+      const remaining = (this.publishPermissions?.expires_at ?? 0) - Date.now();
+      if (remaining <= 0) this.clearPublishPermissions();
+      else this.publishTimer = setTimeout(expire, Math.min(remaining, 2_147_483_647));
+    };
+    expire();
+    this.updatePublishReady();
+  }
+
+  private updatePublishReady(): void {
+    const p = this.publishPermissions;
+    const allowed = Boolean(p && p.expires_at > Date.now() && p.can_publish_audio && p.can_publish_soundboard
+      && this.soundboardTransceiver && this.mediaNegotiated && this.description && (!this.description.e2ee || this.e2eeActive));
+    if (allowed === this.publishReady) return;
+    this.publishReady = allowed;
+    this.options.onSoundboardCapability?.(allowed);
   }
 
   // ---- remote sources --------------------------------------------------

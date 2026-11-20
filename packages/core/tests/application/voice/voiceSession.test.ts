@@ -37,12 +37,12 @@ function makeSession(over: Partial<VoiceSessionOptions> = {}): VoiceSession {
   });
 }
 
-async function connectToReady(session: VoiceSession): Promise<FakeSocket> {
+async function connectToReady(session: VoiceSession, soundboardTransport = false): Promise<FakeSocket> {
   session.connect();
   const socket = FakeSocket.latest();
   socket.open();
   socket.receive({ op: VoiceOp.HELLO, d: { heartbeat_interval: 13750 } });
-  socket.receive({ op: VoiceOp.READY, d: ready });
+  socket.receive({ op: VoiceOp.READY, d: soundboardTransport ? { ...ready, soundboard_transport: true } : ready });
   await vi.advanceTimersByTimeAsync(5);
   return socket;
 }
@@ -65,6 +65,40 @@ describe('voiceUrl', () => {
 });
 
 describe('VoiceSession protocol', () => {
+  it('does not add a sender or enable soundboard for a legacy node', async () => {
+    const capability = vi.fn();
+    const session = makeSession({ soundboardTrack: { kind: 'audio', stop: () => undefined } as MediaTrackLike, onSoundboardCapability: capability });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: { session_id: 'sess', revision: 1, expires_at: Date.now() + 1000, can_publish_audio: true, can_publish_video: true, can_publish_soundboard: true } });
+    expect(FakePeerConnection.latest().transceivers).toHaveLength(3);
+    expect(capability).not.toHaveBeenCalled();
+    session.close();
+  });
+
+  it('denies missing, stale and expired publication announcements', async () => {
+    const capability = vi.fn();
+    const track = { kind: 'audio', stop: () => undefined } as MediaTrackLike;
+    const session = makeSession({ soundboardTrack: track, onSoundboardCapability: capability });
+    const socket = await connectToReady(session, true);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(capability).not.toHaveBeenCalled();
+    const grant = { session_id: 'sess', revision: 2, expires_at: Date.now() + 1000, can_publish_audio: true, can_publish_video: true, can_publish_soundboard: true };
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: grant });
+    expect(capability).toHaveBeenLastCalledWith(true);
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: { ...grant, revision: 1 } });
+    expect(capability).toHaveBeenLastCalledWith(false);
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: grant });
+    expect(capability).toHaveBeenLastCalledWith(false);
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: { ...grant, revision: 3 } });
+    expect(capability).toHaveBeenLastCalledWith(true);
+    await vi.advanceTimersByTimeAsync(1001);
+    expect(capability).toHaveBeenLastCalledWith(false);
+    session.close();
+  });
+
   it('routes a separate soundboard stream and removes it without dropping microphone audio', async () => {
     const received: [string, unknown][] = [];
     const session = makeSession({ onSoundboardAudio: (user, stream) => received.push([user, stream]) });
@@ -300,7 +334,7 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     const c = cryptor(true);
     const track = { kind: 'audio', stop: () => undefined } as MediaTrackLike;
     const session = makeSession({ cryptor: c, createDave: dave, soundboardTrack: track });
-    const socket = await connectToReady(session);
+    const socket = await connectToReady(session, true);
     const select = socket.sent.find((frame) => frame.op === VoiceOp.SELECT_PROTOCOL)?.d;
     expect(select).toMatchObject({ data: { ssrcs: { audio: 111, soundboard: 112 } } });
     socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
@@ -308,6 +342,23 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     const pc = FakePeerConnection.latest();
     expect(c.attachSender).toHaveBeenCalledWith(pc.transceivers[3]!.sender, 'audio', 'opus', 'me');
     expect(pc.remoteDescriptions[0]).toMatch(/m=audio[\s\S]*a=mid:3[\s\S]*a=recvonly/);
+    session.close();
+  });
+
+  it('does not enable soundboard in an encrypted call until media keys are active', async () => {
+    const capability = vi.fn();
+    let hooks: { onActive(active: boolean): void } | null = null;
+    const track = { kind: 'audio', stop: () => undefined } as MediaTrackLike;
+    const session = makeSession({ cryptor: cryptor(true), soundboardTrack: track, onSoundboardCapability: capability, createDave: (_send, h) => { hooks = h; return dave(); } });
+    const socket = await connectToReady(session, true);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.PUBLISH_PERMISSIONS, d: { session_id: 'sess', revision: 1, expires_at: Date.now() + 1000, can_publish_audio: true, can_publish_video: true, can_publish_soundboard: true } });
+    expect(capability).not.toHaveBeenCalled();
+    hooks!.onActive(true);
+    expect(capability).toHaveBeenLastCalledWith(true);
+    hooks!.onActive(false);
+    expect(capability).toHaveBeenLastCalledWith(false);
     session.close();
   });
 

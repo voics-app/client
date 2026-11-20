@@ -43,6 +43,9 @@ export interface VoiceStoreState {
   /** keyed by guild id, or by DM channel id for private calls */
   states: Record<string, Record<string, VoiceState>>;
   call: CallState;
+  /** True only while a confirmed, unexpired publication capability is usable. */
+  soundboardAvailable: boolean;
+  setSoundboardAvailable(available: boolean): void;
   selfMute: boolean;
   selfDeaf: boolean;
   selfVideo: boolean;
@@ -89,6 +92,8 @@ export const scopeOf = (state: Pick<VoiceState, 'guild_id' | 'channel_id'>): str
 export const useVoiceStore = create<VoiceStoreState>((set) => ({
   states: {},
   call: idleCall,
+  soundboardAvailable: false,
+  setSoundboardAvailable: (soundboardAvailable) => set({ soundboardAvailable }),
   selfMute: false,
   selfDeaf: false,
   selfVideo: false,
@@ -153,7 +158,7 @@ export const useVoiceStore = create<VoiceStoreState>((set) => ({
   stopWatching: (key) => set((s) => ({ watching: s.watching.filter((k) => k !== key), focusedStream: s.focusedStream === key ? null : s.focusedStream, pipStream: s.pipStream === key ? null : s.pipStream })),
   setHideSelfPreview: (hideSelfPreview) => set({ hideSelfPreview }),
   resetCall: () =>
-    set({ call: idleCall, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [], screenSsrcs: {}, streamViewers: [] }),
+    set({ call: idleCall, soundboardAvailable: false, speaking: {}, remoteStreams: [], localCamera: null, localScreen: null, selfVideo: false, selfStream: false, focusedStream: null, pipStream: null, watching: [], screenSsrcs: {}, streamViewers: [] }),
 }));
 
 export function usersInChannel(states: VoiceStoreState['states'], scopeId: string | null | undefined, channelId: string): VoiceState[] {
