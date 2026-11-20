@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), 'voics-ogg-'));
 try {
   const binary = join(dir, 'writer');
-  execFileSync('swiftc', [join(here, '../ios/OggOpusWriter.swift'), join(here, 'OggOpusWriterFixture.swift'), '-o', binary]);
+  execFileSync('swiftc', [join(here, '../ios/OggOpusWriter.swift'), join(here, '../ios/OggOpusReader.swift'), join(here, 'OggOpusWriterFixture.swift'), '-o', binary]);
   const file = execFileSync(binary);
   let offset = 0; const pages = [];
   while (offset < file.length) {
