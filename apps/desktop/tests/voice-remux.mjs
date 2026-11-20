@@ -10,9 +10,9 @@ import { remuxVoiceMessage } from '../src/renderer/interface/features/chat/remux
 const dir = mkdtempSync(join(tmpdir(), 'voics-voice-remux-'));
 const input = join(dir, 'known.webm');
 const output = join(dir, 'result.ogg');
-const run = (name, args) => execFileSync(name, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, SDL_AUDIODRIVER: 'dummy' } });
+const run = (name, args) => execFileSync(name, args, { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 4 * 1024 * 1024, env: { ...process.env, SDL_AUDIODRIVER: 'dummy' } });
 try {
-  for (const duration of [0.11, 1.2, 1.2135, 2.347]) {
+  for (const duration of [0.11, 1.2, 1.2135, 2.347, 12.345]) {
     run('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `sine=frequency=523:sample_rate=48000:duration=${duration}`, '-c:a', 'libopus', '-y', input]);
     const source = readFileSync(input);
     const result = Buffer.from(await (await remuxVoiceMessage(new Blob([source], { type: 'audio/webm' }))).arrayBuffer());
@@ -31,5 +31,5 @@ try {
     assert.ok(decodedOutput.equals(decodedInput), `decoded audio changed or shifted for ${duration}s (${decodedOutput.length} vs ${decodedInput.length} bytes)`);
     if (duration === 1.2) run('ffplay', ['-v', 'error', '-nodisp', '-autoexit', output]);
   }
-  console.log('Ogg/Opus headers, pre-skip, duration and decoded samples verified for four recordings');
+  console.log('Ogg/Opus headers, pre-skip, duration and decoded samples verified for five recordings');
 } finally { rmSync(dir, { recursive: true, force: true }); }
