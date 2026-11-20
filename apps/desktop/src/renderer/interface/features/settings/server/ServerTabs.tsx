@@ -207,7 +207,7 @@ export function BanAppeals({ guildId }: { guildId: string }) {
   const qc = useQueryClient();
   const [question, setQuestion] = useState('');
   const form = useQuery({ queryKey: ['guild', guildId, 'appeal-form'], queryFn: () => getRuntime().api.appealForm(guildId), retry: false });
-  const appeals = useQuery({ queryKey: ['guild', guildId, 'appeals'], queryFn: () => getRuntime().api.banAppeals(guildId) });
+  const appeals = useQuery({ queryKey: ['guild', guildId, 'appeals'], queryFn: () => getRuntime().api.banAppeals(guildId), staleTime: 0, refetchOnMount: 'always', refetchInterval: 15_000 });
   return <section className="stack"><h2>Ban appeals</h2>
     <p>Set a short question for banned users.</p>
     <Input aria-label="Appeal question" placeholder={form.data?.question ?? 'Why should we unban you?'} value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={500} />
