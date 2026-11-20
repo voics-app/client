@@ -16,8 +16,9 @@ test('browses, joins and archives a synthetic thread', async ({}, testInfo) => {
     DISCORDY_CDN_URL: `${backend.apiUrl}/cdn`,
   } as Record<string, string>;
   delete env.ELECTRON_RENDERER_URL;
-  const app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
   try {
+    app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
     const page = await app.firstWindow();
     await page.getByLabel('Email').fill('ada@example.test');
     await page.getByLabel('Password').fill('correct horse battery');
@@ -25,7 +26,15 @@ test('browses, joins and archives a synthetic thread', async ({}, testInfo) => {
     await page.getByRole('button', { name: 'Nightglass HQ' }).click();
     await page.getByRole('button', { name: /general/ }).first().click();
     await page.getByRole('button', { name: 'Threads', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Working notes/ })).toBeVisible();
+    const thread = page.getByRole('button', { name: /Working notes/ });
+    const search = page.getByLabel('Search threads');
+    await expect(thread).toBeVisible();
+    const searchBox = await search.boundingBox();
+    const threadBox = await thread.boundingBox();
+    expect(searchBox).not.toBeNull();
+    expect(threadBox).not.toBeNull();
+    expect(searchBox!.height).toBeLessThan(60);
+    expect(threadBox!.y - (searchBox!.y + searchBox!.height)).toBeLessThan(40);
     await page.screenshot({ path: testInfo.outputPath('threads-active.png') });
     await page.getByRole('button', { name: /Working notes/ }).click();
     await page.getByRole('button', { name: 'Thread actions' }).click();
@@ -40,7 +49,7 @@ test('browses, joins and archives a synthetic thread', async ({}, testInfo) => {
     await expect(page.getByText('This thread is archived.')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('thread-archived.png') });
   } finally {
-    await app.close();
+    await app?.close();
     await backend.close();
     rmSync(userData, { recursive: true, force: true });
   }
