@@ -4,6 +4,7 @@ import { ChannelType } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';
+import { Field, Input, Select, TextArea } from '../../../shared/ui/Form';
 
 type Entry = { channel_id: string; description: string };
 
@@ -34,12 +35,12 @@ export function ServerWelcome({ guildId }: { guildId: string }) {
     <p className="page-sub">Introduce new members to the server and suggest channels to visit.</p>
     <div className="stack">
       <label><input type="checkbox" checked={enabled} disabled={!ready} onChange={(event) => setEnabled(event.target.checked)} /> Show to new members</label>
-      <label>Introduction<textarea value={description} maxLength={300} disabled={!ready} onChange={(event) => setDescription(event.target.value)} /></label>
+      <Field label="Introduction">{(id) => <TextArea id={id} value={description} maxLength={300} disabled={!ready} onChange={(event) => setDescription(event.target.value)} />}</Field>
       {entries.map((entry, index) => <div key={index} className="stack">
-        <label>Channel<select value={entry.channel_id} onChange={(event) => setEntries(entries.map((item, i) => i === index ? { ...item, channel_id: event.target.value } : item))}>
+        <Field label="Channel">{(id) => <Select id={id} value={entry.channel_id} onChange={(event) => setEntries(entries.map((item, i) => i === index ? { ...item, channel_id: event.target.value } : item))}>
           <option value="">Choose a channel</option>{available.map((channel) => <option key={channel.id} value={channel.id}>#{channel.name}</option>)}
-        </select></label>
-        <label>Why visit?<input value={entry.description} maxLength={100} onChange={(event) => setEntries(entries.map((item, i) => i === index ? { ...item, description: event.target.value } : item))} /></label>
+        </Select>}</Field>
+        <Field label="Why visit?">{(id) => <Input id={id} value={entry.description} maxLength={100} onChange={(event) => setEntries(entries.map((item, i) => i === index ? { ...item, description: event.target.value } : item))} />}</Field>
         <Button variant="ghost" onClick={() => setEntries(entries.filter((_, i) => i !== index))}>Remove channel</Button>
       </div>)}
       <Button variant="ghost" disabled={!ready || entries.length >= 5} onClick={() => setEntries([...entries, { channel_id: '', description: '' }])}>Add channel</Button>

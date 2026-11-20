@@ -4,6 +4,7 @@ import type { OnboardingConfig, OnboardingOption } from '@discordy/core/contract
 import { errorMessage } from '../../../app/actions';
 import { getRuntime } from '../../../app/runtime';
 import { Button } from '../../../shared/ui/Button';
+import { Field, Input, Select } from '../../../shared/ui/Form';
 
 const emptyOption = (): OnboardingOption => ({ label: '', role_id: null, channel_id: null });
 
@@ -33,11 +34,11 @@ export function ServerOnboarding({ guildId }: { guildId: string }) {
     <div className="stack">
       <label><input type="checkbox" checked={config.enabled} disabled={!ready} onChange={(event) => setConfig({ ...config, enabled: event.target.checked })} /> Ask new members</label>
       {config.questions.map((question, qi) => <fieldset key={qi}><legend>Question {qi + 1}</legend>
-        <label>Question<input value={question.title} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, title: event.target.value }))} /></label>
+        <Field label="Question">{(id) => <Input id={id} value={question.title} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, title: event.target.value }))} />}</Field>
         {question.options.map((option, oi) => <div key={oi} className="stack">
-          <label>Option<input value={option.label} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, label: event.target.value } : o) }))} /></label>
-          <label>Role<select value={option.role_id ?? ''} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, role_id: event.target.value || null } : o) }))}><option value="">No role</option>{guild?.roles.filter((role) => role.id !== guildId && !role.managed).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></label>
-          <label>Suggested channel<select value={option.channel_id ?? ''} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, channel_id: event.target.value || null } : o) }))}><option value="">No channel</option>{Object.values(channels).filter((channel) => channel.guild_id === guildId).map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}</select></label>
+          <Field label="Option">{(id) => <Input id={id} value={option.label} maxLength={100} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, label: event.target.value } : o) }))} />}</Field>
+          <Field label="Role">{(id) => <Select id={id} value={option.role_id ?? ''} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, role_id: event.target.value || null } : o) }))}><option value="">No role</option>{guild?.roles.filter((role) => role.id !== guildId && !role.managed).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</Select>}</Field>
+          <Field label="Suggested channel">{(id) => <Select id={id} value={option.channel_id ?? ''} onChange={(event) => patchQuestion(qi, (q) => ({ ...q, options: q.options.map((o, i) => i === oi ? { ...o, channel_id: event.target.value || null } : o) }))}><option value="">No channel</option>{Object.values(channels).filter((channel) => channel.guild_id === guildId).map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}</Select>}</Field>
           <Button variant="ghost" onClick={() => patchQuestion(qi, (q) => ({ ...q, options: q.options.filter((_, i) => i !== oi) }))}>Remove option</Button>
         </div>)}
         <Button variant="ghost" disabled={question.options.length >= 10} onClick={() => patchQuestion(qi, (q) => ({ ...q, options: [...q.options, emptyOption()] }))}>Add option</Button>
