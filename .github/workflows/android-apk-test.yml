@@ -1,0 +1,17 @@
+name: Android artifact collection test
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/android-apk.yml'
+      - '.github/workflows/android-apk-test.yml'
+      - 'scripts/collect-android-apk.sh'
+      - 'scripts/test-collect-android-apk.sh'
+permissions:
+  contents: read
+jobs:
+  isolation:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: vm-runner
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash scripts/test-collect-android-apk.sh
