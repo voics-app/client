@@ -28,17 +28,12 @@ jobs:
     runs-on: vm-runner
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.18.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: pnpm install --frozen-lockfile
+      - run: node --version && pnpm --version
+      - run: pnpm install --frozen-lockfile --store-dir "$RUNNER_TEMP/voice-pnpm-store"
       - run: ffmpeg -version && ffprobe -version
       - run: node apps/desktop/tests/voice-remux.mjs
   apk:
-    if: ${{ !contains(github.event.head_commit.message, '[remux-only]') && !contains(github.event.head_commit.message, '[probe-only]') }}
+    if: ${{ contains(github.event.head_commit.message, '[voice-apk]') }}
     runs-on: vm-runner
     timeout-minutes: 60
     env:

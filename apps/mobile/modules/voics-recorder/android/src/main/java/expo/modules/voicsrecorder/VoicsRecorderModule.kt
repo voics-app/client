@@ -1,6 +1,8 @@
 package expo.modules.voicsrecorder
 
 import android.media.MediaRecorder
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -92,7 +94,16 @@ class VoicsRecorderModule : Module() {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       val file = File(android.net.Uri.parse(uri).path ?: "")
       if (file.parentFile?.canonicalFile != context.cacheDir.canonicalFile || !file.name.startsWith("voice-") || !file.name.endsWith(".ogg")) false
-      else file.inputStream().use { input -> val header = ByteArray(4); input.read(header) == 4 && header.contentEquals(byteArrayOf(79, 103, 103, 83)) }
+      else {
+        val isOgg = file.inputStream().use { input -> val header = ByteArray(4); input.read(header) == 4 && header.contentEquals(byteArrayOf(79, 103, 103, 83)) }
+        if (!isOgg) false else {
+          val extractor = MediaExtractor()
+          try {
+            extractor.setDataSource(file.absolutePath)
+            (0 until extractor.trackCount).any { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME) == "audio/opus" }
+          } finally { extractor.release() }
+        }
+      }
     }
     OnActivityEntersBackground { release(true) }
     OnDestroy { release(true) }

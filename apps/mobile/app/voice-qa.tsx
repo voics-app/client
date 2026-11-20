@@ -23,6 +23,6 @@ export default function VoiceQa() {
       setSent({ id: 'fixture', filename: file.name, content_type: file.mimeType, size: file.size, url: file.uri, ...voice });
       return true;
     }} />
-    {sent && <><Text accessibilityRole="text" style={{ color: theme.text }}>Fixture sent · OggS verified</Text><AttachmentList attachments={[sent]} messageId="fixture" sending={false} /></>}
+    {sent && <><Text accessibilityRole="text" style={{ color: theme.text }}>Fixture sent · Ogg/Opus verified</Text><AttachmentList attachments={[sent]} messageId="fixture" sending={false} /></>}
   </View>;
 }
