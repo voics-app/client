@@ -38,7 +38,7 @@ export function createNativePrivacy(crypto: VoicsCryptoNative, webrtc: WebRtcPee
           catch { throw new AttachmentError('integrity', 'The file failed its integrity check and was discarded.'); }
         },
         upload: (url: string, ciphertext: Uint8Array) => crypto.uploadAttachment!(url, toB64(ciphertext)),
-        store: (id: string, plain: Uint8Array, mime: string) => {
+        store: async (id: string, plain: Uint8Array, mime: string) => {
           if (mime !== 'audio/ogg') throw new Error('Only voice recordings are supported on this device.');
           return crypto.storeAttachment!(id, toB64(plain));
         },
