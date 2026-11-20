@@ -15,7 +15,7 @@ describe('forumPosts', () => {
   });
 
   it('sends a post as a public thread with the body as its first message', () => {
-    expect(newPostBody(' Title ', ' Body ')).toEqual({ name: 'Title', type: ChannelType.PUBLIC_THREAD, message: { content: 'Body' } });
+    expect(newPostBody(' Title ', ' Body ', 'request-1')).toEqual({ name: 'Title', type: ChannelType.PUBLIC_THREAD, request_id: 'request-1', applied_tags: [], message: { content: 'Body' } });
     expect(canPost('t', ' ')).toBe(false);
     expect(canPost(' ', 'b')).toBe(false);
     expect(canPost('t', 'b')).toBe(true);
@@ -24,7 +24,8 @@ describe('forumPosts', () => {
 
 const mockApi = {
   messages: jest.fn(async () => []),
-  createThread: jest.fn(async (_c: string, body: { name: string }) => post('555', { name: body.name })),
+  listForumPosts: jest.fn(async () => []),
+  createThread: jest.fn(async (_c: string, body: { name: string }) => post('555', { name: body.name, forum_post_status: 'published' })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -60,7 +61,7 @@ describe('forum channel', () => {
     await fireEvent.changeText(screen.getByLabelText('Title'), 'Gambits');
     await fireEvent.changeText(screen.getByLabelText('Message'), 'Which ones?');
     await fireEvent.press(screen.getByLabelText('Create post'));
-    await waitFor(() => expect(mockApi.createThread).toHaveBeenCalledWith('ideas', { name: 'Gambits', type: ChannelType.PUBLIC_THREAD, message: { content: 'Which ones?' } }));
+    await waitFor(() => expect(mockApi.createThread).toHaveBeenCalledWith('ideas', { name: 'Gambits', type: ChannelType.PUBLIC_THREAD, request_id: expect.any(String), applied_tags: [], message: { content: 'Which ones?' } }));
     await waitFor(() => expect(screen).toHavePathname('/servers/g1/555'));
     expect(useGuildStore.getState().channels['555']).toBeTruthy();
   });

@@ -12,8 +12,8 @@ export function forumPosts(channels: Record<string, Channel>, forumId: string): 
 }
 
 /** The request that starts a post: a public thread under the forum whose first message is the body, as desktop sends it. */
-export function newPostBody(title: string, body: string) {
-  return { name: title.trim(), type: ChannelType.PUBLIC_THREAD, message: { content: body.trim() } };
+export function newPostBody(title: string, body: string, requestId: string, tags: string[] = []) {
+  return { name: title.trim(), type: ChannelType.PUBLIC_THREAD, request_id: requestId, applied_tags: tags, message: { content: body.trim() } };
 }
 
 /** A post needs a title and a first message. */

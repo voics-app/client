@@ -167,6 +167,8 @@ export interface Channel {
   default_forum_layout?: number;
   default_reaction_emoji?: { emoji_id: string | null; emoji_name: string | null } | null;
   require_tags?: boolean;
+  forum_post_status?: 'pending' | 'dispatching' | 'publishing' | 'published' | 'failed';
+  forum_first_message?: Pick<Message, 'id' | 'content' | 'attachments'> | null;
   delivery_mode: DeliveryMode;
   voice_region?: string | null;
 }
