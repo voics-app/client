@@ -218,5 +218,4 @@ message history renders PNG, APNG, GIF and Lottie items, including forwards.
 This draft requires the matching contracts, API, messages and gateway changes;
 the built-in pack is available in Standard guild channels and DMs; visual and end-to-end verification remain outstanding.
 
-Mobile displays PNG/GIF stickers and labels Lottie or paused animations;
-mobile can select and send stickers in Standard chats, while Lottie playback is not yet implemented.
+Mobile can select and send stickers in Standard chats and renders Lottie with the native Expo-compatible renderer. A native rebuild and device acceptance are required. Animated GIF/APNG show a label when animation is disabled; invalid or unavailable Lottie also shows a label.
