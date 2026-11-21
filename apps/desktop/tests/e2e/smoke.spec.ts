@@ -50,6 +50,25 @@ test('signs in and lands in the server shell', async () => {
   await expect(page.getByRole('button', { name: 'Nightglass HQ' })).toBeVisible();
 });
 
+test('favourites a friend and opens a personal friend invite', async () => {
+  await page.getByRole('button', { name: 'Friends', exact: false }).first().click();
+  await page.getByRole('tab', { name: /All/ }).click();
+  await page.getByRole('button', { name: 'Add favourite' }).click();
+  await expect(page.getByRole('button', { name: 'Remove favourite' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Direct messages' }).getByText('Favourites')).toBeVisible();
+  await page.getByRole('tab', { name: /Add friend/ }).click();
+  await page.getByRole('button', { name: 'Create link' }).click();
+  const link = await page.getByLabel('Friend invite link').inputValue();
+  expect(link).toMatch(/\/friend-invite\/#/);
+  const appLink = `voics://friend-invite/${new URL(link).hash.slice(1)}`;
+  await app.evaluate(({ app }, url) => app.emit('open-url', { preventDefault() {} } as Electron.Event, url), appLink);
+  await expect.poll(() => backend.friendRequests.length).toBe(1);
+  await page.getByRole('button', { name: 'Revoke link' }).click();
+  await app.evaluate(({ app }, url) => app.emit('open-url', { preventDefault() {} } as Electron.Event, url), appLink);
+  await expect(page.getByText('Could not send friend request')).toBeVisible();
+  expect(backend.friendRequests).toHaveLength(1);
+});
+
 test('sends a message in a channel', async () => {
   await page.getByRole('button', { name: 'Nightglass HQ' }).click();
   await page.getByRole('button', { name: /general/ }).first().click();

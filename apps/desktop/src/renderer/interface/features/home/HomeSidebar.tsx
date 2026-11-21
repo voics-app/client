@@ -1,17 +1,18 @@
 import { Plus, UsersThree, LockKey, Plugs, PushPin, ListChecks, X } from '@phosphor-icons/react';
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { buildDmMenu, visibleDms } from '@discordy/core/domain/dmModel';
 import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { typingUsers, useTypingStore, usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { typingUsers, useTypingStore, usePresenceStore, useReadStateStore, useRelationshipStore, useFavouriteFriendsStore } from '@discordy/core/application/stores/peopleStores';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
 import { bulkLeaveConfirmation, pruneSelection, selectableGroupIds, toggleSelected } from '@discordy/core/domain/groupDmSelection';
 import { isUnread } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { isPinFull, MAX_PINNED_DMS, orderPinnedFirst } from '@discordy/core/domain/pins';
+import { getRuntime } from '../../app/runtime';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';
 import { closeDm, leaveGroupDm, leaveGroupDms } from '../../app/dmActions';
@@ -100,6 +101,19 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
 
 export function HomeSidebar() {
   const channels = useGuildStore((s) => s.channels);
+  const favouriteIds = useFavouriteFriendsStore((s) => s.ids);
+  const relationships = useRelationshipStore((s) => s.byUser);
+  useEffect(() => {
+    let active = true;
+    useFavouriteFriendsStore.getState().set([]);
+    const initial = useFavouriteFriendsStore.getState().ids;
+    void Promise.resolve().then(() => getRuntime().api.favouriteFriends()).then((ids) => {
+      if (active && useFavouriteFriendsStore.getState().ids === initial) useFavouriteFriendsStore.getState().set(ids);
+    }).catch(() => {
+      if (active) useUiStore.getState().toast({ tone: 'danger', title: 'Could not load favourites' });
+    });
+    return () => { active = false; useFavouriteFriendsStore.getState().set([]); };
+  }, []);
   const reads = useReadStateStore((s) => s.byChannel);
   const presence = usePresenceStore((s) => s.byUser);
   const view = useUiStore((s) => s.view);
@@ -144,14 +158,17 @@ export function HomeSidebar() {
           </span>
         </header>
         <ul className="dm-list">
-          {dms.map((c) => {
+          {dms.some((c) => c.type === ChannelType.DM && (c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)) && <li className="category-head is-static">Favourites</li>}
+          {[...dms.filter((c) => c.type === ChannelType.DM && (c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)), ...dms.filter((c) => c.type !== ChannelType.DM || !(c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND))].map((c, index) => {
             const peers = c.recipients ?? [];
             const name = c.name || peers.map((u) => displayName(u)).join(', ') || 'Unknown';
             const read = reads[c.id];
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
             const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
-            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} selection={selecting ? { selected: ticked.includes(c.id), onToggle: () => setSelected(toggleSelected(ticked, c.id)) } : undefined} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
+            const isFavourite = c.type === ChannelType.DM && peers.some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND);
+            const before = index > 0 && dms.some((d) => d.type === ChannelType.DM && (d.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)) && !isFavourite && index === dms.filter((d) => d.type === ChannelType.DM && (d.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)).length;
+            return <Fragment key={c.id}>{before && <li className="category-head is-static">Direct messages</li>}<DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} selection={selecting ? { selected: ticked.includes(c.id), onToggle: () => setSelected(toggleSelected(ticked, c.id)) } : undefined} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} /></Fragment>;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>
