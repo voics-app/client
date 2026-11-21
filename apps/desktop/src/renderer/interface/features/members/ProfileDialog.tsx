@@ -55,6 +55,12 @@ function SafetyNumber({ userId }: { userId: string }) {
   );
 }
 
+function Connections({ userId }: { userId: string }) {
+  const query = useQuery({ queryKey: ['user-connections', userId], queryFn: () => getRuntime().api.userConnections(userId) });
+  if (!query.data?.length) return null;
+  return <section className="profile-section"><h4>Connections</h4>{query.data.map((connection) => <p key={connection.provider}>{connection.provider === 'github' ? 'GitHub' : connection.provider}: {connection.name}</p>)}</section>;
+}
+
 function Mutuals({ userId }: { userId: string }) {
   const query = useQuery({ queryKey: ['user-profile', userId], queryFn: () => getRuntime().api.userProfile(userId), staleTime: 60_000 });
   const guilds = useGuildStore((s) => s.guilds);
@@ -150,6 +156,7 @@ export function ProfileDialog({ userId, guildId }: { userId: string; guildId: st
                 <textarea className="input" aria-label="Note" rows={2} maxLength={256} defaultValue={note} placeholder="Click to add a note (only visible to you)" onBlur={(e) => e.target.value.trim() !== note && void saveUserNote(getRuntime().api, userId, e.target.value.trim()).catch((err) => reportError(err, 'Could not save note'))} />
               </section>
             )}
+            {!user.bot && <Connections userId={userId} />}
             {!isMe && !user.bot && <Mutuals userId={userId} />}
             {!isMe && <FriendsSince userId={userId} />}
             {member?.joined_at && <section className="profile-section"><h4>Member since</h4><p>{new Date(member.joined_at).toLocaleDateString([], { dateStyle: 'long' })}</p></section>}

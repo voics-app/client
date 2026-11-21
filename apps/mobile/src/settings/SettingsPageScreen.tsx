@@ -3,6 +3,7 @@ import { Notice } from '../ui/controls';
 import { AccountPage } from './AccountPage';
 import { AccessibilityPage, ChatPage, NotificationsPage } from './AppPrefsPages';
 import { AppearancePage } from './AppearancePage';
+import { ConnectionsPage } from './ConnectionsPage';
 import { DevicesPage } from './DevicesPage';
 import { PrivacyPage } from './PrivacyPage';
 import { ProfilePage } from './ProfilePage';
@@ -10,6 +11,7 @@ import { isUserPage, pageLabel, type UserPageId } from './userPages';
 
 const PAGES: Record<UserPageId, (props: { highlight: string | null }) => React.JSX.Element | null> = {
   account: AccountPage,
+  connections: ConnectionsPage,
   profile: ProfilePage,
   privacy: PrivacyPage,
   devices: DevicesPage,
