@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
-import { openVoiceChannel, registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
+import { joinVoiceChannel, openVoiceChannel, registerVoice, type VoiceFacade } from '@renderer/interface/app/voiceActions';
 
 const voiceChannel = { id: 'vc1', guild_id: 'g1', type: ChannelType.GUILD_VOICE, name: 'Lounge' } as unknown as Channel;
 
@@ -28,6 +28,11 @@ describe('openVoiceChannel', () => {
     registerVoice(voice);
     useGuildStore.setState({ channels: { vc1: voiceChannel } });
     useUiStore.setState({ view: { kind: 'home', channelId: null } });
+  });
+
+  it('opens the call view when joined through the common join action', async () => {
+    await joinVoiceChannel('g1', 'vc1');
+    expect(useUiStore.getState().view).toEqual({ kind: 'guild', guildId: 'g1', channelId: 'vc1' });
   });
 
   it('joins the channel and switches the stage to it in one click', async () => {

@@ -7,7 +7,8 @@ import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/Misc';
 import { VoiceStage } from './VoiceStage';
 import { useParticipants } from './Participants';
-import { VoiceTextChatPanel } from './VoiceTextChat';
+import { VoiceTextChatPanel, useVoiceChatStore, voiceTextChatEnabled } from './VoiceTextChat';
+import { ResizeHandle, useCallSplit } from './ResizeHandle';
 
 /** A voice channel's page: a stage while connected, otherwise a lobby with who is in the room. */
 export function VoiceChannelView({ channelId }: { channelId: string }) {
@@ -16,13 +17,16 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
   const guildId = channel?.guild_id ?? null;
   const participants = useParticipants(guildId, channelId);
   const me = useSessionStore((s) => s.user?.id);
+  const chatOpen = useVoiceChatStore((s) => Boolean(s.openByChannel[channelId]));
+  const split = useCallSplit('horizontal');
   if (!channel) return null;
   const here = call.channelId === channelId && call.status !== 'idle';
 
   if (here)
     return (
-      <div className="voice-call-split">
-        <VoiceStage channelId={channelId} guildId={guildId} />
+      <div className="voice-call-split" ref={(element) => { split.containerRef.current = element; }}>
+        <div className="guild-call-stage" style={chatOpen && voiceTextChatEnabled(channel) ? { width: `${split.percent}%` } : undefined}><VoiceStage channelId={channelId} guildId={guildId} /></div>
+        {chatOpen && voiceTextChatEnabled(channel) && <ResizeHandle split={split} />}
         <VoiceTextChatPanel channelId={channelId} />
       </div>
     );

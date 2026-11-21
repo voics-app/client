@@ -20,6 +20,7 @@ import { Updater, createElectronUpdaterPort } from './updater';
 import { legacyUserDataDir, migrateLegacyUserData } from './userDataMigration';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
+import { shouldRegisterProtocol } from './protocolRegistration';
 import { passkeySite } from './passkeys/config';
 import { PasskeyBroker } from './passkeys/passkeyBroker';
 
@@ -53,6 +54,7 @@ function navigate(link: string | null): void {
 }
 
 function registerProtocol(): void {
+  if (!shouldRegisterProtocol(app.isPackaged, env.DISCORDY_REGISTER_DEV_PROTOCOL)) return;
   for (const protocol of new Set([PROTOCOL, LEGACY_PROTOCOL])) registerScheme(protocol);
 }
 
