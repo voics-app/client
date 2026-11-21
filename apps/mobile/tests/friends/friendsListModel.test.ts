@@ -29,6 +29,10 @@ describe('friendsList', () => {
     expect(list.entries[1]).toMatchObject({ subtitle: 'Offline' });
   });
 
+  it('groups favourites above other friends', () => {
+    expect(names(friendsList(all, presence, 'all', '', ['1']))).toEqual(['Favourites - 1', 'Bea', 'All friends - 1', 'Alpha']);
+  });
+
   it('splits pending into incoming and outgoing, without presence dots', () => {
     const list = friendsList(all, presence, 'pending', '');
     expect(names(list)).toEqual(['Incoming - 1', 'Cy', 'Outgoing - 1', 'Di']);

@@ -1,6 +1,6 @@
 /**
  * REST object shapes (P9). Field names follow Discord API v10 exactly, plus the
- * platform extensions. This module stands in for `@discordy-voics/contracts`
+ * platform extensions. This module stands in for `@voics-app/contracts`
  * until the generated package is published; swap the import path then.
  */
 

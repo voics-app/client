@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, Share, StyleSheet, Text } from 'react-native';
+import { friendInviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { getRuntime } from '../runtime';
 import { BRAND } from '../brand';
 import { theme } from '../theme';
 import { Button, Field } from '../ui/controls';
@@ -12,6 +14,17 @@ export function AddFriendForm() {
   const [result, setResult] = useState<FriendRequestResult | null>(null);
   const ready = username.trim().length >= 2;
 
+  const shareLink = async () => {
+    try {
+      const runtime = getRuntime();
+      const invite = await runtime.api.createFriendInvite();
+      await Share.share({ message: friendInviteWebUrl(invite.token, runtime.apiUrl) });
+    } catch { Alert.alert('Could not create friend invite'); }
+  };
+  const revokeLink = async () => {
+    try { await getRuntime().api.revokeFriendInvites(); Alert.alert('Friend invite revoked'); }
+    catch { Alert.alert('Could not revoke friend invite'); }
+  };
   const submit = async () => {
     setBusy(true);
     const outcome = await sendFriendRequest(username);
@@ -21,16 +34,19 @@ export function AddFriendForm() {
   };
 
   return (
-    <View style={styles.form}>
+    <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
       <Text style={styles.hint}>{`You can add people with their ${BRAND.displayName} username.`}</Text>
       <Field label="Username" value={username} onChangeText={setUsername} placeholder="Enter a username" returnKeyType="send" onSubmitEditing={() => ready && !busy && void submit()} />
       <Button label="Send request" tone="primary" busy={busy} disabled={!ready} onPress={() => void submit()} />
+      <Text style={styles.hint}>Friend invite links expire after 24 hours. Creating a new link replaces the previous one.</Text>
+      <Button label="Create and share friend link" onPress={() => void shareLink()} />
+      <Button label="Revoke friend link" onPress={() => void revokeLink()} />
       {result && (
         <Text accessibilityRole="alert" style={[styles.result, result.ok ? styles.ok : styles.bad]}>
           {result.text}
         </Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 

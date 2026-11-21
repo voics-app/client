@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useFavouriteFriendsStore, usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
 import type { FriendsTab } from '@discordy/core/domain/friendsModel';
 import { StatusAvatar } from '../members/StatusAvatar';
@@ -60,12 +60,13 @@ function FriendRow({ item, onOpen }: { item: FriendItem; onOpen(rel: Relationshi
 export function FriendsScreen() {
   const byUser = useRelationshipStore((s) => s.byUser);
   const presence = usePresenceStore((s) => s.byUser);
+  const favourites = useFavouriteFriendsStore((s) => s.ids);
   const [tab, setTab] = useState<FriendsTab>('online');
   const [query, setQuery] = useState('');
   const [menu, setMenu] = useState<Relationship | null>(null);
   const [profile, setProfile] = useState<Relationship | null>(null);
   const all = useMemo(() => Object.values(byUser), [byUser]);
-  const list = useMemo(() => friendsList(all, presence, tab === 'add' ? 'online' : tab, query), [all, presence, tab, query]);
+  const list = useMemo(() => friendsList(all, presence, tab === 'add' ? 'online' : tab, query, favourites), [all, presence, tab, query, favourites]);
 
   return (
     <View style={styles.screen}>
