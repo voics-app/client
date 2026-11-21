@@ -1,6 +1,6 @@
 # Builds the unsigned (ad-hoc signed) universal macOS .dmg of the desktop app on a GitHub-hosted Mac.
 # GitHub-hosted macOS minutes cost 10x (Free plan: 2000 included minutes a month), so this never runs on
-# push or pull request: release.yml calls it for every release, and it can be started by hand from the
+# push, and on pull requests only when the Mac packaging files change: release.yml calls it for every release, and it can be started by hand from the
 # Actions tab for a branch (gh workflow run macos-dmg.yml --ref <branch>) to test packaging changes.
 #
 # Output: artifact installer-macos = Voics-X.Y.Z.dmg plus the stable copy Voics-latest.dmg. The private gitops
@@ -10,6 +10,14 @@
 name: macos-dmg
 
 on:
+  # Only PRs that touch the Mac packaging itself build it (10x minutes), to catch breakage before a release.
+  pull_request:
+    paths:
+      - .github/workflows/macos-dmg.yml
+      - apps/desktop/electron-builder.config.cjs
+      - apps/desktop/build/**
+      - scripts/build-native-mac-universal.sh
+      - scripts/stage-app.mjs
   workflow_dispatch:
   workflow_call:
     inputs:
