@@ -34,11 +34,12 @@ export type UserSettingsTab =
   | 'linkedAccounts'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }
   | { kind: 'createGuild' }
+  | { kind: 'guildEvents'; guildId: string }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
   | { kind: 'memberScreening'; guildId: string; firstJoin?: boolean }

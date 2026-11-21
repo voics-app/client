@@ -1,7 +1,9 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
 import type {
   LinkedConnection,
   ApplicationCommand,
@@ -65,6 +67,23 @@ const enc = encodeURIComponent;
 
 export class DiscordyApi implements ApiPort {
   constructor(private readonly http: HttpClient) {}
+
+  guildScheduledEvents(guildId: string) {
+    return this.get<GuildScheduledEvent[]>(`/guilds/${enc(guildId)}/scheduled-events`);
+  }
+  guildScheduledEvent(guildId: string, eventId: string) {
+    return this.get<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}`);
+  }
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent) {
+    return this.post<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events`, body);
+  }
+  guildScheduledEventInterest(guildId: string, eventId: string) {
+    return this.get<{ interested: boolean }>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`);
+  }
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean) {
+    const path = `/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`;
+    return interested ? this.put<void>(path) : this.del<void>(path);
+  }
 
   private get<T>(path: string, query?: RequestOptions['query']) {
     return this.http.request<T>('GET', path, { query });
@@ -415,7 +434,10 @@ export class DiscordyApi implements ApiPort {
   typing(channelId: string) {
     return this.post<void>(`/channels/${channelId}/typing`);
   }
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }) {
+  listForumPosts(channelId: string) {
+    return this.get<Channel[]>(`/channels/${channelId}/threads`);
+  }
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
   }
 
@@ -469,6 +491,21 @@ export class DiscordyApi implements ApiPort {
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams) {
     const path = scope.guildId ? `/guilds/${scope.guildId}/messages/search` : `/channels/${scope.channelId}/messages/search`;
     return this.get<MessageSearchResponse>(path, toQuery(params));
+  }
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage) {
+    return this.post<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled`, body);
+  }
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }) {
+    return this.get<ScheduledMessagePage>(`/channels/${enc(channelId)}/messages/scheduled`, query);
+  }
+  scheduledMessage(channelId: string, scheduleId: string) {
+    return this.get<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`);
+  }
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage) {
+    return this.patch<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, body);
+  }
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number) {
+    return this.http.request<ScheduledMessage>('DELETE', `/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, { query: { expected_revision: expectedRevision } });
   }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
@@ -548,6 +585,15 @@ export class DiscordyApi implements ApiPort {
   }
   guildWebhooks(guildId: string) {
     return this.get<Webhook[]>(`/guilds/${enc(guildId)}/webhooks`);
+  }
+  followAnnouncement(channelId: string, targetChannelId: string) {
+    return this.post<{ channel_id: string; webhook_id: string }>(`/channels/${enc(channelId)}/followers`, { webhook_channel_id: targetChannelId });
+  }
+  publishAnnouncement(channelId: string, messageId: string) {
+    return this.post<Message>(`/channels/${enc(channelId)}/messages/${enc(messageId)}/crosspost`);
+  }
+  followedChannels(guildId: string) {
+    return this.get<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>(`/guilds/${enc(guildId)}/followed-channels`);
   }
   createWebhook(channelId: string, body: { name: string; avatar?: string }) {
     return this.post<WebhookCredential>(`/channels/${enc(channelId)}/webhooks`, body);

@@ -2,7 +2,7 @@
 import { Permission } from '../contracts/permissions';
 import { hasPermission } from './permissions';
 
-export type ServerSettingsTabId = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTabId = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export interface ServerSettingsTabEntry {
   id: ServerSettingsTabId;
@@ -20,6 +20,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
     { id: 'welcome', label: 'Welcome screen', group: 'Server', show: can(Permission.MANAGE_GUILD) },
     { id: 'roles', label: 'Roles', group: 'Server', show: can(Permission.MANAGE_ROLES) },
     { id: 'emoji', label: 'Emoji', group: 'Server', show: can(Permission.MANAGE_GUILD_EXPRESSIONS) },
+    { id: 'profile', label: 'Server profile', group: 'People', show: true },
     { id: 'members', label: 'Members', group: 'People', show: true },
     { id: 'invites', label: 'Invites', group: 'People', show: can(Permission.MANAGE_GUILD) },
     { id: 'template', label: 'Template', group: 'Server', show: can(Permission.MANAGE_GUILD) },

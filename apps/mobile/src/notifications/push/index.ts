@@ -3,6 +3,7 @@ import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { Alert } from 'react-native';
 import { BRAND } from '../../brand';
 import { openChat } from '../../navigation/openChat';
+import { openEvent } from '../../events/openEvent';
 import { openMessage } from '../../navigation/openMessage';
 import { getRuntime } from '../../runtime';
 import { useBannerStore } from '../bannerStore';
@@ -14,7 +15,12 @@ import { usePushPrefs, usePushStatus } from './pushStore';
 let current: PushController | null = null;
 
 /** A tapped notification opens its chat, and scrolls to the message when the payload names one. */
-function openTarget({ guildId, channelId, messageId }: PushTarget): void {
+export function openTarget(target: PushTarget): void {
+  if (target.kind === 'scheduled_event') {
+    openEvent(target.guildId, target.eventId);
+    return;
+  }
+  const { guildId, channelId, messageId } = target;
   if (messageId) openMessage({ guildId, channelId, messageId });
   else openChat({ guildId, channelId });
 }

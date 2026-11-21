@@ -7,10 +7,12 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/desktop/package.json apps/desktop/
 COPY packages/core/package.json packages/core/
+COPY packages/react/package.json packages/react/
 COPY native/crypto/package.json native/crypto/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter @discordy/desktop... --ignore-scripts
 COPY packages/core packages/core
+COPY packages/react packages/react
 COPY apps/desktop apps/desktop
 RUN pnpm --filter @discordy/desktop exec electron-vite build && node apps/desktop/scripts/check-renderer-budget.mjs
 

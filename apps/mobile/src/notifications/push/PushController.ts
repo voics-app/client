@@ -2,7 +2,7 @@
 import type { GatewayState } from '@discordy/core/application/ports/gateway';
 import type { PushTokenBody } from '@discordy/core/contracts/rest';
 import type { NativePush } from './nativePush';
-import { badgeOf, foregroundPresentation, permissionPlan, pushTargetOf, registrationOf, type PushEnvironment, type PushStatus, type PushTarget } from './pushModel';
+import { badgeOf, eventReminderKey, foregroundPresentation, permissionPlan, pushTargetOf, registrationOf, type PushEnvironment, type PushStatus, type PushTarget } from './pushModel';
 
 export interface PushDeps {
   /** Null where push cannot work (Expo Go, not iOS or Android): every method then does nothing. */
@@ -24,6 +24,7 @@ export class PushController {
   private pendingTap: PushTarget | null = null;
   private offering = false;
   private subscriptions: (() => void)[] = [];
+  private readonly eventReminderKeys = new Set<string>();
 
   constructor(private readonly deps: PushDeps) {}
 
@@ -35,13 +36,26 @@ export class PushController {
       return;
     }
     void native.prepare().catch(() => undefined);
-    native.setForegroundPolicy((data) => foregroundPresentation({ gateway: this.deps.gatewayState(), viewing: this.deps.viewing(), data }) === 'show');
+    native.setForegroundPolicy((data) => this.showForeground(data));
     this.subscriptions.push(
       native.onTap((data) => this.tapped(data)),
       native.onTokenChange((token) => void (this.signedIn && this.register(token))),
     );
     void native.launchedBy().then((data) => data && this.tapped(data));
     void native.permission().then((state) => this.deps.setStatus(state));
+  }
+
+  private showForeground(data: unknown): boolean {
+    if (foregroundPresentation({ gateway: this.deps.gatewayState(), viewing: this.deps.viewing(), data }) !== 'show') return false;
+    const key = eventReminderKey(data);
+    if (!key) return true;
+    if (this.eventReminderKeys.has(key)) return false;
+    this.eventReminderKeys.add(key);
+    if (this.eventReminderKeys.size > 256) {
+      const oldest = this.eventReminderKeys.values().next().value;
+      if (oldest) this.eventReminderKeys.delete(oldest);
+    }
+    return true;
   }
 
   detach(): void {
