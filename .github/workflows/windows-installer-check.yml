@@ -14,7 +14,9 @@ jobs:
   installer:
     # This check installs the app: use a disposable Windows VM, never the user's PC.
     # Do not execute fork-controlled code on the self-hosted runner.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # No runner carries the voics-windows-disposable label yet: the job only runs once the repository variable
+    # WINDOWS_INSTALLER_RUNNER is set to 'ready' (otherwise it queues for 24h and fails).
+    if: vars.WINDOWS_INSTALLER_RUNNER == 'ready' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Windows, X64, voics-windows-disposable]
     timeout-minutes: 60
     steps:
