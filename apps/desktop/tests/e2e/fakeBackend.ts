@@ -66,6 +66,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const stages = new Map<string, { id: string; guild_id: string; channel_id: string; topic: string; privacy_level: number; discoverable_disabled: boolean }>();
   const events: Record<string, unknown>[] = [];
   const interested = new Set<string>();
   const friendRequests: string[] = [];
@@ -82,6 +83,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       channels: [
         { id: snowflake(), name: 'general', type: 0, guild_id: id, position: 0, delivery_mode: 'standard', last_message_id: null, topic: 'Say hello' },
         { id: snowflake(), name: 'Lounge', type: 2, guild_id: id, position: 1, delivery_mode: 'standard', last_message_id: null, topic: null },
+        { id: snowflake(), name: 'Town hall', type: 13, guild_id: id, position: 2, delivery_mode: 'standard', last_message_id: null, topic: null },
       ],
     };
     guilds.push(guild);
@@ -202,7 +204,24 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
     if (path === '/gifs/previews') return json(res, 200, { urls: ((body.urls ?? []) as string[]).map(() => proxyUrl) });
 
-    if (path === '/auth/login' || path === '/auth/register') return json(res, 200, { access_token: 'access-1', refresh_token: 'refresh-1', user: USER });
+    if (path === '/stage-instances' && req.method === 'POST') {
+      const channelId = String(body.channel_id);
+      const guild = guilds.find((g) => g.channels.some((channel) => channel.id === channelId));
+      if (!guild) return json(res, 404, { code: 10003, message: 'Unknown channel' });
+      const stage = { id: snowflake(), guild_id: guild.id, channel_id: channelId, topic: String(body.topic), privacy_level: 2, discoverable_disabled: false };
+      stages.set(channelId, stage);
+      dispatch('STAGE_INSTANCE_CREATE', stage);
+      return json(res, 201, stage);
+    }
+    const stageMatch = /^\/stage-instances\/(\d+)$/.exec(path);
+    if (stageMatch) {
+      const stage = stages.get(stageMatch[1]!);
+      if (!stage) return json(res, 404, { code: 10003, message: 'No live stage' });
+      if (req.method === 'GET') return json(res, 200, stage);
+      if (req.method === 'PATCH') { stage.topic = String(body.topic); dispatch('STAGE_INSTANCE_UPDATE', stage); return json(res, 200, stage); }
+      if (req.method === 'DELETE') { stages.delete(stage.channel_id); dispatch('STAGE_INSTANCE_DELETE', stage); return json(res, 204, null); }
+    }
+    if (path === '/auth/login'  || path === '/auth/register') return json(res, 200, { access_token: 'access-1', refresh_token: 'refresh-1', user: USER });
     if (path === '/auth/refresh') return json(res, 200, { access_token: 'access-2', refresh_token: 'refresh-2' });
     if (path === '/auth/logout') return json(res, 204, null);
     if (path === '/devices') return json(res, 200, { device_id: snowflake() });

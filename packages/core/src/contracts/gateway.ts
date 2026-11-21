@@ -112,6 +112,7 @@ export interface VoiceStateUpdatePayload {
   self_deaf: boolean;
   self_video: boolean;
   self_stream: boolean;
+  request_to_speak_timestamp?: string | null;
 }
 
 export interface RequestGuildMembersPayload {

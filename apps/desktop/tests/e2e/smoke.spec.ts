@@ -25,7 +25,7 @@ test.beforeAll(async () => {
   } as Record<string, string>;
   delete env.ELECTRON_RENDERER_URL;
   launchStarted = performance.now();
-  app = await electron.launch({ args: [resolve(__dirname, '../..')], env });
+  app = await electron.launch({ args: [resolve(__dirname, '../..')], env, executablePath: process.env.DISCORDY_E2E_ELECTRON });
   page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
 });
@@ -50,6 +50,23 @@ test('signs in and lands in the server shell', async () => {
   await expect(page.getByRole('button', { name: 'Nightglass HQ' })).toBeVisible();
 });
 
+test('manages a stage and shows audience entry', async () => {
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('button', { name: /Town hall/ }).first().click();
+  await expect(page.getByText('No stage is live.')).toBeVisible();
+  await expect(page.getByText('Audience members join muted.')).toBeVisible();
+  await page.getByLabel('Stage topic').fill('Community questions');
+  await page.getByRole('button', { name: 'Start stage' }).click();
+  await expect(page.getByText('Stage is live.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Join stage' })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('stage-live.png') });
+  await page.getByLabel('Stage topic').fill('Open discussion');
+  await page.getByRole('button', { name: 'Save topic' }).click();
+  await expect(page.getByText('Open discussion', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'End stage' }).click();
+  await expect(page.getByText('No stage is live.')).toBeVisible();
+});
+
 test('favourites a friend and opens a personal friend invite', async () => {
   await page.getByRole('button', { name: 'Friends', exact: false }).first().click();
   await page.getByRole('tab', { name: /All/ }).click();
@@ -70,7 +87,7 @@ test('favourites a friend and opens a personal friend invite', async () => {
 });
 
 test('sends a message in a channel', async () => {
-  await page.getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('navigation', { name: 'Servers' }).getByRole('button', { name: 'Nightglass HQ' }).click();
   await page.getByRole('button', { name: /general/ }).first().click();
   const composer = page.getByRole('textbox', { name: /Message #general/ });
   await composer.fill('hello from playwright');

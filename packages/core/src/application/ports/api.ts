@@ -56,6 +56,7 @@ import type {
   UserProfile,
   UserSettings,
   VoiceRegion,
+  StageInstance,
 } from '../../contracts/rest';
 
 export interface MessageQuery {
@@ -178,7 +179,7 @@ export interface ApiPort {
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'avatar' | 'banner' | 'bio' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'avatar' | 'banner' | 'bio' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null; suppress?: boolean }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
@@ -262,6 +263,10 @@ export interface ApiPort {
   upload(url: string, file: Blob, onProgress?: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<void>;
 
   voiceRegions(): Promise<VoiceRegion[]>;
+  stageInstance(channelId: string): Promise<StageInstance | null>;
+  startStage(channelId: string, topic: string): Promise<StageInstance>;
+  updateStage(channelId: string, topic: string): Promise<StageInstance>;
+  endStage(channelId: string): Promise<void>;
 
   applications(): Promise<ApplicationSummary[]>;
   botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;
