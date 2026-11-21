@@ -83,7 +83,7 @@ describe('runtime voice wiring', () => {
     const runtime = setup(() => voice);
     expect(runtime.voice).toBe(voice);
     const socket = await ready(runtime);
-    useGuildStore.getState().upsertChannel({ id: 'v1', guild_id: 'g1', type: 2, delivery_mode: 'standard' });
+    useGuildStore.getState().upsertChannel({ id: 'v1', guild_id: 'g1', nsfw: false, type: 2, delivery_mode: 'standard' });
     const update = { token: 't', guild_id: 'g1', channel_id: 'v1', endpoint: 'rtc.test', region: 'eu' };
     socket.receive({ op: 0, s: 2, t: 'VOICE_SERVER_UPDATE', d: update });
     expect(controller.onVoiceServerUpdate).toHaveBeenCalledWith(update);

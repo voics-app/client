@@ -34,7 +34,7 @@ describe('dmRows', () => {
     const channels = {
       a: dm('1000', { delivery_mode: 'ephemeral' }),
       b: dm('1001'),
-      c: { id: 'x', type: ChannelType.GUILD_TEXT, guild_id: 'g1', delivery_mode: 'standard' } as Channel,
+      c: { id: 'x', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, delivery_mode: 'standard' } as Channel,
     };
     const rows = dmRows({ channels, closed: { '1001': '' }, relationships: {} });
     expect(rows.map((r) => [r.id, r.private])).toEqual([['1000', true]]);

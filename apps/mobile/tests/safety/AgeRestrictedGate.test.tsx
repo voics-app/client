@@ -62,7 +62,7 @@ it('withholds the mounted screen, cached text and remote images until Continue a
 });
 
 it('blocks missing ancestry and offers navigation without fetching it as a message', async () => {
-  useGuildStore.getState().upsertChannel({ id: 'thread', guild_id: 'g', parent_id: 'missing', type: 11, delivery_mode: 'standard' });
+  useGuildStore.getState().upsertChannel({ id: 'thread', guild_id: 'g', nsfw: false, parent_id: 'missing', type: 11, delivery_mode: 'standard' });
   await render(<AgeRestrictedGate channelId="thread"><MockContent /></AgeRestrictedGate>, { wrapper });
   expect(mockFetch).not.toHaveBeenCalled();
   expect(screen.getByText('Channel unavailable')).toBeTruthy();

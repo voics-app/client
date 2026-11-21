@@ -12,7 +12,7 @@ export const PAT: User = { id: 'u2', username: 'pat', global_name: 'Pat', avatar
 export const SAM: User = { id: 'u3', username: 'sam', global_name: 'Sam', avatar: null };
 
 const role = (id: string, name: string, position: number, extra: object = {}) => ({ id, name, color: 0, hoist: false, position, permissions: '0', managed: false, mentionable: false, ...extra });
-const channel = (id: string, type: number, extra: object = {}) => ({ id, type, guild_id: 'g1', name: id, position: 0, delivery_mode: 'standard', ...extra });
+const channel = (id: string, type: number, extra: object = {}) => ({ id, type, guild_id: 'g1', nsfw: false, name: id, position: 0, delivery_mode: 'standard', ...extra });
 const member = (user: User, roles: string[]): GuildMember => ({ user, roles, joined_at: '2024-01-02T00:00:00Z' }) as GuildMember;
 
 /** Seeds a signed-in user (`u1`, owner `owner`) in server `g1`. `mine` are the permissions of @everyone, which is how the test user gets them. */

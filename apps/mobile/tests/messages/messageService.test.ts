@@ -7,7 +7,7 @@ import type { Channel, Message } from '@discordy/core/contracts/rest';
 import { MessageService, PAGE_SIZE } from '../../src/messages/messageService';
 
 const ME = { id: 'me', username: 'me', global_name: 'Me', discriminator: '0', avatar: null };
-const channel = { id: 'c1', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard' } as Channel;
+const channel = { id: 'c1', type: 0, guild_id: 'g1', nsfw: false, name: 'general', delivery_mode: 'standard' } as Channel;
 const snow = (n: number) => String(1000000 + n);
 const msg = (n: number, extra: Partial<Message> = {}) =>
   ({

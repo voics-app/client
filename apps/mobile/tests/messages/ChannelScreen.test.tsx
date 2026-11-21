@@ -66,7 +66,7 @@ function guild(permissions: bigint, channelExtra: object = {}): GuildFull {
     roles: [everyone],
     emojis: [],
     members: [{ user: ME, roles: [] }],
-    channels: [{ id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', position: 0, delivery_mode: 'standard', ...channelExtra }],
+    channels: [{ id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'general', position: 0, delivery_mode: 'standard', ...channelExtra }],
   } as unknown as GuildFull;
 }
 
@@ -329,7 +329,7 @@ describe('channel screen', () => {
   it('forwards a message to another channel with a comment, after picking where', async () => {
     await open();
     await act(async () => {
-      useGuildStore.getState().upsertChannel({ id: 'random', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'random', position: 5, delivery_mode: 'standard' } as never);
+      useGuildStore.getState().upsertChannel({ id: 'random', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'random', position: 5, delivery_mode: 'standard' } as never);
     });
     await fireEvent(await screen.findByText('message 2'), 'longPress');
     await fireEvent.press(screen.getByText('Forward'));
@@ -341,7 +341,7 @@ describe('channel screen', () => {
   it('shows an encrypted channel as a disabled destination for a forward', async () => {
     await open();
     await act(async () => {
-      useGuildStore.getState().upsertChannel({ id: 'secret', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'secret', position: 6, delivery_mode: 'ephemeral' } as never);
+      useGuildStore.getState().upsertChannel({ id: 'secret', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'secret', position: 6, delivery_mode: 'ephemeral' } as never);
     });
     await fireEvent(await screen.findByText('message 2'), 'longPress');
     await fireEvent.press(screen.getByText('Forward'));

@@ -10,7 +10,7 @@ import { PAT, resetStores, seedServer } from '../support/server';
 const msg = (id: string, channel = 'general', extra: Partial<Message> = {}) =>
   ({ id, channel_id: channel, guild_id: 'g1', author: PAT, content: `text ${id}`, timestamp: new Date().toISOString(), edited_timestamp: null, mention_everyone: false, mentions: [], mention_roles: [], attachments: [], embeds: [], pinned: false, type: 0, ...extra }) as Message;
 const thread = (id: string, name: string, extra: Partial<Channel> = {}) =>
-  ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'general', name, delivery_mode: 'standard', message_count: 3, thread_metadata: { archived: false, locked: false }, ...extra }) as unknown as Channel;
+  ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', nsfw: false, parent_id: 'general', name, delivery_mode: 'standard', message_count: 3, thread_metadata: { archived: false, locked: false }, ...extra }) as unknown as Channel;
 
 const mockApi = {
   messages: jest.fn(async (channel: string, _q?: object): Promise<Message[]> => (channel === 'general' ? [msg('100')] : [msg('900', channel, { content: 'inside the thread' })])),

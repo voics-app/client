@@ -22,7 +22,7 @@ jest.mock('../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, 
 
 const ME = { id: 'u1', username: 'me', global_name: 'Me Myself', discriminator: '0', avatar: null };
 const everyone = { id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(Permission.VIEW_CHANNEL), managed: false, mentionable: false };
-const channel = (id: string, type: number, extra: object = {}) => ({ id, type, guild_id: 'g1', name: id, position: 0, delivery_mode: 'standard', ...extra });
+const channel = (id: string, type: number, extra: object = {}) => ({ id, type, guild_id: 'g1', nsfw: false, name: id, position: 0, delivery_mode: 'standard', ...extra });
 const guild = {
   id: 'g1',
   name: 'Home Base',

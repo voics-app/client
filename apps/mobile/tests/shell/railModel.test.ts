@@ -3,7 +3,7 @@ import { ChannelType } from '@discordy/core/contracts/rest';
 import { channelFlags, dmMentionTotal, guildActivity, initialsOf } from '../../src/shell/railModel';
 
 const text = (id: string, guild: string, last: string | null, extra: Partial<Channel> = {}): Channel =>
-  ({ id, type: ChannelType.GUILD_TEXT, guild_id: guild, name: id, last_message_id: last, ...extra }) as Channel;
+  ({ id, type: ChannelType.GUILD_TEXT, guild_id: guild, nsfw: false, name: id, last_message_id: last, ...extra }) as Channel;
 const byId = (...list: Channel[]) => Object.fromEntries(list.map((c) => [c.id, c]));
 const noSettings = () => undefined;
 const NOW = 1_000;
