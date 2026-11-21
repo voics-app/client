@@ -4,6 +4,7 @@ describe('user settings pages', () => {
   it('lists the pages in desktop order and groups, without the desktop-only ones', () => {
     expect(USER_PAGES.map((p) => [p.group, p.label])).toEqual([
       ['User settings', 'My account'],
+      ['User settings', 'Connections'],
       ['User settings', 'Profile'],
       ['User settings', 'Privacy and delivery'],
       ['User settings', 'Devices and sessions'],

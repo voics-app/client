@@ -8,6 +8,11 @@ import type { OutgoingFile } from './outgoingFile';
 
 /** The + button's sheet: photo library, camera and files. Picked files go to `onPicked`; the sheet closes first so the picker opens over the chat. */
 export function AttachMenu({ visible, onClose, onPicked }: { visible: boolean; onClose(): void; onPicked(files: OutgoingFile[]): void }) {
+  return <BottomSheet visible={visible} onClose={onClose} label="Add attachment"><AttachmentOptions onClose={onClose} onPicked={onPicked} /></BottomSheet>;
+}
+
+/** Reused inside the composer action sheet so changing to scheduling does not stack native modals. */
+export function AttachmentOptions({ onClose, onPicked }: { onClose(): void; onPicked(files: OutgoingFile[]): void }) {
   const run = (pick: () => Promise<OutgoingFile[] | null>) => async () => {
     onClose();
     try {
@@ -19,11 +24,11 @@ export function AttachMenu({ visible, onClose, onPicked }: { visible: boolean; o
     }
   };
   return (
-    <BottomSheet visible={visible} onClose={onClose} label="Add attachment">
+    <>
       <Option icon="images-outline" label="Photo library" onPress={run(pickFromLibrary)} />
       <Option icon="camera-outline" label="Take photo or video" onPress={run(takePhoto)} />
       <Option icon="document-outline" label="Files" onPress={run(pickDocuments)} />
-    </BottomSheet>
+    </>
   );
 }
 

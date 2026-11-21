@@ -31,9 +31,10 @@ export type UserSettingsTab =
   | 'advanced'
   | 'developer'
   | 'authorizedApps'
+  | 'linkedAccounts'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }
@@ -41,6 +42,7 @@ export type Dialog =
   | { kind: 'guildEvents'; guildId: string }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
+  | { kind: 'memberScreening'; guildId: string; firstJoin?: boolean }
   | { kind: 'createChannel'; guildId: string; parentId: string | null; type?: number }
   | { kind: 'invite'; guildId: string; channelId: string }
   | { kind: 'notifications'; targetId: string; name: string; category?: boolean }

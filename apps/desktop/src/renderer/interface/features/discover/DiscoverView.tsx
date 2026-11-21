@@ -2,6 +2,7 @@ import { Compass, MagnifyingGlass, UsersThree } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
@@ -33,7 +34,7 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
       return true;
     }, 'Could not join this server');
     setBusy(false);
-    if (ok) openGuild(guild.id);
+    if (ok) useUiStore.getState().openDialog({ kind: 'memberScreening', guildId: guild.id, firstJoin: true });
   };
   return (
     <li className="discover-card">

@@ -18,6 +18,9 @@ const mockApi = {
   discoveryCategories: jest.fn(async () => ['gaming', 'music']),
   discoveryGuilds: jest.fn(async (_q: object): Promise<DiscoveryPage> => ({ guilds: [found('a'), found('b')], total: 3, offset: 0, limit: 24 })),
   joinDiscoveryGuild: jest.fn(async (_id: string) => undefined),
+  memberVerification: jest.fn(async (_id: string) => ({ enabled: false, rules: [], revision: 0, pending: false })),
+  onboarding: jest.fn(async (_id: string) => ({ config: { enabled: false, questions: [] }, revision: 0 })),
+  welcomeScreen: jest.fn(async (_id: string) => ({ enabled: false, description: '', channels: [] })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
