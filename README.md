@@ -2,6 +2,20 @@
 
 Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
+## Server templates
+
+Create Server offers Gaming, Friends, Study Group, Community and Creators,
+alongside Create My Own. Paste a shared template link to preview the saved roles
+and channels, then name and create a new server. Server Settings > Template
+supports creating, renaming, syncing and deleting a shared snapshot. Copy now
+uses the public `template.html?code=...` web page so recipients can preview it
+before installing the app. Existing app deep links remain supported. An
+out-of-date snapshot is labelled; load failures offer retry without showing a
+misleading empty form. Requires the paired api#44 and website completion changes.
+Template name and description drafts survive data refreshes and failed saves.
+Unsaved edits block normal settings navigation until saved or reset; in-flight
+template actions keep the fields and navigation guarded until they finish.
+
 ## Layout
 
 Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
