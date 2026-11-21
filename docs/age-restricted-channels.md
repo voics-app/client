@@ -4,7 +4,10 @@ Desktop and mobile use one shared, memory-only acknowledgement policy. A channel
 whose `nsfw` flag or ancestor is restricted requires Continue before its content
 mounts. Continue acknowledges content for this session; it does not verify age or
 grant server permissions. Missing channels, incomplete or inconsistent ancestry,
-malformed flags and unknown channel types remain unavailable.
+malformed flags and unknown channel types remain unavailable. The gate fails closed:
+every guild channel, thread and ancestor must carry an explicit boolean `nsfw` (the API
+always sends it), and a payload that omits it is treated as unclassified, not as safe.
+Only private (DM and group DM) channels may omit the flag.
 
 Settings → Privacy → Hide age-restricted channels saves the optional account
 preference `preferences.hide_age_restricted_channels` using the existing settings
@@ -28,6 +31,10 @@ restriction or ancestry changes. A rename alone does not invalidate them.
   Active calls close transport/playback before asynchronous capture cleanup.
   Server-directed moves cannot bypass the gate. Standalone reaction and bot-form
   dialogs are gated; forward comments and bot-form drafts survive re-confirmation.
+- A failed send (text, reply target and attachments) is kept in memory as a retry
+  item beside any newer draft. Restore is offered only while the composer is empty and
+  the channel is acknowledged; it can also be discarded. Items are dropped on logout,
+  account or instance change. Nothing is sent while the gate is closed.
 - Report channel works without opening content. It sends the channel ID, category
   and optional note. The API checks current VIEW_CHANNEL and supplies channel ID,
   server ID, parent ID, name, type and restricted flag, plus owner context. The
