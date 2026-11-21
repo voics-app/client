@@ -12,6 +12,9 @@
 # Output: GitHub Release assets and the installer-windows artifact, which gitops publish-public puts in the discordy-updates bucket as Voics-Setup-X.Y.Z.exe(.blockmap),
 # latest.yml and the stable Voics-Setup-latest.exe (5-minute cache). electron-updater in installed
 # clients reads latest.yml, so publishing it is what rolls the update out.
+# The linux job builds the same version as AppImage and deb (artifact installer-linux, latest-linux.yml for AppImage
+# auto-update); the private gitops workflow publish-public (source client-linux) puts them in the bucket as
+# Voics-X.Y.Z.AppImage/.deb plus the stable Voics-latest.AppImage and Voics-latest.deb.
 # develop never publishes: Windows minutes cost 2x and a beta channel is not needed yet.
 name: release
 
@@ -118,6 +121,55 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
       skip: ${{ steps.ver.outputs.skip }}
+
+  linux:
+    name: Build Linux packages
+    # Same version as the Windows job (decided there); AppImage and deb, x64, with the native crypto module (Rust).
+    needs: [windows]
+    if: needs.windows.outputs.skip != 'true'
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.windows.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - name: Apply the version
+        run: cd apps/desktop && npm pkg set "version=${VERSION}"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build AppImage and deb
+        run: pnpm dist:linux
+      - name: Collect packages and update feed
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp apps/desktop/release/*.AppImage apps/desktop/release/*.deb apps/desktop/release/latest-linux.yml out/
+          ls -la out
+          test -f "out/Voics-${VERSION}.AppImage" || { echo "::error::AppImage name does not match version ${VERSION}"; exit 1; }
+          test -f "out/Voics-${VERSION}.deb" || { echo "::error::deb name does not match version ${VERSION}"; exit 1; }
+          grep -q "^version: ${VERSION}$" out/latest-linux.yml || { echo "::error::latest-linux.yml does not carry ${VERSION}"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: out
+          retention-days: 14
+      - name: Attach to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Voics ${VERSION}" --notes "See CHANGELOG.md."
+          gh release upload "$tag" out/* --clobber
 
   # Publishing to the update feed happens in the private gitops repo (workflow publish-public): this repo is public
   # and the in-cluster runner that reaches MinIO does not take jobs from public repositories. It picks up the

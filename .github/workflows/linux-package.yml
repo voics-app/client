@@ -1,0 +1,51 @@
+# Proves the Linux packages (AppImage and deb, x64, with the native crypto module) still build, without
+# publishing anything. The release workflow builds the same packages for a real release (job "linux").
+name: linux-package
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/linux-package.yml"
+      - ".github/workflows/release.yml"
+      - "apps/desktop/electron-builder.config.cjs"
+      - "apps/desktop/package.json"
+      - "scripts/stage-app.mjs"
+      - "native/crypto/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build AppImage and deb
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dist:linux
+      - name: Check the output
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          ls -la apps/desktop/release
+          test -f "apps/desktop/release/Voics-${version}.AppImage"
+          test -f "apps/desktop/release/Voics-${version}.deb"
+          grep -q "^version: ${version}$" apps/desktop/release/latest-linux.yml
+          dpkg-deb --info "apps/desktop/release/Voics-${version}.deb"
+          # The native module must be inside the package, unpacked from the asar.
+          dpkg-deb -c "apps/desktop/release/Voics-${version}.deb" | grep -q 'discordy-crypto.linux-x64-gnu.node'
