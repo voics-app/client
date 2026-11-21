@@ -3,6 +3,7 @@ import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -41,6 +42,8 @@ import type {
   GuildDiscoverySettings,
   GuildFull,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -75,6 +78,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  connections(): Promise<LinkedConnection[]>;
+  userConnections(userId: string): Promise<LinkedConnection[]>;
+  authorizeGithubConnection(): Promise<{ url: string }>;
+  setConnectionVisibility(provider: string, visible: boolean): Promise<void>;
+  deleteConnection(provider: string): Promise<void>;
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
@@ -119,6 +127,11 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  favouriteFriends(): Promise<string[]>;
+  setFavouriteFriend(userId: string, value: boolean): Promise<void>;
+  createFriendInvite(): Promise<{ token: string; expires_at: string }>;
+  revokeFriendInvites(): Promise<void>;
+  useFriendInvite(token: string): Promise<void>;
   /** `guildId` null addresses the user's DMs (`@me`). */
   guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
   updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;
@@ -174,6 +187,14 @@ export interface ApiPort {
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;
   deleteEmoji(guildId: string, emojiId: string): Promise<void>;
   guildInvites(guildId: string): Promise<Invite[]>;
+  memberVerification(guildId: string): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
+  acceptMemberVerification(guildId: string, revision: number): Promise<void>;
+  welcomeScreen(guildId: string): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
+  onboarding(guildId: string): Promise<OnboardingResponse>;
+  setOnboarding(guildId: string, body: OnboardingConfig): Promise<OnboardingResponse>;
+  completeOnboarding(guildId: string, revision: number, choices: number[]): Promise<{ channel_ids: string[] }>;
 
   channel(channelId: string): Promise<Channel>;
   updateChannel(channelId: string, patch: Partial<Channel>): Promise<Channel>;

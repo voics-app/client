@@ -4,6 +4,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
+import { getRuntime } from './runtime';
 import { parseAuthorizationRoute } from '@discordy/core/domain/botAuthorization';
 
 export const isVoiceChannel = (c: Pick<Channel, 'type'>): boolean => c.type === ChannelType.GUILD_VOICE || c.type === ChannelType.GUILD_STAGE_VOICE;
@@ -11,9 +12,17 @@ export const isTextChannel = (c: Pick<Channel, 'type'>): boolean =>
   c.type === ChannelType.GUILD_TEXT || c.type === ChannelType.GUILD_ANNOUNCEMENT || c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM || (c.type >= 10 && c.type <= 12);
 export const isPrivateChannel = (c: Pick<Channel, 'type'>): boolean => c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM;
 
+function showPendingScreening(guildId: string): boolean {
+  const userId = useSessionStore.getState().user?.id;
+  if (!userId || !useGuildStore.getState().members[guildId]?.[userId]?.pending) return false;
+  useUiStore.getState().openDialog({ kind: 'memberScreening', guildId });
+  return true;
+}
+
 export function openChannel(channelId: string): void {
   const channel = useGuildStore.getState().channels[channelId];
   if (!channel) return;
+  if (channel.guild_id && showPendingScreening(channel.guild_id)) return;
   if (channel.guild_id) useUiStore.getState().navigate({ kind: 'guild', guildId: channel.guild_id, channelId });
   else useUiStore.getState().navigate({ kind: 'home', channelId });
 }
@@ -21,6 +30,7 @@ export function openChannel(channelId: string): void {
 export function openGuild(guildId: string): void {
   const state = useGuildStore.getState();
   const ui = useUiStore.getState();
+  if (showPendingScreening(guildId)) return;
   const remembered = ui.lastChannelByGuild[guildId];
   const first = Object.values(state.channels)
     .filter((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_TEXT)
@@ -36,9 +46,18 @@ function applyRoute(route: string): void {
   const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?(?:\/(\d+))?/.exec(route);
   if (channel) {
     const [, scope, channelId, messageId] = channel;
+    if (scope !== '@me' && scope && showPendingScreening(scope)) return;
     if (channelId && messageId) useReadNavStore.getState().requestJump(channelId, messageId);
     if (scope === '@me') ui.navigate({ kind: 'home', channelId: channelId ?? null });
     else ui.navigate({ kind: 'guild', guildId: scope!, channelId: channelId ?? null });
+    return;
+  }
+  const friendInvite = /^\/friend-invite\/([A-Za-z0-9_-]{16,128})$/.exec(route);
+  if (friendInvite) {
+    void getRuntime().api.useFriendInvite(friendInvite[1]!).then(
+      () => ui.toast({ tone: 'success', title: 'Friend request sent' }),
+      () => ui.toast({ tone: 'danger', title: 'Could not send friend request', body: 'The link may have expired or been revoked.' }),
+    );
     return;
   }
   const invite = /^\/invite\/([\w-]+)/.exec(route);

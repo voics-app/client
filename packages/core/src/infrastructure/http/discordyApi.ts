@@ -3,6 +3,7 @@ import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -43,6 +44,8 @@ import type {
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -78,6 +81,12 @@ export class DiscordyApi implements ApiPort {
   private del<T>(path: string, reason?: string) {
     return this.http.request<T>('DELETE', path, { reason });
   }
+
+  connections() { return this.get<LinkedConnection[]>('/users/@me/connections'); }
+  userConnections(userId: string) { return this.get<LinkedConnection[]>(`/users/${enc(userId)}/connections`); }
+  authorizeGithubConnection() { return this.post<{ url: string }>('/users/@me/connections/github/authorize'); }
+  setConnectionVisibility(provider: string, visible: boolean) { return this.put<void>(`/users/@me/connections/${enc(provider)}`, { visible }); }
+  deleteConnection(provider: string) { return this.del<void>(`/users/@me/connections/${enc(provider)}`); }
 
   register(body: { email: string; username: string; password: string }) {
     return this.http.request<AuthResponse>('POST', '/auth/register', { body, auth: false });
@@ -216,6 +225,13 @@ export class DiscordyApi implements ApiPort {
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
   }
+  favouriteFriends() { return this.get<string[]>('/users/@me/favourites'); }
+  setFavouriteFriend(userId: string, value: boolean) {
+    return value ? this.put<void>(`/users/@me/favourites/${userId}`, {}) : this.del<void>(`/users/@me/favourites/${userId}`);
+  }
+  createFriendInvite() { return this.post<{ token: string; expires_at: string }>('/users/@me/friend-invites', {}); }
+  revokeFriendInvites() { return this.del<void>('/users/@me/friend-invites'); }
+  useFriendInvite(token: string) { return this.post<void>('/friend-invites', { token }); }
   guildNotificationSettings(guildId: string | null) {
     return this.get<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`);
   }
@@ -432,6 +448,24 @@ export class DiscordyApi implements ApiPort {
   acceptInvite(code: string) {
     return this.post<Invite>(`/invites/${enc(code)}`);
   }
+  memberVerification(guildId: string) {
+    return this.get<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`);
+  }
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }) {
+    return this.put<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`, body);
+  }
+  acceptMemberVerification(guildId: string, revision: number) {
+    return this.post<void>(`/guilds/${enc(guildId)}/member-verification/accept`, { revision });
+  }
+  welcomeScreen(guildId: string) {
+    return this.get<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`);
+  }
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }) {
+    return this.put<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`, body);
+  }
+  onboarding(guildId: string) { return this.get<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`); }
+  setOnboarding(guildId: string, body: OnboardingConfig) { return this.put<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`, body); }
+  completeOnboarding(guildId: string, revision: number, choices: number[]) { return this.post<{ channel_ids: string[] }>(`/guilds/${enc(guildId)}/onboarding/complete`, { revision, choices }); }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }

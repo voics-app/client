@@ -1,6 +1,6 @@
 /**
  * REST object shapes (P9). Field names follow Discord API v10 exactly, plus the
- * platform extensions. This module stands in for `@discordy-voics/contracts`
+ * platform extensions. This module stands in for `@voics-app/contracts`
  * until the generated package is published; swap the import path then.
  */
 
@@ -188,6 +188,11 @@ export interface GuildMember {
   pending?: boolean;
   communication_disabled_until?: string | null;
 }
+
+export interface OnboardingOption { label: string; role_id: string | null; channel_id: string | null }
+export interface OnboardingQuestion { title: string; options: OnboardingOption[] }
+export interface OnboardingConfig { enabled: boolean; questions: OnboardingQuestion[] }
+export interface OnboardingResponse { config: OnboardingConfig; revision: number }
 
 export interface Guild {
   id: Snowflake;
@@ -940,3 +945,5 @@ export interface GuildDiscoverySettings {
   member_count: number;
   blockers: string[];
 }
+
+export interface LinkedConnection { provider: string; account_id: string; name: string; visible: boolean }

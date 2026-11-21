@@ -24,11 +24,14 @@ const COMMANDS = [
   { id: snowflake(), application_id: APP_ID, name: 'feedback', description: 'Open a feedback form', options: [] },
 ];
 
+const FRIEND = { id: snowflake(), username: 'grace', global_name: 'Grace Hopper', avatar: null };
+const DM_ID = snowflake();
 const USER = { id: snowflake(), username: 'ada', global_name: 'Ada Lovelace', avatar: null, email: 'ada@example.test' };
 
 interface Guild {
   id: string;
   name: string;
+  pending?: boolean;
   channels: { id: string; name: string; type: number; guild_id: string; position: number; delivery_mode: string; last_message_id: string | null; topic: string | null }[];
 }
 
@@ -38,6 +41,7 @@ export interface FakeBackend {
   messages: Map<string, unknown[]>;
   /** Bodies received by `POST /interactions`. */
   interactions: Record<string, unknown>[];
+  friendRequests: string[];
   close(): Promise<void>;
 }
 
@@ -50,7 +54,7 @@ function guildPayload(g: Guild) {
     roles: [{ id: g.id, name: '@everyone', color: 0, hoist: false, position: 0, permissions: '1071698660929', managed: false, mentionable: false }],
     emojis: [],
     channels: g.channels,
-    members: [{ user: USER, roles: [], joined_at: new Date().toISOString(), deaf: false, mute: false }],
+    members: [{ user: USER, roles: [], joined_at: new Date().toISOString(), deaf: false, mute: false, pending: g.pending ?? false }],
     voice_states: [],
     presences: [],
     member_count: 1,
@@ -61,6 +65,9 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const friendRequests: string[] = [];
+  const favourites = new Set<string>();
+  let invite = '';
   const sockets = new Set<WebSocket>();
   let seq = 0;
 
@@ -85,6 +92,11 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     member_count: 0, is_thread_member: false,
     thread_metadata: { archived: false, locked: false, auto_archive_duration: 1440, archive_timestamp: new Date().toISOString(), invitable: true },
   };
+  const screeningGuild: Guild = {
+    id: snowflake(), name: 'Screened server', pending: true,
+    channels: [{ id: snowflake(), name: 'general', type: 0, guild_id: '', position: 0, delivery_mode: 'standard', last_message_id: null, topic: null }],
+  };
+  screeningGuild.channels[0]!.guild_id = screeningGuild.id;
 
   const dispatch = (t: string, d: unknown) => {
     seq += 1;
@@ -184,9 +196,40 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (/^\/devices\/\d+\/key-packages$/.test(path)) return json(res, 204, null);
     if (/^\/users\/\d+\/devices$/.test(path)) return json(res, 200, []);
     if (path === '/users/@me') return json(res, 200, USER);
+    if (path === '/users/@me/favourites' && req.method === 'GET') return json(res, 200, [...favourites]);
+    const favourite = /^\/users\/@me\/favourites\/(\d+)$/.exec(path);
+    if (favourite) {
+      if (req.method === 'PUT') favourites.add(favourite[1]!);
+      if (req.method === 'DELETE') favourites.delete(favourite[1]!);
+      return json(res, 204, null);
+    }
+    if (path === '/users/@me/friend-invites' && req.method === 'POST') {
+      invite = 'fake-token-0123456789_1234567890';
+      return json(res, 200, { token: invite, expires_at: new Date(Date.now() + 86400000).toISOString() });
+    }
+    if (path === '/users/@me/friend-invites' && req.method === 'DELETE') { invite = ''; return json(res, 204, null); }
+    if (path === '/friend-invites' && req.method === 'POST') {
+      if (body.token !== invite || !invite) return json(res, 404, { code: 10006, message: 'Unknown invite' });
+      friendRequests.push(String(body.token));
+      return json(res, 204, null);
+    }
     if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
     if (/^\/channels\/\d+\/invites$/.test(path) && req.method === 'POST') return json(res, 201, { code: 'smoke-private-invite' });
+    if (path === '/invites/screening-fixture') {
+      const invite = { code: 'screening-fixture', guild: { id: screeningGuild.id, name: screeningGuild.name, icon: null }, channel: screeningGuild.channels[0], approximate_member_count: 1, approximate_presence_count: 1 };
+      if (req.method === 'GET') return json(res, 200, invite);
+      if (req.method === 'POST') { guilds.push(screeningGuild); dispatch('GUILD_CREATE', guildPayload(screeningGuild)); return json(res, 200, invite); }
+    }
+    if (path === `/guilds/${screeningGuild.id}/member-verification`) return json(res, 200, { enabled: true, rules: ['Be kind'], revision: 3, pending: screeningGuild.pending });
+    if (path === `/guilds/${screeningGuild.id}/member-verification/accept` && req.method === 'POST') {
+      if (body.revision !== 3) return json(res, 409, { message: 'Rules changed' });
+      screeningGuild.pending = false;
+      return json(res, 204, null);
+    }
+    if (path === `/guilds/${screeningGuild.id}/onboarding` && req.method === 'GET') return json(res, 200, { revision: 5, config: { enabled: true, questions: [{ title: 'What interests you?', options: [{ label: 'Chat', role_id: null, channel_id: screeningGuild.channels[0]!.id }] }] } });
+    if (path === `/guilds/${screeningGuild.id}/onboarding/complete` && req.method === 'POST') return json(res, 200, { channel_ids: [screeningGuild.channels[0]!.id] });
+    if (path === `/guilds/${screeningGuild.id}/welcome-screen`) return json(res, 200, { enabled: true, description: 'Welcome to the server', channels: [{ channel_id: screeningGuild.channels[0]!.id, description: 'Say hello' }] });
     if (path === '/guilds' && req.method === 'POST') {
       const guild = addGuild(String(body.name ?? 'New server'));
       const payload = guildPayload(guild);
@@ -222,6 +265,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     if (history) {
       const id = history[1]!;
       if (req.method === 'GET') return json(res, 200, [...(messages.get(id) ?? [])].reverse());
+      if (id === screeningGuild.channels[0]!.id && screeningGuild.pending) return json(res, 403, { code: 50013, message: 'Missing permissions' });
       const message = {
         id: snowflake(),
         channel_id: id,
@@ -267,8 +311,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               user: USER,
               session_id: 'session-e2e',
               guilds: guilds.map(guildPayload),
-              private_channels: [],
-              relationships: [],
+              private_channels: [{ id: DM_ID, type: 1, recipients: [FRIEND], delivery_mode: 'standard', last_message_id: null }],
+              relationships: [{ id: FRIEND.id, type: 1, user: FRIEND }],
               user_settings: { default_delivery_mode: 'standard', status: 'online' },
               read_state: [],
               presences: [],
@@ -286,6 +330,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     gatewayUrl: `ws://127.0.0.1:${port}`,
     messages,
     interactions,
+    friendRequests,
     close: () =>
       new Promise<void>((resolve) => {
         for (const ws of sockets) ws.terminate();
