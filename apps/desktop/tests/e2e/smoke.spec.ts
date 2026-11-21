@@ -93,6 +93,26 @@ test('picks and sends a GIF with still proxy previews', async () => {
   expect(JSON.stringify([...backend.messages.values()])).toContain('https://gif.example.test/cat.gif');
 });
 
+test('creates a server event and marks interest', async () => {
+  await page.getByRole('complementary', { name: 'Channels' }).getByRole('button', { name: 'Nightglass HQ' }).click();
+  await page.getByRole('menuitem', { name: 'Events' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Server events' });
+  await expect(dialog.getByText('No events scheduled yet.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Create event' }).click();
+  const create = page.getByRole('dialog', { name: 'Create event' });
+  await create.getByLabel('Event name').fill('Community meetup');
+  await create.getByLabel('Location').fill('The park');
+  await create.getByLabel('Starts', { exact: true }).fill('2099-06-01T12:00');
+  await create.getByLabel('Ends', { exact: true }).fill('2099-06-01T13:00');
+  await create.getByRole('button', { name: 'Create event' }).click();
+  const list = page.getByRole('dialog', { name: 'Server events' });
+  await expect(list.getByText('Community meetup')).toBeVisible();
+  await list.getByRole('button', { name: 'Interested', exact: true }).click();
+  await expect(list.getByRole('button', { name: 'Remove interest' })).toBeVisible();
+  expect(backend.events[0]).toMatchObject({ name: 'Community meetup', entity_type: 3, entity_metadata: { location: 'The park' }, user_count: 1 });
+  await list.getByRole('button', { name: 'Done' }).click();
+});
+
 test('opens settings and the emoji picker on demand', async () => {
   await page.getByRole('button', { name: 'User settings' }).click();
   await expect(page.getByRole('dialog', { name: 'User settings' })).toBeVisible();

@@ -11,6 +11,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { NotificationLevel } from '@discordy/core/contracts/rest';
 import { isGuildMuted, MUTE_DURATIONS, NOTIFICATION_LEVELS, scopeKey } from '@discordy/core/domain/notificationSettings';
 import { InviteContent } from '../invites/InviteContent';
+import { openEvent } from '../events/openEvent';
 import { inviteChannelId } from '../invites/inviteModel';
 import { getRuntime } from '../runtime';
 import { useGuildPermissions } from '../servers/useGuildPermissions';
@@ -103,6 +104,7 @@ export function ServerMenu({ guildId, visible, onClose }: { guildId: string; vis
       )}
       {step === 'menu' && (
         <>
+          <SheetOption label="Events" icon={icon('calendar-outline')} onPress={() => { close(); openEvent(guildId); }} />
           <SheetOption label="Mark as read" icon={icon('checkmark-done-outline')} onPress={() => { close(); markGuildRead(getRuntime().api, guildId); }} />
           {muted ? <SheetOption label="Unmute server" icon={icon('notifications-outline')} onPress={() => run(() => muteScope(getRuntime().api, guildId, null, undefined), 'Could not change mute')} /> : <SheetOption label="Mute server" icon={icon('notifications-off-outline')} onPress={() => setStep('mute')} />}
           <SheetOption label="Notification settings" icon={icon('options-outline')} onPress={() => setStep('notifications')} />
