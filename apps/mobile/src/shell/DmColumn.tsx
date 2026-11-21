@@ -6,7 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
-import { useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useFavouriteFriendsStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { DM_SCOPE, isChannelMuted } from '@discordy/core/domain/notificationSettings';
@@ -76,12 +76,13 @@ export function DmColumn() {
   const channels = useGuildStore((s) => s.channels);
   const closed = useClosedDmStore((s) => s.closed);
   const relationships = useRelationshipStore((s) => s.byUser);
+  const favouriteIds = useFavouriteFriendsStore((s) => s.ids);
   const status = useSessionStore((s) => s.status);
   const pins = useSessionStore((s) => s.settings.pinned_dm_channel_ids);
   const activeId = useUiStore((s) => (s.view.kind === 'home' ? s.view.channelId : null));
   const [menuRow, setMenuRow] = useState<DmRow | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
-  const items = useMemo(() => dmListItems(dmRows({ channels, closed, relationships }), pins ?? []), [channels, closed, relationships, pins]);
+  const items = useMemo(() => dmListItems(dmRows({ channels, closed, relationships }), pins ?? [], favouriteIds.filter((id) => relationships[id]?.type === RelationshipType.FRIEND)), [channels, closed, relationships, pins, favouriteIds]);
   const requests = useMemo(() => Object.values(relationships).filter((r) => r.type === RelationshipType.INCOMING).length, [relationships]);
 
   return (

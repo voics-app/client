@@ -185,7 +185,8 @@ if (!app.requestSingleInstanceLock()) {
     navigate(url);
   });
   app.setAppUserModelId(BRAND.appId);
-  registerProtocol();
+  // E2E uses a disposable profile and must not claim the user's OS protocol associations.
+  if (env.DISCORDY_E2E !== '1') registerProtocol();
   navigate(findDeepLink(process.argv));
 
   // Belt and braces with the window's autoplayPolicy: no web contents may block audio that lacks a click.
