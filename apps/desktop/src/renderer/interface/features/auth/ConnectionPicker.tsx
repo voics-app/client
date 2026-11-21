@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useState } from 'react';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { ConnectionProfile, ConnectionProfileId } from '@shared/ipc';
@@ -22,6 +23,7 @@ const CUSTOM_EXAMPLE: ConnectionProfile = {
 
 /** Switches the API, gateway and CDN endpoints. The app reloads to rebuild clients against the new profile. */
 export function ConnectionPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t: msg } = useI18n();
   const current = useSessionStore((s) => s.appInfo?.connection);
   const [id, setId] = useState<ConnectionProfileId>(current?.id ?? 'production');
   const [custom, setCustom] = useState<ConnectionProfile>(current?.id === 'custom' ? current : CUSTOM_EXAMPLE);
@@ -31,7 +33,7 @@ export function ConnectionPicker({ open, onClose }: { open: boolean; onClose: ()
 
   const apply = async () => {
     if (!bridge) {
-      setError('Changing the connection needs the desktop app.');
+      setError(msg("settings.connectionpicker.changing.the.connection.needs.the.desktop.app"));
       return;
     }
     setBusy(true);
@@ -45,10 +47,10 @@ export function ConnectionPicker({ open, onClose }: { open: boolean; onClose: ()
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Connection" description={`Choose which ${BRAND.displayName} servers this app talks to.`} footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} onClick={() => void apply()}>Apply and reload</Button></>}>
-      <Segmented label="Profile" value={id} onChange={setId} options={[{ value: 'production', label: 'Production' }, { value: 'local', label: 'Local dev' }, { value: 'custom', label: 'Custom' }]} />
+    <Modal open={open} onClose={onClose} title={msg("settings.connection")} description={msg("connection.chooseServers", { brand: BRAND.displayName })} footer={<><Button variant="ghost" onClick={onClose}>{msg("common.cancel")}</Button><Button variant="primary" loading={busy} onClick={() => void apply()}>{msg("settings.connectionpicker.apply.and.reload")}</Button></>}>
+      <Segmented label={msg("settings.profile")} value={id} onChange={setId} options={[{ value: 'production', label: msg("settings.connectionpicker.production") }, { value: 'local', label: msg("settings.connectionpicker.local.dev") }, { value: 'custom', label: msg("settings.connectionpicker.custom") }]} />
       {(['apiUrl', 'gatewayUrl', 'cdnUrl'] as const).map((key) => (
-        <Field key={key} label={key === 'apiUrl' ? 'API URL' : key === 'gatewayUrl' ? 'Gateway URL' : 'CDN URL'}>
+        <Field key={key} label={key === 'apiUrl' ? msg("settings.connectionpicker.api.url") : key === 'gatewayUrl' ? msg("settings.connectionpicker.gateway.url") : msg("settings.connectionpicker.cdn.url")}>
           {(fid) => <Input id={fid} value={profile[key]} readOnly={id !== 'custom'} onChange={(e) => setCustom((c) => ({ ...c, [key]: e.target.value }))} />}
         </Field>
       ))}

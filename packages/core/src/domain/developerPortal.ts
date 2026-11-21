@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Pure rules of the in-client developer page: command form validation and the show-once bot token state. */
 import { CommandType } from '../contracts/rest';
 
@@ -24,19 +25,20 @@ const length = (value: string): number => Array.from(value).length;
 const CHAT_INPUT_NAME = /^[-_\p{L}\p{N}]+$/u;
 
 /** Mirrors the API: CHAT_INPUT names are lowercase letters, digits, - or _; USER and MESSAGE names may contain spaces. */
-export function validateCommandForm(form: CommandForm): CommandFormErrors {
+export function validateCommandForm(form: CommandForm, locale?: string): CommandFormErrors {
+  const { t, catalogText } = createI18n(locale);
   const errors: CommandFormErrors = {};
   const name = form.type === CommandType.CHAT_INPUT ? form.name : form.name.trim();
   const len = length(name);
-  if (len < 1) errors.name = 'Enter a name.';
-  else if (len > COMMAND_NAME_MAX) errors.name = `At most ${COMMAND_NAME_MAX} characters.`;
+  if (len < 1) errors.name = catalogText('Enter a name.');
+  else if (len > COMMAND_NAME_MAX) errors.name = t("validation.maximumCharacters", { count: COMMAND_NAME_MAX });
   else if (form.type === CommandType.CHAT_INPUT) {
-    if (!CHAT_INPUT_NAME.test(name) || name !== name.toLowerCase()) errors.name = 'Use lowercase letters, numbers, - or _ (no spaces).';
+    if (!CHAT_INPUT_NAME.test(name) || name !== name.toLowerCase()) errors.name = catalogText('Use lowercase letters, numbers, - or _ (no spaces).');
   }
   if (form.type === CommandType.CHAT_INPUT) {
     const d = length(form.description.trim());
-    if (d < 1) errors.description = 'Enter a description.';
-    else if (d > COMMAND_DESCRIPTION_MAX) errors.description = `At most ${COMMAND_DESCRIPTION_MAX} characters.`;
+    if (d < 1) errors.description = catalogText('Enter a description.');
+    else if (d > COMMAND_DESCRIPTION_MAX) errors.description = t("validation.maximumCharacters", { count: COMMAND_DESCRIPTION_MAX });
   }
   return errors;
 }
@@ -48,11 +50,12 @@ export function commandBody(form: CommandForm): { type: number; name: string; de
     : { type: form.type, name: form.name.trim(), description: '' };
 }
 
-export function validateApplicationForm(name: string, description: string): { name?: string; description?: string } {
+export function validateApplicationForm(name: string, description: string, locale?: string): { name?: string; description?: string } {
+  const { t } = createI18n(locale);
   const errors: { name?: string; description?: string } = {};
   const n = length(name.trim());
-  if (n < APPLICATION_NAME_MIN || n > APPLICATION_NAME_MAX) errors.name = `Between ${APPLICATION_NAME_MIN} and ${APPLICATION_NAME_MAX} characters.`;
-  if (length(description) > APPLICATION_DESCRIPTION_MAX) errors.description = `At most ${APPLICATION_DESCRIPTION_MAX} characters.`;
+  if (n < APPLICATION_NAME_MIN || n > APPLICATION_NAME_MAX) errors.name = t("validation.characterRange", { min: APPLICATION_NAME_MIN, max: APPLICATION_NAME_MAX });
+  if (length(description) > APPLICATION_DESCRIPTION_MAX) errors.description = t("validation.maximumCharacters", { count: APPLICATION_DESCRIPTION_MAX });
   return errors;
 }
 

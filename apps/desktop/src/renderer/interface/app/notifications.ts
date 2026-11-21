@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -58,9 +59,9 @@ export function notifyIncoming(message: ChatMessage): void {
     soundEffects.play('message', prefs.outputVolume, prefs.outputDeviceId);
   }
   if (!prefs.notifyDesktop) return;
-  const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
+  const title = message.guild_id ? getI18n().t('notification.channel', { name: message.author.global_name ?? message.author.username, channel: channel?.name ?? getI18n().catalogText('channel') }) : (message.author.global_name ?? message.author.username);
   // Private (E2EE/P2P) plaintext never goes to the OS notification centre (alertBody hides it).
-  const body = streamerActive() && !message.guild_id ? 'New direct message' : alertBody(message);
+  const body = streamerActive() && !message.guild_id ? 'New direct message' : alertBody(message, undefined, getI18n().locale);
   const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
   bridge?.app.notify({ title, body, route, silent: true });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();

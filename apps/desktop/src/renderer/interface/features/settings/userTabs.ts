@@ -1,4 +1,5 @@
 import type { UserSettingsTab } from '@discordy/core/application/stores/uiStore';
+import type { I18n, MessageId } from '@discordy/core/domain/i18n';
 
 export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] = [
   { id: 'account', label: 'My account', group: 'User settings' },
@@ -10,6 +11,7 @@ export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] 
   { id: 'keybinds', label: 'Keybinds', group: 'App settings' },
   { id: 'appearance', label: 'Appearance', group: 'App settings' },
   { id: 'accessibility', label: 'Accessibility', group: 'App settings' },
+  { id: 'language', label: 'Language', group: 'App settings' },
   { id: 'notifications', label: 'Notifications', group: 'App settings' },
   { id: 'chat', label: 'Chat', group: 'App settings' },
   { id: 'connection', label: 'Connection', group: 'App settings' },
@@ -18,3 +20,15 @@ export const USER_TABS: { id: UserSettingsTab; label: string; group: string }[] 
   { id: 'developer', label: 'Developer', group: 'App settings' },
   { id: 'about', label: 'About and updates', group: 'App settings' },
 ];
+
+const LABELS: Record<UserSettingsTab, MessageId> = {
+  account: 'settings.account', profile: 'settings.profile', privacy: 'settings.privacy', devices: 'settings.devices',
+  voice: 'settings.voice', keybinds: 'settings.keybinds', appearance: 'settings.appearance', accessibility: 'settings.accessibility',
+  language: 'settings.language', notifications: 'settings.notifications', chat: 'settings.chat', connection: 'settings.connection',
+  desktop: 'settings.desktop', advanced: 'settings.advanced', developer: 'settings.developer', about: 'settings.about',
+  authorizedApps: 'settings.authorizedapps.authorized.apps',
+};
+
+export function translatedUserTabs({ t }: I18n) {
+  return USER_TABS.map((tab) => ({ ...tab, label: t(LABELS[tab.id]), group: t(tab.group === 'User settings' ? 'settings.user' : 'settings.app') }));
+}

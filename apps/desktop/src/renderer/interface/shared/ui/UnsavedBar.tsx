@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useUnsavedStore } from '@discordy/core/application/stores/unsavedStore';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Button } from './Button';
+import { useI18n } from '../i18n';
 
 /** Discord's "Careful, you have unsaved changes" bar. Renders only while `dirty`, and shakes when settings refuse to close. */
 export function UnsavedBar({ dirty, saving, error, onReset, onSave }: { dirty: boolean; saving?: boolean; error?: string | null; onReset: () => void; onSave: () => void }) {
+  const { t } = useI18n();
   useUnsavedChanges(dirty);
   const shake = useUnsavedStore((s) => s.shake);
   const ref = useRef<HTMLDivElement>(null);
@@ -21,9 +23,9 @@ export function UnsavedBar({ dirty, saving, error, onReset, onSave }: { dirty: b
   if (!dirty) return null;
   return (
     <div ref={ref} className={`save-bar glass${error ? ' has-error' : ''}`} role="status" onAnimationEnd={(e) => e.animationName === 'bar-shake' && e.currentTarget.classList.remove('is-shaking')}>
-      {error ? <div className="save-bar-copy"><strong>Your edits are still here.</strong><p className="field-error" role="alert">{error} Try saving again.</p></div> : <span>Careful, you have unsaved changes.</span>}
-      <Button variant="ghost" disabled={saving} onClick={onReset}>Reset</Button>
-      <Button variant="primary" loading={saving} onClick={onSave}>Save changes</Button>
+      {error ? <div className="save-bar-copy"><strong>{t('common.editsRetained')}</strong><p className="field-error" role="alert">{t('common.saveAgainError', { error })}</p></div> : <span>{t('common.unsaved')}</span>}
+      <Button variant="ghost" disabled={saving} onClick={onReset}>{t('common.reset')}</Button>
+      <Button variant="primary" loading={saving} onClick={onSave}>{t('common.saveChanges')}</Button>
     </div>
   );
 }

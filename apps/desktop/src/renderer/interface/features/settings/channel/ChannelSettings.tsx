@@ -1,3 +1,4 @@
+import { useI18n } from '../../../shared/i18n';
 import { SettingsCloseButton } from '../SettingsCloseButton';
 import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,10 +20,11 @@ import { VoiceTextChatSetting } from './VoiceTextChatSetting';
 import { ServerInvites } from '../server/ServerTabs';
 
 function TriState({ state, label, onChange }: { state: OverwriteState; label: string; onChange: (s: OverwriteState) => void }) {
+  const { t: msg } = useI18n();
   const opts: { s: OverwriteState; icon: React.ReactNode; title: string }[] = [
-    { s: 'deny', icon: <X size={14} weight="bold" />, title: 'Deny' },
-    { s: 'inherit', icon: <Minus size={14} weight="bold" />, title: 'Inherit' },
-    { s: 'allow', icon: <Check size={14} weight="bold" />, title: 'Allow' },
+    { s: 'deny', icon: <X size={14} weight="bold" />, title: msg("settings.channelsettings.deny") },
+    { s: 'inherit', icon: <Minus size={14} weight="bold" />, title: msg("settings.channelsettings.inherit") },
+    { s: 'allow', icon: <Check size={14} weight="bold" />, title: msg("settings.channelsettings.allow") },
   ];
   return (
     <span className="tri" role="radiogroup" aria-label={label}>
@@ -36,6 +38,7 @@ function TriState({ state, label, onChange }: { state: OverwriteState; label: st
 }
 
 function Overwrites({ channelId }: { channelId: string }) {
+  const { t: msg, catalogText } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const guild = useGuildStore((s) => (channel?.guild_id ? s.guilds[channel.guild_id] : undefined));
   const members = useGuildStore((s) => (channel?.guild_id ? s.members[channel.guild_id] : undefined));
@@ -70,7 +73,7 @@ function Overwrites({ channelId }: { channelId: string }) {
       }
       for (const o of saved) if (!draft.some((x) => x.id === o.id)) await api.deleteOverwrite(channelId, o.id);
       if (channel) useGuildStore.getState().upsertChannel({ ...channel, permission_overwrites: draft });
-    }, 'Could not save permissions');
+    }, msg("settings.channelsettings.could.not.save.permissions"));
     setSaving(false);
   };
 
@@ -79,7 +82,7 @@ function Overwrites({ channelId }: { channelId: string }) {
   return (
     <div className="overwrites">
       <div className="overwrite-targets">
-        <Button size="sm" icon={<Plus size={14} />} onClick={addMenu.openBelow}>Add role or member</Button>
+        <Button size="sm" icon={<Plus size={14} />} onClick={addMenu.openBelow}>{msg("settings.channelsettings.add.role.or.member")}</Button>
         <Menu open={addMenu.open} x={addMenu.anchor?.x ?? 0} y={addMenu.anchor?.y ?? 0} onClose={addMenu.close} entries={addable.map((a) => ({ kind: 'item' as const, label: a.label, onSelect: () => { upsert({ id: a.id, type: a.type, allow: '0', deny: '0' }); setSelectedId(a.id); } }))} />
         <ul>
           {[...draft, ...(draft.some((o) => o.id === guild.id) ? [] : [{ id: guild.id, type: 0 as const, allow: '0', deny: '0' }])].map((o) => (
@@ -90,11 +93,11 @@ function Overwrites({ channelId }: { channelId: string }) {
       <div className="overwrite-matrix">
         {groups.map(({ group, entries }) => (
           <section key={group}>
-            <h4>{group}</h4>
+            <h4>{catalogText(group)}</h4>
             {entries.map((p) => (
               <div key={p.name} className="perm-row">
-                <div><p className="setting-title">{p.label}</p></div>
-                <TriState label={p.label} state={overwriteStateOf(current, p.bit)} onChange={(s) => upsert(withOverwriteState(current, p.bit, s))} />
+                <div><p className="setting-title">{catalogText(p.label)}</p></div>
+                <TriState label={catalogText(p.label)} state={overwriteStateOf(current, p.bit)} onChange={(s) => upsert(withOverwriteState(current, p.bit, s))} />
               </div>
             ))}
           </section>
@@ -106,6 +109,7 @@ function Overwrites({ channelId }: { channelId: string }) {
 }
 
 function Overview({ channelId }: { channelId: string }) {
+  const { t: msg } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const [name, setName] = useState(channel?.name ?? '');
   const [topic, setTopic] = useState(channel?.topic ?? '');
@@ -124,34 +128,34 @@ function Overview({ channelId }: { channelId: string }) {
   const reset = () => { setName(saved.name); setTopic(saved.topic); setSlow(saved.slow); setNsfw(saved.nsfw); setLimit(saved.limit); setBitrate(saved.bitrate); };
   const save = async () => {
     setSaving(true);
-    const updated = await attempt(() => getRuntime().api.updateChannel(channelId, { name, topic: topic || null, nsfw, rate_limit_per_user: Number(slow), ...(isVoice ? { user_limit: Math.max(0, Math.min(99, Math.floor(Number(limit)) || 0)), bitrate: Math.max(8, Math.min(384, Math.floor(Number(bitrate)) || 64)) * 1000 } : {}) }), 'Could not save channel');
+    const updated = await attempt(() => getRuntime().api.updateChannel(channelId, { name, topic: topic || null, nsfw, rate_limit_per_user: Number(slow), ...(isVoice ? { user_limit: Math.max(0, Math.min(99, Math.floor(Number(limit)) || 0)), bitrate: Math.max(8, Math.min(384, Math.floor(Number(bitrate)) || 64)) * 1000 } : {}) }), msg("settings.channelsettings.could.not.save.channel"));
     setSaving(false);
     if (updated) useGuildStore.getState().upsertChannel(updated);
   };
   return (
     <div className="settings-page">
-      <h1>Overview</h1>
-      <Field label="Channel name">{(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
-      {!isVoice && <Field label="Topic">{(id) => <TextArea id={id} value={topic} maxLength={1024} onChange={(e) => setTopic(e.target.value)} />}</Field>}
+      <h1>{msg("domain.overview")}</h1>
+      <Field label={msg("settings.channelsettings.channel.name")}>{(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+      {!isVoice && <Field label={msg("settings.channelsettings.topic")}>{(id) => <TextArea id={id} value={topic} maxLength={1024} onChange={(e) => setTopic(e.target.value)} />}</Field>}
       {isVoice && (
-        <Field label="User limit (0 = unlimited)">{(id) => <Input id={id} type="number" min={0} max={99} value={limit} onChange={(e) => setLimit(e.target.value)} />}</Field>
+        <Field label={msg("settings.channelsettings.user.limit.0.unlimited")}>{(id) => <Input id={id} type="number" min={0} max={99} value={limit} onChange={(e) => setLimit(e.target.value)} />}</Field>
       )}
       {isVoice && (
-        <Field label="Bitrate (kbps)">{(id) => <Input id={id} type="number" min={8} max={384} value={bitrate} onChange={(e) => setBitrate(e.target.value)} />}</Field>
+        <Field label={msg("settings.channelsettings.bitrate.kbps")}>{(id) => <Input id={id} type="number" min={8} max={384} value={bitrate} onChange={(e) => setBitrate(e.target.value)} />}</Field>
       )}
       {!isVoice && (
-        <Field label="Slowmode">
-          {() => <Segmented label="Slowmode" value={slow} onChange={setSlow} options={[{ value: '0', label: 'Off' }, { value: '5', label: '5s' }, { value: '30', label: '30s' }, { value: '300', label: '5m' }, { value: '3600', label: '1h' }]} />}
+        <Field label={msg("settings.channelsettings.slowmode")}>
+          {() => <Segmented label={msg("settings.channelsettings.slowmode")} value={slow} onChange={setSlow} options={[{ value: '0', label: msg("settings.channelsettings.off") }, { value: '5', label: msg("settings.channelsettings.5s") }, { value: '30', label: msg("settings.channelsettings.30s") }, { value: '300', label: msg("settings.channelsettings.5m") }, { value: '3600', label: msg("settings.channelsettings.1h") }]} />}
         </Field>
       )}
-      <div className="perm-row"><div><p className="setting-title">Age-restricted channel</p></div><Switch label="Age-restricted" checked={nsfw} onChange={setNsfw} /></div>
+      <div className="perm-row"><div><p className="setting-title">{msg("settings.channelsettings.age.restricted.channel")}</p></div><Switch label={msg("settings.channelsettings.age.restricted")} checked={nsfw} onChange={setNsfw} /></div>
       <VoiceTextChatSetting channelId={channelId} />
       <div className="perm-row">
-        <div><p className="setting-title">Delivery mode</p><p className="setting-desc">Ephemeral channels are end-to-end encrypted, limited to 100 members, and do not support bots or embeds.</p></div>
+        <div><p className="setting-title">{msg("settings.channelsettings.delivery.mode")}</p><p className="setting-desc">{msg("settings.channelsettings.ephemeral.channels.are.end.to.end.encrypted.limited.to")}</p></div>
         <ModeSwitcher channel={channel} mode={mode} />
       </div>
       <div className="row-end">
-        <Button variant="danger" onClick={() => openDialog({ kind: 'confirm', title: `Delete #${channel.name}?`, body: 'Messages in this channel will be lost for everyone.', confirmLabel: 'Delete channel', danger: true, onConfirm: async () => { await attempt(() => getRuntime().api.deleteChannel(channelId), 'Could not delete channel'); openSettings(null); } })}>Delete channel</Button>
+        <Button variant="danger" onClick={() => openDialog({ kind: 'confirm', title: msg("common.deleteConfirm", { name: `#${channel.name}` }), body: msg("settings.channelsettings.messages.in.this.channel.will.be.lost.for.everyone"), confirmLabel: msg("settings.channelsettings.delete.channel"), danger: true, onConfirm: async () => { await attempt(() => getRuntime().api.deleteChannel(channelId), msg("settings.channelsettings.could.not.delete.channel")); openSettings(null); } })}>{msg("settings.channelsettings.delete.channel")}</Button>
       </div>
       <UnsavedBar dirty={dirty} saving={saving} onReset={reset} onSave={() => void save()} />
     </div>
@@ -159,6 +163,7 @@ function Overview({ channelId }: { channelId: string }) {
 }
 
 export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'overview' | 'permissions' | 'invites' }) {
+  const { t: msg } = useI18n();
   const open = useUiStore((s) => s.openSettings);
   const channel = useGuildStore((s) => s.channels[channelId]);
   useEffect(() => {
@@ -167,9 +172,9 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
   if (!channel) return null;
-  const tabs = [{ id: 'overview', label: 'Overview' }, { id: 'permissions', label: 'Permissions' }, { id: 'invites', label: 'Invites' }] as const;
+  const tabs = [{ id: 'overview', label: msg("domain.overview") }, { id: 'permissions', label: msg("server.rolePermissions") }, { id: 'invites', label: msg("settings.servertabs.invites") }] as const;
   return (
-    <div className="settings" role="dialog" aria-modal="true" aria-label="Channel settings">
+    <div className="settings" role="dialog" aria-modal="true" aria-label={msg("settings.channelsettings.channel.settings")}>
       <nav className="settings-nav">
         <div className="settings-group">
           <h3>#{channel.name}</h3>
@@ -179,7 +184,7 @@ export function ChannelSettings({ channelId, tab }: { channelId: string; tab: 'o
       <div className="settings-content">
         <div className="settings-inner">
           {tab === 'overview' && <Overview channelId={channelId} />}
-          {tab === 'permissions' && <div className="settings-page"><h1>Permissions</h1><p className="page-sub">Overwrites win over role permissions. Deny beats allow within the same layer.</p><Overwrites channelId={channelId} /></div>}
+          {tab === 'permissions' && <div className="settings-page"><h1>{msg("server.rolePermissions")}</h1><p className="page-sub">{msg("settings.channelsettings.overwrites.win.over.role.permissions.deny.beats.allow.within")}</p><Overwrites channelId={channelId} /></div>}
           {tab === 'invites' && channel.guild_id && <ServerInvites guildId={channel.guild_id} />}
         </div>
         <SettingsCloseButton onClose={() => closeSettings()} />

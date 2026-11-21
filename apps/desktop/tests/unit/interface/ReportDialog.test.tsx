@@ -5,6 +5,8 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import type { ReportTarget } from '@discordy/core/domain/reportModel';
 import { ReportDialog } from '@renderer/interface/features/report/ReportDialog';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
 
 const createReport = vi.fn();
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { createReport } }) }));
@@ -19,6 +21,24 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ReportDialog', () => {
+  it('keeps a Dutch private-message report draft through failure and submits original category, note and consented content', async () => {
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    createReport.mockRejectedValueOnce(new ApiError(429, 0, 'slow')).mockResolvedValueOnce(undefined);
+    const target = { ...message('p2p'), content: 'Original مرحبا café' };
+    render(<LocaleProvider><ReportDialog target={target} /></LocaleProvider>);
+    expect(screen.getByRole('dialog', { name: 'Bericht rapporteren' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /Identiteitsmisbruik/ }));
+    fireEvent.change(screen.getByLabelText(/Notitie/), { target: { value: 'Mijn notitie مرحبا' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Stuur de tekst/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Melding verzenden' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Je hebt veel meldingen verzonden. Probeer het later opnieuw.');
+    expect((screen.getByLabelText(/Notitie/) as HTMLTextAreaElement).value).toBe('Mijn notitie مرحبا');
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Melding verzenden' }));
+    expect(await screen.findByRole('dialog', { name: 'Melding verzonden' })).toBeTruthy();
+    expect(createReport).toHaveBeenLastCalledWith({ target: 'message', channel_id: 'c1', message_id: 'm1', author_id: 'u2', category: 'impersonation', note: 'Mijn notitie مرحبا', content: 'Original مرحبا café' });
+  });
+
   it('needs a category before it can be sent', () => {
     render(<ReportDialog target={message('standard')} />);
     expect(send().disabled).toBe(true);

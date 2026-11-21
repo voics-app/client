@@ -1,5 +1,6 @@
+import { nativeI18n } from './locale';
 /** Main window with hardened web preferences, navigation guards and CSP. */
-import { BrowserWindow, app, nativeTheme, session, shell } from 'electron';
+import { BrowserWindow, nativeTheme, session, shell } from 'electron';
 import { join } from 'node:path';
 import type { ConnectionProfile } from '../shared/ipc';
 import { BRAND } from '../shared/brand';
@@ -119,7 +120,7 @@ export function createMainWindow(options: { startHidden?: boolean } = {}): Brows
   window.on('page-title-updated', (event) => event.preventDefault());
   window.setTitle(BRAND.displayName);
   installTextContextMenu(window.webContents);
-  configureSpellcheck(window.webContents, app.getLocale());
+  configureSpellcheck(window.webContents, nativeI18n().locale);
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());
 
   if (process.env.ELECTRON_RENDERER_URL) void window.loadURL(process.env.ELECTRON_RENDERER_URL);

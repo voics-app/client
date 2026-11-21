@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** UI-facing commands: wrap API calls with consistent error toasts. */
 import { deleteGuild as deleteGuildCommand, leaveGuild as leaveGuildCommand, markChannelRead as markChannelReadCommand, markGuildRead as markGuildReadCommand, saveRail as saveRailCommand } from '@discordy/core/application/guildCommands';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -6,14 +7,15 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { forwardMessage as forwardMessageCommand } from '@discordy/core/application/forwardCommands';
 import { idBefore } from '@discordy/core/domain/unread';
 import type { GuildFolder, Message } from '@discordy/core/contracts/rest';
-import { errorMessage } from '@discordy/core/application/errorMessage';
+import { errorMessage as commandErrorMessage } from '@discordy/core/application/errorMessage';
 import { openChannel } from './navigation';
 import { getRuntime } from './runtime';
 
-export { errorMessage };
+/** Translate known product errors; preserve unfamiliar server details for diagnosis. */
+export const errorMessage = (error: unknown): string => getI18n().catalogText(commandErrorMessage(error));
 
-export function reportError(error: unknown, title = 'Something went wrong'): void {
-  useUiStore.getState().toast({ tone: 'danger', title, body: errorMessage(error) });
+export function reportError(error: unknown, title = getI18n().catalogText("Something went wrong")): void {
+  useUiStore.getState().toast({ tone: 'danger', title: getI18n().catalogText(title), body: errorMessage(error) });
 }
 
 /** Runs an async command; resolves to its value or undefined after toasting the failure. */
@@ -32,7 +34,7 @@ export const markGuildRead = (guildId: string): void => markGuildReadCommand(get
 
 /** Applies a new server-rail layout locally right away, then syncs it to the user's other devices. */
 export async function saveRail(rail: GuildFolder[]): Promise<void> {
-  await attempt(() => saveRailCommand(getRuntime().api, rail), 'Could not save server order');
+  await attempt(() => saveRailCommand(getRuntime().api, rail), getI18n().catalogText("Could not save server order"));
 }
 
 export async function leaveGuild(guildId: string): Promise<void> {
@@ -45,21 +47,21 @@ export async function deleteGuild(guildId: string): Promise<void> {
   useUiStore.getState().navigate({ kind: 'home', channelId: null });
 }
 
-export async function copyText(text: string, label = 'Copied'): Promise<void> {
+export async function copyText(text: string, label = getI18n().catalogText("Copied")): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    useUiStore.getState().toast({ tone: 'success', title: label });
+    useUiStore.getState().toast({ tone: 'success', title: getI18n().catalogText(label) });
   } catch {
-    reportError(new Error('Clipboard is unavailable.'), 'Could not copy');
+    reportError(new Error(getI18n().catalogText("Clipboard is unavailable.")), getI18n().catalogText("Could not copy"));
   }
 }
 
 /** Opens the channel and scrolls to (and flashes) the message, loading history around it when it is not in memory. */
 /** Forwards a message into another chat: the server snapshots it, so the copy keeps working if the original goes away. Resolves to whether it was sent. */
 export async function forwardMessage(message: Message, targetChannelId: string, comment: string): Promise<boolean> {
-  const sent = await attempt(() => forwardMessageCommand(getRuntime().api, message, targetChannelId, comment).then(() => true), 'Could not forward message');
+  const sent = await attempt(() => forwardMessageCommand(getRuntime().api, message, targetChannelId, comment).then(() => true), getI18n().catalogText("Could not forward message"));
   if (!sent) return false;
-  useUiStore.getState().toast({ tone: 'success', title: 'Message forwarded' });
+  useUiStore.getState().toast({ tone: 'success', title: getI18n().catalogText("Message forwarded") });
   return true;
 }
 
@@ -83,7 +85,7 @@ export function markMessageUnread(channelId: string, messageId: string): void {
   try {
     void getRuntime()
       .api.ack(channelId, marker, { manual: true, mentionCount: 0 })
-      .catch((e) => reportError(e, 'Could not mark unread'));
+      .catch((e) => reportError(e, getI18n().catalogText("Could not mark unread")));
   } catch {
     /* runtime not started (signed out): the local marker still moved */
   }

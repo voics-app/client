@@ -1,13 +1,15 @@
+import { getI18n, useI18n } from '../i18n';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { User } from '@discordy/core/contracts/rest';
 
 export function displayName(user: Pick<User, 'username' | 'global_name'>, nick?: string | null): string {
   // Gateway events can carry partial users ({ id } only), so never return undefined.
-  return nick || user.global_name || user.username || 'Unknown user';
+  return nick || user.global_name || user.username || getI18n().catalogText('Unknown user');
 }
 
 /** Display name honouring the guild nickname. */
 export function useMemberName(guildId: string | null | undefined, user: Pick<User, 'id' | 'username' | 'global_name'>): string {
+  useI18n();
   const nick = useGuildStore((s) => (guildId ? s.members[guildId]?.[user.id]?.nick : null));
   return displayName(user, nick);
 }

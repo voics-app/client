@@ -196,10 +196,11 @@ export function canSuppressEmbeds(input: { isAuthor: boolean; canManageMessages:
   return input.isAuthor || input.canManageMessages;
 }
 
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+export function formatBytes(bytes: number, locale = 'en-US'): string {
+  if (bytes < 1024) return `${new Intl.NumberFormat(locale).format(bytes)} B`;
+  const amount = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (bytes < 1024 ** 2) return `${amount.format(bytes / 1024)} KB`;
+  return `${amount.format(bytes / 1024 ** 2)} MB`;
 }
 
 /** Truncates a text preview to its first lines; reports whether anything was cut. */

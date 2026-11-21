@@ -11,7 +11,7 @@ export type View =
   | { kind: 'guild'; guildId: string; channelId: string | null };
 
 export type SettingsTarget =
-  | { kind: 'user'; tab: UserSettingsTab }
+  | { kind: 'user'; tab: UserSettingsTab; profileGuildId?: string }
   | { kind: 'server'; guildId: string; tab: ServerSettingsTab; auditTarget?: { id: string; name: string } }
   | { kind: 'channel'; channelId: string; tab: 'overview' | 'permissions' | 'invites' };
 
@@ -24,6 +24,7 @@ export type UserSettingsTab =
   | 'keybinds'
   | 'appearance'
   | 'accessibility'
+  | 'language'
   | 'notifications'
   | 'chat'
   | 'connection'

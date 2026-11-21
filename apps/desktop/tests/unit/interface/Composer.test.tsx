@@ -18,6 +18,7 @@ vi.mock('@renderer/interface/features/privacy/ModeSwitcher', () => ({ ModeSwitch
 vi.mock('@renderer/interface/features/privacy/PeerStatus', () => ({ PeerStatus: () => null }));
 
 import { Composer } from '@renderer/interface/features/chat/Composer';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
 
 const ME = 'me';
 const G = 'g1';
@@ -66,6 +67,20 @@ describe('Composer: sending and newlines', () => {
 
 describe('Composer: reply ping and @silent', () => {
   const replyTarget = (author: string) => ({ id: 'm9', channel_id: 'dm1', author: user(author), content: 'original' }) as unknown as Message;
+
+  it('changes Dutch reply controls while preserving the reply identity and raw outgoing content', () => {
+    const c = dmChannel();
+    useSessionStore.setState({ user: user(ME), settings: { default_delivery_mode: 'standard', locale: 'nl' } });
+    useUiStore.setState({ replyTo: { [c.id]: replyTarget('bob') } } as never);
+    render(<LocaleProvider><Composer channel={c} mode="standard" /></LocaleProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Vermelding van bob: aan' }));
+    expect(screen.getByRole('button', { name: 'Vermelding van bob: uit' })).toBeTruthy();
+    type('Original hello مرحبا');
+    fireEvent.click(screen.getByRole('button', { name: 'Bericht versturen' }));
+    expect(send).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ content: 'Original hello مرحبا', replyTo: 'm9', pingReplied: false }));
+    act(() => useSessionStore.getState().setSettings({ locale: 'en-US' }));
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeTruthy();
+  });
 
   it('toggles the reply ping, remembers it, and sends pingReplied false', () => {
     const c = dmChannel();

@@ -13,6 +13,7 @@ import type { Updater } from './updater';
 import type { DesktopService } from './desktop/desktopService';
 import type { PasskeyBroker } from './passkeys/passkeyBroker';
 import type { PasskeySite } from '../shared/passkeys';
+import { resolveLocale } from '@discordy/core/domain/i18n';
 
 /** OS input idle time; the e2e harness can pin it with `globalThis.__e2eIdleSeconds` since a test cannot stop real input. */
 export function systemIdleSeconds(e2e: boolean, read: () => number): number {
@@ -33,6 +34,7 @@ export interface IpcDeps {
   updater: Updater;
   takePendingRoute: () => string | null;
   setActivity: (counts: ActivityCounts) => void;
+  setLocale: (locale: string) => void;
   setVoiceState: (state: VoiceState) => void;
   desktop: DesktopService;
   relaunch: () => void;
@@ -78,6 +80,9 @@ export function registerIpc(deps: IpcDeps): void {
   });
   on(IpcChannel.appActivity, (counts: ActivityCounts) => {
     deps.setActivity({ mentions: Number(counts?.mentions), unread: Number(counts?.unread) });
+  });
+  on(IpcChannel.appLocale, (locale: unknown) => {
+    if (typeof locale === 'string' && locale.length <= 64) deps.setLocale(resolveLocale(locale));
   });
   on(IpcChannel.appVoiceState, (state: VoiceState) => {
     deps.setVoiceState({ muted: Boolean(state?.muted), deafened: Boolean(state?.deafened) });

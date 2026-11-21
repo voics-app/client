@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { LockKey, SpeakerHigh, Users } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -11,6 +12,7 @@ import { VoiceTextChatPanel } from './VoiceTextChat';
 
 /** A voice channel's page: a stage while connected, otherwise a lobby with who is in the room. */
 export function VoiceChannelView({ channelId }: { channelId: string }) {
+  const { t: msg } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const call = useVoiceStore((s) => s.call);
   const guildId = channel?.guild_id ?? null;
@@ -30,15 +32,15 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
 
   return (
     <div className="voice-call-split">
-    <section className="voice-lobby" aria-label={channel.name ?? 'Voice channel'}>
+    <section className="voice-lobby" aria-label={channel.name ?? msg("settings.voicechannelview.voice.channel")}>
       <EmptyState
         icon={<SpeakerHigh size={36} weight="light" />}
-        title={channel.name ?? 'Voice channel'}
+        title={channel.name ?? msg("settings.voicechannelview.voice.channel")}
         body={
           participants.length === 0
-            ? 'Nobody is here yet. Join and start the conversation.'
+            ? msg("settings.voicechannelview.nobody.is.here.yet.join.and.start.the.conversation")
             : alone
-              ? 'You are the only one here.'
+              ? msg("settings.voicechannelview.you.are.the.only.one.here")
               : `${participants.length} ${participants.length === 1 ? 'person is' : 'people are'} in this channel.`
         }
         action={
@@ -47,9 +49,8 @@ export function VoiceChannelView({ channelId }: { channelId: string }) {
               <p className="lobby-people"><Users size={14} /> {participants.map((p) => p.name).join(', ')}</p>
             )}
             <Button variant="primary" size="lg" trailing={<SpeakerHigh size={16} weight="fill" />} onClick={() => void joinVoiceChannel(guildId, channelId)}>
-              Join voice
-            </Button>
-            {channel.delivery_mode !== 'standard' && <p className="lobby-note"><LockKey size={12} weight="fill" /> Voice media is end-to-end encrypted when every participant supports it.</p>}
+              {msg("friends.joinVoice")} </Button>
+            {channel.delivery_mode !== 'standard' && <p className="lobby-note"><LockKey size={12} weight="fill" /> {msg("settings.voicechannelview.voice.media.is.end.to.end.encrypted.when.every")}</p>}
           </>
         }
       />

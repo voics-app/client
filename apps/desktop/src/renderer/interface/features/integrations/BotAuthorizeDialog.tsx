@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Check } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ import './integrations.css';
 
 /** Extends Nightglass settings: app identity, server choice, explicit permissions, one consent action. */
 export function BotAuthorizeDialog({ request }: { request: BotAuthorizationRequest }) {
+  const { t: msg } = useI18n();
   const userId = useSessionStore((s) => s.user?.id);
   const qc = useQueryClient();
   const [guildId, setGuildId] = useState(request.guild_id ?? '');
@@ -40,7 +42,7 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
       ]);
       useUiStore.getState().openDialog(null);
       openGuild(guild.id);
-      useUiStore.getState().toast({ tone: 'success', title: installed ? 'Consent recorded' : `${info.application.name} added to ${guild.name}` });
+      useUiStore.getState().toast({ tone: 'success', title: installed ? msg("settings.botauthorizedialog.consent.recorded") : msg('integrations.added', { app: info.application.name, guild: guild.name }) });
     } catch (reason) {
       setError(errorMessage(reason));
       // A lifecycle conflict needs a fresh view before consent can be retried.
@@ -48,32 +50,33 @@ export function BotAuthorizeDialog({ request }: { request: BotAuthorizationReque
       void query.refetch();
     } finally { setBusy(false); }
   };
-  return <Modal open onClose={close} title="Authorize application" width={520}>
+  return <Modal open onClose={close} title={msg("settings.botauthorizedialog.authorize.application")} width={520}>
     <div className="integration-stack">
-      {query.isPending ? <p role="status">Loading application…</p> : query.isError ? <div><p role="alert" className="field-error">Could not load this application. {errorMessage(query.error)}</p><Button onClick={() => void query.refetch()}>Try again</Button></div> : info && <>
-        <div className="integration-identity"><Avatar id={info.application.id} avatar={info.application.icon} name={info.application.name} kind="app-icons" size={48} square /><div><h3>{info.application.name}</h3><p>{info.application.description || 'An application bot for your server.'}</p></div></div>
-        <ul className="integration-permissions" aria-label="Requested scopes">
-          <li><Check size={16} aria-hidden="true" />Add a bot to a server you manage</li>
-          {info.scopes.includes('applications.commands') && <li><Check size={16} aria-hidden="true" />Use application commands in that server</li>}
+      {query.isPending ? <p role="status">{msg("settings.botauthorizedialog.loading.application")}</p> : query.isError ? <div><p role="alert" className="field-error">{msg("settings.botauthorizedialog.could.not.load.this.application")} {errorMessage(query.error)}</p><Button onClick={() => void query.refetch()}>{msg("common.retry")}</Button></div> : info && <>
+        <div className="integration-identity"><Avatar id={info.application.id} avatar={info.application.icon} name={info.application.name} kind="app-icons" size={48} square /><div><h3>{info.application.name}</h3><p>{info.application.description || msg("settings.botauthorizedialog.an.application.bot.for.your.server")}</p></div></div>
+        <ul className="integration-permissions" aria-label={msg("settings.botauthorizedialog.requested.scopes")}>
+          <li><Check size={16} aria-hidden="true" />{msg("settings.botauthorizedialog.add.a.bot.to.a.server.you.manage")}</li>
+          {info.scopes.includes('applications.commands') && <li><Check size={16} aria-hidden="true" />{msg("settings.botauthorizedialog.use.application.commands.in.that.server")}</li>}
         </ul>
-        {info.guilds.length === 0 ? <p>You need Manage Server permission in a server to authorize this application.</p> : <>
-          <Field label="Server">{(id) => <Select id={id} value={guildId} disabled={busy} onChange={(event) => { setGuildId(event.target.value); setConfirmed(null); setError(null); }}><option value="">Choose a server</option>{info.guilds.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Select>}</Field>
-          {guild && <section className="integration-permission-review" aria-label="Permission review">
-            <h3>{installed ? 'Current bot permissions' : 'Requested permissions'}</h3>
-            {installed && <p>This bot is already installed. You are acknowledging its current permissions; this does not change them.</p>}
+        {info.guilds.length === 0 ? <p>{msg("settings.botauthorizedialog.you.need.manage.server.permission.in.a.server.to")}</p> : <>
+          <Field label={msg("settings.profiledialog.server")}>{(id) => <Select id={id} value={guildId} disabled={busy} onChange={(event) => { setGuildId(event.target.value); setConfirmed(null); setError(null); }}><option value="">{msg("settings.botauthorizedialog.choose.a.server")}</option>{info.guilds.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Select>}</Field>
+          {guild && <section className="integration-permission-review" aria-label={msg("settings.botauthorizedialog.permission.review")}>
+            <h3>{installed ? msg("settings.botauthorizedialog.current.bot.permissions") : msg("settings.botauthorizedialog.requested.permissions")}</h3>
+            {installed && <p>{msg("settings.botauthorizedialog.this.bot.is.already.installed.you.are.acknowledging.its")}</p>}
             <PermissionChecklist permissions={permissions} />
-            {!installed && <p className="field-hint">The bot also inherits this server’s everyone-role permissions.</p>}
-            <label className="check-row"><input type="checkbox" checked={confirmed === signature} disabled={busy} onChange={(event) => setConfirmed(event.target.checked ? signature : null)} />I have reviewed these permissions.</label>
+            {!installed && <p className="field-hint">{msg("settings.botauthorizedialog.the.bot.also.inherits.this.server.s.everyone.role")}</p>}
+            <label className="check-row"><input type="checkbox" checked={confirmed === signature} disabled={busy} onChange={(event) => setConfirmed(event.target.checked ? signature : null)} />{msg("settings.botauthorizedialog.i.have.reviewed.these.permissions")}</label>
           </section>}
         </>}
       </>}
-      {error && <p role="alert" className="field-error">Could not authorize. {error}</p>}
-      <div className="row-end"><Button variant="ghost" disabled={busy} onClick={close}>Cancel</Button><Button variant="primary" loading={busy} disabled={!guild?.installation_revision || confirmed !== signature || query.isError} onClick={() => void submit()}>{installed ? 'Record consent' : 'Authorize'}</Button></div>
+      {error && <p role="alert" className="field-error">{msg("settings.botauthorizedialog.could.not.authorize")} {error}</p>}
+      <div className="row-end"><Button variant="ghost" disabled={busy} onClick={close}>{msg("common.cancel")}</Button><Button variant="primary" loading={busy} disabled={!guild?.installation_revision || confirmed !== signature || query.isError} onClick={() => void submit()}>{installed ? msg("settings.botauthorizedialog.record.consent") : msg("settings.botauthorizedialog.authorize")}</Button></div>
     </div>
   </Modal>;
 }
 
 export function PermissionChecklist({ permissions }: { permissions: string }) {
-  const entries = permissionChecklist(permissions);
-  return entries.length === 0 ? <p className="field-hint">No additional permissions requested.</p> : <ul className="integration-permissions" aria-label="Permissions">{entries.map((entry) => <li key={entry.id}><Check size={16} aria-hidden="true" />{entry.label}</li>)}</ul>;
+  const { t: msg, locale } = useI18n();
+  const entries = permissionChecklist(permissions, locale);
+  return entries.length === 0 ? <p className="field-hint">{msg("settings.botauthorizedialog.no.additional.permissions.requested")}</p> : <ul className="integration-permissions" aria-label={msg("server.rolePermissions")}>{entries.map((entry) => <li key={entry.id}><Check size={16} aria-hidden="true" />{entry.label}</li>)}</ul>;
 }

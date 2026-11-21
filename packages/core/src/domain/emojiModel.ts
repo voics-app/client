@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 import type { Emoji } from '../contracts/rest';
 
 export interface EmojiCategory {
@@ -58,11 +59,12 @@ export function usableEmojiGroups(guilds: GuildLike[], currentGuildId: string | 
 }
 
 /** Tooltip text of a reaction chip: names, then "and N others" once the list is longer than the shown names. */
-export function reactionSummary(names: string[], count: number, emojiLabel: string): string {
-  if (names.length === 0) return `Reacted with ${emojiLabel}`;
+export function reactionSummary(names: string[], count: number, emojiLabel: string, locale?: string): string {
+  const intl = createI18n(locale);
+  if (names.length === 0) return intl.t("reactions.withEmoji", { emoji: emojiLabel });
   const rest = Math.max(0, count - names.length);
   const shown = names.slice(0, 3);
   const extra = rest + names.length - shown.length;
-  const who = extra > 0 ? `${shown.join(', ')} and ${extra} other${extra === 1 ? '' : 's'}` : shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}` : shown[0]!;
-  return `${who} reacted with ${emojiLabel}`;
+  const who = extra > 0 ? intl.t("reactions.morePeople", { names: shown.join(", "), count: extra }) : intl.list(shown);
+  return intl.t("reactions.peopleWithEmoji", { names: who, emoji: emojiLabel, count });
 }

@@ -1,3 +1,5 @@
+import { getI18n, useI18n } from '../../shared/i18n';
+import type { I18n } from '@discordy/core/domain/i18n';
 import { CaretUp, Waveform } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
@@ -44,22 +46,22 @@ export interface DeviceMenuSpec {
 }
 
 /** Menu entries of a device quick menu: devices (checked = active), optional volume slider, and a link to the full settings. */
-export function deviceMenuEntries(spec: DeviceMenuSpec): MenuEntry[] {
+export function deviceMenuEntries(spec: DeviceMenuSpec, intl: I18n = getI18n()): MenuEntry[] {
   const info = KIND[spec.kind];
   const active = activeChoiceId(spec.choices, spec.selected);
   const entries: MenuEntry[] = [
-    { kind: 'label', label: info.heading },
+    { kind: 'label', label: intl.catalogText(info.heading) },
     ...spec.choices.map<MenuEntry>((c) => ({ kind: 'item', label: c.label, checked: c.id === active, onSelect: () => spec.onSelect(c.id || null) })),
   ];
   if (spec.volume) {
     const { value, onChange } = spec.volume;
     entries.push(
       { kind: 'separator' },
-      { kind: 'label', label: spec.kind === 'input' ? 'Input volume' : 'Output volume' },
-      { kind: 'content', node: <Slider label={spec.kind === 'input' ? 'Input volume' : 'Output volume'} value={value} min={0} max={2} step={0.05} onChange={onChange} format={percent} /> },
+      { kind: 'label', label: intl.catalogText(spec.kind === 'input' ? 'Input volume' : 'Output volume') },
+      { kind: 'content', node: <Slider label={intl.catalogText(spec.kind === 'input' ? 'Input volume' : 'Output volume')} value={value} min={0} max={2} step={0.05} onChange={onChange} format={(v) => percent(v, intl.locale)} /> },
     );
   }
-  entries.push({ kind: 'separator' }, { kind: 'item', label: spec.kind === 'camera' ? 'Test camera' : 'Voice settings', onSelect: spec.onOpenVoiceSettings });
+  entries.push({ kind: 'separator' }, { kind: 'item', label: intl.catalogText(spec.kind === 'camera' ? 'Test camera' : 'Voice settings'), onSelect: spec.onOpenVoiceSettings });
   return entries;
 }
 
@@ -67,12 +69,13 @@ const MENU_WIDTH = 248;
 
 /** Small caret next to a mute, deafen or camera button; opens the device and volume quick menu above it. */
 export function DeviceArrow({ kind, size = 'sm' }: { kind: DeviceKind; size?: 'sm' | 'md' }) {
+  const intl = useI18n();
   const devices = useMediaDevices();
   const prefs = usePrefsStore();
   const openSettings = useUiStore((s) => s.openSettings);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const info = KIND[kind];
-  const choices = deviceChoices(devices, info.media, info.noun);
+  const choices = deviceChoices(devices, info.media, info.noun, intl.locale);
   const selected = kind === 'input' ? prefs.inputDeviceId : kind === 'output' ? prefs.outputDeviceId : prefs.cameraDeviceId;
   const key = kind === 'input' ? 'inputDeviceId' : kind === 'output' ? 'outputDeviceId' : 'cameraDeviceId';
   const entries = deviceMenuEntries({
@@ -82,11 +85,11 @@ export function DeviceArrow({ kind, size = 'sm' }: { kind: DeviceKind; size?: 's
     onSelect: (id) => prefs.set(key, id),
     volume: kind === 'camera' ? undefined : { value: kind === 'input' ? prefs.inputVolume : prefs.outputVolume, onChange: (v) => prefs.set(kind === 'input' ? 'inputVolume' : 'outputVolume', v) },
     onOpenVoiceSettings: () => openSettings({ kind: 'user', tab: 'voice' }),
-  });
+  }, intl);
   return (
     <>
       <IconButton
-        label={`${info.heading} and options`}
+        label={intl.t('voice.options', { device: intl.catalogText(info.heading) })}
         size={size}
         className="device-arrow"
         aria-haspopup="menu"
@@ -105,10 +108,11 @@ export function DeviceArrow({ kind, size = 'sm' }: { kind: DeviceKind; size?: 's
 
 /** Quick toggle for the RNNoise noise suppression setting. */
 export function NoiseSuppressionButton({ size = 'md', iconSize = 20 }: { size?: 'md' | 'lg'; iconSize?: number }) {
+  const { t: msg } = useI18n();
   const on = usePrefsStore((s) => s.noiseSuppression);
   const set = usePrefsStore((s) => s.set);
   return (
-    <IconButton label={`Noise suppression: ${on ? 'on' : 'off'}`} size={size} active={on} tone={on ? 'accent' : 'default'} onClick={() => set('noiseSuppression', !on)}>
+    <IconButton label={msg('voice.suppression', { state: on ? 'on' : 'off' })} size={size} active={on} tone={on ? 'accent' : 'default'} onClick={() => set('noiseSuppression', !on)}>
       <Waveform size={iconSize} weight={on ? 'fill' : 'regular'} />
     </IconButton>
   );

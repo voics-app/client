@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** `reset-password` and `verify-email` deep links from account emails. */
 import { useAuthLinkStore } from '@discordy/core/application/stores/authLinkStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -10,11 +11,11 @@ import { getRuntime } from './runtime';
 async function applySignedIn(link: AuthLink): Promise<void> {
   const ui = useUiStore.getState();
   if (link.kind === 'reset-password') {
-    ui.toast({ tone: 'info', title: 'Sign out to choose a new password with this link' });
+    ui.toast({ tone: 'info', title: getI18n().catalogText("Sign out to choose a new password with this link") });
     return;
   }
-  const done = await attempt(() => getRuntime().api.verifyEmail(link.token).then(() => true), 'Could not verify your email');
-  if (done) ui.toast({ tone: 'success', title: 'Email verified' });
+  const done = await attempt(() => getRuntime().api.verifyEmail(link.token).then(() => true), getI18n().catalogText("Could not verify your email"));
+  if (done) ui.toast({ tone: 'success', title: getI18n().catalogText("Email verified") });
 }
 
 /**

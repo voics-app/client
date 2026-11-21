@@ -1,6 +1,7 @@
 import { Tray, MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useI18n } from '../../shared/i18n';
 import { BRAND } from '@shared/brand';
 import { useStreamerActive } from '../../app/streamer';
 
@@ -8,6 +9,7 @@ const isMac = navigator.userAgent.includes('Mac');
 
 /** Draggable title bar with the palette trigger centred as a glass pill. */
 export function Titlebar() {
+  const { t } = useI18n();
   const gateway = useSessionStore((s) => s.gateway);
   const streamer = useStreamerActive();
   const open = useUiStore((s) => s.openPalette);
@@ -19,19 +21,19 @@ export function Titlebar() {
         <span className="brand-mark" aria-hidden="true" />
         <span>{BRAND.displayName}</span>
       </div>
-      <button type="button" className="palette-pill" onClick={() => open(true)} aria-label="Open command palette">
+      <button type="button" className="palette-pill" onClick={() => open(true)} aria-label={t('shell.palette')}>
         <MagnifyingGlass size={14} />
-        <span>Search or jump to</span>
+        <span>{t('shell.search')}</span>
         <kbd className="kbd">Ctrl K</kbd>
       </button>
       <div className="titlebar-end">
         {streamer && <span className="net-pill" role="status">Streamer mode</span>}
-        <button type="button" className="titlebar-icon" aria-label="Mentions inbox (Ctrl+I)" title="Mentions (Ctrl+I)" onClick={() => openDialog({ kind: 'inbox' })}>
+        <button type="button" className="titlebar-icon" aria-label={t('shell.inbox')} title={t('shell.inboxTitle')} onClick={() => openDialog({ kind: 'inbox' })}>
           <Tray size={16} />
         </button>
         {offline && (
           <span className="net-pill" role="status">
-            <WifiSlash size={14} /> {gateway === 'closed' ? 'Disconnected' : 'Reconnecting'}
+            <WifiSlash size={14} /> {t(gateway === 'closed' ? 'shell.disconnected' : 'shell.reconnecting')}
           </span>
         )}
       </div>

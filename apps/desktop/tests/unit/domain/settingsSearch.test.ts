@@ -23,6 +23,11 @@ describe('settings search', () => {
     expect(hit).toMatchObject({ tab: 'chat', label: 'Send with Ctrl+Enter', rowId: 'send-with-ctrl-enter' });
   });
 
+  it('finds Dutch row labels and English aliases while retaining the same navigation target', () => {
+    expect(searchSettings('Beweging verminderen', undefined, 12, 'nl')[0]).toMatchObject({ tab: 'accessibility', label: 'Beweging verminderen', rowId: 'reduce-motion' });
+    expect(searchSettings('reduce motion', undefined, 12, 'nl').some((hit) => hit.label === 'Beweging verminderen' && hit.rowId === 'reduce-motion')).toBe(true);
+  });
+
   it('matches by keyword, not only by title', () => {
     expect(searchSettings('logout')[0]).toMatchObject({ tab: 'account', label: 'Log out' });
     expect(searchSettings('copy id').some((h) => h.tab === 'advanced' && h.rowId === 'developer-mode')).toBe(true);
@@ -63,6 +68,6 @@ describe('settings index matches the tabs', () => {
   const source = readdirSync(dir).filter((f) => f.endsWith('.tsx')).map((f) => readFileSync(join(dir, f), 'utf8')).join(String.fromCharCode(10));
 
   it('every indexed row is a SettingRow with that title', () => {
-    for (const e of USER_SETTINGS_INDEX) expect(source, `${e.tab}: ${e.label}`).toContain(`title="${e.label}"`);
+    for (const e of USER_SETTINGS_INDEX) expect(source.includes(`title="${e.label}"`) || source.includes(`searchKey="${e.label}"`), `${e.tab}: ${e.label}`).toBe(true);
   });
 });

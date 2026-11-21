@@ -23,6 +23,7 @@ export interface AttachmentDeps {
   api: Pick<ApiPort, 'createAttachmentSlots' | 'refreshAttachmentUrls' | 'upload'>;
   fetchBytes: (url: string) => Promise<Uint8Array>;
   createObjectUrl?: (blob: Blob) => string;
+  locale?: () => string;
 }
 
 export interface OutgoingP2PFile {
@@ -159,7 +160,7 @@ export class AttachmentService {
   }
 
   private requireAcceptable(files: File[], mode: PrivateMode): void {
-    const problem = checkOutgoingFiles(files, mode);
+    const problem = checkOutgoingFiles(files, mode, this.deps.locale?.());
     if (!problem) return;
     const reason: AttachmentFailure = files.length > 10 ? 'too_many' : files.some((f) => f.size === 0) ? 'empty' : 'too_large';
     throw new AttachmentError(reason, problem);

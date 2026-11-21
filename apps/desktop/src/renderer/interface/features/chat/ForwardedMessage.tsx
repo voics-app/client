@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowBendUpRight } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -11,6 +12,7 @@ import { MarkdownView } from './MarkdownView';
 
 /** The frozen copy of a forwarded message, with a "Forwarded" header and a jump link when the viewer can see the source channel. */
 export function ForwardedMessage({ message, guildId }: { message: ChatMessage; guildId: string | null | undefined }) {
+  const { t, date } = useI18n();
   const snapshot = forwardSnapshot(message);
   const reference = message.message_reference;
   const sourceKnown = useGuildStore((s) => Boolean(reference?.channel_id && s.channels[reference.channel_id]));
@@ -21,11 +23,11 @@ export function ForwardedMessage({ message, guildId }: { message: ChatMessage; g
     <div className="forwarded">
       <div className="forwarded-head">
         <ArrowBendUpRight size={14} aria-hidden="true" />
-        <span>Forwarded</span>
-        <time dateTime={snapshot.timestamp}>{new Date(snapshot.timestamp).toLocaleDateString([], { dateStyle: 'medium' })}</time>
+        <span>{t('chat.forwarded')}</span>
+        <time dateTime={snapshot.timestamp}>{date(new Date(snapshot.timestamp))}</time>
         {canJump && (
           <button type="button" className="forwarded-jump" onClick={() => jumpToMessage(reference!.channel_id!, reference!.message_id!)}>
-            Jump to original
+            {t('chat.jumpOriginal')}
           </button>
         )}
       </div>

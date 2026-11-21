@@ -13,6 +13,7 @@ import { AuthorizedApps } from '@renderer/interface/features/integrations/Author
 import { WebhookEditor } from '@renderer/interface/features/integrations/WebhookEditor';
 import { ServerIntegrations } from '@renderer/interface/features/integrations/ServerIntegrations';
 import { useConnectionStore } from '@renderer/interface/app/connectionStore';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
 
 const fixture = vi.hoisted(() => ({ permissions: 0n, api: {
   botAuthorizationInfo: vi.fn(), authorizeBot: vi.fn(), applicationAuthorizations: vi.fn(), revokeApplicationAuthorization: vi.fn(), applications: vi.fn(),
@@ -39,7 +40,7 @@ function mount(element: React.ReactNode) {
 beforeEach(() => {
   vi.resetAllMocks(); fixture.permissions = 0n;
   useGuildStore.getState().reset();
-  useSessionStore.setState({ user: { id: '7', username: 'Sam' } as User });
+  useSessionStore.setState({ user: { id: '7', username: 'Sam' } as User, settings: { default_delivery_mode: 'standard' } });
   useUiStore.setState({ dialog: null, settings: null });
   useConnectionStore.setState({ cdnUrl: 'https://cdn.example.invalid' });
   fixture.api.botAuthorizationInfo.mockResolvedValue(info);
@@ -48,6 +49,38 @@ beforeEach(() => {
   fixture.api.guildIntegrations.mockResolvedValue([]); fixture.api.guildWebhooks.mockResolvedValue([]);
 });
 afterEach(cleanup);
+
+it('translates consent controls without changing reviewed permissions, revision or authored identity', async () => {
+  useSessionStore.setState({ settings: { default_delivery_mode: 'standard', locale: 'nl' } });
+  fixture.api.botAuthorizationInfo.mockResolvedValue({ ...info, application: { ...app, name: 'Study helper مرحبا', description: 'My authored description' } });
+  mount(<LocaleProvider><BotAuthorizeDialog request={invite} /></LocaleProvider>);
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'Ik heb deze machtigingen gecontroleerd.' }));
+  expect(screen.getByText('My authored description')).toBeTruthy();
+  expect(screen.getByText('Study helper مرحبا')).toBeTruthy();
+  expect((screen.getByRole('button', { name: 'Autoriseren' }) as HTMLButtonElement).disabled).toBe(false);
+  act(() => useSessionStore.setState({ settings: { default_delivery_mode: 'standard', locale: 'en-US' } }));
+  expect((screen.getByRole('checkbox', { name: 'I have reviewed these permissions.' }) as HTMLInputElement).checked).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Authorize' }));
+  await waitFor(() => expect(fixture.api.authorizeBot).toHaveBeenCalledWith({ ...invite, installation_revision: 'absent:0' }));
+});
+
+it('retains a Unicode webhook draft through Dutch validation, failed save, language switch and retry', async () => {
+  useSessionStore.setState({ settings: { default_delivery_mode: 'standard', locale: 'nl' } });
+  fixture.api.updateWebhook.mockRejectedValueOnce(new Error('Temporary failure')).mockResolvedValue({ ...hook, name: 'Nieuws مرحبا' });
+  mount(<LocaleProvider><WebhookEditor guildId="1" initial={hook} channels={channels} canAudit onClose={vi.fn()} onSaved={vi.fn()} /></LocaleProvider>);
+  fireEvent.change(screen.getByLabelText('Webhooknaam'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Webhook opslaan' }));
+  expect(screen.getByText('Gebruik een naam van 1 tot 80 tekens.')).toBeTruthy();
+  expect(fixture.api.updateWebhook).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Webhooknaam'), { target: { value: 'Nieuws مرحبا' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Webhook opslaan' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Webhook opslaan mislukt.');
+  act(() => useSessionStore.setState({ settings: { default_delivery_mode: 'standard', locale: 'en-US' } }));
+  expect((screen.getByLabelText('Webhook name') as HTMLInputElement).value).toBe('Nieuws مرحبا');
+  fireEvent.click(screen.getByRole('button', { name: 'Save webhook' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(fixture.api.updateWebhook).toHaveBeenLastCalledWith('21', { name: 'Nieuws مرحبا' });
+});
 
 it.each(['consent', 'installed', 'authorized'] as const)('loads the application icon from its own namespace in %s applications', async (surface) => {
   const application = { ...app, icon: 'app-icon-hash' };

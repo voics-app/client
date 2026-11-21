@@ -23,7 +23,7 @@ export function MemberRowView({ member, guild, onPress }: { member: GuildMember;
       onPress={onPress}
       style={({ pressed }) => [styles.row, status === 'offline' && styles.offline, pressed && styles.pressed]}
     >
-      <StatusAvatar user={member.user} status={status} size={36} />
+      <StatusAvatar user={member.user} status={status} size={36} guildId={guild.id} member={member} />
       <View style={styles.copy}>
         <View style={styles.line}>
           <Text numberOfLines={1} style={[styles.name, { color: roleColor(guild.roles, member) ?? theme.text }]}>

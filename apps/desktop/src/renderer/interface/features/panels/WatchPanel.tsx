@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { FilmSlate, Pause, Play, ShieldWarning } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import { ElementPlayer } from '@renderer/application/watch/elementPlayer';
@@ -9,6 +10,7 @@ import { getEngines } from '../../app/engines';
 
 /** Watch Together: everyone plays their own copy of the source, synced on the server clock. The DRM-safe alternative to sharing a streaming tab. */
 export function WatchPanel({ channelId }: { channelId: string }) {
+  const { t: msg, catalogText } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState('');
@@ -34,7 +36,7 @@ export function WatchPanel({ channelId }: { channelId: string }) {
   }, [watch, channelId]);
 
   if (!watch) {
-    return <p className="panel-note">Watch Together needs the desktop app.</p>;
+    return <p className="panel-note">{msg("settings.watchpanel.watch.together.needs.the.desktop.app")}</p>;
   }
 
   const awaiting = status.state === 'awaiting_local_file' ? status : null;
@@ -42,13 +44,13 @@ export function WatchPanel({ channelId }: { channelId: string }) {
     <div className="watch-panel">
       <video ref={videoRef} playsInline controls={false} />
       <div className="watch-controls">
-        <IconButton label={playing ? 'Pause for everyone' : 'Play for everyone'} tone="accent" active={playing} disabled={status.state !== 'ready'} onClick={() => (playing ? watch.pause() : watch.play())}>
+        <IconButton label={playing ? msg("settings.watchpanel.pause.for.everyone") : msg("settings.watchpanel.play.for.everyone")} tone="accent" active={playing} disabled={status.state !== 'ready'} onClick={() => (playing ? watch.pause() : watch.play())}>
           {playing ? <Pause size={20} weight="fill" /> : <Play size={20} weight="fill" />}
         </IconButton>
         <input
           type="range"
           className="slider"
-          aria-label="Seek"
+          aria-label={msg("settings.mediaplayer.seek")}
           min={0}
           max={1000}
           defaultValue={0}
@@ -66,10 +68,10 @@ export function WatchPanel({ channelId }: { channelId: string }) {
           void watch.load(url);
         }}
       >
-        <Input aria-label="Media link" placeholder="https://example.com/video.mp4" value={url} onChange={(e) => setUrl(e.target.value)} leading={<FilmSlate size={16} />} />
+        <Input aria-label={msg("settings.watchpanel.media.link")} placeholder="https://example.com/video.mp4" value={url} onChange={(e) => setUrl(e.target.value)} leading={<FilmSlate size={16} />} />
         <div className="row-start">
-          <Button type="submit" variant="primary" disabled={!url.trim()}>Share link</Button>
-          <Button onClick={() => fileRef.current?.click()}>Pick a local file</Button>
+          <Button type="submit" variant="primary" disabled={!url.trim()}>{msg("settings.watchpanel.share.link")}</Button>
+          <Button onClick={() => fileRef.current?.click()}>{msg("settings.watchpanel.pick.a.local.file")}</Button>
         </div>
       </form>
       <input
@@ -86,10 +88,10 @@ export function WatchPanel({ channelId }: { channelId: string }) {
           else void watch.load(`local:${file.name}`, blob);
         }}
       />
-      {awaiting && <p className="watch-note" role="status">A friend started <strong>{awaiting.name}</strong>. Pick your own copy of that file to join in sync.</p>}
-      {status.state === 'error' && <p className="field-error" role="alert"><ShieldWarning size={14} /> {status.message}</p>}
-      {status.state === 'loading' && <p className="watch-note">Loading</p>}
-      <p className="watch-note">Links must be direct https media files. DRM-protected services cannot be played here; everyone watches from their own copy, and only play, pause and seek positions are exchanged.</p>
+      {awaiting && <p className="watch-note" role="status">{msg('watch.awaiting', { name: awaiting.name })}</p>}
+      {status.state === 'error' && <p className="field-error" role="alert"><ShieldWarning size={14} /> {catalogText(status.message)}</p>}
+      {status.state === 'loading' && <p className="watch-note">{msg("settings.attachmentview.loading")}</p>}
+      <p className="watch-note">{msg("settings.watchpanel.links.must.be.direct.https.media.files.drm.protected")}</p>
     </div>
   );
 }

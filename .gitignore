@@ -11,6 +11,7 @@ target/
 test-results/
 playwright-report/
 .playwright-cli/
+apps/desktop/output/playwright/
 .impeccable/review/
 .vite/
 *.log

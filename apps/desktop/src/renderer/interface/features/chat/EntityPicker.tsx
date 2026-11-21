@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useI18n } from '../../shared/i18n';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { entityChoices } from '@discordy/core/domain/entityChoices';
 import { CommandOptionType as OptionType, type ApplicationCommandOption, type Channel } from '@discordy/core/contracts/rest';
@@ -13,6 +14,7 @@ export interface EntityPickerProps {
 }
 
 export function EntityPicker({ option, value, channel, onChange }: EntityPickerProps) {
+  const { t: msg } = useI18n();
   const guildId = channel.guild_id;
   const members = useGuildStore((s) => (guildId ? s.members[guildId] : undefined));
   const channels = useGuildStore((s) => s.channels);
@@ -28,11 +30,11 @@ export function EntityPicker({ option, value, channel, onChange }: EntityPickerP
 
   return (
     <Select value={value} aria-label={option.name} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{option.required ? 'Choose…' : 'None'}</option>
+      <option value="">{option.required ? msg("settings.slashcommandpanel.choose") : msg("settings.slashcommandpanel.none")}</option>
       {option.type === OptionType.MENTIONABLE ? (
         <>
-          <optgroup label="Members">{memberChoices.map(optionOf)}</optgroup>
-          {roleChoices.length > 0 && <optgroup label="Roles">{roleChoices.map(optionOf)}</optgroup>}
+          <optgroup label={msg("settings.servertabs.members")}>{memberChoices.map(optionOf)}</optgroup>
+          {roleChoices.length > 0 && <optgroup label={msg("settings.profiledialog.roles")}>{roleChoices.map(optionOf)}</optgroup>}
         </>
       ) : (
         choices.map(optionOf)

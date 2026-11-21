@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Wires message search to the runtime: builds the search target from the open chat and runs it. */
 import { SearchService, type SearchTarget } from '@discordy/core/application/searchService';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -39,7 +40,7 @@ export function searchTarget(channelId: string): SearchTarget | null {
     channel,
     guildName: channel.guild_id ? (guilds.guilds[channel.guild_id]?.name ?? null) : null,
     mode: getRuntime().privacy.sender.resolveMode(channel),
-    candidates,
+    candidates: { ...candidates, locale: getI18n().locale },
   };
 }
 

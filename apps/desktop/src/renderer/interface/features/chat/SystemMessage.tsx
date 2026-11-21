@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ChatTeardropText, DotsThree, EnvelopeSimple, HandWaving, Hash, Image as ImageIcon, PencilSimple, Phone, PhoneX, PushPin, SignIn, SignOut, Smiley, Trash, Warning } from '@phosphor-icons/react';
 import { threadIdOf } from '@discordy/core/domain/threads';
 import { useState, type FocusEvent, type ReactNode } from 'react';
@@ -44,6 +45,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
 
 /** One system row: coloured icon, text with links, optional Join call / Wave button, hover toolbar and context menu. */
 export function SystemMessage({ message, name, reactions }: { message: ChatMessage; name: string; reactions?: ReactNode }) {
+  const { t: msg, locale, catalogText } = useI18n();
   const perms = useChannelPermissions(message.channel_id);
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
   const recent = usePrefsStore((s) => s.recentReactions);
@@ -71,7 +73,7 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
     call: message.call,
     threadName: message.thread?.name ?? null,
     hasReference: Boolean(message.message_reference?.message_id),
-  });
+  }, locale);
 
   const follow = (action: SystemLinkAction) => {
     if (action === 'pins') return setSidePanel({ kind: 'pins' });
@@ -83,7 +85,7 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
   const wave = () => {
     if (!channel || waved) return;
     setWaved(true);
-    void attempt(() => getRuntime().privacy.sender.send(channel, { content: '\u{1F44B}', replyTo: message.id }), 'Could not send wave').then((ok) => {
+    void attempt(() => getRuntime().privacy.sender.send(channel, { content: '\u{1F44B}', replyTo: message.id }), msg("settings.systemmessage.could.not.send.wave")).then((ok) => {
       if (ok === undefined) setWaved(false);
     });
   };
@@ -91,12 +93,12 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
   const confirmRemove = () =>
     openDialog({
       kind: 'confirm',
-      title: 'Delete message',
-      body: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: msg("settings.usemessageinteractions.delete.message"),
+      body: msg("settings.usemessageinteractions.this.cannot.be.undone"),
+      confirmLabel: msg("settings.accountsecurity.delete"),
       danger: true,
       onConfirm: async () => {
-        if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), 'Could not delete message');
+        if (channel) await attempt(() => getRuntime().privacy.sender.remove(channel, message.id), msg("settings.usemessageinteractions.could.not.delete.message"));
       },
     });
 
@@ -111,7 +113,7 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
     switch (it.id) {
       case 'markUnread': return markMessageUnread(message.channel_id, message.id);
       case 'delete': return confirmRemove();
-      case 'copyId': return void copyText(message.id, 'Message ID copied');
+      case 'copyId': return void copyText(message.id, msg("settings.usemessageinteractions.message.id.copied"));
     }
   };
   const entries = toMenuEntries(buildSystemMenu({ canManageMessages: canManage, developerMode }), run, MENU_ICONS);
@@ -139,27 +141,27 @@ export function SystemMessage({ message, name, reactions }: { message: ChatMessa
       <span className="system-icon" aria-hidden="true">{ICONS[spec.icon]}</span>
       <div className="system-body">
         <span className="system-text">{spec.parts.map(renderPart)}</span>
-        <Tooltip label={fullMessageTime(message.timestamp)}>
-          <time className="message-time-inline" dateTime={message.timestamp} tabIndex={0}>{formatTime(message.timestamp)}</time>
+        <Tooltip label={fullMessageTime(message.timestamp, locale)}>
+          <time className="message-time-inline" dateTime={message.timestamp} tabIndex={0}>{formatTime(message.timestamp, locale)}</time>
         </Tooltip>
         {spec.joinCall && (
           <Button size="sm" variant="primary" icon={<Phone size={14} weight="fill" />} disabled={inCallHere || !channel} onClick={() => void joinVoiceChannel(null, message.channel_id)}>
-            {inCallHere ? 'In call' : 'Join call'}
+            {inCallHere ? msg("header.inCall") : msg("header.joinCall")}
           </Button>
         )}
         {spec.wave && (
           <Button size="sm" variant="secondary" icon={<HandWaving size={14} weight="fill" />} disabled={waved || !channel} onClick={wave}>
-            {waved ? 'Waved' : 'Wave to say hi'}
+            {waved ? msg("settings.systemmessage.waved") : msg("settings.systemmessage.wave.to.say.hi")}
           </Button>
         )}
         {reactions}
       </div>
       {visible && (
-        <div className="message-toolbar glass" role="toolbar" aria-label="Message actions">
+        <div className="message-toolbar glass" role="toolbar" aria-label={msg("settings.usemessageinteractions.message.actions")}>
           {toolbarActions.map((a) => {
-            if (a.id === 'react') return <IconButton key={a.id} label={a.label} size="sm" onClick={() => a.arg && react(a.arg)}><Smiley size={18} /></IconButton>;
-            if (a.id === 'delete') return <IconButton key={a.id} label={a.label} size="sm" onClick={confirmRemove}><Trash size={18} /></IconButton>;
-            return <IconButton key={a.id} label={a.label} size="sm" onClick={(e) => menu.openBelow(e)}><DotsThree size={18} weight="bold" /></IconButton>;
+            if (a.id === 'react') return <IconButton key={a.id} label={catalogText(a.label)} size="sm" onClick={() => a.arg && react(a.arg)}><Smiley size={18} /></IconButton>;
+            if (a.id === 'delete') return <IconButton key={a.id} label={catalogText(a.label)} size="sm" onClick={confirmRemove}><Trash size={18} /></IconButton>;
+            return <IconButton key={a.id} label={catalogText(a.label)} size="sm" onClick={(e) => menu.openBelow(e)}><DotsThree size={18} weight="bold" /></IconButton>;
           })}
         </div>
       )}

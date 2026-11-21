@@ -1,4 +1,6 @@
+import { createI18n } from './i18n';
 import { brand } from './brandConfig';
+import { landingOrigin } from './inviteLinks';
 import { ChannelType, type GuildTemplate } from '../contracts/rest';
 
 /** Server templates: link parsing and the preview a template link opens. */
@@ -11,18 +13,41 @@ export function isBuiltinTemplate(code: string): boolean {
   return code.startsWith(BUILTIN_PREFIX);
 }
 
+const BUILTIN_COPY = {
+  'builtin-gaming': ['template.builtinGaming', 'template.builtinGamingDescription'],
+  'builtin-friends': ['template.builtinFriends', 'template.builtinFriendsDescription'],
+  'builtin-study-group': ['template.builtinStudy', 'template.builtinStudyDescription'],
+  'builtin-community': ['template.builtinCommunity', 'template.builtinCommunityDescription'],
+  'builtin-creators': ['template.builtinCreators', 'template.builtinCreatorsDescription'],
+} as const;
+
+/** Only shipped template identities are product copy. Snapshot names must show exactly what will be created. */
+export function templateIdentity(template: Pick<GuildTemplate, 'code' | 'name' | 'description'>, locale?: string): { name: string; description: string | null } {
+  const keys = Object.hasOwn(BUILTIN_COPY, template.code) ? BUILTIN_COPY[template.code as keyof typeof BUILTIN_COPY] : null;
+  if (!keys) return { name: template.name, description: template.description };
+  const { t } = createI18n(locale);
+  return { name: t(keys[0]), description: t(keys[1]) };
+}
+
 /** Extracts the code from a bare code, a web `/template/<code>` link or a `<scheme>://template/<code>` link; `null` when it is none of them. */
 export function parseTemplateCode(input: string): string | null {
   const text = input.trim();
-  if (/\s/.test(text)) return null;
-  const m = /(?:template\/|\/)?([\w-]{2,64})\/?(?:[?#].*)?$/.exec(text);
-  const code = m?.[1] ?? text;
-  return CODE.test(code) ? code : null;
+  if (CODE.test(text)) return text;
+  try {
+    const url = new URL(text);
+    const web = url.protocol === 'http:' || url.protocol === 'https:';
+    const code = web
+      ? url.pathname === '/template.html' ? url.searchParams.get('code') : /^\/template\/([^/]+)\/?$/.exec(url.pathname)?.[1]
+      : url.hostname === 'template' ? /^\/([^/]+)\/?$/.exec(url.pathname)?.[1] : null;
+    return code && CODE.test(code) ? code : null;
+  } catch {
+    return null;
+  }
 }
 
-/** The link a manager shares; it opens the app on the template preview. */
-export function templateShareLink(code: string): string {
-  return `${brand().protocolScheme}://template/${encodeURIComponent(code)}`;
+/** Public preview for recipients who may not have the app installed yet. */
+export function templateShareLink(code: string, apiUrl = brand().apiUrl): string {
+  return `${landingOrigin(apiUrl)}/template.html?code=${encodeURIComponent(code)}`;
 }
 
 export interface PreviewChannel {
@@ -64,12 +89,11 @@ export function previewTemplate(template: GuildTemplate): TemplatePreview {
 }
 
 /** One-line summary such as "9 channels, 2 roles". */
-export function templateSummary(template: GuildTemplate): string {
+export function templateSummary(template: GuildTemplate, locale?: string): string {
   const { roles, channelCount } = previewTemplate(template);
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  return `${plural(channelCount, 'channel')}, ${plural(roles.length, 'role')}`;
+  return createI18n(locale).t("template.summary", { channels: channelCount, roles: roles.length });
 }
 
-export function usageLabel(count: number): string {
-  return count === 1 ? 'Used 1 time' : `Used ${count} times`;
+export function usageLabel(count: number, locale?: string): string {
+  return createI18n(locale).t("template.uses", { count });
 }

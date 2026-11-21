@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useMemo, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -20,6 +21,7 @@ export interface PickedEmoji {
 const TONE_LABEL = ['Default skin tone', 'Light skin tone', 'Medium-light skin tone', 'Medium skin tone', 'Medium-dark skin tone', 'Dark skin tone'];
 
 export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string | null; channelId?: string | null; onPick: (e: PickedEmoji) => void }) {
+  const { t: msg, catalogText } = useI18n();
   const [query, setQuery] = useState('');
   const [toneOpen, setToneOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -42,30 +44,30 @@ export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string |
   };
   const jump = (id: string) => scroller.current?.querySelector(`[data-section="${id}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   const tabs = [
-    ...(recents.length > 0 ? [{ id: 'recent', title: 'Frequently used', node: <span>🕘</span> }] : []),
+    ...(recents.length > 0 ? [{ id: 'recent', title: msg("settings.emojipicker.frequently.used"), node: <span>🕘</span> }] : []),
     ...groups.map((g) => ({ id: `guild-${g.guildId}`, title: g.guildName, node: <span className="emoji-tab-guild">{g.guildName.slice(0, 1).toUpperCase()}</span> })),
-    ...(q ? [] : EMOJI_CATEGORIES.map((c) => ({ id: c.id, title: c.label, node: <span>{c.icon}</span> }))),
+    ...(q ? [] : EMOJI_CATEGORIES.map((c) => ({ id: c.id, title: catalogText(c.label), node: <span>{c.icon}</span> }))),
   ];
 
   return (
-    <div className="emoji-picker glass" role="dialog" aria-label="Emoji picker">
+    <div className="emoji-picker glass" role="dialog" aria-label={msg("settings.emojipicker.emoji.picker")}>
       <label className="emoji-search">
         <MagnifyingGlass size={14} />
-        <input data-autofocus placeholder="Search emoji" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button type="button" className="emoji-tone-btn" aria-label="Skin tone" title="Skin tone" aria-expanded={toneOpen} onClick={() => setToneOpen((v) => !v)}>
+        <input data-autofocus placeholder={msg("settings.emojipicker.search.emoji")} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button type="button" className="emoji-tone-btn" aria-label={msg("settings.emojipicker.skin.tone")} title={msg("settings.emojipicker.skin.tone")} aria-expanded={toneOpen} onClick={() => setToneOpen((v) => !v)}>
           {applySkinTone('👋', tone)}
         </button>
       </label>
       {toneOpen && (
-        <div className="emoji-tones" role="radiogroup" aria-label="Skin tone">
+        <div className="emoji-tones" role="radiogroup" aria-label={msg("settings.emojipicker.skin.tone")}>
           {SKIN_TONES.map((t, i) => (
-            <button key={i} type="button" role="radio" aria-checked={tone === t} aria-label={TONE_LABEL[i]} title={TONE_LABEL[i]} className={tone === t ? 'is-on' : undefined} onClick={() => { setPref('skinTone', t); setToneOpen(false); }}>
+            <button key={i} type="button" role="radio" aria-checked={tone === t} aria-label={catalogText(TONE_LABEL[i]!)} title={catalogText(TONE_LABEL[i]!)} className={tone === t ? 'is-on' : undefined} onClick={() => { setPref('skinTone', t); setToneOpen(false); }}>
               {applySkinTone('👋', t)}
             </button>
           ))}
         </div>
       )}
-      <nav className="emoji-tabs" aria-label="Emoji categories">
+      <nav className="emoji-tabs" aria-label={msg("settings.emojipicker.emoji.categories")}>
         {tabs.map((t) => (
           <button key={t.id} type="button" title={t.title} aria-label={t.title} onClick={() => jump(t.id)}>{t.node}</button>
         ))}
@@ -73,7 +75,7 @@ export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string |
       <div className="emoji-scroll" ref={scroller}>
         {recents.length > 0 && (
           <section data-section="recent">
-            <h4>Frequently used</h4>
+            <h4>{msg("settings.emojipicker.frequently.used")}</h4>
             <div className="emoji-grid">
               {recents.map((e) => (
                 <button
@@ -90,7 +92,7 @@ export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string |
         )}
         {groups.map((g) => (
           <section key={g.guildId} data-section={`guild-${g.guildId}`}>
-            <h4>{g.guildName}{g.guildId !== guildId ? ' (other server)' : ''}</h4>
+            <h4>{g.guildId !== guildId ? msg("emoji.otherServer", { name: g.guildName }) : g.guildName}</h4>
             <div className="emoji-grid">
               {g.emoji.map((e) => (
                 <button key={e.id} type="button" title={`:${e.name}:`} onClick={() => onPick({ api: `${e.name}:${e.id}`, text: `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>`, emoji: e })}>
@@ -103,7 +105,7 @@ export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string |
         {!q &&
           EMOJI_CATEGORIES.map((c) => (
             <section key={c.id} data-section={c.id}>
-              <h4>{c.label}</h4>
+              <h4>{catalogText(c.label)}</h4>
               <div className="emoji-grid">
                 {c.emoji.map((ch) => (
                   <button key={ch} type="button" onClick={() => pickUnicode(ch)}>
@@ -113,7 +115,7 @@ export function EmojiPicker({ guildId, channelId, onPick }: { guildId?: string |
               </div>
             </section>
           ))}
-        {q && groups.length === 0 && <p className="emoji-none">No emoji match “{query}”.</p>}
+        {q && groups.length === 0 && <p className="emoji-none">{msg("emoji.noMatch", { query })}</p>}
       </div>
     </div>
   );

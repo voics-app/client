@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { CaretDown, CaretRight, Crown, MagnifyingGlass, SpeakerHigh } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +17,7 @@ import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { useConnectionStore } from '../../app/connectionStore';
 import { StatusLine } from './StatusLine';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { AppTag } from '../../shared/ui/AppTag';
 import { AssetImage } from '../../shared/ui/AssetImage';
 import { RoleDot, useRoleColorDisplay } from '../../shared/ui/RoleDot';
@@ -45,10 +46,11 @@ function RoleIcon({ role }: { role: Role }) {
 }
 
 function VoiceIndicator({ guildId, userId }: { guildId: string; userId: string }) {
+  const { t: msg } = useI18n();
   const channelId = useVoiceStore((s) => voiceChannelOf(s.states[guildId], userId));
   const channelName = useGuildStore((s) => (channelId ? s.channels[channelId]?.name : undefined));
   if (!channelId) return null;
-  const label = channelName ? `In voice: ${channelName}` : 'In voice';
+  const label = channelName ? msg('members.voiceChannel', { name: channelName }) : msg("friends.inVoice");
   return (
     <span className='member-voice' title={label} role='img' aria-label={label}>
       <SpeakerHigh size={14} weight='fill' />
@@ -57,8 +59,9 @@ function VoiceIndicator({ guildId, userId }: { guildId: string; userId: string }
 }
 
 function OwnerCrown() {
+  const { t: msg } = useI18n();
   return (
-    <span className='member-crown' title='Server Owner' role='img' aria-label='Server owner'>
+    <span className='member-crown' title={msg("settings.memberlist.server.owner")} role='img' aria-label={msg("settings.memberlist.server.owner.a0af15c")}>
       <Crown size={14} weight='fill' />
     </span>
   );
@@ -73,7 +76,7 @@ function HoverCard({ guildId, member, anchor }: { guildId: string; member: Guild
   return createPortal(
     <div className='member-hover-card' role='tooltip' style={{ left: anchor.left - 8, top }}>
       <div className='member-hover-head'>
-        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={56} status={status} />
+        <UserAvatar id={member.user.id} name={name} avatar={member.user.avatar} guildId={guildId} member={member} size={56} status={status} />
         <div className='member-hover-names'>
           <strong style={{ color: roleColor(guild?.roles, member) }}>{name}</strong>
           <span className='member-hover-user'>
@@ -130,7 +133,7 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
         onFocus={(e) => show(e.currentTarget)}
         onBlur={hide}
       >
-        <Avatar id={member.user.id} name={name} avatar={member.avatar ?? member.user.avatar} size={32} status={status} />
+        <UserAvatar id={member.user.id} name={name} avatar={member.user.avatar} guildId={guildId} member={member} size={32} status={status} />
         <span className='member-copy'>
           <span className='member-name-line'>
             <span className='member-name' style={roleStyle.tint ? { color: roleStyle.tint } : undefined}>
@@ -152,12 +155,13 @@ function MemberRow({ guildId, member }: { guildId: string; member: GuildMember }
 }
 
 function GroupHeader({ row, onToggle }: { row: Extract<Row, { kind: 'header' }>; onToggle: (id: string) => void }) {
+  const { number, catalogText } = useI18n();
   return (
     <h3 className='members-heading'>
       <button type='button' className='members-heading-btn' aria-expanded={!row.collapsed} onClick={() => onToggle(row.id)}>
         {row.collapsed ? <CaretRight size={10} weight='bold' /> : <CaretDown size={10} weight='bold' />}
-        <span>{row.title}</span>
-        <span className='tnum'>{row.count}</span>
+        <span>{row.id === 'online' || row.id === 'offline' ? catalogText(row.title) : row.title}</span>
+        <span className='tnum'>{number(row.count)}</span>
       </button>
     </h3>
   );
@@ -168,6 +172,7 @@ function RowView({ row, guildId, onToggle }: { row: Row; guildId: string; onTogg
 }
 
 export function MemberList({ guildId }: { guildId: string }) {
+  const { t: msg } = useI18n();
   const members = useGuildStore((s) => s.members[guildId]);
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const presence = usePresenceStore((s) => s.byUser);
@@ -209,13 +214,13 @@ export function MemberList({ guildId }: { guildId: string }) {
     if (needle) {
       const found = searchMembers(all, needle, nameOf);
       return [
-        { kind: 'header', key: 'h:search', id: 'search', title: 'Search results', count: found.length, collapsed: false },
+        { kind: 'header', key: 'h:search', id: 'search', title: msg("settings.results"), count: found.length, collapsed: false },
         ...found.map<Row>((member) => ({ kind: 'member', key: `m:search:${member.user.id}`, member })),
       ];
     }
     const sections = buildMemberSections(all, guild.roles, guild.id, (userId) => (presence[userId]?.status ?? 'offline') !== 'offline', nameOf);
     return flattenSections(sections, collapsed);
-  }, [members, guild, presence, collapsed, needle]);
+  }, [members, guild, presence, collapsed, needle, msg]);
 
   const toggle = (id: string) => toggleGroup(guildId, id);
 
@@ -232,10 +237,10 @@ export function MemberList({ guildId }: { guildId: string }) {
   });
 
   return (
-    <aside ref={asideRef} className='members' aria-label='Members'>
+    <aside ref={asideRef} className='members' aria-label={msg("settings.servertabs.members")}>
       <label className='members-search'>
         <MagnifyingGlass size={14} aria-hidden />
-        <input type='search' value={query} placeholder='Search members' aria-label='Search members' onChange={(e) => setQuery(e.target.value)} />
+        <input type='search' value={query} placeholder={msg("settings.roleseditor.search.members")} aria-label={msg("settings.roleseditor.search.members")} onChange={(e) => setQuery(e.target.value)} />
       </label>
       <div ref={scrollRef} className='members-scroll'>
         {virtual ? (
@@ -253,7 +258,7 @@ export function MemberList({ guildId }: { guildId: string }) {
         ) : (
           rows.map((row) => <RowView key={row.key} row={row} guildId={guildId} onToggle={toggle} />)
         )}
-        {needle && rows.length === 1 && <p className='members-empty'>No members match.</p>}
+        {needle && rows.length === 1 && <p className='members-empty'>{msg("settings.memberlist.no.members.match")}</p>}
       </div>
     </aside>
   );

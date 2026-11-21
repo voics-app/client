@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { At, Gear, Hash, House, MagnifyingGlass, Microphone, Moon, Plus, SpeakerHigh, Sun, UsersThree } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -27,6 +28,7 @@ interface Item extends SwitcherItem {
  * an empty query lists recently visited channels first, then unread ones.
  */
 export function CommandPalette() {
+  const { t: msg, catalogText } = useI18n();
   const open = useUiStore((s) => s.paletteOpen);
   const setOpen = useUiStore((s) => s.openPalette);
   const [query, setQuery] = useState('');
@@ -50,19 +52,19 @@ export function CommandPalette() {
     if (!open) return [];
     const ui = useUiStore.getState();
     const base: Item[] = [
-      { id: 'home', kind: 'action', group: 'Go to', label: 'Friends', icon: <UsersThree size={18} />, run: () => ui.navigate({ kind: 'home', channelId: null }), keywords: 'home direct' },
-      { id: 'mute', kind: 'action', group: 'Voice', label: 'Toggle mute', icon: <Microphone size={18} />, run: () => void toggleMute(), hint: 'Ctrl+Shift+M' },
-      { id: 'deafen', kind: 'action', group: 'Voice', label: 'Toggle deafen', icon: <SpeakerHigh size={18} />, run: () => void toggleDeafen(), hint: 'Ctrl+Shift+D' },
-      { id: 'newguild', kind: 'action', group: 'Actions', label: 'Create a server', icon: <Plus size={18} />, run: () => ui.openDialog({ kind: 'createGuild' }) },
-      { id: 'joinguild', kind: 'action', group: 'Actions', label: 'Join a server', icon: <Plus size={18} />, run: () => ui.openDialog({ kind: 'joinGuild' }) },
-      { id: 'newdm', kind: 'action', group: 'Actions', label: 'New message', icon: <At size={18} />, run: () => ui.openDialog({ kind: 'newDm' }) },
-      { id: 'settings', kind: 'action', group: 'Settings', label: 'User settings', icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'account' }) },
-      { id: 'privacy', kind: 'action', group: 'Settings', label: 'Privacy and delivery modes', icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'privacy' }) },
-      { id: 'voice', kind: 'action', group: 'Settings', label: 'Voice and video settings', icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'voice' }) },
-      { id: 'theme', kind: 'action', group: 'Appearance', label: theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme', icon: theme === 'light' ? <Moon size={18} /> : <Sun size={18} />, run: () => usePrefsStore.getState().set('theme', theme === 'light' ? 'dark' : 'light') },
-      { id: 'oled', kind: 'action', group: 'Appearance', label: 'Switch to OLED theme', icon: <Moon size={18} />, run: () => usePrefsStore.getState().set('theme', 'oled') },
+      { id: 'home', kind: 'action', group: msg("settings.commandpalette.go.to"), label: msg("friends.title"), icon: <UsersThree size={18} />, run: () => ui.navigate({ kind: 'home', channelId: null }), keywords: 'home direct' },
+      { id: 'mute', kind: 'action', group: msg("keybind.label.voice"), label: msg("keybind.label.toggle.mute"), icon: <Microphone size={18} />, run: () => void toggleMute(), hint: 'Ctrl+Shift+M' },
+      { id: 'deafen', kind: 'action', group: msg("keybind.label.voice"), label: msg("keybind.label.toggle.deafen"), icon: <SpeakerHigh size={18} />, run: () => void toggleDeafen(), hint: 'Ctrl+Shift+D' },
+      { id: 'newguild', kind: 'action', group: msg("settings.commandpalette.actions"), label: msg("settings.serverrail.create.a.server"), icon: <Plus size={18} />, run: () => ui.openDialog({ kind: 'createGuild' }) },
+      { id: 'joinguild', kind: 'action', group: msg("settings.commandpalette.actions"), label: msg("settings.dialoghost.join.a.server"), icon: <Plus size={18} />, run: () => ui.openDialog({ kind: 'joinGuild' }) },
+      { id: 'newdm', kind: 'action', group: msg("settings.commandpalette.actions"), label: msg("home.newMessage"), icon: <At size={18} />, run: () => ui.openDialog({ kind: 'newDm' }) },
+      { id: 'settings', kind: 'action', group: msg("settings.commandpalette.settings"), label: msg("settings.user"), icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'account' }) },
+      { id: 'privacy', kind: 'action', group: msg("settings.commandpalette.settings"), label: msg("settings.commandpalette.privacy.and.delivery.modes"), icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'privacy' }) },
+      { id: 'voice', kind: 'action', group: msg("settings.commandpalette.settings"), label: msg("settings.commandpalette.voice.and.video.settings"), icon: <Gear size={18} />, run: () => ui.openSettings({ kind: 'user', tab: 'voice' }) },
+      { id: 'theme', kind: 'action', group: msg("settings.appearance"), label: theme === 'light' ? msg("settings.commandpalette.switch.to.dark.theme") : msg("settings.commandpalette.switch.to.light.theme"), icon: theme === 'light' ? <Moon size={18} /> : <Sun size={18} />, run: () => usePrefsStore.getState().set('theme', theme === 'light' ? 'dark' : 'light') },
+      { id: 'oled', kind: 'action', group: msg("settings.appearance"), label: msg("settings.commandpalette.switch.to.oled.theme"), icon: <Moon size={18} />, run: () => usePrefsStore.getState().set('theme', 'oled') },
     ];
-    const guildItems: Item[] = Object.values(guilds).map((g) => ({ id: `g-${g.id}`, kind: 'guild', group: 'Servers', label: g.name, icon: <House size={18} />, run: () => openGuild(g.id) }));
+    const guildItems: Item[] = Object.values(guilds).map((g) => ({ id: `g-${g.id}`, kind: 'guild', group: msg("settings.serverrail.servers"), label: g.name, icon: <House size={18} />, run: () => openGuild(g.id) }));
     const recents = recentChannelIds(history.entries);
     const channelItems: Item[] = Object.values(channels)
       .filter(isSwitchable)
@@ -79,13 +81,15 @@ export function CommandPalette() {
         });
         return {
           ...item,
-          group: dm ? 'Direct messages' : 'Channels',
+          group: dm ? msg("home.directMessages") : msg("settings.createguilddialog.channels"),
           icon: dm ? <At size={18} /> : voice ? <SpeakerHigh size={18} /> : <Hash size={18} />,
           run: () => (voice ? void openVoiceChannel(c.guild_id ?? null, c.id) : openChannel(c.id)),
         };
       });
-    return [...channelItems, ...guildItems, ...base];
-  }, [open, channels, guilds, theme, history, reads, notif]);
+    // English action words remain searchable after switching the UI language.
+    const aliases: Record<string, string> = { home: 'Friends home direct', mute: 'Toggle mute', deafen: 'Toggle deafen', newguild: 'Create a server', joinguild: 'Join a server', newdm: 'New message', settings: 'User settings', privacy: 'Privacy and delivery modes', voice: 'Voice and video settings', theme: 'Switch dark light theme', oled: 'Switch to OLED theme' };
+    return [...channelItems, ...guildItems, ...base.map((item) => ({ ...item, keywords: [item.keywords, aliases[item.id]].filter(Boolean).join(' ') }))];
+  }, [open, channels, guilds, theme, history, reads, notif, msg]);
 
   const ranked = useMemo(() => rankItems(items, query), [items, query]);
   const results = ranked.items;
@@ -104,15 +108,15 @@ export function CommandPalette() {
       {open && (
         <motion.div className="modal-layer palette-layer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
           <div className="modal-scrim" onMouseDown={() => setOpen(false)} />
-          <motion.div className="palette glass" role="dialog" aria-label="Command palette" initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={snappy}>
+          <motion.div className="palette glass" role="dialog" aria-label={msg("settings.commandpalette.command.palette")} initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={snappy}>
             <label className="palette-input">
               <MagnifyingGlass size={18} />
-              {ranked.mode !== 'all' && <span className="palette-mode" aria-label={`Searching ${MODE_LABELS[ranked.mode]}`}>{MODE_LABELS[ranked.mode]}</span>}
+              {ranked.mode !== 'all' && <span className="palette-mode" aria-label={msg('palette.searching', { mode: catalogText(MODE_LABELS[ranked.mode]) })}>{catalogText(MODE_LABELS[ranked.mode])}</span>}
               <input
                 autoFocus
                 value={query}
-                placeholder="Jump to a channel, person or action  (@ people  # text  ! voice  * servers)"
-                aria-label="Command palette search"
+                placeholder={msg("settings.commandpalette.jump.to.a.channel.person.or.action.people.text")}
+                aria-label={msg("settings.commandpalette.command.palette.search")}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setIndex((i) => Math.min(results.length - 1, i + 1)); }
@@ -133,7 +137,7 @@ export function CommandPalette() {
                   </button>
                 </li>
               ))}
-              {results.length === 0 && <li className="palette-none">Nothing matches “{query}”.</li>}
+              {results.length === 0 && <li className="palette-none">{msg('palette.noMatch', { query })}</li>}
             </ul>
           </motion.div>
         </motion.div>

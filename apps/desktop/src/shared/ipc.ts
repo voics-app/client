@@ -81,6 +81,8 @@ export interface DiscordyBridge {
     setConnection(profile: ConnectionProfile): Promise<AppInfo>;
     openExternal(url: string): Promise<void>;
     setActivity(counts: ActivityCounts): void;
+    /** Current account UI locale, also used by native menus and accessibility descriptions. */
+    setLocale(locale: string): void;
     notify(request: NotificationRequest): void;
     onNavigate(listener: (route: string) => void): () => void;
     /** Route of the deep link that launched the app, if it has not been delivered yet. */
@@ -146,6 +148,7 @@ export const IpcChannel = {
   appSetConnection: 'app:set-connection',
   appOpenExternal: 'app:open-external',
   appActivity: 'app:activity',
+  appLocale: 'app:locale',
   appNotify: 'app:notify',
   appNavigate: 'app:navigate',
   appTakePendingRoute: 'app:take-pending-route',

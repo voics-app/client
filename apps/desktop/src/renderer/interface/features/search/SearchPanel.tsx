@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { LockKey, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -20,8 +21,9 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
 }
 
 function SnippetLine({ message, terms }: { message: Message; terms: string[] }) {
+  const { t } = useI18n();
   const hit = message.hit === true;
-  const text = message.content || (message.attachments.length > 0 ? `${message.attachments.length} attachment(s)` : '');
+  const text = message.content || (message.attachments.length > 0 ? t('search.attachments', { count: message.attachments.length }) : '');
   return (
     <p className={`search-line${hit ? ' is-hit' : ''}`}>
       {!hit && <strong>{displayName(message.author)}: </strong>}
@@ -31,16 +33,17 @@ function SnippetLine({ message, terms }: { message: Message; terms: string[] }) 
 }
 
 function ResultCard({ group, terms, showChannel }: { group: Message[]; terms: string[]; showChannel: boolean }) {
+  const { t, date } = useI18n();
   const hit = group.find((m) => m.hit) ?? group[0]!;
   const channel = useGuildStore((s) => s.channels[hit.channel_id]);
   return (
     <li>
-      <button type="button" className="search-hit" onClick={() => jumpToMessage(hit.channel_id, hit.id)} aria-label={`Jump to message from ${displayName(hit.author)}`}>
+      <button type="button" className="search-hit" onClick={() => jumpToMessage(hit.channel_id, hit.id)} aria-label={t('search.jump', { name: displayName(hit.author) })}>
         <header>
           <Avatar id={hit.author.id} name={displayName(hit.author)} avatar={hit.author.avatar} size={22} />
           <strong>{displayName(hit.author)}</strong>
           {showChannel && channel?.name && <span className="search-hit-channel">#{channel.name}</span>}
-          <time dateTime={hit.timestamp}>{new Date(hit.timestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</time>
+          <time dateTime={hit.timestamp}>{date(new Date(hit.timestamp), { dateStyle: 'medium', timeStyle: 'short' })}</time>
         </header>
         {group.map((m) => (
           <SnippetLine key={m.id} message={m} terms={terms} />
@@ -53,6 +56,7 @@ function ResultCard({ group, terms, showChannel }: { group: Message[]; terms: st
 const SORTS = SEARCH_SORTS;
 
 export function SearchPanel({ channelId }: { channelId: string }) {
+  const { t } = useI18n();
   const state = useSearchStore();
   const list = useRef<HTMLUListElement>(null);
   const filters = useMemo(() => parseQuery(state.submitted).filters, [state.submitted]);
@@ -74,8 +78,8 @@ export function SearchPanel({ channelId }: { channelId: string }) {
       {state.status === 'idle' && (
         <EmptyState
           icon={<MagnifyingGlass size={32} weight="light" />}
-          title="Search messages"
-          body={`Type words to find, or narrow it down with ${FILTER_KEYS.map((k) => `${k}:`).join(' ')}`}
+          title={t('search.messages')}
+          body={t('search.help', { filters: FILTER_KEYS.map((k) => `${k}:`).join(' ') })}
         />
       )}
       {state.status !== 'idle' && (
@@ -83,13 +87,13 @@ export function SearchPanel({ channelId }: { channelId: string }) {
           <div className="search-summary" aria-live="polite">
             {state.status === 'ready' && (
               <span>
-                {state.total} {state.total === 1 ? 'result' : 'results'} in {state.scopeLabel}
+                {t('search.resultsIn', { count: state.total, scope: state.scopeLabel })}
               </span>
             )}
-            {state.status === 'loading' && <span>Searching {state.scopeLabel}</span>}
+            {state.status === 'loading' && <span>{t('search.searching', { scope: state.scopeLabel })}</span>}
             {!state.local && (
               <label className="search-sort">
-                <span className="sr-only">Sort results</span>
+                <span className="sr-only">{t('search.sort')}</span>
                 <select
                   value={state.sort}
                   onChange={(e) => {
@@ -99,7 +103,7 @@ export function SearchPanel({ channelId }: { channelId: string }) {
                 >
                   {SORTS.map((s) => (
                     <option key={s.value} value={s.value}>
-                      {s.label}
+                      {t(`search.${s.value}`)}
                     </option>
                   ))}
                 </select>
@@ -107,11 +111,11 @@ export function SearchPanel({ channelId }: { channelId: string }) {
             )}
           </div>
           {filters.length > 0 && (
-            <ul className="search-chips" aria-label="Active filters">
+            <ul className="search-chips" aria-label={t('search.activeFilters')}>
               {filters.map((f, i) => (
                 <li key={f.raw} className="search-chip">
                   <span>{f.key}:{f.value}</span>
-                  <button type="button" aria-label={`Remove filter ${f.key}:${f.value}`} onClick={() => removeFilter(i)}>
+                  <button type="button" aria-label={t('search.removeFilter', { filter: `${f.key}:${f.value}` })} onClick={() => removeFilter(i)}>
                     <X size={10} weight="bold" />
                   </button>
                 </li>
@@ -120,10 +124,10 @@ export function SearchPanel({ channelId }: { channelId: string }) {
           )}
           {state.local && (
             <p className="search-note">
-              <LockKey size={14} /> This chat is end-to-end encrypted, so only messages stored on this device are searched.
+              <LockKey size={14} /> {t('search.local')}
             </p>
           )}
-          {state.indexBuilding && !state.local && <p className="search-note" role="status">The search index is still being built, so older messages may be missing for now.</p>}
+          {state.indexBuilding && !state.local && <p className="search-note" role="status">{t('search.indexBuilding')}</p>}
         </>
       )}
       {state.status === 'loading' && (
@@ -139,28 +143,28 @@ export function SearchPanel({ channelId }: { channelId: string }) {
       {state.status === 'error' && (
         <EmptyState
           icon={<WarningCircle size={32} weight="light" />}
-          title="Search failed"
-          body={state.error ?? 'Something went wrong.'}
-          action={state.problems.length === 0 ? <Button variant="primary" onClick={() => void rerunSearch(channelId, state.offset)}>Try again</Button> : undefined}
+          title={t('search.failed')}
+          body={state.error ?? t('common.failed')}
+          action={state.problems.length === 0 ? <Button variant="primary" onClick={() => void rerunSearch(channelId, state.offset)}>{t('common.retry')}</Button> : undefined}
         />
       )}
       {state.status === 'ready' && state.groups.length === 0 && (
-        <EmptyState icon={<MagnifyingGlass size={32} weight="light" />} title="No results" body="Nothing matches. Try other words or remove a filter." />
+        <EmptyState icon={<MagnifyingGlass size={32} weight="light" />} title={t('search.empty')} body={t('search.emptyHelp')} />
       )}
       {state.status === 'ready' && state.groups.length > 0 && (
         <>
-          <ul ref={list} className="search-results" aria-label="Search results">
+          <ul ref={list} className="search-results" aria-label={t('search.results')}>
             {state.groups.map((group) => (
               <ResultCard key={(group.find((m) => m.hit) ?? group[0]!).id} group={group} terms={state.terms} showChannel={Boolean(channel?.guild_id)} />
             ))}
           </ul>
           {pages > 1 && (
-            <nav className="search-pager" aria-label="Result pages">
-              <Button variant="ghost" disabled={page <= 1} onClick={() => void rerunSearch(channelId, state.offset - SEARCH_PAGE_SIZE)}>Previous</Button>
+            <nav className="search-pager" aria-label={t('search.pages')}>
+              <Button variant="ghost" disabled={page <= 1} onClick={() => void rerunSearch(channelId, state.offset - SEARCH_PAGE_SIZE)}>{t('search.previous')}</Button>
               <span>
-                Page {page} of {pages}
+                {t('search.page', { page, pages })}
               </span>
-              <Button variant="ghost" disabled={page >= pages} onClick={() => void rerunSearch(channelId, state.offset + SEARCH_PAGE_SIZE)}>Next</Button>
+              <Button variant="ghost" disabled={page >= pages} onClick={() => void rerunSearch(channelId, state.offset + SEARCH_PAGE_SIZE)}>{t('search.next')}</Button>
             </nav>
           )}
         </>

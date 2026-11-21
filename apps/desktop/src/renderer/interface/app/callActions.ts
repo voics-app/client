@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Accept and decline for a DM call that is ringing for the user. */
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -32,7 +33,7 @@ export function ringIntoCall(channelId: string, userIds: readonly string[]): voi
 
 /** Opens (or creates) the DM with a user, joins its call and optionally turns the camera on. */
 export async function callUser(userId: string, video = false): Promise<void> {
-  const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), 'Could not open conversation');
+  const channel = await attempt(() => getRuntime().api.openPrivateChannel([userId]), getI18n().catalogText("Could not open conversation"));
   if (!channel) return;
   useGuildStore.getState().upsertChannel(channel);
   openChannel(channel.id);
@@ -62,7 +63,7 @@ export function declineRingingCall(): void {
 export async function startDmCall(channelId: string, video = false): Promise<void> {
   const channel = useGuildStore.getState().channels[channelId];
   if (channel && needsCallConfirmation(usePrefsStore.getState().confirmCalls, useCallStore.getState().calls[channelId])) {
-    useUiStore.getState().openDialog({ kind: 'confirm', ...callConfirmation(callTargetName(channel), video), onConfirm: () => beginDmCall(channelId, video) });
+    useUiStore.getState().openDialog({ kind: 'confirm', ...callConfirmation(callTargetName(channel, getI18n().locale), video, getI18n().locale), onConfirm: () => beginDmCall(channelId, video) });
     return;
   }
   await beginDmCall(channelId, video);
@@ -72,6 +73,6 @@ async function beginDmCall(channelId: string, video: boolean): Promise<void> {
   const joined = await attempt(async () => {
     await joinVoiceChannel(null, channelId);
     return true;
-  }, 'Could not start call');
-  if (joined && video && !useVoiceStore.getState().selfVideo) await attempt(() => toggleCamera(), 'Could not turn the camera on');
+  }, getI18n().catalogText("Could not start call"));
+  if (joined && video && !useVoiceStore.getState().selfVideo) await attempt(() => toggleCamera(), getI18n().catalogText("Could not turn the camera on"));
 }

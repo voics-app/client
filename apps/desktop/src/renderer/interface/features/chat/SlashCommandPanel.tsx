@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Command, X } from '@phosphor-icons/react';
 import { type KeyboardEvent } from 'react';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
@@ -9,10 +10,11 @@ import { IconButton } from '../../shared/ui/IconButton';
 import { EntityPicker, type EntityPickerProps } from './EntityPicker';
 
 function OptionControl({ option, value, channel, onChange }: EntityPickerProps & { option: ApplicationCommandOption }) {
+  const { t: msg } = useI18n();
   if (option.choices && option.choices.length > 0) {
     return (
       <Select value={value} aria-label={option.name} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{option.required ? 'Choose…' : 'None'}</option>
+        <option value="">{option.required ? msg("settings.slashcommandpanel.choose") : msg("settings.slashcommandpanel.none")}</option>
         {option.choices.map((c) => <option key={String(c.value)} value={String(c.value)}>{c.name}</option>)}
       </Select>
     );
@@ -45,8 +47,9 @@ interface Props {
 
 /** Option form for the command being composed: one picker per option, required ones first. */
 export function SlashCommandPanel({ entry, values, channel, busy, onChange, onRun, onCancel }: Props) {
+  const { t: msg, locale } = useI18n();
   const appName = useInteractionStore((s) => s.appNames[entry.command.application_id]);
-  const errors = validateValues(entry.options, values);
+  const errors = validateValues(entry.options, values, locale);
   const ordered = [...entry.options].sort((a, b) => Number(Boolean(b.required)) - Number(Boolean(a.required)));
   const ready = Object.keys(errors).length === 0;
 
@@ -59,13 +62,13 @@ export function SlashCommandPanel({ entry, values, channel, busy, onChange, onRu
   };
 
   return (
-    <div className="slash-panel" role="group" aria-label={`Command /${entry.label}`} onKeyDown={onKeyDown}>
+    <div className="slash-panel" role="group" aria-label={msg("command.named", { name: entry.label })} onKeyDown={onKeyDown}>
       <header className="slash-head">
         <Command size={16} weight="bold" />
         <strong>/{entry.label}</strong>
         {appName && <span className="slash-app">{appName}</span>}
         <span className="slash-desc">{entry.description}</span>
-        <IconButton label="Cancel command" size="sm" onClick={onCancel}><X size={14} /></IconButton>
+        <IconButton label={msg("settings.slashcommandpanel.cancel.command")} size="sm" onClick={onCancel}><X size={14} /></IconButton>
       </header>
       {ordered.length > 0 && (
         <div className="slash-fields">
@@ -76,7 +79,7 @@ export function SlashCommandPanel({ entry, values, channel, busy, onChange, onRu
               <div key={o.name} className="slash-field">
                 <label className="slash-label">
                   {o.name}
-                  {o.required ? <span className="slash-required" aria-label="required">*</span> : <span className="slash-optional">optional</span>}
+                  {o.required ? <span className="slash-required" aria-label={msg("settings.slashcommandpanel.required")}>*</span> : <span className="slash-optional">{msg("settings.slashcommandpanel.optional")}</span>}
                 </label>
                 <div data-autofocus={i === 0 ? '' : undefined}>
                   <OptionControl option={o} value={values[o.name] ?? ''} channel={channel} onChange={(v) => onChange({ ...values, [o.name]: v })} />
@@ -88,8 +91,8 @@ export function SlashCommandPanel({ entry, values, channel, busy, onChange, onRu
         </div>
       )}
       <footer className="slash-foot">
-        <span className="slash-hint">Enter to run, Esc to cancel</span>
-        <Button variant="primary" size="sm" loading={busy} disabled={!ready} onClick={onRun}>Run command</Button>
+        <span className="slash-hint">{msg("settings.slashcommandpanel.enter.to.run.esc.to.cancel")}</span>
+        <Button variant="primary" size="sm" loading={busy} disabled={!ready} onClick={onRun}>{msg("settings.slashcommandpanel.run.command")}</Button>
       </footer>
     </div>
   );

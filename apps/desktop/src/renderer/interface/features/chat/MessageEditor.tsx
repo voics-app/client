@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -7,6 +8,7 @@ import { getRuntime } from '../../app/runtime';
 
 /** In-place editor: Enter saves, Escape cancels. */
 export function MessageEditor({ message }: { message: ChatMessage }) {
+  const { t } = useI18n();
   const [text, setText] = useState(message.content);
   const ref = useRef<HTMLTextAreaElement>(null);
   const setEditing = useUiStore((s) => s.setEditing);
@@ -32,7 +34,7 @@ export function MessageEditor({ message }: { message: ChatMessage }) {
       setEditing(null);
       return;
     }
-    await attempt(() => getRuntime().privacy.sender.edit(channel, message.id, content), 'Could not edit message');
+    await attempt(() => getRuntime().privacy.sender.edit(channel, message.id, content), t('chat.editFailed'));
     setEditing(null);
   };
 
@@ -42,7 +44,7 @@ export function MessageEditor({ message }: { message: ChatMessage }) {
         ref={ref}
         value={text}
         rows={1}
-        aria-label="Edit message"
+        aria-label={t('chat.edit')}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -55,7 +57,7 @@ export function MessageEditor({ message }: { message: ChatMessage }) {
         }}
       />
       <p>
-        escape to <button type="button" onClick={() => setEditing(null)}>cancel</button> · enter to <button type="button" onClick={() => void save()}>save</button>
+        <button type="button" onClick={() => setEditing(null)}>{t('common.cancel')}</button> (Esc) · <button type="button" onClick={() => void save()}>{t('common.save')}</button> (Enter)
       </p>
     </div>
   );

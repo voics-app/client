@@ -7,6 +7,19 @@ function fakeHttp() {
   return { http: { request } as unknown as HttpClient, request };
 }
 
+describe('DiscordyApi profile customization', () => {
+  it('reads a member and preserves nullable patches on both profile routes', async () => {
+    const { http, request } = fakeHttp();
+    const api = new DiscordyApi(http);
+    await api.member('9', '7');
+    expect(request).toHaveBeenLastCalledWith('GET', '/guilds/9/members/7', expect.anything());
+    await api.updateMember('9', '7', { avatar: null, banner: null, bio: 'Server bio' });
+    expect(request).toHaveBeenLastCalledWith('PATCH', '/guilds/9/members/7', { body: { avatar: null, banner: null, bio: 'Server bio' } });
+    await api.updateMe({ pronouns: null, theme_colors: [0, 0xffffff], banner: null });
+    expect(request).toHaveBeenLastCalledWith('PATCH', '/users/@me', { body: { pronouns: null, theme_colors: [0, 0xffffff], banner: null } });
+  });
+});
+
 it('uses explicit consent and integration endpoints and never sends credentials in metadata edits', async () => {
   const { http, request } = fakeHttp();
   const api = new DiscordyApi(http);

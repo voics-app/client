@@ -1,3 +1,5 @@
+import { createI18n } from '@discordy/core/domain/i18n';
+import { nativeI18n } from './locale';
 /**
  * Native fallback context menu for text fields, selections, links and images. The renderer's own menus call
  * preventDefault on `contextmenu`, in which case Chromium never raises `context-menu` here, so this only
@@ -33,40 +35,41 @@ const MAX_SUGGESTIONS = 5;
 const isHttp = (url: string) => /^https?:\/\//i.test(url);
 
 /** Pure template builder: no Electron state, unit tested. */
-export function buildTextMenu(p: TextMenuParams): TextMenuItem[] {
+export function buildTextMenu(p: TextMenuParams, locale?: string): TextMenuItem[] {
+  const intl = createI18n(locale);
   const groups: TextMenuItem[][] = [];
 
   if (p.isEditable && p.misspelledWord) {
     const spelling: TextMenuItem[] = p.dictionarySuggestions
       .slice(0, MAX_SUGGESTIONS)
       .map((word) => ({ type: 'item', label: word, enabled: true, action: { type: 'replaceMisspelling', word } }) satisfies TextMenuItem);
-    if (spelling.length === 0) spelling.push({ type: 'item', label: 'No suggestions', enabled: false, action: { type: 'addToDictionary', word: '' } });
-    spelling.push({ type: 'item', label: 'Add to dictionary', enabled: true, action: { type: 'addToDictionary', word: p.misspelledWord } });
+    if (spelling.length === 0) spelling.push({ type: 'item', label: intl.t('native.noSuggestions'), enabled: false, action: { type: 'addToDictionary', word: '' } });
+    spelling.push({ type: 'item', label: intl.t('native.addDictionary'), enabled: true, action: { type: 'addToDictionary', word: p.misspelledWord } });
     groups.push(spelling);
   }
 
   if (p.linkURL) {
     const links: TextMenuItem[] = [];
-    if (isHttp(p.linkURL)) links.push({ type: 'item', label: 'Open link', enabled: true, action: { type: 'openLink', url: p.linkURL } });
-    links.push({ type: 'item', label: 'Copy link address', enabled: true, action: { type: 'copyLink', url: p.linkURL } });
+    if (isHttp(p.linkURL)) links.push({ type: 'item', label: intl.t('native.openLink'), enabled: true, action: { type: 'openLink', url: p.linkURL } });
+    links.push({ type: 'item', label: intl.t('native.copyLink'), enabled: true, action: { type: 'copyLink', url: p.linkURL } });
     groups.push(links);
   }
 
   if (p.mediaType === 'image' && p.srcURL) {
-    const images: TextMenuItem[] = [{ type: 'item', label: 'Copy image', enabled: true, action: { type: 'copyImage' } }];
-    if (isHttp(p.srcURL)) images.push({ type: 'item', label: 'Save image as...', enabled: true, action: { type: 'saveImage', url: p.srcURL } });
+    const images: TextMenuItem[] = [{ type: 'item', label: intl.t('native.copyImage'), enabled: true, action: { type: 'copyImage' } }];
+    if (isHttp(p.srcURL)) images.push({ type: 'item', label: intl.t('native.saveImage'), enabled: true, action: { type: 'saveImage', url: p.srcURL } });
     groups.push(images);
   }
 
   if (p.isEditable) {
     groups.push([
-      { type: 'role', role: 'cut', label: 'Cut', enabled: p.editFlags.canCut },
-      { type: 'role', role: 'copy', label: 'Copy', enabled: p.editFlags.canCopy },
-      { type: 'role', role: 'paste', label: 'Paste', enabled: p.editFlags.canPaste },
-      { type: 'role', role: 'selectAll', label: 'Select all', enabled: p.editFlags.canSelectAll },
+      { type: 'role', role: 'cut', label: intl.t('native.cut'), enabled: p.editFlags.canCut },
+      { type: 'role', role: 'copy', label: intl.t('native.copy'), enabled: p.editFlags.canCopy },
+      { type: 'role', role: 'paste', label: intl.t('native.paste'), enabled: p.editFlags.canPaste },
+      { type: 'role', role: 'selectAll', label: intl.t('native.selectAll'), enabled: p.editFlags.canSelectAll },
     ]);
   } else if (p.selectionText.trim()) {
-    groups.push([{ type: 'role', role: 'copy', label: 'Copy', enabled: p.editFlags.canCopy }]);
+    groups.push([{ type: 'role', role: 'copy', label: intl.t('native.copy'), enabled: p.editFlags.canCopy }]);
   }
 
   return groups.flatMap((g, i) => (i === 0 ? g : [{ type: 'separator' } satisfies TextMenuItem, ...g]));
@@ -105,7 +108,7 @@ function runAction(action: TextMenuAction, contents: WebContents, x: number, y: 
 
 export function installTextContextMenu(contents: WebContents): void {
   contents.on('context-menu', (_event, params) => {
-    const items = buildTextMenu(params);
+    const items = buildTextMenu(params, nativeI18n().locale);
     if (items.length === 0) return;
     Menu.buildFromTemplate(toElectron(items, contents, params.x, params.y)).popup();
   });

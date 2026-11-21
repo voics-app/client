@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 import { modalInitialValues, modalInputs, modalReady } from '@discordy/core/domain/slashCommand';
@@ -11,6 +12,7 @@ const PARAGRAPH = 2;
 
 /** Renders the modal an application opened in response to an interaction; submitting sends a modal-submit interaction. */
 export function InteractionModal() {
+  const { t: msg } = useI18n();
   const modal = useInteractionStore((s) => s.modal);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -29,7 +31,7 @@ export function InteractionModal() {
     e.preventDefault();
     if (missing) return;
     setBusy(true);
-    await attempt(() => getRuntime().interactions.submitModal(values), 'Could not submit form');
+    await attempt(() => getRuntime().interactions.submitModal(values), msg("settings.interactionmodal.could.not.submit.form"));
     setBusy(false);
   };
 
@@ -40,8 +42,8 @@ export function InteractionModal() {
       onClose={close}
       footer={
         <>
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button variant="primary" type="submit" form="interaction-modal-form" loading={busy} disabled={missing}>Submit</Button>
+          <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+          <Button variant="primary" type="submit" form="interaction-modal-form" loading={busy} disabled={missing}>{msg("settings.interactionmodal.submit")}</Button>
         </>
       }
     >

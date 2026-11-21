@@ -1,3 +1,5 @@
+import { setNativeLocale } from './locale';
+import { configureSpellcheck } from './textMenu';
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
 import { app, powerMonitor, shell } from 'electron';
@@ -65,6 +67,7 @@ function registerScheme(protocol: string): void {
 }
 
 function bootstrap(): void {
+  const initialLocale = setNativeLocale(app.getLocale());
   const settings = loadMainSettings();
   let connection: ConnectionProfile = resolveConnection(env, settings.connection);
   const updateFeedUrl = resolveUpdateFeed(env);
@@ -90,6 +93,7 @@ function bootstrap(): void {
   const updater = new Updater(createElectronUpdaterPort(updateFeedUrl), (status) => mainWindow?.webContents.send(IpcChannel.updatesStatus, status));
   const e2e = env.DISCORDY_E2E === '1';
   const trayController = createTrayController({
+    locale: initialLocale,
     getWindow,
     e2e,
     actions: {
@@ -116,7 +120,15 @@ function bootstrap(): void {
     process.platform,
   );
 
+  attention.setLocale(initialLocale);
+
   registerIpc({
+    setLocale: (value) => {
+      const locale = setNativeLocale(value);
+      trayController.setLocale(locale);
+      attention.setLocale(locale);
+      if (mainWindow) configureSpellcheck(mainWindow.webContents, locale);
+    },
     passkeys,
     passkeySite: getPasskeySite,
     window: getWindow,

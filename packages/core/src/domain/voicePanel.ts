@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Pure helpers for the user area and voice connection panel: connection details, device choices and keybind-aware tooltip hints. */
 import type { Keybind, KeybindAction } from './keybinds';
 
@@ -22,8 +23,8 @@ export function averageRtt(history: readonly number[]): number | null {
   return history.reduce((a, b) => a + b, 0) / history.length;
 }
 
-export const formatMs = (ms: number | null): string => (ms === null ? '-' : `${Math.round(ms)} ms`);
-export const formatLoss = (pct: number): string => `${pct.toFixed(1)}%`;
+export const formatMs = (ms: number | null, locale?: string): string => (ms === null ? '-' : createI18n(locale).t('voice.ms', { value: Math.round(ms) }));
+export const formatLoss = (pct: number, locale?: string): string => createI18n(locale).number(pct / 100, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export interface ConnectionRow {
   label: string;
@@ -39,21 +40,22 @@ export interface ConnectionInput {
 }
 
 /** Rows for the Connection details popover (average and last ping, outbound loss, region, encryption, transport). */
-export function connectionRows(input: ConnectionInput): ConnectionRow[] {
+export function connectionRows(input: ConnectionInput, locale?: string): ConnectionRow[] {
+  const intl = createI18n(locale);
   const q = input.quality;
   const rows: ConnectionRow[] = [
-    { label: 'Average ping', value: formatMs(averageRtt(input.history)) },
-    { label: 'Last ping', value: formatMs(q ? q.rttMs : null), tone: q ? qualityTone(q.rttMs, 0) : undefined },
-    { label: 'Outbound packet loss', value: q ? formatLoss(q.lossPct) : '-', tone: q ? qualityTone(0, q.lossPct) : undefined },
+    { label: 'Average ping', value: formatMs(averageRtt(input.history), locale) },
+    { label: 'Last ping', value: formatMs(q ? q.rttMs : null, locale), tone: q ? qualityTone(q.rttMs, 0) : undefined },
+    { label: 'Outbound packet loss', value: q ? formatLoss(q.lossPct, locale) : '-', tone: q ? qualityTone(0, q.lossPct) : undefined },
   ];
   if (q) {
-    rows.push({ label: 'Jitter', value: formatMs(q.jitterMs) });
-    rows.push({ label: 'Bitrate', value: `${Math.round(q.bitrateKbps)} kbps` });
+    rows.push({ label: 'Jitter', value: formatMs(q.jitterMs, locale) });
+    rows.push({ label: 'Bitrate', value: intl.t('voice.kbps', { value: Math.round(q.bitrateKbps) }) });
   }
   rows.push({ label: 'Region', value: input.region ?? '-' });
-  rows.push({ label: 'Encryption', value: input.e2ee ? 'End-to-end (MLS)' : 'Transport only' });
-  rows.push({ label: 'Transport', value: 'DTLS-SRTP over WebRTC' });
-  return rows;
+  rows.push({ label: 'Encryption', value: intl.catalogText(input.e2ee ? 'End-to-end (MLS)' : 'Transport only') });
+  rows.push({ label: 'Transport', value: intl.catalogText('DTLS-SRTP over WebRTC') });
+  return rows.map((row) => ({ ...row, label: intl.catalogText(row.label) }));
 }
 
 export interface DeviceChoice {
@@ -62,9 +64,9 @@ export interface DeviceChoice {
 }
 
 /** Device options for a quick menu: the system default first, then every device of `kind` with a readable name. */
-export function deviceChoices(devices: readonly Pick<MediaDeviceInfo, 'deviceId' | 'kind' | 'label'>[], kind: MediaDeviceKind, noun: string): DeviceChoice[] {
+export function deviceChoices(devices: readonly Pick<MediaDeviceInfo, 'deviceId' | 'kind' | 'label'>[], kind: MediaDeviceKind, noun: string, locale?: string): DeviceChoice[] {
   const list = devices.filter((d) => d.kind === kind && d.deviceId !== 'default' && d.deviceId !== 'communications');
-  return [{ id: '', label: 'System default' }, ...list.map((d, i) => ({ id: d.deviceId, label: d.label || `${noun} ${i + 1}` }))];
+  return [{ id: '', label: createI18n(locale).catalogText('System default') }, ...list.map((d, i) => ({ id: d.deviceId, label: d.label || createI18n(locale).t('voice.deviceFallback', { name: createI18n(locale).catalogText(noun), count: i + 1 }) }))];
 }
 
 /** Whether `selected` is the active choice; a stored device that is no longer plugged in falls back to the default. */
@@ -76,4 +78,4 @@ export function keysFor(binds: readonly Keybind[], action: KeybindAction): strin
   return binds.find((b) => b.action === action)?.keys ?? '';
 }
 
-export const percent = (v: number): string => `${Math.round(v * 100)}%`;
+export const percent = (v: number, locale?: string): string => createI18n(locale).number(v, { style: 'percent', maximumFractionDigits: 0 });

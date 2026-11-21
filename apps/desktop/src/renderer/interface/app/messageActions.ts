@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** Side-effecting actions behind the message menus. Each reports failure with a toast. */
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -29,9 +30,9 @@ function drawToPng(url: string): Promise<Blob> {
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       canvas.getContext('2d')?.drawImage(img, 0, 0);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read the image.'))), 'image/png');
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(getI18n().catalogText("Could not read the image.")))), 'image/png');
     };
-    img.onerror = () => reject(new Error('Could not load the image.'));
+    img.onerror = () => reject(new Error(getI18n().catalogText("Could not load the image.")));
     img.src = url;
   });
 }
@@ -59,8 +60,8 @@ export async function copyImage(url: string): Promise<void> {
     let blob = await fetchBlob(url);
     if (blob.type !== 'image/png') blob = await drawToPng(URL.createObjectURL(blob));
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    useUiStore.getState().toast({ tone: 'success', title: 'Image copied' });
-  }, 'Could not copy image');
+    useUiStore.getState().toast({ tone: 'success', title: getI18n().catalogText("Image copied") });
+  }, getI18n().catalogText("Could not copy image"));
 }
 
 export async function saveImage(url: string, filename: string): Promise<void> {
@@ -74,14 +75,14 @@ export async function saveImage(url: string, filename: string): Promise<void> {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
-  }, 'Could not save image');
+  }, getI18n().catalogText("Could not save image"));
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(new Error('Could not read the emoji.'));
+    r.onerror = () => reject(new Error(getI18n().catalogText("Could not read the emoji.")));
     r.readAsDataURL(blob);
   });
 }
@@ -91,11 +92,11 @@ export async function addEmojiToGuild(guildId: string, name: string, url: string
   const created = await attempt(async () => {
     const image = await blobToDataUrl(await fetchBlob(url));
     return getRuntime().api.createEmoji(guildId, { name, image });
-  }, 'Could not add emoji');
+  }, getI18n().catalogText("Could not add emoji"));
   if (created) {
     const guild = useGuildStore.getState().guilds[guildId];
     if (guild) useGuildStore.getState().patchGuild({ id: guildId, emojis: [...(guild.emojis ?? []), created] });
-    useUiStore.getState().toast({ tone: 'success', title: `Added :${created.name}: to the server` });
+    useUiStore.getState().toast({ tone: 'success', title: getI18n().t('actions.emojiAdded', { name: created.name ?? name }) });
   }
 }
 
@@ -105,6 +106,6 @@ export async function suppressEmbeds(message: ChatMessage): Promise<void> {
   const before = { embeds: message.embeds, flags: message.flags };
   const flags = (message.flags ?? 0) | SUPPRESS_EMBEDS_FLAG;
   store.patch(message.channel_id, message.id, { embeds: message.embeds.filter((embed) => !isLinkPreview(embed)), flags });
-  const updated = await attempt(() => getRuntime().api.editMessage(message.channel_id, message.id, { flags }), 'Could not remove previews');
+  const updated = await attempt(() => getRuntime().api.editMessage(message.channel_id, message.id, { flags }), getI18n().catalogText("Could not remove previews"));
   if (!updated) store.patch(message.channel_id, message.id, before);
 }

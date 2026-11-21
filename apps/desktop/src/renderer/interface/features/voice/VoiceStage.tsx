@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowSquareIn, ArrowSquareOut, ArrowsIn, Camera, Eye, EyeSlash, Layout, UserPlus, LockKey, Microphone, MicrophoneSlash, Monitor, PhoneDisconnect, Rectangle, SquaresFour, Television, VideoCamera, VideoCameraSlash } from '@phosphor-icons/react';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useMemo } from 'react';
@@ -32,6 +33,7 @@ interface Tile {
 
 /** DM and group DM calls: rings recipients who are not in the call yet. */
 function AddToCall({ channelId }: { channelId: string }) {
+  const { t: msg } = useI18n();
   const recipients = useGuildStore((s) => s.channels[channelId]?.recipients);
   const voiceStates = useVoiceStore((s) => s.states[channelId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -41,16 +43,15 @@ function AddToCall({ channelId }: { channelId: string }) {
   return (
     <>
       <Button variant="secondary" size="sm" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.openBelow}>
-        <UserPlus size={16} /> Add to call
-      </Button>
+        <UserPlus size={16} /> {msg("settings.voicestage.add.to.call")} </Button>
       <Menu
         open={menu.open}
         x={menu.anchor?.x ?? 0}
         y={menu.anchor?.y ?? 0}
         onClose={menu.close}
         entries={[
-          ...candidates.map((user) => ({ kind: 'item' as const, label: `Ring ${displayName(user)}`, onSelect: () => ringIntoCall(channelId, [user.id]) })),
-          ...(candidates.length > 1 ? [{ kind: 'separator' as const }, { kind: 'item' as const, label: 'Ring everyone', onSelect: () => ringIntoCall(channelId, candidates.map((u) => u.id)) }] : []),
+          ...candidates.map((user) => ({ kind: 'item' as const, label: msg('voice.ring', { name: displayName(user) }), onSelect: () => ringIntoCall(channelId, [user.id]) })),
+          ...(candidates.length > 1 ? [{ kind: 'separator' as const }, { kind: 'item' as const, label: msg("settings.voicestage.ring.everyone"), onSelect: () => ringIntoCall(channelId, candidates.map((u) => u.id)) }] : []),
         ]}
       />
     </>
@@ -84,6 +85,7 @@ const MODES: { mode: StageMode; label: string; icon: React.ReactNode }[] = [
 
 /** Connected-call stage: grid, focus (speaker plus filmstrip) or spotlight, per channel; can be popped out into its own window. */
 export function VoiceStage({ channelId, guildId }: { channelId: string; guildId: string | null }) {
+  const { t: msg, catalogText } = useI18n();
   const allTiles = useTiles(guildId, channelId);
   const hideSelf = useVoiceStore((s) => s.hideSelfPreview);
   const setHideSelf = useVoiceStore((s) => s.setHideSelfPreview);
@@ -143,48 +145,48 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
           )}
         </div>
       </LayoutGroup>
-      {layout.hideNonVideo && hidden > 0 && <p className="stage-hidden-note tnum">{hidden} without video hidden</p>}
-      <div className="stage-controls glass" role="toolbar" aria-label="Call controls">
+      {layout.hideNonVideo && hidden > 0 && <p className="stage-hidden-note tnum">{msg('voice.hidden', { count: hidden })}</p>}
+      <div className="stage-controls glass" role="toolbar" aria-label={msg("settings.voicestage.call.controls")}>
         <span className="split-control">
-          <IconButton label={selfMute ? 'Unmute' : 'Mute'} hint={muteKeys} size="lg" active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
+          <IconButton label={selfMute ? msg("media.unmute") : msg("media.mute")} hint={muteKeys} size="lg" active={selfMute} tone={selfMute ? 'danger' : 'default'} onClick={() => void toggleMute()}>
             {selfMute ? <MicrophoneSlash size={24} /> : <Microphone size={24} />}
           </IconButton>
           <DeviceArrow kind="input" />
         </span>
         <span className="split-control">
-          <IconButton label={selfVideo ? 'Turn off camera' : 'Turn on camera'} hint={cameraKeys} size="lg" active={selfVideo} onClick={() => void toggleCamera()}>
+          <IconButton label={selfVideo ? msg("settings.voicedock.turn.off.camera") : msg("settings.voicedock.turn.on.camera")} hint={cameraKeys} size="lg" active={selfVideo} onClick={() => void toggleCamera()}>
             <Camera size={24} weight={selfVideo ? 'fill' : 'regular'} />
           </IconButton>
           <DeviceArrow kind="camera" />
         </span>
         <NoiseSuppressionButton size="lg" iconSize={24} />
-        <IconButton label={selfStream ? 'Stop sharing' : 'Share your screen'} hint={shareKeys} size="lg" active={selfStream} tone={selfStream ? 'accent' : 'default'} onClick={() => (selfStream ? void stopShare() : openDialog({ kind: 'screenPicker' }))}>
+        <IconButton label={selfStream ? msg("settings.voicedock.stop.sharing") : msg("settings.screenpickerdialog.share.your.screen")} hint={shareKeys} size="lg" active={selfStream} tone={selfStream ? 'accent' : 'default'} onClick={() => (selfStream ? void stopShare() : openDialog({ kind: 'screenPicker' }))}>
           <Monitor size={24} weight={selfStream ? 'fill' : 'regular'} />
         </IconButton>
-        <IconButton label="Watch Together" size="lg" onClick={() => toggleSide('watch')}>
+        <IconButton label={msg("header.watch")} size="lg" onClick={() => toggleSide('watch')}>
           <Television size={24} />
         </IconButton>
         <span className="stage-controls-sep" aria-hidden />
         {MODES.map((m) => (
-          <IconButton key={m.mode} label={m.label} size="lg" active={mode === m.mode} onClick={() => patchLayout(channelId, { mode: m.mode, ...(m.mode === 'grid' ? { pinned: null } : {}) })}>
+          <IconButton key={m.mode} label={catalogText(m.label)} size="lg" active={mode === m.mode} onClick={() => patchLayout(channelId, { mode: m.mode, ...(m.mode === 'grid' ? { pinned: null } : {}) })}>
             {m.icon}
           </IconButton>
         ))}
-        <IconButton label={layout.hideNonVideo ? 'Show participants without video' : 'Hide participants without video'} size="lg" active={layout.hideNonVideo} onClick={() => patchLayout(channelId, { hideNonVideo: !layout.hideNonVideo })}>
+        <IconButton label={layout.hideNonVideo ? msg("settings.voicestage.show.participants.without.video") : msg("settings.voicestage.hide.participants.without.video")} size="lg" active={layout.hideNonVideo} onClick={() => patchLayout(channelId, { hideNonVideo: !layout.hideNonVideo })}>
           {layout.hideNonVideo ? <VideoCameraSlash size={24} /> : <VideoCamera size={24} />}
         </IconButton>
-        <IconButton label={hideSelf ? 'Show your preview' : 'Hide your preview'} size="lg" active={hideSelf} onClick={() => setHideSelf(!hideSelf)}>
+        <IconButton label={hideSelf ? msg("settings.voicestage.show.your.preview") : msg("settings.voicestage.hide.your.preview")} size="lg" active={hideSelf} onClick={() => setHideSelf(!hideSelf)}>
           {hideSelf ? <EyeSlash size={24} /> : <Eye size={24} />}
         </IconButton>
         {main && (
-          <IconButton label="Back to grid" size="lg" onClick={backToGrid}>
+          <IconButton label={msg("settings.voicestage.back.to.grid")} size="lg" onClick={backToGrid}>
             <ArrowsIn size={24} />
           </IconButton>
         )}
-        <IconButton label={popOut.container ? 'Bring call back' : 'Pop out call'} size="lg" active={Boolean(popOut.container)} onClick={popOut.container ? popOut.close : popOut.open}>
+        <IconButton label={popOut.container ? msg("settings.voicestage.bring.call.back") : msg("settings.voicestage.pop.out.call")} size="lg" active={Boolean(popOut.container)} onClick={popOut.container ? popOut.close : popOut.open}>
           {popOut.container ? <ArrowSquareIn size={24} /> : <ArrowSquareOut size={24} />}
         </IconButton>
-        <IconButton label="Disconnect" size="lg" tone="danger" onClick={() => void leaveVoice()}>
+        <IconButton label={msg("settings.usercontextmenu.disconnect")} size="lg" tone="danger" onClick={() => void leaveVoice()}>
           <PhoneDisconnect size={24} weight="fill" />
         </IconButton>
       </div>
@@ -192,22 +194,21 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
   );
 
   return (
-    <section className="voice-stage" aria-label={`Voice: ${channel?.name ?? 'call'}`}>
+    <section className="voice-stage" aria-label={msg('voice.region', { name: channel?.name ?? msg('voice.call') })}>
       <header className="voice-stage-head">
         <div>
-          <h1>{channel?.name ?? 'Call'}</h1>
-          <p className="tnum">{allTiles.filter((t) => t.kind !== 'screen').length} in call{call.region ? ` · ${call.region}` : ''}</p>
+          <h1>{channel?.name ?? msg("voice.call")}</h1>
+          <p className="tnum">{msg('voice.count', { count: allTiles.filter((t) => t.kind !== 'screen').length })}{call.region ? ` · ${call.region}` : ''}</p>
         </div>
         {call.e2ee ? (
-          <span className="e2ee-chip is-large"><LockKey size={13} weight="fill" /> End-to-end encrypted</span>
+          <span className="e2ee-chip is-large"><LockKey size={13} weight="fill" /> {msg("settings.voicestage.end.to.end.encrypted")}</span>
         ) : (
-          call.status === 'connected' && <span className="e2ee-chip is-off">Standard transport encryption (DTLS-SRTP)</span>
+          call.status === 'connected' && <span className="e2ee-chip is-off">{msg("settings.voicestage.standard.transport.encryption.dtls.srtp")}</span>
         )}
         {!guildId && <AddToCall channelId={channelId} />}
         {guildId && (
           <Button variant="secondary" size="sm" onClick={() => openDialog({ kind: 'invite', guildId, channelId })}>
-            <UserPlus size={16} /> Invite
-          </Button>
+            <UserPlus size={16} /> {msg("settings.invitecard.invite")} </Button>
         )}
         <VoiceChatToggle channelId={channelId} />
       </header>
@@ -215,8 +216,8 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
         <>
           <div className="stage-popped" role="status">
             <ArrowSquareOut size={28} weight="light" />
-            <p>The call is open in its own window.</p>
-            <Button variant="ghost" onClick={popOut.close}>Bring it back</Button>
+            <p>{msg("settings.voicestage.the.call.is.open.in.its.own.window")}</p>
+            <Button variant="ghost" onClick={popOut.close}>{msg("settings.voicestage.bring.it.back")}</Button>
           </div>
           {createPortal(<section className="voice-stage is-popout">{body}</section>, popOut.container)}
         </>

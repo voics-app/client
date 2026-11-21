@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Plus, X } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -26,6 +27,7 @@ export async function setMemberRole(guildId: string, userId: string, roleId: str
 
 /** Coloured role pills for a member. With `editable`, shows "x" on assignable roles and a "+" to add more. */
 export function RolePills({ guildId, userId, editable = false }: { guildId: string; userId: string; editable?: boolean }) {
+  const { t: msg } = useI18n();
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const member = useGuildStore((s) => s.members[guildId]?.[userId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -43,13 +45,13 @@ export function RolePills({ guildId, userId, editable = false }: { guildId: stri
 
   if (shown.length === 0 && addable.length === 0) return null;
   return (
-    <ul className='role-chips' aria-label='Roles'>
+    <ul className='role-chips' aria-label={msg("settings.profiledialog.roles")}>
       {shown.map((r) => (
         <li key={r.id} className='role-pill' data-role-id={r.id}>
           <span className='role-dot' style={{ background: roleColorCss(r.color) ?? 'var(--fg-subtle)' }} />
           {r.name}
           {removable.has(r.id) && (
-            <button type='button' className='role-pill-x' aria-label={`Remove role ${r.name}`} onClick={() => void setMemberRole(guildId, userId, r.id, false)}>
+            <button type='button' className='role-pill-x' aria-label={msg('members.removeRole', { name: r.name })} onClick={() => void setMemberRole(guildId, userId, r.id, false)}>
               <X size={11} weight='bold' />
             </button>
           )}
@@ -57,7 +59,7 @@ export function RolePills({ guildId, userId, editable = false }: { guildId: stri
       ))}
       {addable.length > 0 && (
         <li className='role-pill-add'>
-          <button type='button' className='role-pill' aria-label='Add role' aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+          <button type='button' className='role-pill' aria-label={msg("settings.rolepills.add.role")} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
             <Plus size={12} weight='bold' />
           </button>
           {adding && (

@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Pure helpers behind the moderation tools: bulk message purge, member filters and audit filters. */
 import type { GuildMember } from "@discordy/core/contracts/rest";
 import { Permission } from "../contracts/permissions";
@@ -96,10 +97,8 @@ export function canPruneMembers(permissions: bigint, adminOnly: boolean): boolea
 /** Inactivity windows offered by the prune dialog (the api accepts 1 to 30). */
 export const PRUNE_DAY_CHOICES: readonly number[] = [1, 7, 14, 30];
 
-export function pruneSummary(count: number, days: number): string {
-  const window = `${days} ${days === 1 ? "day" : "days"}`;
-  if (count === 0) return `No members have been inactive for ${window}.`;
-  return `${count} ${count === 1 ? "member has" : "members have"} been inactive for ${window} and would be removed.`;
+export function pruneSummary(count: number, days: number, locale?: string): string {
+  return createI18n(locale).t(count === 0 ? 'members.pruneNone' : 'members.pruneSummary', { count, days });
 }
 
 /** Bans matching a free-text search over name, id and reason. */

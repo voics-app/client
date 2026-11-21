@@ -13,6 +13,7 @@ export interface TrayHandle {
   setState(image: Bitmap | null, tooltip: string): void;
   setActivity(activity: ActivityCounts): void;
   setVoice(voice: VoiceState): void;
+  setLocale(locale: string): void;
   destroy(): void;
 }
 
@@ -41,6 +42,7 @@ export function createTray(getWindow: () => BrowserWindow | null, { onQuit, onCh
   };
   let activity: ActivityCounts = { mentions: 0, unread: 0 };
   let voice: VoiceState = { muted: false, deafened: false };
+  let locale = 'en-US';
   const toElectron = (item: TrayMenuItem): MenuItemConstructorOptions => {
     if (item.kind === 'separator') return { type: 'separator' };
     const run = () => {
@@ -57,7 +59,7 @@ export function createTray(getWindow: () => BrowserWindow | null, { onQuit, onCh
     };
   };
   const rebuild = () =>
-    tray.setContextMenu(Menu.buildFromTemplate(buildTrayMenu({ brand: BRAND.displayName, version: app.getVersion(), activity, voice }).map(toElectron)));
+    tray.setContextMenu(Menu.buildFromTemplate(buildTrayMenu({ brand: BRAND.displayName, version: app.getVersion(), activity, voice, locale }).map(toElectron)));
   tray.setToolTip(BRAND.displayName);
   rebuild();
   tray.on('click', show);
@@ -76,6 +78,10 @@ export function createTray(getWindow: () => BrowserWindow | null, { onQuit, onCh
     },
     setVoice(next) {
       voice = next;
+      rebuild();
+    },
+    setLocale(next) {
+      locale = next;
       rebuild();
     },
     destroy() {

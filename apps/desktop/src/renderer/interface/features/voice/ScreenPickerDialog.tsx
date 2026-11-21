@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { AppWindow, Desktop, ShieldWarning, SpeakerHigh, Television } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -15,6 +16,7 @@ const isWindows = navigator.userAgent.includes('Windows');
 
 /** Our own source picker: screens and windows with live thumbnails, quality presets and system audio. */
 export function ScreenPickerDialog() {
+  const { t: msg, catalogText } = useI18n();
   const close = () => useUiStore.getState().openDialog(null);
   const [sources, setSources] = useState<CaptureSource[] | null>(null);
   const [tab, setTab] = useState<'screen' | 'window'>('screen');
@@ -58,22 +60,22 @@ export function ScreenPickerDialog() {
       open
       onClose={close}
       width={760}
-      title="Share your screen"
-      description="Choose what to share and how it should look."
+      title={msg("settings.screenpickerdialog.share.your.screen")}
+      description={msg("settings.screenpickerdialog.choose.what.to.share.and.how.it.should.look")}
       footer={
         <>
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button variant="primary" loading={busy} disabled={!selected} onClick={() => void go()} trailing={<Television size={16} weight="fill" />}>Go live</Button>
+          <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+          <Button variant="primary" loading={busy} disabled={!selected} onClick={() => void go()} trailing={<Television size={16} weight="fill" />}>{msg("settings.screenpickerdialog.go.live")}</Button>
         </>
       }
     >
-      <Segmented label="Source type" value={tab} onChange={setTab} options={[{ value: 'screen', label: <><Desktop size={15} /> Screens</> }, { value: 'window', label: <><AppWindow size={15} /> Windows</> }]} />
+      <Segmented label={msg("settings.screenpickerdialog.source.type")} value={tab} onChange={setTab} options={[{ value: 'screen', label: <><Desktop size={15} /> {msg("settings.screenpickerdialog.screens")}</> }, { value: 'window', label: <><AppWindow size={15} /> {msg("settings.screenpickerdialog.windows")}</> }]} />
       {sources === null ? (
-        <div className="picker-loading"><Spinner /> Looking for sources</div>
+        <div className="picker-loading"><Spinner /> {msg("settings.screenpickerdialog.looking.for.sources")}</div>
       ) : shown.length === 0 ? (
-        <p className="picker-empty">{bridge ? 'No sources found.' : 'Screen capture needs the desktop app.'}</p>
+        <p className="picker-empty">{bridge ? msg("settings.screenpickerdialog.no.sources.found") : msg("settings.screenpickerdialog.screen.capture.needs.the.desktop.app")}</p>
       ) : (
-        <ul className="source-grid" role="listbox" aria-label="Capture sources">
+        <ul className="source-grid" role="listbox" aria-label={msg("settings.screenpickerdialog.capture.sources")}>
           {shown.map((s) => (
             <li key={s.id} role="option" aria-selected={selected === s.id}>
               <button type="button" className={`source${selected === s.id ? ' is-selected' : ''}`} onClick={() => setSelected(s.id)}>
@@ -89,26 +91,26 @@ export function ScreenPickerDialog() {
       )}
       <div className="picker-options">
         <div>
-          <p className="setting-title">Quality</p>
-          <Segmented label="Quality preset" value={preset} onChange={(v: VideoPresetId) => setSelf({ streamPreset: v })} options={VIDEO_PRESETS.map((p) => ({ value: p.id, label: p.label.replace(' · ', ' ') }))} />
+          <p className="setting-title">{msg("settings.screenpickerdialog.quality")}</p>
+          <Segmented label={msg("settings.screenpickerdialog.quality.preset")} value={preset} onChange={(v: VideoPresetId) => setSelf({ streamPreset: v })} options={VIDEO_PRESETS.map((p) => ({ value: p.id, label: catalogText(p.label).replace(' · ', ' ') }))} />
         </div>
         <div className="picker-audio">
           <div>
-            <p className="setting-title"><SpeakerHigh size={14} /> Share system audio</p>
-            <p className="setting-desc">{isWindows ? 'Captures what plays on this PC through Windows loopback.' : 'System audio capture is only available on Windows.'}</p>
+            <p className="setting-title"><SpeakerHigh size={14} /> {msg("settings.screenpickerdialog.share.system.audio")}</p>
+            <p className="setting-desc">{isWindows ? msg("settings.screenpickerdialog.captures.what.plays.on.this.pc.through.windows.loopback") : msg("settings.screenpickerdialog.system.audio.capture.is.only.available.on.windows")}</p>
           </div>
-          <Switch label="Share system audio" checked={audio && isWindows} disabled={!isWindows} onChange={setAudio} />
+          <Switch label={msg("settings.screenpickerdialog.share.system.audio")} checked={audio && isWindows} disabled={!isWindows} onChange={setAudio} />
         </div>
       </div>
-      <p className="drm-note"><ShieldWarning size={14} /> Protected video (Netflix, Disney+ and similar) appears black by design. To watch it with friends, use <strong>Watch Together</strong> instead.</p>
+      <p className="drm-note"><ShieldWarning size={14} /> {msg('voice.protected')}</p>
       {problem && (
         <div className="picker-problem" role="alert">
           <ShieldWarning size={18} weight="fill" />
           <div>
-            <strong>{problem.reason === 'protected_content' ? 'This source looks protected' : 'Could not start sharing'}</strong>
-            <p>{problem.reason === 'protected_content' ? 'We only captured black frames. DRM-protected content cannot be captured. Open Watch Together to sync playback with everyone instead.' : problem.message}</p>
+            <strong>{problem.reason === 'protected_content' ? msg("settings.screenpickerdialog.this.source.looks.protected") : msg("settings.screenpickerdialog.could.not.start.sharing")}</strong>
+            <p>{problem.reason === 'protected_content' ? msg("settings.screenpickerdialog.we.only.captured.black.frames.drm.protected.content.cannot") : problem.message ? catalogText(problem.message) : null}</p>
             {problem.reason === 'protected_content' && (
-              <Button size="sm" onClick={() => { close(); useUiStore.getState().setSidePanel({ kind: 'watch' }); }}>Open Watch Together</Button>
+              <Button size="sm" onClick={() => { close(); useUiStore.getState().setSidePanel({ kind: 'watch' }); }}>{msg("settings.screenpickerdialog.open.watch.together")}</Button>
             )}
           </div>
         </div>

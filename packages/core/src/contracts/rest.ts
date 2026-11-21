@@ -31,6 +31,8 @@ export interface User {
   avatar: string | null;
   banner?: string | null;
   accent_color?: number | null;
+  pronouns?: string | null;
+  theme_colors?: [number, number] | null;
   bio?: string;
   bot?: boolean;
   email?: string;
@@ -179,6 +181,8 @@ export interface GuildMember {
   user: User;
   nick?: string | null;
   avatar?: string | null;
+  banner?: string | null;
+  bio?: string | null;
   roles: Snowflake[];
   joined_at: string;
   deaf: boolean;

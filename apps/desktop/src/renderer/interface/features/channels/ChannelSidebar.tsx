@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { Broadcast, CaretDown, CaretRight, ChatsCircle, Gear, Hash, LockKey, LockSimple, Megaphone, MicrophoneSlash, Plugs, Plus, PushPin, SpeakerHigh, SpeakerSlash, UserPlus, VideoCamera } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -21,7 +22,7 @@ import { markChannelRead } from '../../app/actions';
 import { applyChannelLayout, guildChannels } from '../../app/channelOrderActions';
 import { can, useChannelPermissions, useGuildPermissions } from '../../shared/hooks/usePermissions';
 import { displayName } from '../../shared/hooks/useNames';
-import { Avatar } from '../../shared/ui/Avatar';
+import { UserAvatar } from '../../shared/ui/UserAvatar';
 import { IconButton } from '../../shared/ui/IconButton';
 import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
@@ -79,6 +80,7 @@ const ICONS = { text: Hash, voice: SpeakerHigh, announcement: Megaphone, forum: 
 let draggedOccupant: VoiceState | null = null;
 
 export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | null; state: VoiceState; speaking: number }) {
+  const { t: msg, catalogText } = useI18n();
   const member = useGuildStore((s) => (guildId ? s.members[guildId]?.[state.user_id] : undefined)) ?? state.member;
   const user = member?.user;
   const name = user ? displayName(user, member?.nick) : state.user_id;
@@ -109,16 +111,15 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
         openDialog({ kind: 'profile', userId: state.user_id, guildId });
       }}
     >
-      <Avatar id={state.user_id} name={name} avatar={user?.avatar} size={22} speaking={speaking} />
+      <UserAvatar id={state.user_id} name={name} avatar={user?.avatar} guildId={guildId} member={member} size={22} speaking={speaking} />
       <span className="occupant-name">{name}</span>
       <span className="occupant-flags">
-        {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={MUTE_LABEL[flags.mute]} />}
-        {flags.deaf && <SpeakerSlash size={14} weight="fill" className={`occupant-flag is-${flags.deaf}`} aria-label={DEAF_LABEL[flags.deaf]} />}
-        {flags.camera && <VideoCamera size={14} weight="fill" className="occupant-flag" aria-label="Camera on" />}
+        {flags.mute && <MicrophoneSlash size={14} weight="fill" className={`occupant-flag is-${flags.mute}`} aria-label={catalogText(MUTE_LABEL[flags.mute])} />}
+        {flags.deaf && <SpeakerSlash size={14} weight="fill" className={`occupant-flag is-${flags.deaf}`} aria-label={catalogText(DEAF_LABEL[flags.deaf])} />}
+        {flags.camera && <VideoCamera size={14} weight="fill" className="occupant-flag" aria-label={msg("settings.channelsidebar.camera.on")} />}
         {flags.live && (
-          <span className="occupant-live" title="Streaming">
-            <Broadcast size={10} weight="bold" /> LIVE
-          </span>
+          <span className="occupant-live" title={msg("settings.channelsidebar.streaming")}>
+            <Broadcast size={10} weight="bold" /> {msg("settings.channelsidebar.live")}</span>
         )}
       </span>
       {node}
@@ -127,6 +128,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
 }
 
 function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel; active: boolean; dnd: ChannelDnd; pinned?: boolean }) {
+  const { t: msg } = useI18n();
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
   const muted = isChannelMutedDeep(settings, channel, Date.now());
@@ -192,18 +194,18 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
         }}
         onDragEnd={dnd.end}
       >
-        <button type="button" className="channel-main" onClick={select} aria-current={active || undefined} aria-disabled={capacity?.joinBlocked || undefined} title={capacity?.joinBlocked ? 'Channel is full' : undefined}>
-          {unread && <span className="channel-unread-dot" aria-label="Unread" />}
+        <button type="button" className="channel-main" onClick={select} aria-current={active || undefined} aria-disabled={capacity?.joinBlocked || undefined} title={capacity?.joinBlocked ? msg("settings.channelsidebar.channel.is.full") : undefined}>
+          {unread && <span className="channel-unread-dot" aria-label={msg("settings.channelsidebar.unread")} />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
           <span className="channel-name">{channel.name}</span>
-          {pinned && <PushPin size={12} weight="fill" className="channel-pin" aria-label="Pinned" />}
-          {isPrivateChannel(channel) && <LockSimple size={12} weight="fill" className="channel-lock" aria-label="Private channel" />}
-          {channel.nsfw && <span className="channel-nsfw" title="Age-restricted" aria-label="Age-restricted">18+</span>}
-          {channel.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label="Ephemeral E2EE" />}
-          {channel.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
+          {pinned && <PushPin size={12} weight="fill" className="channel-pin" aria-label={msg("home.pinned")} />}
+          {isPrivateChannel(channel) && <LockSimple size={12} weight="fill" className="channel-lock" aria-label={msg("settings.channelsidebar.private.channel")} />}
+          {channel.nsfw && <span className="channel-nsfw" title={msg("settings.channelsettings.age.restricted")} aria-label={msg("settings.channelsettings.age.restricted")}>18+</span>}
+          {channel.delivery_mode === 'ephemeral' && <LockKey size={13} weight="fill" className="channel-mode mode-ephemeral" aria-label={msg("settings.dialoghost.ephemeral.e2ee")} />}
+          {channel.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label={msg("auth.peer.to.peer")} />}
           {capacity?.label && (
-            <span className={`channel-capacity tnum${capacity.full ? ' is-full' : ''}`} title={capacity.joinBlocked ? 'Channel is full' : `User limit ${channel.user_limit}`}>
-              {capacity.full && <LockSimple size={11} weight="fill" aria-label="Full" />}
+            <span className={`channel-capacity tnum${capacity.full ? ' is-full' : ''}`} title={capacity.joinBlocked ? msg("settings.channelsidebar.channel.is.full") : msg('channels.limit', { count: channel.user_limit ?? 0 })}>
+              {capacity.full && <LockSimple size={11} weight="fill" aria-label={msg("settings.channelsidebar.full")} />}
               {capacity.label}
             </span>
           )}
@@ -213,7 +215,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
           <span className="channel-actions">
             {chatShown && (
               <IconButton
-                label="Open chat"
+                label={msg("settings.channelsidebar.open.chat")}
                 size="sm"
                 onClick={() => {
                   if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
@@ -225,12 +227,12 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
               </IconButton>
             )}
             {channel.guild_id && can(perms, Permission.CREATE_INSTANT_INVITE) && (
-              <IconButton label="Create invite" size="sm" onClick={() => openDialog({ kind: 'invite', guildId: channel.guild_id!, channelId: channel.id })}>
+              <IconButton label={msg("domain.create.invite")} size="sm" onClick={() => openDialog({ kind: 'invite', guildId: channel.guild_id!, channelId: channel.id })}>
                 <UserPlus size={15} />
               </IconButton>
             )}
             {channel.guild_id && can(perms, Permission.MANAGE_CHANNELS) && (
-              <IconButton label="Edit channel" size="sm" onClick={() => openSettings({ kind: 'channel', channelId: channel.id, tab: 'overview' })}>
+              <IconButton label={msg("settings.channelsidebar.edit.channel")} size="sm" onClick={() => openSettings({ kind: 'channel', channelId: channel.id, tab: 'overview' })}>
                 <Gear size={15} />
               </IconButton>
             )}
@@ -250,6 +252,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
 }
 
 function Category({ category, children, guildId, siblings, dnd }: { category: Channel | null; children: Channel[]; guildId: string; siblings: string[]; dnd: ChannelDnd }) {
+  const { t: msg } = useI18n();
   const collapsed = usePrefsStore((s) => (category ? s.collapsedCategories[category.id] : false));
   const toggle = usePrefsStore((s) => s.toggleMap);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
@@ -324,7 +327,7 @@ function Category({ category, children, guildId, siblings, dnd }: { category: Ch
             <span>{category.name}</span>
           </button>
           {can(perms, Permission.MANAGE_CHANNELS) && (
-            <IconButton label="Create channel" size="sm" onClick={() => openDialog({ kind: 'createChannel', guildId, parentId: category.id })}>
+            <IconButton label={msg("settings.dialoghost.create.channel")} size="sm" onClick={() => openDialog({ kind: 'createChannel', guildId, parentId: category.id })}>
               <Plus size={14} />
             </IconButton>
           )}
@@ -342,6 +345,7 @@ function Category({ category, children, guildId, siblings, dnd }: { category: Ch
 
 /** Floating pill shown when channels that need attention are scrolled out of the list. */
 function AttentionPill({ scrollRef, version }: { scrollRef: RefObject<HTMLDivElement | null>; version: unknown }) {
+  const { t: msg } = useI18n();
   const [pill, setPill] = useState<{ above: string | null; below: string | null }>({ above: null, below: null });
   useEffect(() => {
     const el = scrollRef.current;
@@ -366,17 +370,17 @@ function AttentionPill({ scrollRef, version }: { scrollRef: RefObject<HTMLDivEle
 
   const rowOf = (id: string) => scrollRef.current?.querySelector<HTMLElement>(`li[data-channel-id="${id}"]`);
   const go = (id: string) => rowOf(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  const label = (id: string) => (rowOf(id)?.dataset.attention === 'mention' ? 'New mentions' : 'New unreads');
+  const label = (id: string, direction: 'above' | 'below') => msg(direction === 'above' ? 'channels.above' : 'channels.below', { kind: rowOf(id)?.dataset.attention ?? 'unread' });
   return (
     <>
       {pill.above && (
         <button type="button" className="mention-pill is-top" onClick={() => go(pill.above!)}>
-          {label(pill.above)} above
+          {label(pill.above, 'above')}
         </button>
       )}
       {pill.below && (
         <button type="button" className="mention-pill is-bottom" onClick={() => go(pill.below!)}>
-          {label(pill.below)} below
+          {label(pill.below, 'below')}
         </button>
       )}
     </>
@@ -384,6 +388,7 @@ function AttentionPill({ scrollRef, version }: { scrollRef: RefObject<HTMLDivEle
 }
 
 export function ChannelSidebar({ guildId }: { guildId: string }) {
+  const { t: msg } = useI18n();
   const channels = useGuildStore((s) => s.channels);
   const pins = useSessionStore((s) => s.settings.pinned_channel_ids);
   const { pinned, groups } = useMemo(() => {
@@ -412,14 +417,14 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
   const activeChannelId = useUiStore((s) => s.view.channelId);
 
   return (
-    <aside className="sidebar" aria-label="Channels">
+    <aside className="sidebar" aria-label={msg("settings.createguilddialog.channels")}>
       <GuildHeader guildId={guildId} />
       <AttentionPill scrollRef={scrollRef} version={[groups, pinned, reads, collapsedMap]} />
       <div ref={scrollRef} className="sidebar-scroll">
         {pinned.length > 0 && (
-          <section className="category is-pinned" aria-label="Pinned channels">
+          <section className="category is-pinned" aria-label={msg("settings.channelsidebar.pinned.channels")}>
             <header className="category-head is-static">
-              <span>Pinned</span>
+              <span>{msg("home.pinned")}</span>
             </header>
             <ul className="channel-list">
               {pinned.map((c) => (
@@ -434,7 +439,7 @@ export function ChannelSidebar({ guildId }: { guildId: string }) {
           </Category>
         ))}
         {dnd.drag?.kind === 'channel' && !groups.some((g) => !g.category) && <Category category={null} guildId={guildId} siblings={categoryIds} dnd={dnd}>{[]}</Category>}
-        {groups.length === 0 && <p className="sidebar-empty">No channels yet.</p>}
+        {groups.length === 0 && <p className="sidebar-empty">{msg("settings.channelsidebar.no.channels.yet")}</p>}
       </div>
     </aside>
   );

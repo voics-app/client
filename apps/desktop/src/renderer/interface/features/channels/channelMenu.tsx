@@ -1,3 +1,4 @@
+import { getI18n } from '../../shared/i18n';
 import { BellRinging, BellSlash, CaretDoubleUp, CaretDown, Check, Copy, CopySimple, Gear, Hash, Link, PushPin, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
@@ -56,6 +57,7 @@ function applyMuteChoice(channel: Channel, it: MenuItemModel): void {
 
 /** Context menu for a channel row. Not a hook: reads store state at open time. */
 export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Handlers): MenuEntry[] {
+  const { t: msg } = getI18n();
   const pins = channel.guild_id ? pinnedIdsIn(channel.guild_id) : [];
   const model = buildChannelMenu({
     pinned: pins.includes(channel.id),
@@ -77,7 +79,7 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
         case 'pin': return void setChannelPinned(channel.guild_id!, channel.id, true);
         case 'unpin': return void setChannelPinned(channel.guild_id!, channel.id, false);
         case 'invite': return h.openDialog({ kind: 'invite', guildId: channel.guild_id!, channelId: channel.id });
-        case 'copyLink': return void copyText(channelLink(channel.guild_id, channel.id), 'Channel link copied');
+        case 'copyLink': return void copyText(channelLink(channel.guild_id, channel.id), msg("settings.channelmenu.channel.link.copied"));
         case 'mute':
         case 'muteFor':
         case 'unmute': return applyMuteChoice(channel, it);
@@ -89,18 +91,18 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
           return void attempt(async () => {
             const copy = await getRuntime().api.createChannel(channel.guild_id!, duplicateChannelBody(channel));
             useGuildStore.getState().upsertChannel(copy);
-          }, 'Could not duplicate channel');
+          }, msg("settings.channelmenu.could.not.duplicate.channel"));
         case 'create': return h.openDialog({ kind: 'createChannel', guildId: channel.guild_id!, parentId: channel.parent_id ?? null });
         case 'delete':
           return h.openDialog({
             kind: 'confirm',
-            title: `Delete #${channel.name}?`,
-            body: 'Messages in this channel will be lost for everyone.',
-            confirmLabel: 'Delete channel',
+            title: msg('channels.delete', { name: channel.name ?? '' }),
+            body: msg("settings.channelsettings.messages.in.this.channel.will.be.lost.for.everyone"),
+            confirmLabel: msg("settings.channelsettings.delete.channel"),
             danger: true,
-            onConfirm: async () => void (await attempt(() => getRuntime().api.deleteChannel(channel.id), 'Could not delete channel')),
+            onConfirm: async () => void (await attempt(() => getRuntime().api.deleteChannel(channel.id), msg("settings.channelsettings.could.not.delete.channel"))),
           });
-        case 'copyId': return void copyText(channel.id, 'Channel ID copied');
+        case 'copyId': return void copyText(channel.id, msg("settings.channelmenu.channel.id.copied"));
       }
     },
     ICONS,
@@ -109,6 +111,7 @@ export function ChannelContextMenuEntries(channel: Channel, perms: bigint, h: Ha
 
 /** Context menu for a category header. `siblings` are all category ids of the server (for collapse all). */
 export function CategoryContextMenuEntries(category: Channel, children: Channel[], siblings: string[], perms: bigint, h: Handlers & { guildId: string }): MenuEntry[] {
+  const { t: msg } = getI18n();
   const prefs = usePrefsStore.getState();
   const collapsed = Boolean(prefs.collapsedCategories[category.id]);
   const model = buildCategoryMenu({
@@ -139,18 +142,18 @@ export function CategoryContextMenuEntries(category: Channel, children: Channel[
         case 'delete':
           return h.openDialog({
             kind: 'confirm',
-            title: `Delete ${category.name}?`,
-            body: children.length > 0 ? `${children.length} channel${children.length === 1 ? '' : 's'} in this category will be moved out of it, not deleted.` : 'This category is empty.',
-            confirmLabel: 'Delete category',
+            title: msg('channels.deleteCategory', { name: category.name ?? '' }),
+            body: children.length > 0 ? msg('channels.categoryChildren', { count: children.length }) : msg("settings.channelmenu.this.category.is.empty"),
+            confirmLabel: msg("settings.channelmenu.delete.category"),
             danger: true,
             onConfirm: async () =>
               void (await attempt(async () => {
                 // The API has no foreign key on parent_id: move children out first so they do not vanish from the list.
                 for (const c of children) useGuildStore.getState().upsertChannel(await getRuntime().api.updateChannel(c.id, { parent_id: null }));
                 await getRuntime().api.deleteChannel(category.id);
-              }, 'Could not delete category')),
+              }, msg("settings.channelmenu.could.not.delete.category"))),
           });
-        case 'copyId': return void copyText(category.id, 'Category ID copied');
+        case 'copyId': return void copyText(category.id, msg("settings.channelmenu.category.id.copied"));
       }
     },
     ICONS,

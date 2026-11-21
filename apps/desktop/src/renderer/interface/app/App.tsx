@@ -26,6 +26,7 @@ import { flushAuthLink, handleAuthRoute } from './authLinks';
 import { flushPendingRoute, handleRoute } from './navigation';
 import { registerEngines } from './engines';
 import { BRAND } from '@shared/brand';
+import { LocaleProvider, useI18n } from '../shared/i18n';
 
 function Boot({ message }: { message: string }) {
   return (
@@ -38,6 +39,11 @@ function Boot({ message }: { message: string }) {
 }
 
 export function App() {
+  return <LocaleProvider><AppContent /></LocaleProvider>;
+}
+
+function AppContent() {
+  const { t, catalogText } = useI18n();
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const settings = useUiStore((s) => s.settings);
@@ -84,17 +90,17 @@ export function App() {
     }
   }, [status]);
 
-  if (failure) return <Boot message={failure} />;
-  if (!runtime) return <Boot message={`Starting ${BRAND.displayName}`} />;
+  if (failure) return <Boot message={catalogText(failure)} />;
+  if (!runtime) return <Boot message={t('boot.starting', { app: BRAND.displayName })} />;
 
   return (
     <QueryClientProvider client={runtime.queryClient}>
       {status === 'booting' ? (
-        <Boot message="Restoring your session" />
+        <Boot message={t('boot.restoring')} />
       ) : status === 'signedOut' ? (
         <AuthScreen />
       ) : status === 'connecting' ? (
-        <Boot message="Connecting" />
+        <Boot message={t('boot.connecting')} />
       ) : (
         <>
           <Shell />

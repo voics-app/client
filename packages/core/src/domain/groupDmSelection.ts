@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 import { ChannelType, type Channel } from '../contracts/rest';
 
 export interface BulkLeaveResult {
@@ -5,7 +6,6 @@ export interface BulkLeaveResult {
   failed: string[];
 }
 
-const groups = (n: number) => `${n} group DM${n === 1 ? '' : 's'}`;
 
 /** Ids of the conversations that may be ticked in selection mode: group DMs only. */
 export function selectableGroupIds(dms: Channel[]): string[] {
@@ -22,11 +22,11 @@ export function pruneSelection(selected: string[], selectable: string[]): string
   return kept.length === selected.length ? selected : kept;
 }
 
-export function bulkLeaveConfirmation(count: number): { title: string; body: string; confirmLabel: string } {
+export function bulkLeaveConfirmation(count: number, locale?: string): { title: string; body: string; confirmLabel: string } {
   return {
-    title: `Leave ${groups(count)}?`,
-    body: 'You will stop receiving messages from these groups. You can only rejoin if a member adds you back.',
-    confirmLabel: count === 1 ? 'Leave group DM' : `Leave ${groups(count)}`,
+    title: createI18n(locale).t('group.bulkLeave', { count }),
+    body: createI18n(locale).t('group.bulkBody'),
+    confirmLabel: createI18n(locale).t('group.bulkConfirm', { count }),
   };
 }
 
@@ -40,9 +40,9 @@ export async function leaveSequentially(ids: string[], leave: (id: string) => Pr
   return result;
 }
 
-export function bulkLeaveOutcomeMessage(result: BulkLeaveResult, names: Record<string, string>): { tone: 'success' | 'danger'; title: string; body: string | undefined } {
-  if (result.failed.length === 0) return { tone: 'success', title: `Left ${groups(result.left.length)}`, body: undefined };
-  const list = result.failed.map((id) => names[id] ?? id).join(', ');
-  const title = result.left.length > 0 ? `Left ${groups(result.left.length)}, ${result.failed.length} failed` : `Could not leave ${groups(result.failed.length)}`;
-  return { tone: 'danger', title, body: `Could not leave: ${list}` };
+export function bulkLeaveOutcomeMessage(result: BulkLeaveResult, names: Record<string, string>, locale?: string): { tone: 'success' | 'danger'; title: string; body: string | undefined } {
+  if (result.failed.length === 0) return { tone: 'success', title: createI18n(locale).t('group.left', { count: result.left.length }), body: undefined };
+  const list = createI18n(locale).list(result.failed.map((id) => names[id] ?? id));
+  const title = createI18n(locale).t(result.left.length > 0 ? 'group.partiallyLeft' : 'group.failedLeave', { count: result.left.length > 0 ? result.left.length : result.failed.length, failed: result.failed.length });
+  return { tone: 'danger', title, body: createI18n(locale).t('group.failedNames', { names: list }) };
 }

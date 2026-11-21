@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 import { openDm } from '@discordy/core/application/dmCommands';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -18,7 +19,7 @@ export function closeDm(channelId: string): void {
 
 /** Makes sure the 1:1 DM with a user exists and is listed (a closed one is reopened); resolves to its id. */
 export async function ensureDm(userId: string): Promise<string | null> {
-  const channel = await attempt(() => openDm(getRuntime().api, [userId]), 'Could not open conversation');
+  const channel = await attempt(() => openDm(getRuntime().api, [userId]), getI18n().catalogText("Could not open conversation"));
   return channel?.id ?? null;
 }
 
@@ -35,7 +36,7 @@ export async function leaveGroupDm(channelId: string): Promise<void> {
   const ok = await attempt(async () => {
     await getRuntime().api.removeGroupRecipient(channelId, '@me');
     return true;
-  }, 'Could not leave the group');
+  }, getI18n().catalogText("Could not leave the group"));
   if (!ok) return;
   forgetLeftGroup(channelId);
   useUiStore.getState().openDialog(null);
@@ -48,6 +49,6 @@ export async function leaveGroupDms(channelIds: string[], names: Record<string, 
     forgetLeftGroup(id);
     return true;
   });
-  useUiStore.getState().toast(bulkLeaveOutcomeMessage(result, names));
+  useUiStore.getState().toast(bulkLeaveOutcomeMessage(result, names, getI18n().locale));
   return result;
 }

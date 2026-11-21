@@ -1,3 +1,4 @@
+import { createI18n } from '../domain/i18n';
 /** Runs message searches: on the server for Standard chats, in the local store for Ephemeral and P2P chats. */
 import type { Channel, DeliveryMode, Message } from '@discordy/core/contracts/rest';
 import { highlightTerms, matchesLocal, parseQuery, toSearchParams, type SearchParams, type SuggestionContext } from '@discordy/core/domain/messageSearch';
@@ -23,11 +24,11 @@ const SORTS: Record<SearchSort, Pick<SearchParams, 'sort_by' | 'sort_order'>> = 
   relevant: { sort_by: 'relevance', sort_order: 'desc' },
 };
 
-export function errorText(error: unknown): string {
+export function errorText(error: unknown, locale?: string): string {
   const status = (error as { status?: number }).status;
-  if (status === 429) return 'You are searching too fast. Try again in a few seconds.';
-  if (status === 503) return 'Search is unavailable right now.';
-  return error instanceof Error ? error.message : 'Search failed';
+  if (status === 429) return createI18n(locale).catalogText('You are searching too fast. Try again in a few seconds.');
+  if (status === 503) return createI18n(locale).catalogText('Search is unavailable right now.');
+  return createI18n(locale).catalogText(error instanceof Error ? error.message : 'Search failed');
 }
 
 /** One page of results, before it reaches any store. */
@@ -63,7 +64,7 @@ export class SearchService {
     const store = useSearchStore.getState();
     const parsed = parseQuery(input);
     const offset = options.offset ?? 0;
-    const scopeLabel = target.channel.guild_id ? (target.guildName ?? 'this server') : `#${target.channel.name ?? 'this chat'}`;
+    const scopeLabel = target.channel.guild_id ? (target.guildName ?? createI18n(target.candidates.locale).catalogText('this server')) : `#${target.channel.name ?? createI18n(target.candidates.locale).catalogText('this chat')}`;
     const base = { input, submitted: input, terms: highlightTerms(parsed.text), scopeLabel, offset, problems: [] as string[], local: target.mode !== 'standard' };
     const ticket = ++this.ticket;
     let outcome: SearchOutcome;
@@ -76,7 +77,7 @@ export class SearchService {
       outcome = await this.page(target, input, { offset, sort: store.sort });
     } catch (error) {
       if (ticket !== this.ticket) return;
-      useSearchStore.getState().set({ status: 'error', error: errorText(error), groups: [], total: 0 });
+      useSearchStore.getState().set({ status: 'error', error: errorText(error, target.candidates.locale), groups: [], total: 0 });
       return;
     }
     if (ticket !== this.ticket) return;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEST_BRAND } from '../support/brandFixture';
 import type { GuildTemplate, TemplateChannel } from '../../src/contracts/rest';
-import { isBuiltinTemplate, parseTemplateCode, previewTemplate, templateShareLink, templateSummary, usageLabel } from '../../src/domain/templateModel';
+import { isBuiltinTemplate, parseTemplateCode, previewTemplate, templateIdentity, templateShareLink, templateSummary, usageLabel } from '../../src/domain/templateModel';
 
 const channel = (id: number, type: number, name: string, parent: number | null, position = 0): TemplateChannel => ({
   id,
@@ -46,24 +46,36 @@ const template: GuildTemplate = {
 };
 
 describe('parseTemplateCode', () => {
+  it('translates only known built-in identities and leaves authored names and the snapshot intact', () => {
+    const builtin = { ...template, code: 'builtin-study-group', name: 'Study Group' };
+    expect(templateIdentity(builtin, 'nl').name).toBe('Studiegroep');
+    expect(templateIdentity({ ...builtin, code: 'abc123', description: 'My words مرحبا' }, 'nl')).toEqual({ name: 'Study Group', description: 'My words مرحبا' });
+    expect(templateIdentity({ ...builtin, code: 'builtin-future' }, 'nl').name).toBe('Study Group');
+    expect(previewTemplate(builtin).groups[0]?.channels[0]?.name).toBe('loose');
+    expect(builtin.name).toBe('Study Group');
+  });
   it('accepts codes, web links and deep links', () => {
     expect(parseTemplateCode('hTKzmak12345')).toBe('hTKzmak12345');
     expect(parseTemplateCode(' https://example.test/template/hTKzmak12345 ')).toBe('hTKzmak12345');
     expect(parseTemplateCode('app://template/hTKzmak12345/')).toBe('hTKzmak12345');
     expect(parseTemplateCode('builtin-study-group')).toBe('builtin-study-group');
     expect(parseTemplateCode('https://example.test/template/abc?x=1')).toBe('abc');
+    expect(parseTemplateCode('https://example.test/template.html?code=abc-12')).toBe('abc-12');
   });
 
   it('rejects text that is not a code', () => {
     expect(parseTemplateCode('')).toBeNull();
     expect(parseTemplateCode('a')).toBeNull();
     expect(parseTemplateCode('not a code')).toBeNull();
+    expect(parseTemplateCode('https://example.test/account')).toBeNull();
+    expect(parseTemplateCode('https://example.test/template.html?code=bad%2Fcode')).toBeNull();
+    expect(parseTemplateCode('https://example.test/template/abc/extra')).toBeNull();
   });
 });
 
 describe('template links', () => {
-  it('shares through the brand scheme', () => {
-    expect(templateShareLink('abc')).toBe(`${TEST_BRAND.protocolScheme}://template/abc`);
+  it('shares through the public web page', () => {
+    expect(templateShareLink('abc')).toBe(`${TEST_BRAND.landingUrl}/template.html?code=abc`);
     expect(parseTemplateCode(templateShareLink('abc-12'))).toBe('abc-12');
   });
 

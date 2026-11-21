@@ -1,12 +1,13 @@
+import { createI18n } from './i18n';
 import { Permission } from '../contracts/permissions';
 import type { Channel, Webhook, WebhookEdit } from '../contracts/rest';
 import { computeChannelPermissions, hasPermission, type PermissionContext } from './permissions';
 
 export interface WebhookDraft { name: string; channelId: string; avatar?: string | null }
 
-export function webhookNameError(name: string): string | null {
+export function webhookNameError(name: string, locale?: string): string | null {
   const length = Array.from(name.trim()).length;
-  return length < 1 || length > 80 ? 'Use a name between 1 and 80 characters.' : null;
+  return length < 1 || length > 80 ? createI18n(locale).catalogText('Use a name between 1 and 80 characters.') : null;
 }
 
 /** Metadata writes cannot include an execution token. Undefined image means unchanged. */

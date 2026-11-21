@@ -8,6 +8,16 @@ const flat = (parts: { text: string }[]) => parts.map((p) => p.text).join('');
 const linkActions = (parts: ReturnType<typeof spec>['parts']) => parts.flatMap((p) => (p.t === 'link' ? [p.action] : []));
 
 describe('systemSpec by type', () => {
+  it('orders Dutch sentences around original Unicode names and preserves link actions', () => {
+    const author = 'Original مرحبا <author> \\uFFFCtarget\\uFFFC';
+    const added = systemSpec({ ...base, type: 1, authorName: author, targetName: 'Copy' }, 'nl');
+    expect(flat(added.parts)).toBe(`${author} heeft Copy aan de groep toegevoegd.`);
+    expect(added.parts.filter((part) => part.t === 'name').map((part) => part.text)).toEqual([author, 'Copy']);
+    const pinned = systemSpec({ ...base, type: 6, hasReference: true }, 'nl');
+    expect(flat(pinned.parts)).toBe('Ann heeft een bericht vastgezet in dit kanaal. Bekijk alle vastgezette berichten.');
+    expect(linkActions(pinned.parts)).toEqual(['jump', 'pins']);
+    expect(callDuration(base.timestamp, '2026-11-03T10:02:00Z', 'nl')).toBe('2 minuten');
+  });
   it('group DM events (1, 2, 4, 5)', () => {
     expect(flat(spec({ type: 1, targetName: 'Bob' }).parts)).toBe('Ann added Bob to the group.');
     expect(flat(spec({ type: 2, targetName: 'Ann' }).parts)).toBe('Ann left the group.');

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { CSSProperties } from 'react';
 import type { PresenceStatus } from '@discordy/core/contracts/rest';
 import { assetCandidates, type AssetKind } from '@discordy/core/domain/assets';
@@ -15,6 +16,8 @@ interface Props {
   square?: boolean;
   /** CDN folder of `avatar`: user avatars by default, `icons` for guilds, `app-icons` for applications. */
   kind?: AssetKind;
+  /** Explicit image sources for a server profile or a local upload preview. */
+  sources?: string[];
 }
 
 function hueOf(seed: string): number {
@@ -31,7 +34,8 @@ export function initialsOf(name: string): string {
 }
 
 /** Avatar with optional presence dot and the audio-driven speaking ring. */
-export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square, kind = 'avatars' }: Props) {
+export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot, square, kind = 'avatars', sources }: Props) {
+  const { t: msg } = useI18n();
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const h = hueOf(id ?? name ?? '');
   const style = {
@@ -42,14 +46,15 @@ export function Avatar({ id, name, avatar, size = 36, status, speaking = 0, bot,
     '--speak': speaking,
     borderRadius: square ? Math.round(size * 0.3) : undefined,
   } as CSSProperties;
-  const candidates = avatar && id ? assetCandidates(cdn, kind, id, avatar) : null;
+  const candidates = sources ?? (avatar && id ? assetCandidates(cdn, kind, id, avatar) : null);
+  const fallback = <span aria-hidden="true">{initialsOf(name)}</span>;
   return (
     <span className={`avatar${speaking > 0 ? ' is-speaking' : ''}`} style={style}>
       <span className="avatar-face" style={square ? { borderRadius: 'inherit' } : undefined}>
-        {candidates ? <AssetImage candidates={candidates} /> : <span aria-hidden="true">{initialsOf(name)}</span>}
+        {candidates?.length ? <AssetImage candidates={candidates} fallback={fallback} /> : fallback}
       </span>
-      {bot && <span className="avatar-bot">BOT</span>}
-      {status && status !== 'invisible' && <span className={`status-dot status-${status}`} role="img" aria-label={status} />}
+      {bot && <span className="avatar-bot">{msg("settings.avatar.bot")}</span>}
+      {status && status !== 'invisible' && <span className={`status-dot status-${status}`} role="img" aria-label={msg(`avatar.${status}`)} />}
     </span>
   );
 }

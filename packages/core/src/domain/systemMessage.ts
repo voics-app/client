@@ -1,3 +1,5 @@
+import { createI18n, type MessageId, type MessageValues } from './i18n';
+import { en } from './locales/en';
 import { item, sep, tidy, type MenuModel } from './menuModel';
 
 /** Renderer table for server-generated messages (Discord message types 1-7, 18). Pure: no React, no stores. */
@@ -41,18 +43,8 @@ export interface SystemSpec {
 }
 
 /** Greetings for join messages. `{name}` is replaced by the bold member name. Edit here to add more. */
-export const JOIN_GREETINGS: readonly string[] = [
-  '{name} joined the party.',
-  '{name} is here.',
-  'Welcome, {name}. We hope you brought pizza.',
-  'A wild {name} appeared.',
-  '{name} just landed.',
-  '{name} just slid into the server.',
-  'Everyone welcome {name}!',
-  'Glad you are here, {name}.',
-  'Good to see you, {name}.',
-  'Yay you made it, {name}!',
-];
+const JOIN_GREETING_IDS = ['system.join0', 'system.join1', 'system.join2', 'system.join3', 'system.join4', 'system.join5', 'system.join6', 'system.join7', 'system.join8', 'system.join9'] as const;
+export const JOIN_GREETINGS: readonly string[] = JOIN_GREETING_IDS.map((id) => en[id]);
 
 function hashString(s: string): number {
   let h = 0;
@@ -67,8 +59,8 @@ export function joinGreetingIndex(messageId: string, count = JOIN_GREETINGS.leng
   return hashString(messageId) % count;
 }
 
-export function joinGreeting(messageId: string): string {
-  return JOIN_GREETINGS[joinGreetingIndex(messageId)]!;
+export function joinGreeting(messageId: string, locale?: string): string {
+  return createI18n(locale).t(JOIN_GREETING_IDS[joinGreetingIndex(messageId)]!, { name: "{name}" });
 }
 
 function greetingParts(template: string, name: string): SystemPart[] {
@@ -81,15 +73,14 @@ function greetingParts(template: string, name: string): SystemPart[] {
 }
 
 /** "a few seconds", "3 minutes", "2 hours", "1 day" for the length of a call. */
-export function callDuration(startIso: string, endIso: string): string {
+export function callDuration(startIso: string, endIso: string, locale?: string): string {
+  const { t } = createI18n(locale);
   const ms = Date.parse(endIso) - Date.parse(startIso);
-  if (!Number.isFinite(ms) || ms < 60_000) return 'a few seconds';
-  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  if (!Number.isFinite(ms) || ms < 60_000) return t('system.fewSeconds');
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return plural(minutes, 'minute');
+  if (minutes < 60) return t('common.minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return plural(hours, 'hour');
-  return plural(Math.floor(hours / 24), 'day');
+  return hours < 24 ? t('common.hours', { count: hours }) : t('common.days', { count: Math.floor(hours / 24) });
 }
 
 /** Types this table knows. Anything else gets the fallback text. */
@@ -109,62 +100,38 @@ export function isSystemType(type: number): boolean {
 const text = (s: string): SystemPart => ({ t: 'text', text: s });
 const name = (s: string): SystemPart => ({ t: 'name', text: s });
 
-export function systemSpec(input: SystemInput): SystemSpec {
+/** Full ICU sentences control ordering; authored names and links remain typed slots, never parsed as markup. */
+export function systemSpec(input: SystemInput, locale?: string): SystemSpec {
+  const { t } = createI18n(locale);
   const { authorName: author, targetName: target } = input;
   const base = { joinCall: false, wave: false };
+  const parts = (id: MessageId, slots: Record<string, SystemPart>, values: MessageValues = {}): SystemPart[] => {
+    const markers = Object.fromEntries(Object.keys(slots).map((key) => [key, '\uFFFC' + key + '\uFFFC']));
+    const formatted = t(id, { ...values, ...markers });
+    return formatted.split(/(\uFFFC[a-z]+\uFFFC)/).filter(Boolean).map((chunk) => slots[chunk.slice(1, -1)] && chunk.startsWith('\uFFFC') ? slots[chunk.slice(1, -1)]! : text(chunk));
+  };
+  const actors = { author: name(author), target: name(target ?? t('system.someone')) };
   switch (input.type) {
     case 1:
-      return { ...base, kind: 'recipientAdd', icon: 'arrowIn', tone: 'positive', parts: [name(author), text(' added '), name(target ?? 'someone'), text(' to the group.')] };
+      return { ...base, kind: 'recipientAdd', icon: 'arrowIn', tone: 'positive', parts: parts('system.added', actors) };
     case 2:
-      return {
-        ...base,
-        kind: 'recipientRemove',
-        icon: 'arrowOut',
-        tone: 'negative',
-        parts: target && target === author ? [name(author), text(' left the group.')] : [name(author), text(' removed '), name(target ?? 'someone'), text(' from the group.')],
-      };
+      return { ...base, kind: 'recipientRemove', icon: 'arrowOut', tone: 'negative', parts: parts(target && target === author ? 'system.left' : 'system.removed', actors) };
     case 3: {
       const ended = input.call?.ended_timestamp;
-      return {
-        ...base,
-        kind: 'call',
-        icon: ended ? 'phoneEnded' : 'phone',
-        tone: ended ? 'neutral' : 'positive',
-        parts: ended ? [name(author), text(` started a call that lasted ${callDuration(input.timestamp, ended)}.`)] : [name(author), text(' started a call.')],
-        joinCall: !ended,
-      };
+      return { ...base, kind: 'call', icon: ended ? 'phoneEnded' : 'phone', tone: ended ? 'neutral' : 'positive', parts: parts(ended ? 'system.endedCall' : 'system.startedCall', actors, ended ? { duration: callDuration(input.timestamp, ended, locale) } : {}), joinCall: !ended };
     }
     case 4:
-      return { ...base, kind: 'nameChange', icon: 'pencil', tone: 'neutral', parts: [name(author), text(' changed the group name'), ...(input.content ? [text(' to '), name(input.content)] : []), text('.')] };
+      return { ...base, kind: 'nameChange', icon: 'pencil', tone: 'neutral', parts: parts(input.content ? 'system.renamedGroupTo' : 'system.renamedGroup', { ...actors, group: name(input.content) }) };
     case 5:
-      return { ...base, kind: 'iconChange', icon: 'image', tone: 'neutral', parts: [name(author), text(' changed the group icon.')] };
+      return { ...base, kind: 'iconChange', icon: 'image', tone: 'neutral', parts: parts('system.changedIcon', actors) };
     case 6:
-      return {
-        ...base,
-        kind: 'pin',
-        icon: 'pin',
-        tone: 'neutral',
-        parts: [
-          name(author),
-          text(' pinned '),
-          input.hasReference ? { t: 'link', text: 'a message', action: 'jump' } : text('a message'),
-          text(' to this channel. See all '),
-          { t: 'link', text: 'pinned messages', action: 'pins' },
-          text('.'),
-        ],
-      };
+      return { ...base, kind: 'pin', icon: 'pin', tone: 'neutral', parts: parts('system.pinned', { ...actors, message: input.hasReference ? { t: 'link', text: t('system.aMessage'), action: 'jump' } : text(t('system.aMessage')), pins: { t: 'link', text: t('system.pins'), action: 'pins' } }) };
     case 7:
-      return { ...base, kind: 'join', icon: 'wave', tone: 'positive', parts: greetingParts(joinGreeting(input.messageId), author), wave: true };
+      return { ...base, kind: 'join', icon: 'wave', tone: 'positive', parts: greetingParts(joinGreeting(input.messageId, locale), author), wave: true };
     case 18:
-      return {
-        ...base,
-        kind: 'thread',
-        icon: 'thread',
-        tone: 'neutral',
-        parts: [name(author), text(' started a thread: '), { t: 'link', text: input.threadName || input.content || 'thread', action: 'thread' }, text('.')],
-      };
+      return { ...base, kind: 'thread', icon: 'thread', tone: 'neutral', parts: parts('system.startedThread', { ...actors, thread: { t: 'link', text: input.threadName || input.content || t('system.thread'), action: 'thread' } }) };
     default:
-      return { ...base, kind: 'unknown', icon: 'warning', tone: 'neutral', parts: [text(`Unknown system message (type ${input.type})`)] };
+      return { ...base, kind: 'unknown', icon: 'warning', tone: 'neutral', parts: [text(t('system.unknown', { type: input.type }))] };
   }
 }
 

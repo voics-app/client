@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -18,13 +19,14 @@ const ENTITY_SELECTS: Record<number, number> = {
 
 /** Sends a component interaction; keeps the control disabled while the request is in flight. */
 function usePress(message: Message) {
+  const { t: msg } = useI18n();
   const [busy, setBusy] = useState(false);
   const press = async (component: MessageComponent, values?: string[]) => {
     setBusy(true);
     try {
       await getRuntime().interactions.pressComponent(message, component, values);
     } catch (e) {
-      reportError(e, 'Interaction failed');
+      reportError(e, msg("settings.messagecomponents.interaction.failed"));
     } finally {
       setBusy(false);
     }
@@ -61,11 +63,12 @@ function ButtonView({ message, component }: { message: Message; component: Messa
 }
 
 function StringSelect({ message, component }: { message: Message; component: MessageComponent }) {
+  const { t: msg } = useI18n();
   const { busy, press } = usePress(message);
   const [picked, setPicked] = useState<string[]>(() => (component.options ?? []).filter((o) => o.default).map((o) => o.value));
   const { min, max } = selectLimits(component);
   const multi = max > 1;
-  const label = component.placeholder ?? 'Select an option';
+  const label = component.placeholder ?? msg("settings.messagecomponents.select.an.option");
   if (!multi) {
     return (
       <Select aria-label={label} value={picked[0] ?? ''} disabled={component.disabled || busy} onChange={(e) => { setPicked([e.target.value]); void press(component, [e.target.value]); }}>
@@ -85,17 +88,18 @@ function StringSelect({ message, component }: { message: Message; component: Mes
           {o.description && <small>{o.description}</small>}
         </label>
       ))}
-      <button type="button" className="component-btn is-primary" disabled={picked.length < min} onClick={() => void press(component, picked)}>Apply</button>
+      <button type="button" className="component-btn is-primary" disabled={picked.length < min} onClick={() => void press(component, picked)}>{msg("settings.messagecomponents.apply")}</button>
     </fieldset>
   );
 }
 
 function EntitySelect({ message, component }: { message: Message; component: MessageComponent }) {
+  const { t: msg } = useI18n();
   const { busy, press } = usePress(message);
   const channel = useGuildStore((s) => s.channels[message.channel_id]);
   const [value, setValue] = useState('');
   if (!channel) return null;
-  const option = { type: ENTITY_SELECTS[component.type]!, name: component.placeholder ?? 'Select', required: true, channel_types: component.channel_types };
+  const option = { type: ENTITY_SELECTS[component.type]!, name: component.placeholder ?? msg("settings.messagecomponents.select"), required: true, channel_types: component.channel_types };
   return (
     <fieldset className="component-entity" disabled={component.disabled || busy}>
       <EntityPicker option={option} value={value} channel={channel} onChange={(v) => { setValue(v); if (v) void press(component, [v]); }} />

@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ArrowDown, ArrowUp, ChatCircleDots, WarningCircle } from '@phosphor-icons/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -32,21 +33,21 @@ type Row =
 
 const BOTTOM_THRESHOLD = 80;
 
-function formatSince(ms: number | null): string {
-  if (ms === null) return 'you were last here';
+function formatSince(ms: number | null, locale: string, fallback: string): string {
+  if (ms === null) return fallback;
   const d = new Date(ms);
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+  const time = d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
-function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadId: string | null, pending: PendingInteraction[]): Row[] {
+function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadId: string | null, pending: PendingInteraction[], locale: string): Row[] {
   const grouped = groupMessages(
     messages.map((m) => ({ id: m.id, authorId: m.author.id, timestamp: Date.parse(m.timestamp), breaksGroup: m.type !== 0 || Boolean(m.message_reference) || Boolean(m.interaction_metadata), message: m })),
   );
   const rows: Row[] = [];
   if (!hasMoreBefore) rows.push({ kind: 'start', key: 'start' });
   for (const g of grouped) {
-    if (g.startsDay) rows.push({ kind: 'day', key: `day-${g.message.id}`, label: formatDay(g.message.timestamp) });
+    if (g.startsDay) rows.push({ kind: 'day', key: `day-${g.message.id}`, label: formatDay(g.message.timestamp, locale) });
     if (firstUnreadId && g.message.id === firstUnreadId) rows.push({ kind: 'new', key: 'new' });
     rows.push({ kind: 'message', key: g.message.id, message: g.message.message, startsGroup: g.startsGroup || (firstUnreadId === g.message.id) });
   }
@@ -55,13 +56,14 @@ function buildRows(messages: ChatMessage[], hasMoreBefore: boolean, firstUnreadI
 }
 
 function ThinkingRow({ pending }: { pending: PendingInteraction }) {
+  const { t } = useI18n();
   return (
     <div className="message starts-group is-thinking" role="status">
       <div className="message-row">
         <div className="message-gutter"><Avatar id={pending.applicationId} name={pending.appName} size={40} bot /></div>
         <div className="message-main">
           <header className="message-head"><span className="message-author">{pending.appName}</span></header>
-          <p className="thinking-text"><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span> {pending.appName} is thinking…</p>
+          <p className="thinking-text"><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span> {t('chat.thinking', { name: pending.appName })}</p>
         </div>
       </div>
     </div>
@@ -69,6 +71,8 @@ function ThinkingRow({ pending }: { pending: PendingInteraction }) {
 }
 
 export function MessageList({ channelId }: { channelId: string }) {
+  const { t: msg } = useI18n();
+  const { t, locale } = useI18n();
   const channel = useGuildStore((s) => s.channels[channelId]);
   const timeline = useMessageStore((s) => s.timelines[channelId]);
   const me = useSessionStore((s) => s.user?.id);
@@ -97,9 +101,9 @@ export function MessageList({ channelId }: { channelId: string }) {
     try {
       await getRuntime().privacy.sender.loadHistory(channel);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load messages');
+      setError(e instanceof Error ? e.message : t('chat.loadFailed'));
     }
-  }, [channel]);
+  }, [channel, t]);
 
   useEffect(() => {
     if (!timeline?.loaded && !jump) void load();
@@ -108,7 +112,7 @@ export function MessageList({ channelId }: { channelId: string }) {
   const messages = useMemo(() => (timeline ? timeline.ids.map((id) => timeline.byId[id]).filter((m): m is ChatMessage => Boolean(m)) : []), [timeline]);
   const markers = useMemo(() => messages.filter((m) => !m.localState).map((m) => ({ id: m.id, authorId: m.author.id })), [messages]);
   const firstUnread = useMemo(() => firstUnreadMessageId(markers, anchor, me), [markers, anchor, me]);
-  const rows = useMemo(() => buildRows(messages, timeline?.hasMoreBefore ?? true, firstUnread, pending ?? []), [messages, timeline?.hasMoreBefore, firstUnread, pending]);
+  const rows = useMemo(() => buildRows(messages, timeline?.hasMoreBefore ?? true, firstUnread, pending ?? [], locale), [messages, timeline?.hasMoreBefore, firstUnread, pending, locale]);
   const intro = useMemo(() => dmIntro(channel, Boolean(timeline?.loaded) && messages.length === 0 && !pending?.length, displayName), [channel, timeline?.loaded, messages.length, pending?.length]);
   const bar = useMemo(() => {
     if (!anchor || barDismissed || !isUnread(channel?.last_message_id, lastRead)) return null;
@@ -157,11 +161,11 @@ export function MessageList({ channelId }: { channelId: string }) {
       await getRuntime().privacy.sender.loadHistory(channel, oldest);
     } catch (e) {
       pendingPrepend.current = null;
-      reportError(e, 'Could not load older messages');
+      reportError(e, msg("settings.messagelist.could.not.load.older.messages"));
     } finally {
       setLoadingOlder(false);
     }
-  }, [channel, loadingOlder, timeline, virtualizer]);
+  }, [channel, loadingOlder, timeline, virtualizer, msg]);
 
   const loadingNewer = useRef(false);
   const loadNewer = useCallback(async () => {
@@ -170,11 +174,11 @@ export function MessageList({ channelId }: { channelId: string }) {
     try {
       await getRuntime().privacy.sender.loadNewer(channel);
     } catch (e) {
-      reportError(e, 'Could not load newer messages');
+      reportError(e, msg("settings.messagelist.could.not.load.newer.messages"));
     } finally {
       loadingNewer.current = false;
     }
-  }, [channel]);
+  }, [channel, msg]);
 
   /** "Jump to present": reload the latest page when the window is detached, then pin to the bottom. */
   const jumpToPresent = useCallback(async () => {
@@ -182,13 +186,13 @@ export function MessageList({ channelId }: { channelId: string }) {
       try {
         await getRuntime().privacy.sender.loadHistory(channel);
       } catch (e) {
-        reportError(e, 'Could not load messages');
+        reportError(e, t('chat.loadFailed'));
         return;
       }
     }
     setAtBottom(true);
     requestAnimationFrame(scrollToEnd);
-  }, [channel, timeline?.hasMoreAfter, scrollToEnd]);
+  }, [channel, timeline?.hasMoreAfter, scrollToEnd, t]);
 
   // Jump to a message (reply, pin, link, search hit, first unread): load the window around it when it is not in memory, then scroll and flash.
   useEffect(() => {
@@ -202,17 +206,17 @@ export function MessageList({ channelId }: { channelId: string }) {
         try {
           await getRuntime().privacy.sender.loadAround(channel, wanted.messageId);
         } catch (e) {
-          reportError(e, 'Could not load that message');
+          reportError(e, msg("settings.messagelist.could.not.load.that.message"));
         }
-        const t = useMessageStore.getState().timelines[channelId];
+        const latestTimeline = useMessageStore.getState().timelines[channelId];
         const found =
           wanted.mode === 'message'
-            ? Boolean(t?.ids.includes(wanted.messageId))
-            : Boolean(t && firstUnreadMessageId(t.ids.map((id) => ({ id, authorId: t.byId[id]?.author.id ?? '' })), wanted.messageId, me));
+            ? Boolean(latestTimeline?.ids.includes(wanted.messageId))
+            : Boolean(latestTimeline && firstUnreadMessageId(latestTimeline.ids.map((id) => ({ id, authorId: latestTimeline.byId[id]?.author.id ?? '' })), wanted.messageId, me));
         if (!found) {
           useReadNavStore.getState().consumeJump(wanted.id);
-          useUiStore.getState().toast({ tone: 'info', title: 'That message is no longer available' });
-          if (!t?.loaded) void load();
+          useUiStore.getState().toast({ tone: 'info', title: t('chat.unavailable') });
+          if (!latestTimeline?.loaded) void load();
         } else {
           jumping.current = null; // the timeline changed: the effect re-runs with the target in memory
         }
@@ -255,9 +259,9 @@ export function MessageList({ channelId }: { channelId: string }) {
     (m: ChatMessage) => {
       if (!channel) return;
       useMessageStore.getState().remove(channelId, m.id);
-      void getRuntime().privacy.sender.send(channel, { content: m.content, replyTo: m.message_reference?.message_id ?? null }).catch((e) => reportError(e, 'Could not send message'));
+      void getRuntime().privacy.sender.send(channel, { content: m.content, replyTo: m.message_reference?.message_id ?? null }).catch((e) => reportError(e, t('chat.sendFailed')));
     },
-    [channel, channelId],
+    [channel, channelId, t],
   );
   const discard = useCallback((m: ChatMessage) => useMessageStore.getState().remove(channelId, m.id), [channelId]);
 
@@ -267,7 +271,7 @@ export function MessageList({ channelId }: { channelId: string }) {
     if (error) {
       return (
         <div className="message-list is-state">
-          <EmptyState icon={<WarningCircle size={36} weight="light" />} title="Could not load messages" body={error} action={<Button variant="primary" onClick={() => void load()}>Try again</Button>} />
+          <EmptyState icon={<WarningCircle size={36} weight="light" />} title={t('chat.loadFailed')} body={error} action={<Button variant="primary" onClick={() => void load()}>{t('common.retry')}</Button>} />
         </div>
       );
     }
@@ -288,10 +292,10 @@ export function MessageList({ channelId }: { channelId: string }) {
 
   return (
     <div className="message-list-wrap">
-      <div ref={scrollRef} className="message-list" onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages">
+      <div ref={scrollRef} className="message-list" onScroll={onScroll} role="log" aria-live="polite" aria-label={t('chat.messages')}>
         {loadingOlder && (
           <div className="older-loader">
-            <Spinner size={16} /> Loading earlier messages
+            <Spinner size={16} /> {t('chat.loadingEarlier')}
           </div>
         )}
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
@@ -304,8 +308,8 @@ export function MessageList({ channelId }: { channelId: string }) {
                 {row.kind === 'start' && !intro && (
                   <div className="channel-start">
                     <ChatCircleDots size={44} weight="light" />
-                    <h2>{channel?.guild_id ? `Welcome to #${channel.name}` : 'This is the beginning of your conversation'}</h2>
-                    <p>{channel?.topic ?? 'Say hello and start the conversation.'}</p>
+                    <h2>{channel?.guild_id ? t('chat.welcome', { name: channel.name ?? '' }) : t('chat.conversationStart')}</h2>
+                    <p>{channel?.topic ?? t('chat.sayHello')}</p>
                   </div>
                 )}
                 {row.kind === 'day' && (
@@ -315,7 +319,7 @@ export function MessageList({ channelId }: { channelId: string }) {
                 )}
                 {row.kind === 'new' && (
                   <div className="new-divider" role="separator">
-                    <span>New</span>
+                    <span>{t('chat.new')}</span>
                   </div>
                 )}
                 {row.kind === 'thinking' && <ThinkingRow pending={row.pending} />}
@@ -329,11 +333,10 @@ export function MessageList({ channelId }: { channelId: string }) {
       {bar && (
         <div className="unread-bar" role="status">
           <span className="unread-bar-text">
-            {bar.count}
-            {bar.more ? '+' : ''} new {bar.count === 1 && !bar.more ? 'message' : 'messages'} since {formatSince(bar.sinceMs)}
+            {t(bar.more ? 'chat.unreadMore' : 'chat.unreadSince', { count: bar.count, since: formatSince(bar.sinceMs, locale, t('chat.sinceLast')) })}
           </span>
           <button type="button" className="unread-bar-action" onClick={() => jumpToFirstUnread(channelId)}>
-            <ArrowUp size={12} weight="bold" /> Jump to first unread
+            <ArrowUp size={12} weight="bold" /> {t('chat.jumpUnread')}
           </button>
           <button
             type="button"
@@ -343,13 +346,13 @@ export function MessageList({ channelId }: { channelId: string }) {
               useReadNavStore.getState().dismissBar(channelId);
             }}
           >
-            Mark as read
+            {t('chat.markRead')}
           </button>
         </div>
       )}
       {(!atBottom || timeline?.hasMoreAfter) && (
         <button type="button" className="jump-bottom glass" onClick={() => void jumpToPresent()}>
-          <ArrowDown size={14} weight="bold" /> Jump to present
+          <ArrowDown size={14} weight="bold" /> {t('chat.jumpPresent')}
         </button>
       )}
     </div>

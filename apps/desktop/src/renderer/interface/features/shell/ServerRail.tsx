@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { motion } from 'framer-motion';
 import { BellRinging, BellSlash, Check, Compass, FolderSimple, FolderSimpleDashed, Gear, House, LinkSimple, Plus } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
@@ -89,6 +90,7 @@ function dropClass(dnd: DndApi, key: string): string {
 }
 
 function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; active: boolean; dnd: DndApi; folderId: number | null }) {
+  const { t: msg } = useI18n();
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const cdn = useConnectionStore((s) => s.cdnUrl);
   const { unread, mentions } = useGuildActivity(guildId);
@@ -103,10 +105,10 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
     const { rail, order } = useGuildStore.getState();
     const index = order.indexOf(guildId);
     return [
-      { kind: 'item', label: 'Move up', disabled: index <= 0, onSelect: () => void saveRail(moveGuildToIndex(rail, guildId, index - 1)) },
-      { kind: 'item', label: 'Move down', disabled: index >= order.length - 1, onSelect: () => void saveRail(moveGuildToIndex(rail, guildId, index + 1)) },
+      { kind: 'item', label: msg("settings.serverrail.move.up"), disabled: index <= 0, onSelect: () => void saveRail(moveGuildToIndex(rail, guildId, index - 1)) },
+      { kind: 'item', label: msg("settings.serverrail.move.down"), disabled: index >= order.length - 1, onSelect: () => void saveRail(moveGuildToIndex(rail, guildId, index + 1)) },
       ...(folderId !== null
-        ? [{ kind: 'item' as const, label: 'Remove from folder', onSelect: () => void saveRail(applyDrop(rail, item, { kind: 'folder', id: folderId }, 'after')) }]
+        ? [{ kind: 'item' as const, label: msg("settings.serverrail.remove.from.folder"), onSelect: () => void saveRail(applyDrop(rail, item, { kind: 'folder', id: folderId }, 'after')) }]
         : []),
       { kind: 'separator' as const },
     ];
@@ -156,7 +158,7 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
           <Count value={mentions} tone="danger" />
         </span>
       )}
-      {inCall && <span className="rail-call" role="img" aria-label="In a call here" />}
+      {inCall && <span className="rail-call" role="img" aria-label={msg("settings.serverrail.in.a.call.here")} />}
       <GuildContextMenu guildId={guildId} anchor={menu} onClose={() => setMenu(null)} leading={menu ? leading() : []} />
     </div>
   );
@@ -165,6 +167,7 @@ function GuildButton({ guildId, active, dnd, folderId }: { guildId: string; acti
 const cssColor = (color: number | null) => (color === null ? undefined : `#${color.toString(16).padStart(6, '0')}`);
 
 function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; activeGuildId: string | null; dnd: DndApi }) {
+  const { t: msg, locale, catalogText } = useI18n();
   const folderId = folder.id as number;
   const collapseKey = `folder-${folderId}`;
   const closed = usePrefsStore((s) => s.collapsedCategories[collapseKey] ?? false);
@@ -173,7 +176,7 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
   const activity = useFolderActivity(folder.guild_ids);
   const byScope = useNotificationSettingsStore((s) => s.byScope);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const label = folderLabel(folder, (id) => guilds[id]?.name);
+  const label = folderLabel(folder, (id) => guilds[id]?.name, locale);
   const item: DragItem = { kind: 'folder', id: folderId };
   const containsActive = activeGuildId !== null && folder.guild_ids.includes(activeGuildId);
   const tint = cssColor(folder.color);
@@ -181,18 +184,18 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
   const entries = (): MenuEntry[] => {
     const allMuted = folder.guild_ids.every((id) => isGuildMuted(byScope[scopeKey(id)], Date.now()));
     return [
-      { kind: 'item', label: 'Mark folder as read', icon: <Check size={16} />, onSelect: () => folder.guild_ids.forEach(markGuildRead) },
+      { kind: 'item', label: msg("settings.serverrail.mark.folder.as.read"), icon: <Check size={16} />, onSelect: () => folder.guild_ids.forEach(markGuildRead) },
       allMuted
-        ? { kind: 'item', label: 'Unmute folder', icon: <BellRinging size={16} />, onSelect: () => folder.guild_ids.forEach((id) => void muteGuild(id, undefined)) }
+        ? { kind: 'item', label: msg("settings.serverrail.unmute.folder"), icon: <BellRinging size={16} />, onSelect: () => folder.guild_ids.forEach((id) => void muteGuild(id, undefined)) }
         : {
             kind: 'submenu',
-            label: 'Mute folder',
+            label: msg("settings.serverrail.mute.folder"),
             icon: <BellSlash size={16} />,
-            entries: MUTE_DURATIONS.map((d) => ({ kind: 'item' as const, label: d.label, onSelect: () => folder.guild_ids.forEach((id) => void muteGuild(id, d.seconds)) })),
+            entries: MUTE_DURATIONS.map((d) => ({ kind: 'item' as const, label: catalogText(d.label), onSelect: () => folder.guild_ids.forEach((id) => void muteGuild(id, d.seconds)) })),
           },
-      { kind: 'item', label: 'Folder settings', icon: <Gear size={16} />, onSelect: () => useUiStore.getState().openDialog({ kind: 'folderSettings', folderId }) },
+      { kind: 'item', label: msg("settings.foldersettingsdialog.folder.settings"), icon: <Gear size={16} />, onSelect: () => useUiStore.getState().openDialog({ kind: 'folderSettings', folderId }) },
       { kind: 'separator' },
-      { kind: 'item', label: 'Ungroup servers', icon: <FolderSimpleDashed size={16} />, danger: true, onSelect: () => void saveRail(ungroup(useGuildStore.getState().rail, folderId)) },
+      { kind: 'item', label: msg("settings.serverrail.ungroup.servers"), icon: <FolderSimpleDashed size={16} />, danger: true, onSelect: () => void saveRail(ungroup(useGuildStore.getState().rail, folderId)) },
     ];
   };
 
@@ -250,9 +253,10 @@ function FolderBlock({ folder, activeGuildId, dnd }: { folder: GuildFolder; acti
 
 /** A conversation with unread messages, above the servers: the person's avatar with the number of new messages. */
 function UnreadDmItem({ dm }: { dm: UnreadDm }) {
+  const { t: msg } = useI18n();
   const navigate = useUiStore((s) => s.navigate);
   const recipients = dm.channel.recipients ?? [];
-  const name = dm.channel.name || recipients.map((u) => displayName(u)).join(', ') || 'Unknown';
+  const name = dm.channel.name || recipients.map((u) => displayName(u)).join(', ') || msg("domain.unknown");
   const peer = recipients.length === 1 ? recipients[0]! : null;
   return (
     <div className="rail-item">
@@ -310,6 +314,7 @@ function useRailDnd(scrollRef: RefObject<HTMLDivElement | null>): DndApi {
 }
 
 export function ServerRail() {
+  const { t: msg } = useI18n();
   const rail = useGuildStore((s) => s.rail);
   const view = useUiStore((s) => s.view);
   const navigate = useUiStore((s) => s.navigate);
@@ -328,14 +333,14 @@ export function ServerRail() {
   const activeGuildId = view.kind === 'guild' ? view.guildId : null;
 
   return (
-    <nav ref={navRef} className="rail" aria-label="Servers">
+    <nav ref={navRef} className="rail" aria-label={msg("settings.serverrail.servers")}>
       <div className="rail-item">
         {homeActive && <motion.span layoutId="rail-pill" className="rail-pill" transition={snappy} />}
-        <Tooltip label="Direct messages" side="right" delay={150}>
+        <Tooltip label={msg("home.directMessages")} side="right" delay={150}>
           <button
             type="button"
             className={`guild-btn home-btn${homeActive ? ' is-active' : ''}`}
-            aria-label="Direct messages"
+            aria-label={msg("home.directMessages")}
             aria-current={homeActive || undefined}
             onClick={() => navigate({ kind: 'home', channelId: null })}
           >
@@ -361,23 +366,23 @@ export function ServerRail() {
           ),
         )}
         <div className="rail-item">
-          <Tooltip label="Create a server" side="right" delay={150}>
-            <button type="button" className="guild-btn add-btn" aria-label="Create a server" onClick={() => openDialog({ kind: 'createGuild' })}>
+          <Tooltip label={msg("settings.serverrail.create.a.server")} side="right" delay={150}>
+            <button type="button" className="guild-btn add-btn" aria-label={msg("settings.serverrail.create.a.server")} onClick={() => openDialog({ kind: 'createGuild' })}>
               <Plus size={22} />
             </button>
           </Tooltip>
         </div>
         <div className="rail-item">
-          <Tooltip label="Join a server" side="right" delay={150}>
-            <button type="button" className="guild-btn add-btn" aria-label="Join a server" onClick={() => openDialog({ kind: 'joinGuild' })}>
+          <Tooltip label={msg("settings.dialoghost.join.a.server")} side="right" delay={150}>
+            <button type="button" className="guild-btn add-btn" aria-label={msg("settings.dialoghost.join.a.server")} onClick={() => openDialog({ kind: 'joinGuild' })}>
               <LinkSimple size={22} />
             </button>
           </Tooltip>
         </div>
         <div className="rail-item">
           {view.kind === 'discover' && <motion.span layoutId="rail-pill" className="rail-pill" transition={snappy} />}
-          <Tooltip label="Discover servers" side="right" delay={150}>
-            <button type="button" className={`guild-btn add-btn${view.kind === 'discover' ? ' is-active' : ''}`} aria-label="Discover servers" aria-current={view.kind === 'discover' || undefined} onClick={() => navigate({ kind: 'discover', channelId: null })}>
+          <Tooltip label={msg("settings.serverrail.discover.servers")} side="right" delay={150}>
+            <button type="button" className={`guild-btn add-btn${view.kind === 'discover' ? ' is-active' : ''}`} aria-label={msg("settings.serverrail.discover.servers")} aria-current={view.kind === 'discover' || undefined} onClick={() => navigate({ kind: 'discover', channelId: null })}>
               <Compass size={22} />
             </button>
           </Tooltip>

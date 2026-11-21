@@ -5,9 +5,10 @@ export const POPOUT_FRAME = 'discordy-call-popout';
 /** Mirrors the app's styles, theme attributes and tokens into the pop-out document so portaled React content looks identical. */
 export function syncPopOutDocument(source: Document, target: Document): void {
   target.title = source.title;
-  for (const attr of ['class', 'style', 'lang', 'data-theme', 'data-accent', 'data-density', 'data-sidebar-density', 'data-link-underline', 'data-high-contrast', 'data-role-colors', 'data-compact-avatars', 'data-desaturated', 'data-reduce-motion']) {
+  for (const attr of ['class', 'style', 'lang', 'dir', 'data-theme', 'data-accent', 'data-density', 'data-sidebar-density', 'data-link-underline', 'data-high-contrast', 'data-role-colors', 'data-compact-avatars', 'data-desaturated', 'data-reduce-motion']) {
     const value = source.documentElement.getAttribute(attr);
     if (value !== null) target.documentElement.setAttribute(attr, value);
+    else target.documentElement.removeAttribute(attr);
   }
   target.head.replaceChildren();
   for (const node of source.head.querySelectorAll('link[rel="stylesheet"], style')) target.head.appendChild(node.cloneNode(true));
@@ -58,6 +59,21 @@ export function usePopOut(): PopOut {
     });
     setContainer(root);
   }, []);
+
+  useEffect(() => {
+    if (!container) return;
+    const sync = () => {
+      for (const attribute of ['lang', 'dir']) {
+        const value = document.documentElement.getAttribute(attribute);
+        if (value === null) container.ownerDocument.documentElement.removeAttribute(attribute);
+        else container.ownerDocument.documentElement.setAttribute(attribute, value);
+      }
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
+    return () => observer.disconnect();
+  }, [container]);
 
   // The window must not outlive the page that feeds it.
   useEffect(() => {

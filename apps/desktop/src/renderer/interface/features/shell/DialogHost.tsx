@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { ChannelNotificationDialog, GuildNotificationDialog } from '../notifications/NotificationDialogs';
 import { MentionsInbox } from '../notifications/MentionsInbox';
 import { BotAuthorizeDialog } from '../integrations/BotAuthorizeDialog';
@@ -46,6 +47,7 @@ function useClose() {
 }
 
 function JoinGuildDialog({ initial }: { initial?: string }) {
+  const { t: msg } = useI18n();
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +64,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
         // Already a member: no accept step, just go there.
         close();
         openGuild(gid);
-        useUiStore.getState().toast({ tone: 'info', title: `You are already in ${found.guild?.name ?? 'this server'}` });
+        useUiStore.getState().toast({ tone: 'info', title: msg("invite.alreadyMember", { name: found.guild?.name ?? msg("invite.thisServer") }) });
         return;
       }
       setInvite(found);
@@ -70,7 +72,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       const message = errorMessage(err);
       setError(message);
       // A link opened from outside the form has nowhere to show the field error.
-      if (initial) useUiStore.getState().toast({ tone: 'danger', title: 'Invite is invalid or has expired', body: message });
+      if (initial) useUiStore.getState().toast({ tone: 'danger', title: msg("settings.dialoghost.invite.is.invalid.or.has.expired"), body: message });
     } finally {
       setBusy(false);
     }
@@ -90,7 +92,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
-    const joined = await attempt(() => api.acceptInvite(invite.code), 'Could not join server');
+    const joined = await attempt(() => api.acceptInvite(invite.code), msg("settings.dialoghost.could.not.join.server"));
     setBusy(false);
     if (joined) {
       close();
@@ -99,29 +101,29 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
     }
   };
   return (
-    <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
+    <Modal open onClose={close} title={msg("settings.dialoghost.join.a.server")} description={msg("settings.dialoghost.enter.an.invite.link.or.code")}>
       {invite ? (
         <div className="stack">
           <div className="invite-card">
             <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
             <div>
               <h3>{invite.guild?.name}</h3>
-              <p>{invite.approximate_member_count ?? '?'} members · {invite.approximate_presence_count ?? '?'} online</p>
+              <p>{invite.approximate_member_count === undefined ? msg("invite.unknownMembers") : msg("common.members", { count: invite.approximate_member_count })} · {msg("invite.online", { count: invite.approximate_presence_count ?? -1 })}</p>
             </div>
           </div>
           <div className="row-end">
-            <Button variant="ghost" onClick={() => setInvite(null)}>Back</Button>
-            <Button variant="primary" loading={busy} onClick={() => void accept()}>Accept invite</Button>
+            <Button variant="ghost" onClick={() => setInvite(null)}>{msg("settings.createguilddialog.back")}</Button>
+            <Button variant="primary" loading={busy} onClick={() => void accept()}>{msg("settings.dialoghost.accept.invite")}</Button>
           </div>
         </div>
       ) : (
         <form onSubmit={lookup} className="stack">
-          <Field label="Invite link or code" error={error}>
+          <Field label={msg("settings.dialoghost.invite.link.or.code")} error={error}>
             {(id) => <Input id={id} data-autofocus value={code} placeholder={`${BRAND.landingUrl}/invite/hTKzmak`} onChange={(e) => setCode(e.target.value)} />}
           </Field>
           <div className="row-end">
-            <Button variant="ghost" onClick={close}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={busy} disabled={code.trim().length < 4}>Continue</Button>
+            <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+            <Button type="submit" variant="primary" loading={busy} disabled={code.trim().length < 4}>{msg("settings.accountsecurity.continue")}</Button>
           </div>
         </form>
       )}
@@ -130,6 +132,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
 }
 
 function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId: string; parentId: string | null; type?: number }) {
+  const { t: msg } = useI18n();
   const [name, setName] = useState('');
   const [type, setType] = useState<number>(initialType ?? ChannelType.GUILD_TEXT);
   const [mode, setMode] = useState<'standard' | 'ephemeral'>('standard');
@@ -142,7 +145,7 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
     const clean = name.trim().toLowerCase().replace(/\s+/g, '-');
     const channel = await attempt(
       () => getRuntime().api.createChannel(guildId, { name: isCategory ? name.trim() : clean, type, parent_id: isCategory ? null : parentId, delivery_mode: type === ChannelType.GUILD_TEXT ? mode : 'standard' }),
-      'Could not create channel',
+      msg("settings.dialoghost.could.not.create.channel"),
     );
     setBusy(false);
     if (channel) {
@@ -152,34 +155,34 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
     }
   };
   return (
-    <Modal open onClose={close} title={isCategory ? 'Create category' : 'Create channel'}>
+    <Modal open onClose={close} title={isCategory ? msg("settings.dialoghost.create.category") : msg("settings.dialoghost.create.channel")}>
       <form onSubmit={submit} className="stack">
         {!initialType && (
           <Segmented
-            label="Channel type"
+            label={msg("settings.dialoghost.channel.type")}
             value={String(type)}
             onChange={(v) => setType(Number(v))}
             options={[
-              { value: String(ChannelType.GUILD_TEXT), label: 'Text' },
-              { value: String(ChannelType.GUILD_VOICE), label: 'Voice' },
-              { value: String(ChannelType.GUILD_ANNOUNCEMENT), label: 'Announcement' },
-              { value: String(ChannelType.GUILD_FORUM), label: 'Forum' },
+              { value: String(ChannelType.GUILD_TEXT), label: msg("domain.text") },
+              { value: String(ChannelType.GUILD_VOICE), label: msg("keybind.label.voice") },
+              { value: String(ChannelType.GUILD_ANNOUNCEMENT), label: msg("settings.dialoghost.announcement") },
+              { value: String(ChannelType.GUILD_FORUM), label: msg("settings.dialoghost.forum") },
             ]}
           />
         )}
-        <Field label={isCategory ? 'Category name' : 'Channel name'}>
-          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={isCategory ? 'New category' : 'new-channel'} onChange={(e) => setName(e.target.value)} />}
+        <Field label={isCategory ? msg("settings.dialoghost.category.name") : msg("settings.channelsettings.channel.name")}>
+          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={isCategory ? msg("settings.dialoghost.new.category") : msg("settings.dialoghost.new.channel")} onChange={(e) => setName(e.target.value)} />}
         </Field>
         {type === ChannelType.GUILD_TEXT && (
-          <Field label="Delivery mode" hint="Ephemeral channels are end-to-end encrypted and limited to 100 members. Bots and embeds do not work there.">
+          <Field label={msg("settings.channelsettings.delivery.mode")} hint={msg("settings.dialoghost.ephemeral.channels.are.end.to.end.encrypted.and.limited")}>
             {() => (
-              <Segmented label="Delivery mode" value={mode} onChange={setMode} options={[{ value: 'standard', label: 'Standard' }, { value: 'ephemeral', label: 'Ephemeral E2EE' }]} />
+              <Segmented label={msg("settings.channelsettings.delivery.mode")} value={mode} onChange={setMode} options={[{ value: 'standard', label: msg("settings.dialoghost.standard") }, { value: 'ephemeral', label: msg("settings.dialoghost.ephemeral.e2ee") }]} />
             )}
           </Field>
         )}
         <div className="row-end">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 1}>Create</Button>
+          <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 1}>{msg("settings.dialoghost.create")}</Button>
         </div>
       </form>
     </Modal>
@@ -187,6 +190,7 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
 }
 
 function InviteDialog({ guildId, channelId }: { guildId: string; channelId: string }) {
+  const { t: msg } = useI18n();
   const streamer = useStreamerActive();
   const [invite, setInvite] = useState<Invite | null>(null);
   const [maxAge, setMaxAge] = useState('86400');
@@ -196,37 +200,37 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const generate = async () => {
     setBusy(true);
-    const created = await attempt(() => getRuntime().api.createInvite(channelId, { max_age: Number(maxAge), max_uses: Number(maxUses) }), 'Could not create invite');
+    const created = await attempt(() => getRuntime().api.createInvite(channelId, { max_age: Number(maxAge), max_uses: Number(maxUses) }), msg("settings.dialoghost.could.not.create.invite"));
     setBusy(false);
     if (created) setInvite(created);
   };
   const apiUrl = useConnectionStore((c) => c.apiUrl);
   const link = invite ? inviteWebUrl(invite.code, apiUrl) : '';
   return (
-    <Modal open onClose={close} title={`Invite people to ${guild?.name ?? 'server'}`} description="Share this link so others can join.">
+    <Modal open onClose={close} title={msg("invite.peopleTo", { name: guild?.name ?? msg("invite.thisServer") })} description={msg("settings.dialoghost.share.this.link.so.others.can.join")}>
       <div className="stack">
         {invite ? (
           <div className="invite-link">
             <Input readOnly value={streamer ? 'Hidden in streamer mode' : link} onFocus={(e) => e.currentTarget.select()} />
-            <Button variant="primary" onClick={() => void copyText(link, 'Invite link copied')}>Copy</Button>
+            <Button variant="primary" onClick={() => void copyText(link, msg("settings.servertabs.invite.link.copied"))}>{msg("settings.backupcodeslist.copy")}</Button>
           </div>
         ) : (
           <>
-            <Field label="Expire after">
+            <Field label={msg("settings.dialoghost.expire.after")}>
               {(id) => (
                 <Select id={id} value={maxAge} onChange={(e) => setMaxAge(e.target.value)}>
-                  <option value="1800">30 minutes</option><option value="3600">1 hour</option><option value="86400">1 day</option><option value="604800">7 days</option><option value="0">Never</option>
+                  <option value="1800">{msg("settings.dialoghost.30.minutes")}</option><option value="3600">{msg("settings.usertabs.1.hour")}</option><option value="86400">{msg("settings.dialoghost.1.day")}</option><option value="604800">{msg("settings.dialoghost.7.days")}</option><option value="0">{msg("settings.usertabs.never")}</option>
                 </Select>
               )}
             </Field>
-            <Field label="Max uses">
+            <Field label={msg("settings.dialoghost.max.uses")}>
               {(id) => (
                 <Select id={id} value={maxUses} onChange={(e) => setMaxUses(e.target.value)}>
-                  <option value="0">No limit</option><option value="1">1 use</option><option value="5">5 uses</option><option value="25">25 uses</option><option value="100">100 uses</option>
+                  <option value="0">{msg("settings.dialoghost.no.limit")}</option><option value="1">{msg("settings.dialoghost.1.use")}</option><option value="5">{msg("settings.dialoghost.5.uses")}</option><option value="25">{msg("settings.dialoghost.25.uses")}</option><option value="100">{msg("settings.dialoghost.100.uses")}</option>
                 </Select>
               )}
             </Field>
-            <div className="row-end"><Button variant="primary" loading={busy} onClick={() => void generate()}>Generate invite link</Button></div>
+            <div className="row-end"><Button variant="primary" loading={busy} onClick={() => void generate()}>{msg("settings.dialoghost.generate.invite.link")}</Button></div>
           </>
         )}
       </div>
@@ -235,6 +239,7 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
 }
 
 function NewDmDialog({ preselect }: { preselect?: string[] }) {
+  const { t: msg } = useI18n();
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<string[]>(preselect ?? []);
   const [busy, setBusy] = useState(false);
@@ -248,7 +253,7 @@ function NewDmDialog({ preselect }: { preselect?: string[] }) {
     .slice(0, 30);
   const create = async () => {
     setBusy(true);
-    const channel = await attempt(() => getRuntime().api.openPrivateChannel(picked), 'Could not open conversation');
+    const channel = await attempt(() => getRuntime().api.openPrivateChannel(picked), msg("friends.openFailed"));
     setBusy(false);
     if (channel) {
       useGuildStore.getState().upsertChannel(channel);
@@ -257,9 +262,9 @@ function NewDmDialog({ preselect }: { preselect?: string[] }) {
     }
   };
   return (
-    <Modal open onClose={close} title="New message" description="Pick one person for a DM or several for a group.">
+    <Modal open onClose={close} title={msg("home.newMessage")} description={msg("settings.dialoghost.pick.one.person.for.a.dm.or.several.for")}>
       <div className="stack">
-        <Input data-autofocus placeholder="Find a person" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Find a person" />
+        <Input data-autofocus placeholder={msg("settings.dialoghost.find.a.person")} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={msg("settings.dialoghost.find.a.person")} />
         <ul className="pick-list">
           {list.map((p) => (
             <li key={p.id}>
@@ -270,11 +275,11 @@ function NewDmDialog({ preselect }: { preselect?: string[] }) {
               </label>
             </li>
           ))}
-          {list.length === 0 && <li className="pick-empty">No people found. Join a server or add friends first.</li>}
+          {list.length === 0 && <li className="pick-empty">{msg("settings.dialoghost.no.people.found.join.a.server.or.add.friends")}</li>}
         </ul>
         <div className="row-end">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button variant="primary" loading={busy} disabled={picked.length === 0} onClick={() => void create()}>{picked.length > 1 ? 'Create group' : 'Open conversation'}</Button>
+          <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+          <Button variant="primary" loading={busy} disabled={picked.length === 0} onClick={() => void create()}>{picked.length > 1 ? msg("settings.dialoghost.create.group") : msg("settings.dialoghost.open.conversation")}</Button>
         </div>
       </div>
     </Modal>
@@ -282,6 +287,7 @@ function NewDmDialog({ preselect }: { preselect?: string[] }) {
 }
 
 function CustomStatusDialog() {
+  const { t: msg, catalogText } = useI18n();
   const current = useSessionStore((s) => s.settings.custom_status);
   const [text, setText] = useState(current?.text ?? '');
   const cdn = useConnectionStore((s) => s.cdnUrl);
@@ -291,23 +297,23 @@ function CustomStatusDialog() {
   const close = useClose();
   const left = statusCharsLeft(text);
   return (
-    <Modal open onClose={close} title="Set a custom status" width={420}>
+    <Modal open onClose={close} title={msg("settings.dialoghost.set.a.custom.status")} width={420}>
       <div className="stack">
-        <Field label="What's happening?" hint={<span className="status-counter" aria-live="polite">{left} characters left</span>}>
+        <Field label={msg("settings.dialoghost.what.s.happening")} hint={<span className="status-counter" aria-live="polite">{msg("status.charactersLeft", { count: left })}</span>}>
           {(id) => (
             <div className="status-field">
-              <IconButton label={emoji ? 'Change emoji' : 'Add emoji'} onClick={(e) => picker.open(e.currentTarget, false)}>
+              <IconButton label={emoji ? msg("settings.dialoghost.change.emoji") : msg("settings.dialoghost.add.emoji")} onClick={(e) => picker.open(e.currentTarget, false)}>
                 {emoji?.id ? <img className="status-emoji" src={`${cdn}/emojis/${emoji.id}.png`} alt={emoji.name} /> : emoji ? <span>{emoji.name}</span> : <Smiley size={20} />}
               </IconButton>
               <Input id={id} data-autofocus value={text} maxLength={CUSTOM_STATUS_MAX} onChange={(e) => setText(e.target.value)} />
             </div>
           )}
         </Field>
-        {emoji && <Button variant="ghost" onClick={() => setEmoji(null)}>Remove emoji</Button>}
-        <Field label="Clear after">{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select>}</Field>
+        {emoji && <Button variant="ghost" onClick={() => setEmoji(null)}>{msg("settings.dialoghost.remove.emoji")}</Button>}
+        <Field label={msg("settings.dialoghost.clear.after")}>{(id) => <Select id={id} value={expiry} onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}>{EXPIRY_CHOICES.map((c) => <option key={c.id} value={c.id}>{catalogText(c.label)}</option>)}</Select>}</Field>
         <div className="row-end">
-          <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>Clear</Button>
-          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date()), emoji); close(); }}>Save</Button>
+          <Button variant="ghost" onClick={() => { void setStatusText(null); close(); }}>{msg("settings.usertabs.clear")}</Button>
+          <Button variant="primary" onClick={() => { void setStatusText(text.trim() || null, expiryFor(expiry, new Date()), emoji); close(); }}>{msg("common.save")}</Button>
         </div>
       </div>
       {picker.node}
@@ -316,29 +322,31 @@ function CustomStatusDialog() {
 }
 
 function ShortcutsDialog() {
+  const { t: msg, catalogText } = useI18n();
   const close = useClose();
   const keybinds = usePrefsStore((s) => s.keybinds);
   const pttLabel = usePrefsStore((s) => s.pttLabel);
   const bound = keybinds.filter((k) => k.keys).map((k) => ({ keys: k.keys, label: ACTION_LABELS[k.action] ?? k.action, global: Boolean(k.global) }));
-  const rows = [...bound, ...(pttLabel ? [{ keys: pttLabel, label: 'Push to talk', global: true }] : []), ...FIXED_SHORTCUTS.map((f) => ({ keys: f.keys, label: f.label, global: false }))];
+  const rows = [...bound, ...(pttLabel ? [{ keys: pttLabel, label: msg("settings.usertabs.push.to.talk"), global: true }] : []), ...FIXED_SHORTCUTS.map((f) => ({ keys: f.keys, label: f.label, global: false }))];
   return (
-    <Modal open onClose={close} title="Keyboard shortcuts" description="Change them in Settings, Keybinds." width={520}>
+    <Modal open onClose={close} title={msg("settings.dialoghost.keyboard.shortcuts")} description={msg("settings.dialoghost.change.them.in.settings.keybinds")} width={520}>
       <ul className="shortcut-list">
         {rows.map((r) => (
           <li key={`${r.keys}-${r.label}`} className="shortcut-row">
-            <span>{r.label}{r.global ? ' (global)' : ''}</span>
+            <span>{r.global ? msg("shortcuts.globalLabel", { name: catalogText(r.label) }) : catalogText(r.label)}</span>
             <kbd className="kbd">{r.keys}</kbd>
           </li>
         ))}
       </ul>
       <div className="row-end">
-        <Button variant="primary" data-autofocus onClick={close}>Done</Button>
+        <Button variant="primary" data-autofocus onClick={close}>{msg("common.done")}</Button>
       </div>
     </Modal>
   );
 }
 
 export function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
+  const { t: msg } = useI18n();
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -346,10 +354,10 @@ export function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'con
   return (
     <Modal open onClose={close} title={dialog.title} width={400}>
       <p className="confirm-body">{dialog.body}</p>
-      {dialog.confirmText !== undefined && <Field label={`Type ${dialog.confirmText} to confirm`}>{(id) => <Input id={id} data-autofocus autoComplete="off" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />}</Field>}
+      {dialog.confirmText !== undefined && <Field label={msg("confirm.typeText", { text: dialog.confirmText })}>{(id) => <Input id={id} data-autofocus autoComplete="off" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />}</Field>}
       {error && <p role="alert" className="field-error">{error}</p>}
       <div className="row-end">
-        <Button variant="ghost" onClick={close}>Cancel</Button>
+        <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
         <Button
           variant={dialog.danger ? 'danger' : 'primary'}
           loading={busy}

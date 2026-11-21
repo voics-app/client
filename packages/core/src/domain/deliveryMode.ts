@@ -1,3 +1,4 @@
+import { createI18n } from './i18n';
 /** Delivery-mode rules (P11), mirrored client-side for the composer badge and settings UI. */
 import type { DeliveryMode } from '../contracts/rest';
 import { brand } from './brandConfig';
@@ -39,12 +40,13 @@ export interface ChannelScope {
 }
 
 /** Returns a human-readable reason when the mode is not allowed, or null when it is. */
-export function validateModeForChannel(mode: DeliveryMode, scope: ChannelScope): string | null {
-  if (mode === 'p2p' && scope.isGuild) return 'P2P is only available in DMs and small group DMs, not guild channels.';
+export function validateModeForChannel(mode: DeliveryMode, scope: ChannelScope, locale?: string): string | null {
+  const { t, catalogText } = createI18n(locale);
+  if (mode === 'p2p' && scope.isGuild) return catalogText('P2P is only available in DMs and small group DMs, not guild channels.');
   if (mode === 'p2p' && scope.memberCount > P2P_GROUP_LIMIT)
-    return `P2P supports at most ${P2P_GROUP_LIMIT} participants.`;
+    return t("mode.p2pLimit", { count: P2P_GROUP_LIMIT });
   if (mode === 'ephemeral' && scope.isGuild && scope.memberCount > EPHEMERAL_GUILD_MEMBER_LIMIT)
-    return `Ephemeral is limited to channels with at most ${EPHEMERAL_GUILD_MEMBER_LIMIT} members.`;
+    return t("mode.ephemeralLimit", { count: EPHEMERAL_GUILD_MEMBER_LIMIT });
   return null;
 }
 
@@ -52,8 +54,8 @@ export const DEVICE_UNREGISTERED_REASON =
   'Encrypted modes are unavailable on this device. Check Settings > Devices, then sign in again.';
 
 /** Encrypted modes need this device registered with the server; standard mode never does. */
-export function validateModeForDevice(mode: DeliveryMode, deviceRegistered: boolean): string | null {
-  return mode === 'standard' || deviceRegistered ? null : DEVICE_UNREGISTERED_REASON;
+export function validateModeForDevice(mode: DeliveryMode, deviceRegistered: boolean, locale?: string): string | null {
+  return mode === 'standard' || deviceRegistered ? null : createI18n(locale).catalogText(DEVICE_UNREGISTERED_REASON);
 }
 
 export function availableModes(scope: ChannelScope): DeliveryMode[] {

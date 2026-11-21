@@ -1,0 +1,10 @@
+.language-settings { min-width: 0; }
+.language-settings .select-shell { max-width: 100%; }
+.language-settings .select { max-width: 100%; }
+.language-preview { display: flex; flex-direction: column; gap: 8px; }
+.language-preview > div { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.language-preview dt { color: var(--fg-muted); min-inline-size: 10rem; }
+.language-preview dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.settings-item { text-align: start; overflow-wrap: anywhere; }
+[dir="rtl"] .settings-close { margin-inline: 0 24px; }
+[dir="rtl"] .settings-nav { padding-inline: 24px 16px; }

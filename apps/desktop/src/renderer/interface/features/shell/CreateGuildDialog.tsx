@@ -1,10 +1,11 @@
+import { useI18n } from '../../shared/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { CaretRight, GameController, GraduationCap, Heart, PaintBrush, Plus, UsersThree } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import { parseTemplateCode, previewTemplate, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
+import { parseTemplateCode, previewTemplate, templateIdentity, templateSummary, usageLabel } from '@discordy/core/domain/templateModel';
 import { ChannelType, type GuildTemplate } from '@discordy/core/contracts/rest';
 import { errorMessage } from '../../app/actions';
 import { openGuild } from '../../app/navigation';
@@ -48,6 +49,7 @@ function useCreateServer(code: string | null) {
 }
 
 function NameStep({ template, onBack }: { template: GuildTemplate | null; onBack: () => void }) {
+  const { t: msg, locale } = useI18n();
   const me = useSessionStore((s) => s.user);
   const [name, setName] = useState('');
   const { busy, error, create } = useCreateServer(template?.code ?? null);
@@ -59,16 +61,16 @@ function NameStep({ template, onBack }: { template: GuildTemplate | null; onBack
     <Modal
       open
       onClose={close}
-      title={template ? `Customize your ${template.name} server` : 'Customize your server'}
-      description="Give your new server a name. You can always change it later."
+      title={template ? msg("template.customize", { name: templateIdentity(template, locale).name }) : msg("settings.createguilddialog.customize.your.server")}
+      description={msg("settings.createguilddialog.give.your.new.server.a.name.you.can.always")}
     >
       <form onSubmit={submit} className="stack">
-        <Field label="Server name" error={error}>
-          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={`${me ? displayName(me) : 'My'}'s server`} onChange={(e) => setName(e.target.value)} />}
+        <Field label={msg("settings.serveroverview.server.name")} error={error}>
+          {(id) => <Input id={id} data-autofocus value={name} maxLength={100} placeholder={me ? msg("template.serverPlaceholder", { name: displayName(me) }) : msg("template.myServer")} onChange={(e) => setName(e.target.value)} />}
         </Field>
         <div className="row-end">
-          <Button variant="ghost" onClick={onBack}>Back</Button>
-          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 2}>Create server</Button>
+          <Button variant="ghost" onClick={onBack}>{msg("settings.createguilddialog.back")}</Button>
+          <Button type="submit" variant="primary" loading={busy} disabled={name.trim().length < 2}>{msg("settings.createguilddialog.create.server")}</Button>
         </div>
       </form>
     </Modal>
@@ -77,19 +79,20 @@ function NameStep({ template, onBack }: { template: GuildTemplate | null; onBack
 
 /** Step one of Discord's flow: "Create My Own" plus the built-in templates. */
 export function CreateGuildDialog() {
+  const { t: msg, locale } = useI18n();
   const templates = useQuery({ queryKey: ['guild-templates', 'builtin'], queryFn: () => getRuntime().api.builtinGuildTemplates(), staleTime: 300_000 });
   const [step, setStep] = useState<{ kind: 'pick' } | { kind: 'name'; template: GuildTemplate | null }>({ kind: 'pick' });
   const [link, setLink] = useState('');
   const linked = parseTemplateCode(link);
   if (step.kind === 'name') return <NameStep template={step.template} onBack={() => setStep({ kind: 'pick' })} />;
   return (
-    <Modal open onClose={close} title="Create your server" description="A server is where you and your friends hang out. Start from scratch or pick a template.">
+    <Modal open onClose={close} title={msg("settings.createguilddialog.create.your.server")} description={msg("settings.createguilddialog.a.server.is.where.you.and.your.friends.hang")}>
       <div className="stack">
-        <ul className="template-list" aria-label="Server templates">
+        <ul className="template-list" aria-label={msg("settings.createguilddialog.server.templates")}>
           <li>
             <button type="button" className="template-row" data-autofocus onClick={() => setStep({ kind: 'name', template: null })}>
               <span className="template-icon"><Plus size={22} weight="bold" /></span>
-              <span className="template-text"><strong>Create My Own</strong><span>Start with an empty server.</span></span>
+              <span className="template-text"><strong>{msg("settings.createguilddialog.create.my.own")}</strong><span>{msg("settings.createguilddialog.start.with.an.empty.server")}</span></span>
               <CaretRight size={16} />
             </button>
           </li>
@@ -98,22 +101,22 @@ export function CreateGuildDialog() {
             <li key={t.code}>
               <button type="button" className="template-row" onClick={() => setStep({ kind: 'name', template: t })}>
                 <span className="template-icon">{TEMPLATE_ICONS[t.code] ?? <UsersThree size={22} weight="duotone" />}</span>
-                <span className="template-text"><strong>{t.name}</strong><span>{t.description ?? templateSummary(t)}</span></span>
+                <span className="template-text"><strong>{templateIdentity(t, locale).name}</strong><span>{templateIdentity(t, locale).description ?? templateSummary(t, locale)}</span></span>
                 <CaretRight size={16} />
               </button>
             </li>
           ))}
         </ul>
-        {templates.isError && <p className="setting-desc" role="status">Templates could not be loaded. You can still create your own server.</p>}
-        <Field label="Have a template link?">
+        {templates.isError && <p className="setting-desc" role="status">{msg("settings.createguilddialog.templates.could.not.be.loaded.you.can.still.create")}</p>}
+        <Field label={msg("settings.createguilddialog.have.a.template.link")}>
           {(id) => (
             <div className="invite-link">
-              <Input id={id} value={link} placeholder="Paste a template link or code" onChange={(e) => setLink(e.target.value)} />
-              <Button disabled={!linked} onClick={() => linked && useUiStore.getState().openDialog({ kind: 'template', code: linked })}>Preview</Button>
+              <Input id={id} value={link} placeholder={msg("settings.createguilddialog.paste.a.template.link.or.code")} onChange={(e) => setLink(e.target.value)} />
+              <Button disabled={!linked} onClick={() => linked && useUiStore.getState().openDialog({ kind: 'template', code: linked })}>{msg("settings.usertabs.preview")}</Button>
             </div>
           )}
         </Field>
-        <div className="row-end"><Button variant="ghost" onClick={close}>Cancel</Button></div>
+        <div className="row-end"><Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button></div>
       </div>
     </Modal>
   );
@@ -129,24 +132,26 @@ const CHANNEL_GLYPH: Record<number, string> = {
 
 /** A template link: preview of what the template creates and a Create server button. */
 export function TemplateLinkDialog({ code }: { code: string }) {
+  const { t: msg, locale } = useI18n();
   const template = useQuery({ queryKey: ['guild-templates', 'code', code], queryFn: () => getRuntime().api.guildTemplate(code), retry: false });
   const [creating, setCreating] = useState(false);
   const data = template.data;
   if (creating && data) return <NameStep template={data} onBack={() => setCreating(false)} />;
   const preview = data ? previewTemplate(data) : null;
+  const unavailable = (template.error as { code?: number } | null)?.code === 10057;
   return (
-    <Modal open onClose={close} title={data ? `Create a server from ${data.name}` : 'Server template'} description={data?.description ?? undefined} width={480}>
+    <Modal open onClose={close} title={data ? msg("template.createFrom", { name: templateIdentity(data, locale).name }) : msg("settings.servertemplate.server.template")} description={data ? templateIdentity(data, locale).description ?? undefined : undefined} width={480}>
       <div className="stack">
         {template.isPending && <Skeleton height={140} radius={12} />}
-        {template.isError && <p className="setting-desc" role="alert">This template link is invalid or no longer exists. {errorMessage(template.error)}</p>}
+        {template.isError && <div><p className="setting-desc" role="alert">{unavailable ? msg("settings.createguilddialog.this.template.link.is.invalid.or.no.longer.exists") : msg("settings.createguilddialog.could.not.load.this.template")} {errorMessage(template.error)}</p>{!unavailable && <Button onClick={() => void template.refetch()}>{msg("common.retry")}</Button>}</div>}
         {data && preview && (
           <>
             <p className="setting-desc">
-              {templateSummary(data)} · {usageLabel(data.usage_count)}
-              {data.creator ? ` · by ${displayName(data.creator)}` : ''}
+              {templateSummary(data, locale)} · {usageLabel(data.usage_count, locale)}
+              {data.creator ? ` · ${msg("server.inviteBy", { name: displayName(data.creator) })}` : ''}
             </p>
-            {preview.roles.length > 0 && <p className="template-roles"><strong>Roles</strong> {preview.roles.join(', ')}</p>}
-            <div className="template-preview" aria-label="Channels">
+            {preview.roles.length > 0 && <p className="template-roles"><strong>{msg("settings.profiledialog.roles")}</strong> {preview.roles.join(', ')}</p>}
+            <div className="template-preview" aria-label={msg("settings.createguilddialog.channels")}>
               {preview.groups.map((g) => (
                 <div key={g.category ?? 'loose'} className="template-group">
                   {g.category && <h4>{g.category}</h4>}
@@ -159,8 +164,8 @@ export function TemplateLinkDialog({ code }: { code: string }) {
           </>
         )}
         <div className="row-end">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button variant="primary" disabled={!data} onClick={() => setCreating(true)}>Create server</Button>
+          <Button variant="ghost" onClick={close}>{msg("common.cancel")}</Button>
+          <Button variant="primary" disabled={!data} onClick={() => setCreating(true)}>{msg("settings.createguilddialog.create.server")}</Button>
         </div>
       </div>
     </Modal>

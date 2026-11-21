@@ -1,3 +1,5 @@
+import { BRAND } from '@shared/brand';
+import { useI18n } from '../../shared/i18n';
 import { Check, Globe, LockKey, Plugs } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -25,6 +27,7 @@ export function memberCountOf(channel: Channel): number {
 
 /** Composer/header control: shows the active mode and lets the user change it per chat or as an account default. */
 export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: DeliveryMode }) {
+  const { t: msg, locale, catalogText } = useI18n();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<DeliveryMode | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -53,13 +56,13 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
   const choose = async (target: DeliveryMode) => {
     setBusy(target);
     const sender = getRuntime().privacy.sender;
-    await attempt(() => sender.setChannelMode(channel, target === 'standard' && !channel.guild_id ? null : target), 'Could not change delivery mode');
+    await attempt(() => sender.setChannelMode(channel, target === 'standard' && !channel.guild_id ? null : target), msg("settings.modeswitcher.could.not.change.delivery.mode"));
     setBusy(null);
     setOpen(false);
   };
 
   const changeTimer = (value: string) =>
-    void attempt(() => getRuntime().privacy.sender.setDisappearTimer(channel, value === '' ? null : Number(value)), 'Could not change the timer');
+    void attempt(() => getRuntime().privacy.sender.setDisappearTimer(channel, value === '' ? null : Number(value)), msg("settings.modeswitcher.could.not.change.the.timer"));
 
   return (
     <span ref={triggerRef} className="mode-switcher">
@@ -73,13 +76,13 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
       />
       {open &&
         createPortal(
-          <div className="mode-popover glass" style={{ left: Math.max(12, Math.min(pos.x, window.innerWidth - 392)), top: pos.y }} role="dialog" aria-label="Delivery mode">
-            <h3>Delivery mode</h3>
-            <p className="mode-popover-sub">{channel.guild_id ? 'Applies to everyone in this channel.' : 'Applies to this conversation. The strictest setting among participants wins.'}</p>
+          <div className="mode-popover glass" style={{ left: Math.max(12, Math.min(pos.x, window.innerWidth - 392)), top: pos.y }} role="dialog" aria-label={msg("settings.channelsettings.delivery.mode")}>
+            <h3>{msg("settings.channelsettings.delivery.mode")}</h3>
+            <p className="mode-popover-sub">{channel.guild_id ? msg("settings.modeswitcher.applies.to.everyone.in.this.channel") : msg("settings.modeswitcher.applies.to.this.conversation.the.strictest.setting.among.participants")}</p>
             <ul>
               {DELIVERY_MODES.map((m) => {
                 const Icon = ICON[m];
-                const invalid = validateModeForChannel(m, scope) ?? validateModeForDevice(m, deviceRegistered);
+                const invalid = validateModeForChannel(m, scope, locale) ?? validateModeForDevice(m, deviceRegistered, locale);
                 const disabled = Boolean(invalid) || !canChange || busy !== null;
                 return (
                   <li key={m}>
@@ -89,7 +92,7 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
                       </span>
                       <span className="mode-option-copy">
                         <span className="mode-option-title">{MODE_COPY[m].label}</span>
-                        <span className="mode-option-desc">{invalid ?? (!canChange ? 'You need Manage Channels to change this.' : MODE_COPY[m].description)}</span>
+                        <span className="mode-option-desc">{invalid ?? (!canChange ? msg("settings.modeswitcher.you.need.manage.channels.to.change.this") : msg(`mode.${m}Description`, { brand: BRAND.displayName }))}</span>
                       </span>
                       {m === mode && <Check size={16} weight="bold" />}
                     </button>
@@ -99,20 +102,20 @@ export function ModeSwitcher({ channel, mode }: { channel: Channel; mode: Delive
             </ul>
             {mode !== 'standard' && (
               <div className="mode-timer">
-                <label htmlFor={`disappear-${channel.id}`}>Disappearing messages</label>
+                <label htmlFor={`disappear-${channel.id}`}>{msg("settings.modeswitcher.disappearing.messages")}</label>
                 <select id={`disappear-${channel.id}`} value={timer ?? ''} onChange={(e) => changeTimer(e.target.value)}>
                   {DISAPPEAR_OPTIONS.map((o) => (
                     <option key={o.label} value={o.ttlMs ?? ''}>
-                      {o.label}
+                      {catalogText(o.label)}
                     </option>
                   ))}
                 </select>
-                <p className="mode-popover-foot">{DISAPPEAR_NOTE}</p>
+                <p className="mode-popover-foot">{catalogText(DISAPPEAR_NOTE)}</p>
               </div>
             )}
             {!channel.guild_id && (
               <p className="mode-popover-foot">
-                Account default for new chats: <strong>{MODE_COPY[defaultMode].label}</strong>. Change it in Settings → Privacy.
+                {msg("mode.accountDefault", { mode: MODE_COPY[defaultMode].label })}
               </p>
             )}
           </div>,

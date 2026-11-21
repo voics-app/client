@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { X } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -12,13 +13,14 @@ import { ThreadPanel } from './ThreadPanel';
 import { WatchPanel } from './WatchPanel';
 
 export function SidePanelHost() {
+  const { t: msg } = useI18n();
   const panel = useUiStore((s) => s.sidePanel);
   const view = useUiStore((s) => s.view);
   const setPanel = useUiStore((s) => s.setSidePanel);
   const channel = useGuildStore((s) => (view.channelId ? s.channels[view.channelId] : undefined));
   const isGuildView = view.kind === 'guild';
   const effective = panel?.kind === 'members' && !isGuildView ? null : panel;
-  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : effective?.kind === 'profile' ? 'Profile' : null;
+  const title = effective?.kind === 'pins' ? msg("header.pins") : effective?.kind === 'search' ? msg("settings.results") : effective?.kind === 'thread' ? msg("settings.sidepanelhost.thread") : effective?.kind === 'watch' ? msg("header.watch") : effective?.kind === 'profile' ? msg("settings.profile") : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -27,7 +29,7 @@ export function SidePanelHost() {
           {title && (
             <header className="side-panel-head">
               <h2>{title}</h2>
-              <IconButton label="Close panel" size="sm" onClick={() => setPanel(null)}><X size={16} /></IconButton>
+              <IconButton label={msg("settings.sidepanelhost.close.panel")} size="sm" onClick={() => setPanel(null)}><X size={16} /></IconButton>
             </header>
           )}
           {effective.kind === 'members' && isGuildView && <MemberList guildId={view.guildId} />}

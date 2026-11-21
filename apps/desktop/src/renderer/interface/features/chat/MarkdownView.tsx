@@ -25,6 +25,7 @@ import { Modal } from '../../shared/ui/Modal';
 import { Tooltip } from '../../shared/ui/Tooltip';
 import { highlightCode } from './highlighter';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
+import { useI18n } from '../../shared/i18n';
 
 function Spoiler({ children, guildId }: { children: ReactNode; guildId: string | null | undefined }) {
   const [clicked, setClicked] = useState(false);
@@ -46,6 +47,7 @@ function renderHighlight(nodes: HighlightNode[]): ReactNode {
 const MAX_HIGHLIGHT_CHARS = 20_000;
 
 function CodeBlock({ text, lang }: { text: string; lang: string | null }) {
+  const { t: msg } = useI18n();
   const [copied, setCopied] = useState(false);
   const [highlighted, setHighlighted] = useState<HighlightNode[] | null>(null);
   useEffect(() => {
@@ -65,9 +67,9 @@ function CodeBlock({ text, lang }: { text: string; lang: string | null }) {
         <span>{lang ?? 'text'}</span>
         <button
           type="button"
-          aria-label="Copy code"
+          aria-label={msg("settings.markdownview.copy.code")}
           onClick={() => {
-            void copyText(text, 'Code copied');
+            void copyText(text, msg("settings.markdownview.code.copied"));
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
@@ -115,21 +117,23 @@ function Mention({ kind, id, guildId }: { kind: 'userMention' | 'roleMention' | 
 }
 
 function Timestamp({ unix, style }: { unix: number; style: 'f' | 't' | 'T' | 'd' | 'D' | 'F' | 'R' }) {
+  const { locale } = useI18n();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (style !== 'R' || !isValidUnix(unix)) return;
     const id = setTimeout(() => setNow(Date.now()), relativeTickMs(unix, now));
     return () => clearTimeout(id);
   }, [style, unix, now]);
-  const label = formatTimestamp(unix, style, now);
+  const label = formatTimestamp(unix, style, now, locale);
   return (
-    <Tooltip label={timestampTooltip(unix)}>
+    <Tooltip label={timestampTooltip(unix, locale)}>
       <time className="md-timestamp" dateTime={isValidUnix(unix) ? new Date(unix * 1000).toISOString() : undefined}>{label}</time>
     </Tooltip>
   );
 }
 
 function MaskedLink({ url, children }: { url: string; children: ReactNode }) {
+  const { t: msg } = useI18n();
   const trusted = useTrustedDomainStore((s) => s.domains);
   const instanceHost = hostOf(useConnectionStore((s) => s.apiUrl));
   const [confirming, setConfirming] = useState(false);
@@ -153,11 +157,11 @@ function MaskedLink({ url, children }: { url: string; children: ReactNode }) {
       <Modal
         open={confirming}
         onClose={() => setConfirming(false)}
-        title="You are leaving the app"
-        description="This link will take you to an external website."
+        title={msg("settings.markdownview.you.are.leaving.the.app")}
+        description={msg("settings.markdownview.this.link.will.take.you.to.an.external.website")}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setConfirming(false)}>{msg("common.cancel")}</Button>
             <Button
               data-autofocus
               onClick={() => {
@@ -166,13 +170,12 @@ function MaskedLink({ url, children }: { url: string; children: ReactNode }) {
                 openLink(url);
               }}
             >
-              Visit site
-            </Button>
+              {msg("settings.markdownview.visit.site")} </Button>
           </>
         }
       >
         <p className="link-confirm-url selectable">{url}</p>
-        <Checkbox checked={remember} onChange={setRemember} label={`Trust links from ${host}`} />
+        <Checkbox checked={remember} onChange={setRemember} label={msg("links.trustHost", { host })} />
       </Modal>
     </>
   );
@@ -267,7 +270,7 @@ function Nodes({ nodes, guildId, big }: { nodes: MarkdownNode[]; guildId: string
 export function MarkdownView({ source, guildId }: { source: string; guildId?: string | null }) {
   const big = isEmojiOnly(source);
   return (
-    <div className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
+    <div dir="auto" className={`markdown selectable${big ? ' is-emoji-only' : ''}`}>
       <Nodes nodes={parseMarkdown(source)} guildId={guildId} big={big} />
     </div>
   );

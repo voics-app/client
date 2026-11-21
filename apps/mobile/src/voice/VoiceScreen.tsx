@@ -15,11 +15,12 @@ import { callHeadline, type ParticipantRow } from './voiceModel';
 import { getRuntime } from '../runtime';
 import { useCallInfo } from './useCallInfo';
 
-function Participant({ row }: { row: ParticipantRow }) {
+function Participant({ row, guildId }: { row: ParticipantRow; guildId?: string | null }) {
+  const member = useVoiceStore((s) => guildId ? s.states[guildId]?.[row.userId]?.member : undefined);
   return (
     <View accessibilityLabel={`${row.name}${row.self ? ', you' : ''}${row.muted ? ', muted' : ''}${row.speaking ? ', speaking' : ''}`} style={styles.person}>
       <View testID={row.speaking ? 'speaking-ring' : undefined} style={[styles.ring, row.speaking && styles.ringOn]}>
-        <Avatar user={row.user} size={56} />
+        <Avatar user={row.user} size={56} guildId={guildId} member={member} />
       </View>
       <View style={styles.personText}>
         <Text numberOfLines={1} style={styles.personName}>
@@ -152,12 +153,12 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
         <FlatList
           data={info.participants}
           keyExtractor={(row) => row.userId}
-          renderItem={({ item }) => <Participant row={item} />}
+          renderItem={({ item }) => <Participant row={item} guildId={info.guildId} />}
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.empty}>Nobody is here yet.</Text>}
         />
       ) : (
-        <VoiceStage view={view} facing={facing} onFocus={(key) => useVoiceStore.getState().focus(key)} />
+        <VoiceStage view={view} facing={facing} guildId={info.guildId} onFocus={(key) => useVoiceStore.getState().focus(key)} />
       )}
       <View style={styles.controls}>
         <ControlButton icon={selfMute ? 'mic-off' : 'mic'} label={selfMute ? 'Unmute' : 'Mute'} on={selfMute} onPress={toggleMute} />

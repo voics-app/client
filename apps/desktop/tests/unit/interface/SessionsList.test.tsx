@@ -27,6 +27,8 @@ const logoutOtherSessions = vi.fn(async () => {
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { listSessions, revokeSession, logoutOtherSessions } }) }));
 
 import { SessionsList } from '@renderer/interface/features/settings/user/SessionsList';
+import { LocaleProvider } from '@renderer/interface/shared/i18n';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 
 function renderList() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -41,6 +43,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('SessionsList', () => {
+  it('uses Dutch country and activity labels without changing the device names or revoke target', async () => {
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    sessions[0] = { ...base, device_name: 'Original laptop' };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><LocaleProvider><SessionsList /></LocaleProvider></QueryClientProvider>);
+    const rows = await screen.findAllByTestId(/^session-/);
+    expect(rows[0]!.textContent).toContain(`${BRAND.displayName} op Windows (dit apparaat)`);
+    expect(rows[0]!.textContent).toContain('Nederland · Original laptop · Nu actief');
+    fireEvent.click(screen.getByRole('button', { name: 'Safari op iOS uitloggen' }));
+    await waitFor(() => expect(revokeSession).toHaveBeenCalledWith('phone'));
+  });
   it('lists sessions with this device first and no Log out on it', async () => {
     renderList();
     const rows = await screen.findAllByTestId(/^session-/);

@@ -2,6 +2,20 @@
 
 Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
+## Server templates
+
+Create Server offers Gaming, Friends, Study Group, Community and Creators,
+alongside Create My Own. Paste a shared template link to preview the saved roles
+and channels, then name and create a new server. Server Settings > Template
+supports creating, renaming, syncing and deleting a shared snapshot. Copy now
+uses the public `template.html?code=...` web page so recipients can preview it
+before installing the app. Existing app deep links remain supported. An
+out-of-date snapshot is labelled; load failures offer retry without showing a
+misleading empty form. Requires the paired api#44 and website completion changes.
+Template name and description drafts survive data refreshes and failed saves.
+Unsaved edits block normal settings navigation until saved or reset; in-flight
+template actions keep the fields and navigation guarded until they finish.
+
 ## Layout
 
 Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
@@ -74,13 +88,34 @@ Desktop renderer builds defer settings, server administration, the emoji picker 
 
 ## Desktop navigation and safety
 
+Settings → Language offers English and Nederlands, saved to the account. Translated
+surfaces update after saving, including their accessible labels, dates and numbers.
+Failed saves retain the selection for retry. Authored messages and names stay in
+their original language. Account and server settings, chat, moderation, voice,
+application consent and native menus use the same English/Dutch catalog. See
+[localization](docs/localization.md) for coverage, catalog rules and acceptance.
+
+User Settings → Profile edits the global profile or a selected server profile with a
+live preview. Global profiles support display name, pronouns, About me, avatar/banner
+uploads, two theme colours and a fallback colour. Server profiles override nickname,
+avatar, banner and bio; clearing an override restores the global value. Changing scope
+is blocked until drafts are saved or reset, and failed saves retain the draft. Editing
+server images/bio needs membership; nickname controls respect Change Nickname.
+The user menu's **Edit Server Profile** action opens the matching profile page. Profile
+dialogs display server overrides, pronouns and theme colours on readable app surfaces.
+Member rows, chat authors/replies/reactions and voice occupants/tiles use server
+avatar URLs on desktop and mobile when their explicit server context has an override.
+Clearing it restores the global avatar; DMs and account controls stay global. Failed
+images retain initials and presence/speaking indicators, and a new image is retried.
+These controls require the profile API release (api#43, migration `0054`).
+
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 
 The Forward picker uses each DM recipient's user ID for their global avatar, including animated images. Forwarding still targets the DM channel ID; recipients without an avatar retain their initials. The routing regression is covered by `apps/desktop/tests/unit/interface/ForwardDialog.test.tsx`.
 
-Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
+Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. The unavailable Widget page stays hidden until its API is implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 ## Webhooks and authorized applications
 

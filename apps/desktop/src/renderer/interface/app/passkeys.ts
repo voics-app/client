@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 import { useEffect, useState } from 'react';
 import type { PasskeySite } from '@shared/passkeys';
 import { bridge } from './bridge';
@@ -21,7 +22,7 @@ const failures = {
 
 export async function performPasskey(kind: 'create' | 'get', publicKey: Record<string, unknown>, signal: AbortSignal): Promise<Record<string, unknown>> {
   signal.throwIfAborted();
-  if (!bridge?.passkeys) throw new Error('Passkeys require the desktop browser bridge and a configured HTTPS ceremony site.');
+  if (!bridge?.passkeys) throw new Error(getI18n().catalogText("Passkeys require the desktop browser bridge and a configured HTTPS ceremony site."));
   const passkeys = bridge.passkeys;
   const id = crypto.randomUUID();
   const cancel = () => { void passkeys.cancel(id); };
@@ -29,7 +30,7 @@ export async function performPasskey(kind: 'create' | 'get', publicKey: Record<s
   try {
     const result = await passkeys.perform({ id, kind, publicKey });
     signal.throwIfAborted();
-    if (!result.ok) throw new Error(failures[result.reason]);
+    if (!result.ok) throw new Error(getI18n().catalogText(failures[result.reason]));
     return result.credential;
   } finally {
     signal.removeEventListener('abort', cancel);

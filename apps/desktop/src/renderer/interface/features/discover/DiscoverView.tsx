@@ -1,8 +1,9 @@
+import { useI18n } from '../../shared/i18n';
 import { Compass, MagnifyingGlass, UsersThree } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
+import { categoryLabel } from '@discordy/core/domain/discoveryModel';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { attempt } from '../../app/actions';
 import { openGuild } from '../../app/navigation';
@@ -24,6 +25,8 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: string) => void }) {
+  const { t: msg } = useI18n();
+  const { t, locale } = useI18n();
   const joined = useGuildStore((s) => Boolean(s.guilds[guild.id]));
   const [busy, setBusy] = useState(false);
   const join = async () => {
@@ -31,7 +34,7 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
     const ok = await attempt(async () => {
       await getRuntime().api.joinDiscoveryGuild(guild.id);
       return true;
-    }, 'Could not join this server');
+    }, msg("settings.discoverview.could.not.join.this.server"));
     setBusy(false);
     if (ok) openGuild(guild.id);
   };
@@ -41,12 +44,12 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
         <Avatar id={guild.id} name={guild.name} avatar={guild.icon} size={56} square kind="icons" />
         <div className="discover-card-title">
           <h3>{guild.name}</h3>
-          <span className="discover-category">{categoryLabel(guild.category)}</span>
+          <span className="discover-category">{categoryLabel(guild.category, locale)}</span>
         </div>
       </div>
       <p className="discover-desc">{guild.description}</p>
       {guild.tags.length > 0 && (
-        <ul className="discover-tags" aria-label="Tags">
+        <ul className="discover-tags" aria-label={msg("settings.serverdiscovery.tags")}>
           {guild.tags.map((tag) => (
             <li key={tag}>
               <button type="button" className="discover-tag" onClick={() => onTag(tag)}>#{tag}</button>
@@ -56,13 +59,13 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
       )}
       <div className="discover-card-foot">
         <span className="discover-counts">
-          {guild.approximate_presence_count !== null && <span className="discover-online">{guild.approximate_presence_count.toLocaleString('en-US')} online</span>}
-          <span>{memberCountLabel(guild.approximate_member_count)}</span>
+          {guild.approximate_presence_count !== null && <span className="discover-online">{t('discover.online', { count: guild.approximate_presence_count })}</span>}
+          <span>{t('discovery.members', { count: guild.approximate_member_count })}</span>
         </span>
         {joined ? (
-          <Button variant="ghost" onClick={() => openGuild(guild.id)}>Open</Button>
+          <Button variant="ghost" onClick={() => openGuild(guild.id)}>{msg("settings.discoverview.open")}</Button>
         ) : (
-          <Button variant="primary" loading={busy} onClick={() => void join()}>Join</Button>
+          <Button variant="primary" loading={busy} onClick={() => void join()}>{msg("settings.invitecard.join")}</Button>
         )}
       </div>
     </li>
@@ -70,6 +73,8 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag: (tag: strin
 }
 
 export function DiscoverView() {
+  const { t: msg } = useI18n();
+  const { t, locale } = useI18n();
   const [text, setText] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [tag, setTag] = useState<string | null>(null);
@@ -86,38 +91,38 @@ export function DiscoverView() {
   const total = results.data?.pages[0]?.total ?? 0;
 
   return (
-    <section className="discover" aria-label="Discover servers">
+    <section className="discover" aria-label={msg("settings.serverrail.discover.servers")}>
       <header className="channel-header">
-        <div className="channel-header-title"><Compass size={22} className="channel-header-icon" /><h1>Discover</h1></div>
+        <div className="channel-header-title"><Compass size={22} className="channel-header-icon" /><h1>{msg("settings.discoverview.discover")}</h1></div>
       </header>
       <div className="discover-body">
         <div className="discover-hero">
-          <h2>Find your community</h2>
-          <p>Browse public servers that opted in to be listed.</p>
-          <Input aria-label="Search servers" data-autofocus placeholder="Search servers" leading={<MagnifyingGlass size={18} />} value={text} onChange={(e) => setText(e.target.value)} />
+          <h2>{msg("settings.discoverview.find.your.community")}</h2>
+          <p>{msg("settings.discoverview.browse.public.servers.that.opted.in.to.be.listed")}</p>
+          <Input aria-label={msg("settings.discoverview.search.servers")} data-autofocus placeholder={msg("settings.discoverview.search.servers")} leading={<MagnifyingGlass size={18} />} value={text} onChange={(e) => setText(e.target.value)} />
         </div>
-        <div className="discover-filters" role="group" aria-label="Categories">
-          <button type="button" className={`chip${category === null ? ' is-active' : ''}`} aria-pressed={category === null} onClick={() => setCategory(null)}>All</button>
+        <div className="discover-filters" role="group" aria-label={msg("settings.discoverview.categories")}>
+          <button type="button" className={`chip${category === null ? ' is-active' : ''}`} aria-pressed={category === null} onClick={() => setCategory(null)}>{msg("friends.all")}</button>
           {categories.data?.map((c) => (
-            <button key={c} type="button" className={`chip${category === c ? ' is-active' : ''}`} aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>{categoryLabel(c)}</button>
+            <button key={c} type="button" className={`chip${category === c ? ' is-active' : ''}`} aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>{categoryLabel(c, locale)}</button>
           ))}
-          {tag && <button type="button" className="chip is-active" onClick={() => setTag(null)} aria-label={`Remove tag filter ${tag}`}>#{tag} ×</button>}
+          {tag && <button type="button" className="chip is-active" onClick={() => setTag(null)} aria-label={t('discover.removeTag', { tag })}>#{tag} ×</button>}
         </div>
         {results.isLoading ? (
           <div className="discover-grid">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={190} radius={16} />)}</div>
         ) : results.isError ? (
-          <EmptyState icon={<Compass size={40} />} title="Could not load servers" body="Check your connection and try again." action={<Button variant="primary" onClick={() => void results.refetch()}>Retry</Button>} />
+          <EmptyState icon={<Compass size={40} />} title={msg("settings.discoverview.could.not.load.servers")} body={msg("settings.discoverview.check.your.connection.and.try.again")} action={<Button variant="primary" onClick={() => void results.refetch()}>{msg("chat.retry")}</Button>} />
         ) : guilds.length === 0 ? (
-          <EmptyState icon={<UsersThree size={40} />} title="No servers found" body={query || category || tag ? 'Try a different search or remove a filter.' : 'No server has opted in to discovery yet.'} />
+          <EmptyState icon={<UsersThree size={40} />} title={msg("settings.discoverview.no.servers.found")} body={query || category || tag ? msg("settings.discoverview.try.a.different.search.or.remove.a.filter") : msg("settings.discoverview.no.server.has.opted.in.to.discovery.yet")} />
         ) : (
           <>
-            <p className="discover-total" role="status">{total.toLocaleString('en-US')} {total === 1 ? 'server' : 'servers'}</p>
+            <p className="discover-total" role="status">{t('discovery.servers', { count: total })}</p>
             <ul className="discover-grid">
               {guilds.map((g) => <GuildCard key={g.id} guild={g} onTag={setTag} />)}
             </ul>
             {results.hasNextPage && (
               <div className="discover-more">
-                <Button variant="ghost" loading={results.isFetchingNextPage} onClick={() => void results.fetchNextPage()}>Show more</Button>
+                <Button variant="ghost" loading={results.isFetchingNextPage} onClick={() => void results.fetchNextPage()}>{msg("settings.attachmentview.show.more")}</Button>
               </div>
             )}
           </>

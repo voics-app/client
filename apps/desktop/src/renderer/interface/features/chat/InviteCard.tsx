@@ -1,3 +1,4 @@
+import { useI18n } from '../../shared/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { Invite } from '@discordy/core/contracts/rest';
@@ -24,6 +25,7 @@ function lookupInvite(code: string): Promise<Invite | null> {
 }
 
 function InviteCard({ code }: { code: string }) {
+  const { t: msg } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(typeof IntersectionObserver === 'undefined');
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
@@ -51,7 +53,7 @@ function InviteCard({ code }: { code: string }) {
   const guildId = invite?.guild?.id;
   const join = async () => {
     setBusy(true);
-    const joined = await attempt(() => getRuntime().api.acceptInvite(code), 'Could not join server');
+    const joined = await attempt(() => getRuntime().api.acceptInvite(code), msg("settings.dialoghost.could.not.join.server"));
     setBusy(false);
     const gid = joined?.guild?.id ?? guildId;
     if (joined && gid) setTimeout(() => openGuild(gid), 300);
@@ -59,31 +61,31 @@ function InviteCard({ code }: { code: string }) {
 
   if (invite === null) {
     return (
-      <div ref={ref} className="invite-embed is-invalid" role="group" aria-label="Invite">
-        <p>Invite is invalid or has expired</p>
+      <div ref={ref} className="invite-embed is-invalid" role="group" aria-label={msg("settings.invitecard.invite")}>
+        <p>{msg("settings.dialoghost.invite.is.invalid.or.has.expired")}</p>
       </div>
     );
   }
   return (
-    <div ref={ref} className="invite-embed" role="group" aria-label="Server invite">
+    <div ref={ref} className="invite-embed" role="group" aria-label={msg("settings.invitecard.server.invite")}>
       {invite ? (
         <>
           <Avatar id={guildId} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={48} square kind="icons" />
           <div className="invite-embed-info">
-            <strong>{invite.guild?.name ?? 'Server'}</strong>
+            <strong>{invite.guild?.name ?? msg("settings.profiledialog.server")}</strong>
             <span>
-              {invite.approximate_member_count ?? '?'} members
-              {invite.approximate_presence_count != null && ` · ${invite.approximate_presence_count} online`}
+              {invite.approximate_member_count === undefined ? msg("invite.unknownMembers") : msg("common.members", { count: invite.approximate_member_count })}
+              {invite.approximate_presence_count != null && ` · ${msg('invite.online', { count: invite.approximate_presence_count })}`}
             </span>
           </div>
           {joinedGuild ? (
-            <Button variant="ghost" disabled>Joined</Button>
+            <Button variant="ghost" disabled>{msg("friends.joined")}</Button>
           ) : (
-            <Button variant="primary" loading={busy} onClick={() => void join()}>Join</Button>
+            <Button variant="primary" loading={busy} onClick={() => void join()}>{msg("settings.invitecard.join")}</Button>
           )}
         </>
       ) : (
-        <span className="invite-embed-loading">Loading invite...</span>
+        <span className="invite-embed-loading">{msg("settings.invitecard.loading.invite")}</span>
       )}
     </div>
   );

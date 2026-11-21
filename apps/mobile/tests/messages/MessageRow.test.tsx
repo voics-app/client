@@ -67,6 +67,15 @@ describe('MessageRow appearance settings', () => {
 });
 
 describe('MessageRow', () => {
+  it('uses the server avatar for authors and replies in the explicit chat context', async () => {
+    useGuildStore.setState({ members: { '9': { '222': { user: PAT, avatar: 'server', roles: [], joined_at: '', mute: false, deaf: false } } } });
+    const original = message({ id: 'original', content: 'Earlier message' });
+    await row(message({ message_reference: { message_id: 'original', channel_id: 'c1' }, referenced_message: original }), { replied: original }, ctx({ guildId: '9' }));
+    const avatars = screen.getAllByLabelText('Pat avatar');
+    expect(avatars).toHaveLength(2);
+    for (const avatar of avatars) expect(avatar.props.source.uri).toContain('/guilds/9/users/222/avatars/server.png');
+  });
+
   it('shows the author with the colour of their highest coloured role, and rendered markdown', async () => {
     await row(message());
     expect(StyleSheet.flatten(screen.getByText('Pat').props.style).color).toBe('#ff8800');

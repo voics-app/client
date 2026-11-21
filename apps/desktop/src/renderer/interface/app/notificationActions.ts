@@ -1,3 +1,4 @@
+import { getI18n } from '../shared/i18n';
 /** UI-facing wrappers over the synced notification commands: real API, error toasts. */
 import * as commands from '@discordy/core/application/notificationActions';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -10,21 +11,21 @@ const api = () => getRuntime().api;
 export const scopeOf = (channelId: string): string | null => useGuildStore.getState().channels[channelId]?.guild_id ?? null;
 
 export function muteGuild(guildId: string, seconds: number | null | undefined): Promise<unknown> {
-  return attempt(() => commands.muteScope(api(), guildId, null, seconds), 'Could not update mute');
+  return attempt(() => commands.muteScope(api(), guildId, null, seconds), getI18n().catalogText("Could not update mute"));
 }
 
 export function muteChannel(guildId: string | null, channelId: string, seconds: number | null | undefined): Promise<unknown> {
-  return attempt(() => commands.muteScope(api(), guildId, channelId, seconds), 'Could not update mute');
+  return attempt(() => commands.muteScope(api(), guildId, channelId, seconds), getI18n().catalogText("Could not update mute"));
 }
 
 export function setGuildLevel(guildId: string | null, level: NotificationLevel | null): Promise<unknown> {
-  return attempt(() => commands.setLevel(api(), guildId, null, level), 'Could not save notification settings');
+  return attempt(() => commands.setLevel(api(), guildId, null, level), getI18n().catalogText("Could not save notification settings"));
 }
 
 export function setChannelLevel(guildId: string | null, channelId: string, level: NotificationLevel | null): Promise<unknown> {
-  return attempt(() => commands.setLevel(api(), guildId, channelId, level), 'Could not save notification settings');
+  return attempt(() => commands.setLevel(api(), guildId, channelId, level), getI18n().catalogText("Could not save notification settings"));
 }
 
 export function setGuildToggles(guildId: string | null, toggles: Partial<commands.GuildToggles>): Promise<unknown> {
-  return attempt(() => commands.setToggles(api(), guildId, toggles), 'Could not save notification settings');
+  return attempt(() => commands.setToggles(api(), guildId, toggles), getI18n().catalogText("Could not save notification settings"));
 }
