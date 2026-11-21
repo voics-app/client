@@ -9,7 +9,7 @@
 #                                           release merge, which already published it: client#194)
 #   workflow_dispatch                    -> same as a push of the selected branch (use main)
 #
-# Output: GitHub Release assets, and in the discordy-updates bucket Voics-Setup-X.Y.Z.exe(.blockmap),
+# Output: GitHub Release assets and the installer-windows artifact, which gitops publish-public puts in the discordy-updates bucket as Voics-Setup-X.Y.Z.exe(.blockmap),
 # latest.yml and the stable Voics-Setup-latest.exe (5-minute cache). electron-updater in installed
 # clients reads latest.yml, so publishing it is what rolls the update out.
 # develop never publishes: Windows minutes cost 2x and a beta channel is not needed yet.
@@ -119,13 +119,7 @@ jobs:
       version: ${{ steps.ver.outputs.version }}
       skip: ${{ steps.ver.outputs.skip }}
 
-  publish:
-    name: Publish to the update feed
-    needs: [windows]
-    if: needs.windows.outputs.skip != 'true'
-    uses: voics-app/.github/.github/workflows/minio-publish.yml@main
-    with:
-      artifact: installer-windows
-      bucket: discordy-updates
-      short-cache: latest.yml
-      copies: Voics-Setup-${{ needs.windows.outputs.version }}.exe:Voics-Setup-latest.exe
+  # Publishing to the update feed happens in the private gitops repo (workflow publish-public): this repo is public
+  # and the in-cluster runner that reaches MinIO does not take jobs from public repositories. It picks up the
+  # installer-windows artifact of the newest successful run within 10 minutes, uploads latest.yml with a short
+  # cache and copies Voics-Setup-X.Y.Z.exe to Voics-Setup-latest.exe.
