@@ -18,6 +18,8 @@ name: release
 on:
   push:
     branches: [main]
+    # Runner/workflow maintenance alone must not publish another production build.
+    paths-ignore: [".github/workflows/**"]
     tags: ["v*"]
   workflow_dispatch:
 
