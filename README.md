@@ -82,6 +82,13 @@ The Forward picker uses each DM recipient's user ID for their global avatar, inc
 
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
+Desktop taskbar, tray and title activity follows text chats, announcements, threads
+and DMs, with immediate mute updates and timed expiry. Escape marks a channel read;
+Shift+Escape marks its server, including when the composer has focus after its own
+cancel actions. Standard replies offer a remembered ping toggle and `@silent`
+messages. Failed sends restore reply context and mention tokens without replacing
+a newer draft. See [desktop notifications](docs/desktop-notifications.md) for rules,
+keyboard behavior and native acceptance checks.
 ## Webhooks and authorized applications
 
 Server Settings → Integrations lists installed application bots and incoming webhooks.
@@ -206,7 +213,7 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 
 - Code signing certificates for Windows and macOS (installers are unsigned).
 - A STUN/TURN server for P2P across restrictive NATs. The gateway READY payload carries `turn` (coturn REST credentials, 1h TTL); the client builds `iceServers` from it (plus a derived STUN entry) and re-identifies at 80% of the TTL to refresh them.
-- The generated `@discordy-voics/contracts` package, once published, replaces `packages/core/src/contracts`.
+- The generated `@voics-app/contracts` package, once published, replaces `packages/core/src/contracts`.
 
 ## Git hooks
 
