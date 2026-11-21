@@ -7,7 +7,7 @@ import { reportError } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { getRuntime } from '../../app/runtime';
 import { Select } from '../../shared/ui/Form';
-import { EntityPicker } from './SlashCommandPanel';
+import { EntityPicker } from './EntityPicker';
 
 const ENTITY_SELECTS: Record<number, number> = {
   [ComponentType.USER_SELECT]: CommandOptionType.USER,

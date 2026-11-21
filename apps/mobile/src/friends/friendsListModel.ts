@@ -43,12 +43,12 @@ export interface FriendsList {
 }
 
 /** The Friends page as flat list entries (headings with counts, then people) for the chosen tab and search, plus the tab counts. */
-export function friendsList(all: readonly Relationship[], presence: PresenceLookup, tab: Exclude<FriendsTab, 'add'>, query: string): FriendsList {
+export function friendsList(all: readonly Relationship[], presence: PresenceLookup, tab: Exclude<FriendsTab, 'add'>, query: string, favourites: readonly string[] = []): FriendsList {
   const total = buildFriendsView([...all], presence);
   const view = buildFriendsView([...all], presence, query);
   const section = (title: string, list: Relationship[]): FriendListEntry[] => (list.length === 0 ? [] : [{ kind: 'heading', title: `${title} - ${list.length}` }, ...list.map((r) => item(r, presence))]);
   const entries =
-    tab === 'online' ? section('Online', view.online) : tab === 'all' ? section('All friends', view.friends) : tab === 'blocked' ? section('Blocked', view.blocked) : [...section('Incoming', view.incoming), ...section('Outgoing', view.outgoing)];
+    tab === 'online' ? [...section('Favourites', view.online.filter((r) => favourites.includes(r.id))), ...section('Online', view.online.filter((r) => !favourites.includes(r.id)))] : tab === 'all' ? [...section('Favourites', view.friends.filter((r) => favourites.includes(r.id))), ...section('All friends', view.friends.filter((r) => !favourites.includes(r.id)))] : tab === 'blocked' ? section('Blocked', view.blocked) : [...section('Incoming', view.incoming), ...section('Outgoing', view.outgoing)];
   return {
     entries,
     counts: { online: total.online.length, all: total.friends.length, pending: total.incoming.length + total.outgoing.length, blocked: total.blocked.length },
