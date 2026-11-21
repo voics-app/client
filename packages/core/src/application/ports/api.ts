@@ -2,7 +2,9 @@
 import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -41,6 +43,8 @@ import type {
   GuildDiscoverySettings,
   GuildFull,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -76,6 +80,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  connections(): Promise<LinkedConnection[]>;
+  userConnections(userId: string): Promise<LinkedConnection[]>;
+  authorizeGithubConnection(): Promise<{ url: string }>;
+  setConnectionVisibility(provider: string, visible: boolean): Promise<void>;
+  deleteConnection(provider: string): Promise<void>;
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
@@ -161,7 +170,7 @@ export interface ApiPort {
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null; suppress?: boolean }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'avatar' | 'banner' | 'bio' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null; suppress?: boolean }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
@@ -180,6 +189,14 @@ export interface ApiPort {
   updateEmoji(guildId: string, emojiId: string, patch: { name: string }): Promise<Emoji>;
   deleteEmoji(guildId: string, emojiId: string): Promise<void>;
   guildInvites(guildId: string): Promise<Invite[]>;
+  memberVerification(guildId: string): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }): Promise<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>;
+  acceptMemberVerification(guildId: string, revision: number): Promise<void>;
+  welcomeScreen(guildId: string): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }): Promise<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>;
+  onboarding(guildId: string): Promise<OnboardingResponse>;
+  setOnboarding(guildId: string, body: OnboardingConfig): Promise<OnboardingResponse>;
+  completeOnboarding(guildId: string, revision: number, choices: number[]): Promise<{ channel_ids: string[] }>;
 
   channel(channelId: string): Promise<Channel>;
   updateChannel(channelId: string, patch: Partial<Channel>): Promise<Channel>;
@@ -191,7 +208,8 @@ export interface ApiPort {
   deleteOverwrite(channelId: string, overwriteId: string): Promise<void>;
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
+  listForumPosts(channelId: string): Promise<Channel[]>;
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }): Promise<Channel>;
 
   discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
   discoveryCategories(): Promise<string[]>;
@@ -207,6 +225,11 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage): Promise<ScheduledMessage>;
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }): Promise<ScheduledMessagePage>;
+  scheduledMessage(channelId: string, scheduleId: string): Promise<ScheduledMessage>;
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage): Promise<ScheduledMessage>;
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number): Promise<ScheduledMessage>;
   editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
@@ -235,6 +258,9 @@ export interface ApiPort {
   guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
   removeGuildIntegration(guildId: string, applicationId: string): Promise<void>;
   guildWebhooks(guildId: string): Promise<Webhook[]>;
+  followAnnouncement(channelId: string, targetChannelId: string): Promise<{ channel_id: string; webhook_id: string }>;
+  publishAnnouncement(channelId: string, messageId: string): Promise<Message>;
+  followedChannels(guildId: string): Promise<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>;
   createWebhook(channelId: string, body: { name: string; avatar?: string }): Promise<WebhookCredential>;
   updateWebhook(webhookId: string, body: WebhookEdit): Promise<Webhook>;
   resetWebhookToken(webhookId: string): Promise<WebhookCredential>;

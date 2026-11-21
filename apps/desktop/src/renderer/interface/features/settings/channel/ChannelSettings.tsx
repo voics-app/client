@@ -1,3 +1,4 @@
+import { ForumSettings } from './ForumSettings';
 import { SettingsCloseButton } from '../SettingsCloseButton';
 import { Check, Minus, Plus, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -145,6 +146,7 @@ function Overview({ channelId }: { channelId: string }) {
         </Field>
       )}
       <div className="perm-row"><div><p className="setting-title">Age-restricted channel</p></div><Switch label="Age-restricted" checked={nsfw} onChange={setNsfw} /></div>
+      {channel.type === ChannelType.GUILD_FORUM && <ForumSettings channelId={channelId} />}
       <VoiceTextChatSetting channelId={channelId} />
       <div className="perm-row">
         <div><p className="setting-title">Delivery mode</p><p className="setting-desc">Ephemeral channels are end-to-end encrypted, limited to 100 members, and do not support bots or embeds.</p></div>

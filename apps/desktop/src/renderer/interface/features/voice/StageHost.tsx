@@ -12,6 +12,6 @@ export function StageHost({ channelId }: { channelId: string }) {
   if (!channel) return <div className="stage-empty" />;
   if (channel.type === ChannelType.GUILD_STAGE_VOICE) return <StageChannelView channelId={channelId} />;
   if (isVoiceChannel(channel)) return <VoiceChannelView channelId={channelId} />;
-  if (channel.type === ChannelType.GUILD_FORUM) return <ForumView channelId={channelId} />;
+  if (channel.type === ChannelType.GUILD_FORUM) return <ForumView key={channelId} channelId={channelId} />;
   return <ChatView channelId={channelId} />;
 }

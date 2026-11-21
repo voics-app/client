@@ -140,6 +140,8 @@ export interface ForumTag {
   id: Snowflake;
   name: string;
   emoji_name?: string | null;
+  emoji_id?: string | null;
+  moderated?: boolean;
 }
 
 export interface Channel {
@@ -169,6 +171,13 @@ export interface Channel {
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];
+  flags?: number;
+  default_sort_order?: number | null;
+  default_forum_layout?: number;
+  default_reaction_emoji?: { emoji_id: string | null; emoji_name: string | null } | null;
+  require_tags?: boolean;
+  forum_post_status?: 'pending' | 'dispatching' | 'publishing' | 'published' | 'failed';
+  forum_first_message?: Pick<Message, 'id' | 'content' | 'attachments'> | null;
   delivery_mode: DeliveryMode;
   voice_region?: string | null;
 }
@@ -188,6 +197,8 @@ export interface GuildMember {
   user: User;
   nick?: string | null;
   avatar?: string | null;
+  banner?: string | null;
+  bio?: string | null;
   roles: Snowflake[];
   joined_at: string;
   deaf: boolean;
@@ -195,6 +206,11 @@ export interface GuildMember {
   pending?: boolean;
   communication_disabled_until?: string | null;
 }
+
+export interface OnboardingOption { label: string; role_id: string | null; channel_id: string | null }
+export interface OnboardingQuestion { title: string; options: OnboardingOption[] }
+export interface OnboardingConfig { enabled: boolean; questions: OnboardingQuestion[] }
+export interface OnboardingResponse { config: OnboardingConfig; revision: number }
 
 export interface Guild {
   id: Snowflake;
@@ -348,6 +364,8 @@ export interface MessageSearchResponse {
 }
 
 export const MessageFlag = {
+  CROSSPOSTED: 1 << 0,
+  IS_CROSSPOST: 1 << 1,
   SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,
@@ -947,3 +965,5 @@ export interface GuildDiscoverySettings {
   member_count: number;
   blockers: string[];
 }
+
+export interface LinkedConnection { provider: string; account_id: string; name: string; visible: boolean }
