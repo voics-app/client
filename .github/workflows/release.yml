@@ -128,6 +128,9 @@ jobs:
     needs: [windows]
     if: needs.windows.outputs.skip != 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # A Linux failure must not block the Windows release: publish-public only takes runs that succeeded. The PR check
+    # linux-package.yml keeps the Linux build honest.
+    continue-on-error: true
     timeout-minutes: 60
     env:
       VERSION: ${{ needs.windows.outputs.version }}
