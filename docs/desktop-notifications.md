@@ -60,6 +60,16 @@ attachments/descriptions, reply target and selected mention tokens together. A
 retry keeps the silent prefix and remembered ping choice. A newer draft or newly
 selected reply is left intact instead of mixing in the failed message.
 
+A failure that cannot restore (newer draft, new reply, edit or slash command in
+progress, composer unmounted after navigating away) is not lost: Standard-mode
+failures go to an in-memory failed-send queue (`failedSendQueue.ts`), keyed by
+session generation, account, instance, channel and mode. The composer shows
+"Restore failed message" (enabled only while the composer is empty) and
+"Discard failed message". The queue is cleared on sign-out, account, device,
+session or instance change and never persists to disk; Private modes are not
+queued. Other surfaces that need the same retention (for example the age-gate
+composer recovery) reuse this module rather than keeping their own copy.
+
 ## Acceptance
 
 Automated regression coverage lives in desktop `activityReporting`,
