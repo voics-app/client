@@ -45,8 +45,11 @@ const SUBMIT: Record<Mode, string> = {
   reset: 'Change password',
 };
 
+import { useStreamerActive } from '../../app/streamer';
+
 export function AuthScreen() {
   const { t: msg, locale, catalogText } = useI18n();
+  const streamer = useStreamerActive();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -194,7 +197,7 @@ export function AuthScreen() {
                 </>) : (<>
                 {mode !== 'reset' && (
                 <Field label={msg("settings.accountsecurity.email")} error={fieldErrors.email}>
-                  {(id) => <Input id={id} type="email" autoComplete="email" data-autofocus value={email} onChange={(e) => setEmail(e.target.value)} invalid={Boolean(fieldErrors.email)} />}
+                  {(id) => <Input id={id} type={streamer ? 'password' : 'email'} autoComplete="email" data-autofocus value={email} onChange={(e) => setEmail(e.target.value)} invalid={Boolean(fieldErrors.email)} />}
                 </Field>
                 )}
                 {mode === 'reset' && (

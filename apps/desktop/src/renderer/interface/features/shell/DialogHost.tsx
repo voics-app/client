@@ -39,6 +39,7 @@ import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText, type StatusEmoji } from './customStatus';
 import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useStreamerActive } from '../../app/streamer';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@discordy/core/domain/shortcutCatalog';
 
 function useClose() {
@@ -190,6 +191,7 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
 
 function InviteDialog({ guildId, channelId }: { guildId: string; channelId: string }) {
   const { t: msg } = useI18n();
+  const streamer = useStreamerActive();
   const [invite, setInvite] = useState<Invite | null>(null);
   const [maxAge, setMaxAge] = useState('86400');
   const [maxUses, setMaxUses] = useState('0');
@@ -209,7 +211,7 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
       <div className="stack">
         {invite ? (
           <div className="invite-link">
-            <Input readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+            <Input readOnly value={streamer ? 'Hidden in streamer mode' : link} onFocus={(e) => e.currentTarget.select()} />
             <Button variant="primary" onClick={() => void copyText(link, msg("settings.servertabs.invite.link.copied"))}>{msg("settings.backupcodeslist.copy")}</Button>
           </div>
         ) : (

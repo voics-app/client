@@ -13,6 +13,7 @@ import { callerOf, isRingingFor, type DmCall } from '@discordy/core/domain/calls
 import { OUTGOING_RINGBACK, Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { installAudioUnlock } from '@renderer/infrastructure/audio/sharedContext';
 import { bridge } from '../../app/bridge';
+import { streamerActive, useStreamerRuntime } from '../../app/streamer';
 import { acceptCall, declineCall } from '../../app/callActions';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -23,9 +24,9 @@ const ringer = new CallRinger({
   settings: () => {
     const prefs = usePrefsStore.getState();
     return {
-      notifySounds: prefs.notifySounds,
+      notifySounds: prefs.notifySounds && !streamerActive(),
       notifyDesktop: prefs.notifyDesktop,
-      deafened: useVoiceStore.getState().selfDeaf,
+      deafened: useVoiceStore.getState().selfDeaf || streamerActive(),
       outputDeviceId: prefs.outputDeviceId,
       focused: document.hasFocus(),
       ringtone: prefs.ringtone,
@@ -40,7 +41,7 @@ const ringer = new CallRinger({
       title: intl.t('call.isCalling', { name }),
       body: intl.catalogText('Incoming call'),
       route: `/channels/@me/${call.channelId}`,
-      silent: !usePrefsStore.getState().notifySounds,
+      silent: !usePrefsStore.getState().notifySounds || streamerActive(),
     });
   },
 });
@@ -48,7 +49,7 @@ const ringer = new CallRinger({
 const voiceSounds = new VoiceSounds({
   play: (sound) => soundEffects.play(sound, usePrefsStore.getState().outputVolume, usePrefsStore.getState().outputDeviceId),
   policy: () => ({
-    enabled: usePrefsStore.getState().notifySounds,
+    enabled: usePrefsStore.getState().notifySounds && !streamerActive(),
     toggles: usePrefsStore.getState().soundToggles,
     doNotDisturb: useSessionStore.getState().settings.status === 'dnd',
   }),
@@ -82,6 +83,7 @@ function useCallRinging(): void {
       useSessionStore.subscribe(sync),
       useVoiceStore.subscribe(sync),
       usePrefsStore.subscribe(sync),
+      useStreamerRuntime.subscribe(sync),
     ];
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());

@@ -16,7 +16,7 @@ describe('KeybindsEditor', () => {
     expect(screen.getByRole('button', { name: 'Change shortcut for Next unread channel' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Change shortcut for Answer incoming call' })).toBeTruthy();
     expect(screen.getByText('Push to talk')).toBeTruthy();
-    expect(screen.getByText('Not bound')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Change shortcut for Toggle streamer mode' }).textContent).toContain('Not bound');
   });
 
   it('records a combination and shows conflict warnings', () => {

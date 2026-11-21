@@ -30,7 +30,9 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
-import { SlashCommandPanel } from './SlashCommandPanel';
+import { LazyFeature } from '../../shared/ui/LazyFeature';
+
+const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashCommandPanel }) => ({ default: SlashCommandPanel }));
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
 
@@ -469,7 +471,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         )}
         <ComposerFiles files={files} descriptions={descriptions} allowDescriptions={standard} onChange={(next, nextDescriptions) => { setFiles(next); setDescriptions(nextDescriptions); }} />
         {command && (
-          <SlashCommandPanel entry={command} values={commandValues} channel={channel} busy={running} onChange={setCommandValues} onRun={() => void runCommand()} onCancel={() => { setCommand(null); ref.current?.focus(); }} />
+          <LazyFeature load={loadSlashCommandPanel} close={() => setCommand(null)} props={{ entry: command, values: commandValues, channel, busy: running, onChange: setCommandValues, onRun: () => void runCommand(), onCancel: () => { setCommand(null); ref.current?.focus(); } }} />
         )}
         {pendingPaste !== null && (
           <div className="composer-paste" role="alertdialog" aria-label={t('composer.longPaste')}>
