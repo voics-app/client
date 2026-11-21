@@ -2,7 +2,7 @@ import type { Channel } from '@discordy/core/contracts/rest';
 import { rankItems } from '@discordy/core/domain/quickSwitcher';
 import { switcherItems } from '../../src/switcher/switcherModel';
 
-const ch = (id: string, type: number, extra: Partial<Channel> = {}): Channel => ({ id, type, name: id, guild_id: 'g1', ...extra }) as Channel;
+const ch = (id: string, type: number, extra: Partial<Channel> = {}): Channel => ({ id, type, name: id, guild_id: 'g1', nsfw: false, ...extra }) as Channel;
 const channels = Object.fromEntries(
   [
     ch('general', 0, { last_message_id: '9' }),

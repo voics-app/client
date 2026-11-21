@@ -1,4 +1,5 @@
 import { useI18n } from '../../shared/i18n';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
 import { LockKey, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
 import { useMemo, useRef } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -33,9 +34,11 @@ function SnippetLine({ message, terms }: { message: Message; terms: string[] }) 
 }
 
 function ResultCard({ group, terms, showChannel }: { group: Message[]; terms: string[]; showChannel: boolean }) {
+  const { canShow } = useChannelContentAccess();
   const { t, date } = useI18n();
   const hit = group.find((m) => m.hit) ?? group[0]!;
   const channel = useGuildStore((s) => s.channels[hit.channel_id]);
+  if (!group.every((message) => canShow(message.channel_id))) return null;
   return (
     <li>
       <button type="button" className="search-hit" onClick={() => jumpToMessage(hit.channel_id, hit.id)} aria-label={t('search.jump', { name: displayName(hit.author) })}>

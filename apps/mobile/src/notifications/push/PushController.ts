@@ -14,6 +14,8 @@ export interface PushDeps {
   gatewayState(): GatewayState;
   /** The chat on screen, or null. */
   viewing(): string | null;
+  /** Current content acknowledgement, checked even when the gateway is disconnected. */
+  canShowChannel?(channelId: string): boolean;
   open(target: PushTarget): void;
   /** The explanation shown before the system prompt; resolves to true when the person agrees to be asked. */
   offer(): Promise<boolean>;
@@ -35,7 +37,11 @@ export class PushController {
       return;
     }
     void native.prepare().catch(() => undefined);
-    native.setForegroundPolicy((data) => foregroundPresentation({ gateway: this.deps.gatewayState(), viewing: this.deps.viewing(), data }) === 'show');
+    native.setForegroundPolicy((data) => {
+      const target = pushTargetOf(data);
+      if (this.deps.canShowChannel && (!target || !this.deps.canShowChannel(target.channelId))) return false;
+      return foregroundPresentation({ gateway: this.deps.gatewayState(), viewing: this.deps.viewing(), data }) === 'show';
+    });
     this.subscriptions.push(
       native.onTap((data) => this.tapped(data)),
       native.onTokenChange((token) => void (this.signedIn && this.register(token))),

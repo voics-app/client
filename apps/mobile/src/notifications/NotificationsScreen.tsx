@@ -9,6 +9,7 @@ import { theme } from '../theme';
 import { TextButton } from '../ui/controls';
 import { EmptyState } from '../ui/EmptyState';
 import { inboxSections, type InboxRow } from './inboxModel';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 function InboxItem({ row }: { row: InboxRow }) {
   return (
@@ -36,10 +37,11 @@ function InboxItem({ row }: { row: InboxRow }) {
 
 /** Desktop's Mentions inbox: recent @mentions and replies across servers, grouped by server. Tap to jump to the message, the check marks one read. */
 export function NotificationsScreen() {
+  const { canShow } = useChannelContentAccess();
   const entries = useMentionInboxStore((s) => s.entries);
   const guilds = useGuildStore((s) => s.guilds);
   const channels = useGuildStore((s) => s.channels);
-  const sections = useMemo(() => inboxSections(entries, guilds, channels, Date.now()), [entries, guilds, channels]);
+  const sections = useMemo(() => inboxSections(entries.filter((entry) => canShow(entry.channelId)), guilds, channels, Date.now()), [entries, guilds, channels, canShow]);
 
   return (
     <View style={styles.screen}>

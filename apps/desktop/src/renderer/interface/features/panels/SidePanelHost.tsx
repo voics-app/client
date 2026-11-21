@@ -11,6 +11,7 @@ import { DmProfilePanel } from './DmProfilePanel';
 import { PinsPanel } from './PinsPanel';
 import { ThreadPanel } from './ThreadPanel';
 import { WatchPanel } from './WatchPanel';
+import { AgeRestrictedGate } from '../channels/AgeRestrictedGate';
 
 export function SidePanelHost() {
   const { t: msg } = useI18n();
@@ -32,12 +33,14 @@ export function SidePanelHost() {
               <IconButton label={msg("settings.sidepanelhost.close.panel")} size="sm" onClick={() => setPanel(null)}><X size={16} /></IconButton>
             </header>
           )}
+          <AgeRestrictedGate channelId={effective.kind === 'thread' ? effective.threadId : view.channelId}>
           {effective.kind === 'members' && isGuildView && <MemberList guildId={view.guildId} />}
           {effective.kind === 'pins' && channel && <PinsPanel channelId={channel.id} />}
           {effective.kind === 'search' && <SearchPanel channelId={view.channelId} />}
           {effective.kind === 'thread' && <ThreadPanel threadId={effective.threadId} />}
           {effective.kind === 'watch' && <WatchPanel channelId={view.channelId} />}
           {effective.kind === 'profile' && channel && <DmProfilePanel channelId={channel.id} />}
+          </AgeRestrictedGate>
         </motion.div>
       )}
     </AnimatePresence>

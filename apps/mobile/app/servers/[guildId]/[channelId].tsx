@@ -7,9 +7,14 @@ import { channelScreenKind } from '../../../src/servers/channelScreenKind';
 import { UnsupportedChannelScreen } from '../../../src/servers/UnsupportedChannelScreen';
 import { useSelectView } from '../../../src/shell/useSelectView';
 import { VoiceChannelScreen } from '../../../src/voice/VoiceChannelScreen';
+import { AgeRestrictedGate } from '../../../src/safety/AgeRestrictedGate';
 
 export default function ChannelRoute() {
   const { guildId, channelId, chat } = useLocalSearchParams<{ guildId: string; channelId: string; chat?: string }>();
+  return <AgeRestrictedGate channelId={channelId}><ChannelContent guildId={guildId} channelId={channelId} chat={chat} /></AgeRestrictedGate>;
+}
+
+function ChannelContent({ guildId, channelId, chat }: { guildId: string; channelId: string; chat: string | undefined }) {
   const channel = useGuildStore((s) => s.channels[channelId]);
   useSelectView({ kind: 'guild', guildId, channelId });
   const kind = channelScreenKind(channel, Boolean(getRuntime().privacy));

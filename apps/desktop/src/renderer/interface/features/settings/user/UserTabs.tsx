@@ -31,6 +31,7 @@ import { confirmLogout } from '../logout';
 import { KeybindsEditor } from './KeybindsEditor';
 import { AccountSecurity } from './AccountSecurity';
 import { SessionsList } from './SessionsList';
+import { AgeRestrictedSetting } from './AgeRestrictedSetting';
 import { BRAND } from '@shared/brand';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
@@ -97,6 +98,7 @@ export function PrivacyTab() {
       {crypto && !crypto.available && (
         <p className="settings-warning" role="alert">{msg('settings.cryptoUnavailable', { reason: crypto.reason ?? msg('settings.cryptoMissing') })}</p>
       )}
+      <AgeRestrictedSetting />
       <h3>{msg("settings.usertabs.calls")}</h3>
       <SettingRow title={msg("settings.usertabs.encrypt.all.my.calls.end.to.end")} searchKey="Encrypt all my calls end-to-end" description={msg("settings.usertabs.applies.to.dms.group.dms.voice.channels.and.go")}>
         <Switch label={msg("settings.usertabs.encrypt.all.my.calls.end.to.end")} checked={settings.e2ee_calls_default === true} disabled={crypto !== null && !crypto.available} onChange={(v) => void attempt(() => getRuntime().privacy.sender.setE2eeCallsDefault(v), msg("settings.usertabs.could.not.update.calls.setting"))} />

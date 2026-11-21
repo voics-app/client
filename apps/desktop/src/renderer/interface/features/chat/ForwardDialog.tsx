@@ -14,6 +14,8 @@ import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
 import { Input } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
+import { AgeRestrictedGate } from '../channels/AgeRestrictedGate';
 
 type ForwardDialogProps = { message: Extract<Dialog, { kind: 'forward' }>['message'] };
 
@@ -25,6 +27,7 @@ function dmName(channel: Channel, catalogText: (source: string) => string): stri
 
 /** Picker for "Forward": recent DMs and group DMs, then channels the user can send in, with an optional comment. */
 export function ForwardDialog({ message }: ForwardDialogProps) {
+  const { canShow } = useChannelContentAccess();
   const { t: msg, catalogText } = useI18n();
   const [query, setQuery] = useState('');
   const [comment, setComment] = useState('');
@@ -35,15 +38,17 @@ export function ForwardDialog({ message }: ForwardDialogProps) {
   const close = () => useUiStore.getState().openDialog(null);
   const hasAttachments = message.attachments.length > 0 || (forwardSnapshot(message)?.attachments.length ?? 0) > 0;
   const targets = useMemo(
-    () => forwardTargets({ channels, guilds, closed, query, hasAttachments, dmName: (channel) => dmName(channel, catalogText), modeOf: (c) => getRuntime().privacy.sender.resolveMode(c), permissionsOf: permissionsInChannel }),
-    [channels, guilds, closed, query, hasAttachments, catalogText],
+    () => forwardTargets({ channels, guilds, closed, query, hasAttachments, dmName: (channel) => dmName(channel, catalogText), modeOf: (c) => getRuntime().privacy.sender.resolveMode(c), permissionsOf: permissionsInChannel }).filter((target) => canShow(target.id)),
+    [channels, guilds, closed, query, hasAttachments, catalogText, canShow],
   );
   const send = async (target: ForwardTarget) => {
+    if (!canShow(message.channel_id) || !canShow(target.id)) return;
     setBusy(target.id);
     const ok = await forwardMessage(message, target.id, comment);
     setBusy(null);
     if (ok) close();
   };
+  if (!canShow(message.channel_id)) return <Modal open onClose={close} title={msg('age.title')}><AgeRestrictedGate channelId={message.channel_id}>{null}</AgeRestrictedGate></Modal>;
   const preview = forwardSnapshot(message)?.content ?? message.content;
   return (
     <Modal open onClose={close} title={msg("settings.forwarddialog.forward.to")} description={msg("settings.forwarddialog.pick.a.conversation.or.channel.the.message.is.copied")}>

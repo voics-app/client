@@ -11,7 +11,7 @@ export type ReportOutcome = { ok: true } | { ok: false; message: string };
 export function reportFailureMessage(error: unknown, locale?: string): string {
   if (error instanceof ApiError) {
     if (error.status === 429) return createI18n(locale).catalogText('You have sent a lot of reports. Try again in a while.');
-    if (error.status === 404) return createI18n(locale).catalogText('That message or account no longer exists.');
+    if (error.status === 404) return createI18n(locale).t('report.targetUnavailable');
     if (error.status === 403) return createI18n(locale).catalogText('You can no longer see this, so it cannot be reported.');
   }
   return createI18n(locale).catalogText(errorMessage(error));

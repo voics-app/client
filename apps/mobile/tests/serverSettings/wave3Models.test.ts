@@ -4,7 +4,7 @@ import { channelPatch, draftOfChannel, overwriteChanges } from '../../src/server
 import { emojiNameFor, emojiUpload, MAX_EMOJI_BYTES } from '../../src/serverSettings/emojiModel';
 
 const text = { id: 'c1', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', topic: 'hello', rate_limit_per_user: 5, nsfw: false } as Channel;
-const voice = { id: 'v1', type: ChannelType.GUILD_VOICE, guild_id: 'g1', name: 'lobby', user_limit: 4, bitrate: 64000 } as Channel;
+const voice = { id: 'v1', type: ChannelType.GUILD_VOICE, guild_id: 'g1', nsfw: false, name: 'lobby', user_limit: 4, bitrate: 64000 } as Channel;
 
 describe('emojiNameFor and emojiUpload', () => {
   it('derives an emoji name from a file name like desktop', () => {

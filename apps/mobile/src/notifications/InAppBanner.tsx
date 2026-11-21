@@ -8,9 +8,11 @@ import { useReduceMotion } from '../sheets/useReduceMotion';
 import { theme } from '../theme';
 import { BANNER_MS, channelIdFromPath } from './bannerModel';
 import { useBannerStore } from './bannerStore';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 /** A banner at the top of the screen for a new message while the user is elsewhere in the app. Tap opens the message; it goes away by itself. */
 export function InAppBanner() {
+  const { canShow } = useChannelContentAccess();
   const banner = useBannerStore((s) => s.banner);
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -32,7 +34,7 @@ export function InAppBanner() {
     return () => clearTimeout(timer);
   }, [banner, slide, reduceMotion]);
 
-  if (!banner) return null;
+  if (!banner || !canShow(banner.channelId)) return null;
   return (
     <Animated.View
       pointerEvents="box-none"

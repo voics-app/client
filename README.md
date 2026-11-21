@@ -2,6 +2,15 @@
 
 Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
+## Age-restricted channels
+
+Age-restricted channels require a per-channel Continue on desktop and mobile before
+messages or media load. Privacy settings can hide them account-wide; failed saves
+retain the previous choice. The gate includes channel reporting, a safe way back,
+Privacy settings and server leave where permitted. Reporting explains the exact
+metadata sent without loading channel messages. See [behavior, companion releases
+and acceptance checks](docs/age-restricted-channels.md).
+
 ## Server templates
 
 Create Server offers Gaming, Friends, Study Group, Community and Creators,

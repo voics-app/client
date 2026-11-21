@@ -7,11 +7,14 @@ import { getRuntime } from '../../app/runtime';
 import { Button } from '../../shared/ui/Button';
 import { Field, Input, TextArea } from '../../shared/ui/Form';
 import { Modal } from '../../shared/ui/Modal';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
+import { AgeRestrictedGate } from '../channels/AgeRestrictedGate';
 
 const PARAGRAPH = 2;
 
 /** Renders the modal an application opened in response to an interaction; submitting sends a modal-submit interaction. */
 export function InteractionModal() {
+  const { canShow } = useChannelContentAccess();
   const { t: msg } = useI18n();
   const modal = useInteractionStore((s) => s.modal);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -25,6 +28,7 @@ export function InteractionModal() {
 
   if (!modal) return null;
   const close = () => useInteractionStore.getState().closeModal();
+  if (!canShow(modal.channelId)) return <Modal open onClose={close} title={msg('age.title')}><AgeRestrictedGate channelId={modal.channelId} onExit={close}>{null}</AgeRestrictedGate></Modal>;
   const missing = !modalReady(inputs, values);
 
   const submit = async (e: FormEvent) => {

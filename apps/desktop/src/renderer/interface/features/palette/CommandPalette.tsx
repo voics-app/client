@@ -1,4 +1,5 @@
 import { useI18n } from '../../shared/i18n';
+import { useChannelContentAccess } from '../../shared/hooks/useChannelContentAccess';
 import { At, Gear, Hash, House, MagnifyingGlass, Microphone, Moon, Plus, SpeakerHigh, Sun, UsersThree } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -30,6 +31,7 @@ interface Item extends SwitcherItem {
 export function CommandPalette() {
   const { t: msg, catalogText } = useI18n();
   const open = useUiStore((s) => s.paletteOpen);
+  const { visible } = useChannelContentAccess();
   const setOpen = useUiStore((s) => s.openPalette);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -68,6 +70,7 @@ export function CommandPalette() {
     const recents = recentChannelIds(history.entries);
     const channelItems: Item[] = Object.values(channels)
       .filter(isSwitchable)
+      .filter((channel) => visible(channel.id))
       .map((c): Item => {
         const dm = !c.guild_id;
         const voice = isVoiceChannel(c);
@@ -89,7 +92,7 @@ export function CommandPalette() {
     // English action words remain searchable after switching the UI language.
     const aliases: Record<string, string> = { home: 'Friends home direct', mute: 'Toggle mute', deafen: 'Toggle deafen', newguild: 'Create a server', joinguild: 'Join a server', newdm: 'New message', settings: 'User settings', privacy: 'Privacy and delivery modes', voice: 'Voice and video settings', theme: 'Switch dark light theme', oled: 'Switch to OLED theme' };
     return [...channelItems, ...guildItems, ...base.map((item) => ({ ...item, keywords: [item.keywords, aliases[item.id]].filter(Boolean).join(' ') }))];
-  }, [open, channels, guilds, theme, history, reads, notif, msg]);
+  }, [open, channels, guilds, theme, history, reads, notif, msg, visible]);
 
   const ranked = useMemo(() => rankItems(items, query), [items, query]);
   const results = ranked.items;

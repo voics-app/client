@@ -1,4 +1,6 @@
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { confirmAgeRestrictedChannel } from '@discordy/core/application/ageRestrictedAccess';
 import type { StoredSession } from '@discordy/core/application/ports/sessionVault';
 import type { SocketLike } from '@discordy/core/infrastructure/net/socket';
 import type { IceServer } from '@discordy/core/domain/turn';
@@ -47,7 +49,7 @@ function setup(createVoice?: Parameters<typeof createRuntime>[0]['createVoice'])
 }
 
 function fakeVoice() {
-  const controller = { onVoiceServerUpdate: jest.fn(), onVoiceState: jest.fn(), leave: jest.fn(async () => undefined) };
+  const controller = { onVoiceServerUpdate: jest.fn(), onVoiceState: jest.fn(), leave: jest.fn(async () => undefined), leaveImmediately: jest.fn(async () => undefined) };
   return { controller, voice: { controller, route: {}, dispose: jest.fn() } as unknown as MobileVoice };
 }
 
@@ -81,12 +83,27 @@ describe('runtime voice wiring', () => {
     const runtime = setup(() => voice);
     expect(runtime.voice).toBe(voice);
     const socket = await ready(runtime);
+    useGuildStore.getState().upsertChannel({ id: 'v1', guild_id: 'g1', nsfw: false, type: 2, delivery_mode: 'standard' });
     const update = { token: 't', guild_id: 'g1', channel_id: 'v1', endpoint: 'rtc.test', region: 'eu' };
     socket.receive({ op: 0, s: 2, t: 'VOICE_SERVER_UPDATE', d: update });
     expect(controller.onVoiceServerUpdate).toHaveBeenCalledWith(update);
     const state = { guild_id: 'g1', channel_id: null, user_id: 'u1', session_id: 's1', deaf: false, mute: false, self_deaf: false, self_mute: false, self_video: false, suppress: false };
     socket.receive({ op: 0, s: 3, t: 'VOICE_STATE_UPDATE', d: state });
     expect(controller.onVoiceState).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'u1', channel_id: null }));
+  });
+
+  it('refuses a server-directed move into restricted voice until this channel is confirmed', async () => {
+    const { controller, voice } = fakeVoice();
+    const runtime = setup(() => voice);
+    const socket = await ready(runtime);
+    useGuildStore.getState().upsertChannel({ id: 'v2', guild_id: 'g1', type: 2, nsfw: true, delivery_mode: 'standard' });
+    const update = { token: 't', guild_id: 'g1', channel_id: 'v2', endpoint: 'rtc.test', region: 'eu' };
+    socket.receive({ op: 0, s: 2, t: 'VOICE_SERVER_UPDATE', d: update });
+    expect(controller.onVoiceServerUpdate).not.toHaveBeenCalled();
+    expect(controller.leaveImmediately).toHaveBeenCalledTimes(1);
+    confirmAgeRestrictedChannel('v2');
+    socket.receive({ op: 0, s: 3, t: 'VOICE_SERVER_UPDATE', d: update });
+    expect(controller.onVoiceServerUpdate).toHaveBeenCalledWith(update);
   });
 
   it('gives the voice stack the gateway turn servers from READY', async () => {

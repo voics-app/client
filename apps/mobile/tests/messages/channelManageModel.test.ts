@@ -2,7 +2,7 @@ import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { channelManageEntries } from '../../src/messages/channelManageModel';
 
-const channel = (extra: Partial<Channel> = {}) => ({ id: 'c1', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', ...extra }) as Channel;
+const channel = (extra: Partial<Channel> = {}) => ({ id: 'c1', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'general', ...extra }) as Channel;
 
 describe('channelManageEntries', () => {
   it('offers edit and delete in a server channel with Manage Channels', () => {

@@ -1,4 +1,5 @@
 import { getI18n } from '../shared/i18n';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 /** Wires message search to the runtime: builds the search target from the open chat and runs it. */
 import { SearchService, type SearchTarget } from '@discordy/core/application/searchService';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -14,7 +15,7 @@ let service: SearchService | null = null;
 function searchService(): SearchService {
   if (!service) {
     const { api, privacy } = getRuntime();
-    service = new SearchService({ api, localMessages: (id) => privacy.sender.localMessages(id) });
+    service = new SearchService({ api, localMessages: (id) => privacy.sender.localMessages(id), canShowChannel: canShowChannelContent, searchableChannelIds: (guildId) => Object.values(useGuildStore.getState().channels).filter((c) => c.guild_id === guildId && canShowChannelContent(c.id)).map((c) => c.id) });
   }
   return service;
 }
@@ -28,11 +29,11 @@ export function scopeKeyOf(channelId: string): string {
 export function searchTarget(channelId: string): SearchTarget | null {
   const guilds = useGuildStore.getState();
   const channel = guilds.channels[channelId];
-  if (!channel) return null;
+  if (!channel || !canShowChannelContent(channelId)) return null;
   const candidates = searchCandidates({
     channel,
     members: channel.guild_id ? guilds.members[channel.guild_id] : undefined,
-    channels: Object.values(guilds.channels),
+    channels: Object.values(guilds.channels).filter((c) => canShowChannelContent(c.id)),
     me: useSessionStore.getState().user,
     displayName,
   });

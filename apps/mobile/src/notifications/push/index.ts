@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { Alert } from 'react-native';
 import { BRAND } from '../../brand';
 import { openChat } from '../../navigation/openChat';
@@ -49,6 +50,7 @@ export function getPush(): PushController {
     environment: environmentOf(Constants.expoConfig?.extra?.pushEnvironment),
     gatewayState: () => getRuntime().gateway.state,
     viewing: () => useBannerStore.getState().viewing,
+    canShowChannel: canShowChannelContent,
     open: openTarget,
     offer: explainPermission,
   });

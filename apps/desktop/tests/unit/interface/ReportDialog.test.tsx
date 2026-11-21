@@ -21,6 +21,23 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ReportDialog', () => {
+  it('discloses the exact channel metadata in Dutch, preserves a failed draft and never includes message content', async () => {
+    useSessionStore.getState().setSettings({ locale: 'nl' });
+    createReport.mockRejectedValueOnce(new ApiError(403, 0, 'revoked')).mockResolvedValueOnce(undefined);
+    render(<LocaleProvider><ReportDialog target={{ kind: 'channel', channelId: 'c1', channelName: '原文 kanaal' }} /></LocaleProvider>);
+    expect(screen.getByRole('dialog', { name: '#原文 kanaal melden' })).toBeTruthy();
+    expect(screen.getByText(/Berichten, onderwerpen, bijlagen en ledenlijsten worden niet opgehaald/)).toBeTruthy();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /Seksuele/ }));
+    fireEvent.change(screen.getByLabelText(/Notitie/), { target: { value: 'Eigen toelichting مرحبا' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Melding verzenden' }));
+    await screen.findByRole('alert');
+    expect((screen.getByLabelText(/Notitie/) as HTMLTextAreaElement).value).toBe('Eigen toelichting مرحبا');
+    fireEvent.click(screen.getByRole('button', { name: 'Melding verzenden' }));
+    expect(await screen.findByRole('dialog', { name: 'Melding verzonden' })).toBeTruthy();
+    expect(createReport).toHaveBeenLastCalledWith({ target: 'channel', channel_id: 'c1', category: 'sexual_content', note: 'Eigen toelichting مرحبا' });
+  });
+
   it('keeps a Dutch private-message report draft through failure and submits original category, note and consented content', async () => {
     useSessionStore.getState().setSettings({ locale: 'nl' });
     createReport.mockRejectedValueOnce(new ApiError(429, 0, 'slow')).mockResolvedValueOnce(undefined);

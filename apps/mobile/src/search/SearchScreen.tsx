@@ -15,6 +15,7 @@ import { FileResult, LinkResult, MediaGrid, MessageHit } from './SearchResults';
 import { fileRows, hitsOf, linkRows, mediaTiles, SEARCH_TABS, type SearchTab } from './searchTabs';
 import { useSearchTarget } from './searchTarget';
 import { useSearch } from './useSearch';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 const PRIVATE_NOTICE = 'Messages in private chats stay on devices, so the mobile app cannot search them yet.';
 
@@ -23,6 +24,7 @@ const PRIVATE_NOTICE = 'Messages in private chats stay on devices, so the mobile
  * and look at the results as Messages, Media, Files or Links. In a server it searches the whole server; in a direct message, that chat.
  */
 export function SearchScreen({ channelId }: { channelId: string }) {
+  const { canShow } = useChannelContentAccess();
   const target = useSearchTarget(channelId);
   const channels = useGuildStore((s) => s.channels);
   const { state, search, more } = useSearch(target);
@@ -34,7 +36,8 @@ export function SearchScreen({ channelId }: { channelId: string }) {
   const searchable = target?.mode === 'standard';
   const suggestions = useMemo(() => (focused && target ? suggest(input, target.candidates, 6) : []), [focused, input, target]);
   const filters = useMemo(() => parseQuery(submitted).filters, [submitted]);
-  const hits = useMemo(() => hitsOf(state.groups), [state.groups]);
+  const groups = state.groups.filter((group) => group.every((message) => canShow(message.channel_id)));
+  const hits = hitsOf(groups);
 
   useEffect(() => {
     void search(tab, submitted, sort);
@@ -56,7 +59,7 @@ export function SearchScreen({ channelId }: { channelId: string }) {
     } else openMessage({ guildId, channelId: message.channel_id, messageId: message.id });
   };
 
-  const rows = tab === 'files' ? fileRows(hits) : tab === 'links' ? linkRows(hits) : tab === 'media' ? [] : state.groups;
+  const rows = tab === 'files' ? fileRows(hits) : tab === 'links' ? linkRows(hits) : tab === 'media' ? [] : groups;
   const empty = state.status === 'ready' && (tab === 'media' ? mediaTiles(hits).length === 0 : rows.length === 0);
   const header = (
     <View>

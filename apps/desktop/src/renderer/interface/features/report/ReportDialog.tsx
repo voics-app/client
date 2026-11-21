@@ -39,7 +39,7 @@ export function ReportDialog({ target }: { target: ReportTarget }) {
 
   if (sent) {
     return (
-      <Modal open onClose={close} title={catalogText(REPORT_CONFIRMATION.title)} description={catalogText(REPORT_CONFIRMATION.body)} width={420}>
+      <Modal open onClose={close} title={catalogText(REPORT_CONFIRMATION.title)} description={target.kind === 'channel' ? msg('report.channelSentBody') : catalogText(REPORT_CONFIRMATION.body)} width={420}>
         <div className="row-end">
           <Button variant="primary" type="button" data-autofocus onClick={close}>{msg("common.done")}</Button>
         </div>

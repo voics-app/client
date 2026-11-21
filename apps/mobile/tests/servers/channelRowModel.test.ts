@@ -2,7 +2,7 @@ import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { channelRowView } from '../../src/servers/channelRowModel';
 import { channelScreenKind, EPHEMERAL_MESSAGE, P2P_MESSAGE } from '../../src/servers/channelScreenKind';
 
-const channel = (type: number, extra: Partial<Channel> = {}) => ({ id: 'c1', type, guild_id: 'g1', name: 'room', delivery_mode: 'standard', ...extra }) as Channel;
+const channel = (type: number, extra: Partial<Channel> = {}) => ({ id: 'c1', type, guild_id: 'g1', nsfw: false, name: 'room', delivery_mode: 'standard', ...extra }) as Channel;
 
 describe('channelRowView', () => {
   it('gives each kind the desktop icon', () => {

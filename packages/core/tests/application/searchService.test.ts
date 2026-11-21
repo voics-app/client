@@ -31,6 +31,29 @@ function target(channel: Channel, mode: SearchTarget['mode'] = 'standard'): Sear
 }
 
 describe('SearchService', () => {
+  it('restricts the remote query to confirmed channels and rejects late results after revocation', async () => {
+    let allowed = true;
+    const searchMessages = vi.fn().mockImplementation(async () => {
+      allowed = false;
+      return { total_results: 1, messages: [[msg('2', 'restricted preview', true)]] };
+    });
+    const service = new SearchService({ api: { searchMessages }, localMessages: vi.fn(), canShowChannel: (id) => id === 'c1' && allowed, searchableChannelIds: () => ['c1'] });
+    const result = await service.page(target(guildChannel), 'preview');
+    expect(searchMessages).toHaveBeenCalledWith({ guildId: 'g1', channelId: 'c1' }, expect.objectContaining({ channel_id: ['c1'] }));
+    expect(result).toMatchObject({ kind: 'page', groups: [] });
+    await service.page(target(guildChannel), 'preview');
+    expect(searchMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not turn an empty permitted channel list into an unrestricted guild query', async () => {
+    const searchMessages = vi.fn();
+    const localMessages = vi.fn();
+    const service = new SearchService({ api: { searchMessages }, localMessages, searchableChannelIds: () => [], canShowChannel: () => true });
+    expect(await service.page(target(guildChannel), 'private')).toMatchObject({ kind: 'page', groups: [], total: 0 });
+    expect(searchMessages).not.toHaveBeenCalled();
+    expect(localMessages).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => useSearchStore.getState().reset());
 
   it('searches a server through the guild endpoint with resolved filters and shows the result', async () => {
@@ -110,6 +133,21 @@ describe('SearchService', () => {
 
 describe('SearchService.page', () => {
   beforeEach(() => useSearchStore.getState().reset());
+
+  it('drops a local result revoked while loading, then clears stale search state without another content read', async () => {
+    let allowed = true;
+    let release!: (messages: Message[]) => void;
+    const localMessages = vi.fn(() => new Promise<Message[]>((resolve) => { release = resolve; }));
+    const service = new SearchService({ api: { searchMessages: vi.fn() }, localMessages, canShowChannel: () => allowed });
+    const pending = service.run(target(dm, 'ephemeral'), 'secret');
+    allowed = false;
+    release([msg('a1', 'secret')]);
+    await pending;
+    expect(useSearchStore.getState()).toMatchObject({ groups: [], total: 0 });
+    await service.run(target(dm, 'ephemeral'), 'secret');
+    expect(useSearchStore.getState()).toMatchObject({ status: 'idle', groups: [], total: 0 });
+    expect(localMessages).toHaveBeenCalledTimes(1);
+  });
 
   it('returns a page of results at an offset and leaves the search store alone', async () => {
     const searchMessages = vi.fn().mockResolvedValue({ total_results: 40, messages: [[msg('2', 'deploy', true)]] });

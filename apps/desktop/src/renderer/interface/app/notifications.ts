@@ -1,4 +1,5 @@
 import { getI18n } from '../shared/i18n';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadStateStore } from '@discordy/core/application/stores/peopleStores';
@@ -35,6 +36,7 @@ export function currentActivity(): { mentions: number; unread: number } {
 
 /** Desktop notification and taskbar flash for an incoming message, following the notification rules. */
 export function notifyIncoming(message: ChatMessage): void {
+  if (!canShowChannelContent(message.channel_id)) return;
   const me = useSessionStore.getState().user;
   if (!me) return;
   const prefs = usePrefsStore.getState();

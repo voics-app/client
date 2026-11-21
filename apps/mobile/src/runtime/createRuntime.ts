@@ -6,6 +6,9 @@ import { createDispatchRouter, registerIncoming } from '@discordy/core/applicati
 import { PrivateMessaging } from '@discordy/core/application/privacy/privateMessaging';
 import { InteractionService } from '@discordy/core/application/interactionService';
 import { SessionManager, type SessionRuntime, type SessionVault, type TokenPair } from '@discordy/core/application/sessionManager';
+import { canShowChannelContent, initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
+import { guardRestrictedVoice } from '@discordy/core/application/guardRestrictedVoice';
+import { createI18n } from '@discordy/core/domain/i18n';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { TurnCredentials } from '@discordy/core/application/turnCredentials';
 import { errorMessage } from '@discordy/core/application/errorMessage';
@@ -69,7 +72,11 @@ export interface MobileRuntime {
   privacy: PrivateMessaging | null;
 }
 
+let stopRestrictionGuard: (() => void) | null = null;
+
 export function createRuntime(config: RuntimeConfig): MobileRuntime {
+  stopRestrictionGuard?.();
+  initialiseAgeRestrictedAccess(config.apiUrl);
   const tokens: TokenPair = { access: null, refresh: null };
   let manager: SessionManager | null = null;
 
@@ -136,9 +143,14 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     onError: (error) => Alert.alert('Could not save your settings', errorMessage(error)),
   });
   prefsSync.start();
+  const restrictionError = (error: unknown) => Alert.alert(createI18n(useSessionStore.getState().settings.locale).t('age.voiceError'), errorMessage(error));
+  stopRestrictionGuard = voice ? guardRestrictedVoice(() => voice.controller.leaveImmediately(), restrictionError) : null;
   const dispatch = createDispatchRouter({
     onUserSettings: (settings, ready, userId) => prefsSync.onSettings(settings, ready, userId),
-    onVoiceServerUpdate: (update) => voice?.controller.onVoiceServerUpdate(update),
+    onVoiceServerUpdate: (update) => {
+      if (!canShowChannelContent(update.channel_id)) { void voice?.controller.leaveImmediately().catch(restrictionError); return; }
+      voice?.controller.onVoiceServerUpdate(update);
+    },
     onVoiceState: (state) => voice?.controller.onVoiceState(state),
     onIncomingMessage: offerBanner,
     invalidate: () => undefined,

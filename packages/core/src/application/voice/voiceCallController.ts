@@ -125,6 +125,13 @@ export class VoiceCallController {
     await this.teardown(true);
   }
 
+  /** Revoked content access closes transport and playback before asynchronous capture cleanup. */
+  leaveImmediately(): Promise<void> {
+    this.leaveOnUnload();
+    this.deps.mic.stop();
+    return this.leave();
+  }
+
   /** `announce` tells the gateway; a server-driven disconnect already left, so it stays quiet. */
   private async teardown(announce: boolean): Promise<void> {
     this.joinToken += 1;

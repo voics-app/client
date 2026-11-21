@@ -6,7 +6,7 @@ import { channelAccess, dmAccess, messageActions } from '../../src/messages/mess
 const BASIC = Permission.VIEW_CHANNEL | Permission.SEND_MESSAGES | Permission.READ_MESSAGE_HISTORY | Permission.ADD_REACTIONS;
 const role = (permissions: bigint) => ({ id: 'g1', name: '@everyone', color: 0, hoist: false, position: 0, permissions: String(permissions), managed: false, mentionable: false });
 const guild = (permissions: bigint, owner = 'owner') => ({ id: 'g1', name: 'Home', icon: null, owner_id: owner, roles: [role(permissions)], emojis: [] }) as unknown as GuildMeta;
-const channel = (extra: Partial<Channel> = {}) => ({ id: 'c1', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard', ...extra }) as Channel;
+const channel = (extra: Partial<Channel> = {}) => ({ id: 'c1', type: 0, guild_id: 'g1', nsfw: false, name: 'general', delivery_mode: 'standard', ...extra }) as Channel;
 const msg = (authorId: string, extra: Partial<Message> = {}) => ({ id: 'm1', channel_id: 'c1', author: { id: authorId }, content: 'hi', ...extra }) as Message;
 const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: string) =>
   channelAccess({ guild: guild(permissions, owner), channel: channel(extra), members: undefined, userId: 'me' });

@@ -1,4 +1,5 @@
 import { getI18n } from '../shared/i18n';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 /** Thin command facade over the voice engine so UI never imports engine classes directly. */
 import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
@@ -32,6 +33,7 @@ function require(): VoiceFacade | null {
 }
 
 export async function joinVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
+  if (!canShowChannelContent(channelId)) { openChannel(channelId); return; }
   const call = useVoiceStore.getState().call;
   if (call.channelId === channelId && call.status !== 'idle') return;
   try {

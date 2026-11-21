@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { SearchService, type SearchTarget } from '@discordy/core/application/searchService';
 import { SEARCH_PAGE_SIZE, type SearchSort } from '@discordy/core/application/stores/searchStore';
 import type { Message } from '@discordy/core/contracts/rest';
@@ -23,7 +25,7 @@ const IDLE: SearchState = { status: 'idle', groups: [], total: 0, hasMore: false
 /** Search results for one tab, a page at a time. A newer search or tab replaces an older one that is still on its way. */
 export function useSearch(target: SearchTarget | null) {
   // Mobile searches the server only; chats with private delivery cannot be opened here, so there is no local store to search.
-  const service = useMemo(() => new SearchService({ api: getRuntime().api, localMessages: async () => [] }), []);
+  const service = useMemo(() => new SearchService({ api: getRuntime().api, localMessages: async () => [], canShowChannel: canShowChannelContent, searchableChannelIds: (guildId) => Object.values(useGuildStore.getState().channels).filter((c) => c.guild_id === guildId && canShowChannelContent(c.id)).map((c) => c.id) }), []);
   const [state, setState] = useState<SearchState>(IDLE);
   const ticket = useRef(0);
   const last = useRef<{ tab: SearchTab; input: string; loaded: number; sort: SearchSort } | null>(null);

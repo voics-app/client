@@ -1,7 +1,7 @@
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { inviteChannelId, inviteSummary } from '../../src/invites/inviteModel';
 
-const ch = (id: string, type: number, position: number, guild = 'g1') => ({ id, type, position, guild_id: guild, name: id }) as Channel;
+const ch = (id: string, type: number, position: number, guild = 'g1') => ({ id, type, position, guild_id: guild, nsfw: false, name: id }) as Channel;
 
 describe('inviteChannelId', () => {
   it('is the first text channel of the server by position', () => {

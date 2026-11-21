@@ -6,6 +6,9 @@ import type { WatchTogetherService } from '@renderer/application/watch/watchToge
 import { createVoiceController, createWatchTogetherService } from '@renderer/infrastructure/voice/browserVoice';
 import type { Runtime } from './runtime';
 import { registerVoice, type ShareResult, type VoiceFacade } from './voiceActions';
+import { guardRestrictedVoice } from '@discordy/core/application/guardRestrictedVoice';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
+import { reportError } from './actions';
 
 export interface Engines {
   voice: VoiceController;
@@ -14,6 +17,7 @@ export interface Engines {
 
 let engines: Engines | null = null;
 let boundRuntime: Runtime | null = null;
+let stopRestrictionGuard: (() => void) | null = null;
 
 export function getEngines(): Engines | null {
   return engines;
@@ -24,6 +28,7 @@ export function getEngines(): Engines | null {
  * gateway that was never connected. */
 export function registerEngines(runtime: Runtime): Engines {
   if (engines && boundRuntime === runtime) return engines;
+  stopRestrictionGuard?.();
   if (engines) {
     engines.voice.dispose();
     engines.watch.dispose();
@@ -39,7 +44,10 @@ export function registerEngines(runtime: Runtime): Engines {
   });
   const watch = createWatchTogetherService(runtime.gateway);
 
-  runtime.hooks.onVoiceServerUpdate = (update) => voice.onVoiceServerUpdate(update);
+  runtime.hooks.onVoiceServerUpdate = (update) => {
+    if (!canShowChannelContent(update.channel_id)) { void voice.leaveImmediately().catch(reportError); return; }
+    voice.onVoiceServerUpdate(update);
+  };
   runtime.hooks.onVoiceState = (state) => voice.onVoiceState(state);
   runtime.hooks.onSignedOut.push(() => {
     void voice.leave();
@@ -49,6 +57,7 @@ export function registerEngines(runtime: Runtime): Engines {
   globalThis.addEventListener?.('beforeunload', () => voice.leaveOnUnload());
 
   registerVoice(toFacade(voice));
+  stopRestrictionGuard = guardRestrictedVoice(() => voice.leaveImmediately(), reportError);
   engines = { voice, watch };
   return engines;
 }

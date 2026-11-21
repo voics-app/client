@@ -12,6 +12,7 @@ import { theme } from '../theme';
 import { attempt, confirmDestructive } from '../ui/attempt';
 import { Button } from '../ui/controls';
 import { Hint, SectionLabel, SettingRow, SettingsPage, SwitchRow } from './rows';
+import { AgeRestrictedSetting } from './AgeRestrictedSetting';
 
 /** Encrypted modes need the encryption core, which is not in the mobile app yet; desktop disables them the same way when its core is missing. */
 export const ENCRYPTION_UNAVAILABLE = 'Encrypted modes are not available in the mobile app yet. Nothing is ever sent unencrypted in a private mode.';
@@ -75,6 +76,7 @@ export function PrivacyPage({ highlight }: { highlight: string | null }) {
       </SettingRow>
       <Hint>{ENCRYPTION_UNAVAILABLE}</Hint>
 
+      <AgeRestrictedSetting />
       <SectionLabel>Calls</SectionLabel>
       <SwitchRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted." value={settings.e2ee_calls_default === true} onChange={setCallsEncrypted} />
 

@@ -16,6 +16,8 @@ export interface SearchTarget {
 export interface SearchServiceDeps {
   api: Pick<ApiPort, 'searchMessages'>;
   localMessages(channelId: string): Promise<Message[]>;
+  canShowChannel?(channelId: string): boolean;
+  searchableChannelIds?(guildId: string): string[];
 }
 
 const SORTS: Record<SearchSort, Pick<SearchParams, 'sort_by' | 'sort_order'>> = {
@@ -50,6 +52,7 @@ export class SearchService {
 
   /** Runs one search without touching the search store: the page of results for `input` at `offset`, or why there is nothing to search. Throws what the server answered when it fails. */
   async page(target: SearchTarget, input: string, options: { offset?: number; sort?: SearchSort } = {}): Promise<SearchOutcome> {
+    if (this.deps.canShowChannel && !this.deps.canShowChannel(target.channel.id)) return { kind: 'empty' };
     const parsed = parseQuery(input);
     if (!parsed.text && parsed.filters.length === 0) return { kind: 'empty' };
     const offset = options.offset ?? 0;
@@ -85,19 +88,26 @@ export class SearchService {
       useSearchStore.getState().set({ ...base, problems: outcome.problems, status: 'error', error: outcome.problems.join('. '), groups: [], total: 0 });
     } else if (outcome.kind === 'page') {
       useSearchStore.getState().set({ status: 'ready', groups: outcome.groups, total: outcome.total, indexBuilding: outcome.indexBuilding });
+    } else {
+      useSearchStore.getState().set({ status: 'idle', groups: [], total: 0, error: null });
     }
   }
 
   private async remote(target: SearchTarget, params: SearchParams) {
     const guildId = target.channel.guild_id ?? null;
     // `in:` only exists for server searches; a channel search is already scoped.
-    const scoped = guildId ? params : { ...params, channel_id: undefined };
+    const allowed = guildId ? this.deps.searchableChannelIds?.(guildId) : undefined;
+    const channelIds = allowed ? (params.channel_id ?? allowed).filter((id) => allowed.includes(id)) : params.channel_id;
+    if (allowed && !channelIds?.length) return { groups: [], total: 0, indexBuilding: false };
+    const scoped = guildId ? { ...params, channel_id: channelIds } : { ...params, channel_id: undefined };
     const response = await this.deps.api.searchMessages({ guildId, channelId: target.channel.id }, scoped);
-    return { groups: response.messages, total: response.total_results, indexBuilding: response.index_building === true };
+    const groups = this.deps.canShowChannel ? response.messages.filter((group) => group.every((message) => this.deps.canShowChannel!(message.channel_id))) : response.messages;
+    return { groups, total: response.total_results, indexBuilding: response.index_building === true };
   }
 
   private async local(target: SearchTarget, params: SearchParams, sort: SearchSort, offset: number) {
     const all = await this.deps.localMessages(target.channel.id);
+    if (this.deps.canShowChannel && !this.deps.canShowChannel(target.channel.id)) return { groups: [], total: 0, indexBuilding: false };
     const matches = all.filter((m) => matchesLocal(m, params)).sort((a, b) => compareSnowflakesSafe(b, a));
     const page = (sort === 'oldest' ? [...matches].reverse() : matches).slice(offset, offset + SEARCH_PAGE_SIZE);
     const groups = page.map((hit) => {

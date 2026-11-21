@@ -23,9 +23,11 @@ import { markChannelRead } from '@discordy/core/application/guildCommands';
 import { getRuntime } from '../runtime';
 import { channelManageEntries } from '../messages/channelManageModel';
 import type { Channel } from '@discordy/core/contracts/rest';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 /** Desktop's ChannelSidebar for one server: its name (opens the server menu), then channels of every kind by category (collapsible), with the open channel, unread and muted states and who is in each voice channel. */
 export function ChannelColumn({ guildId }: { guildId: string }) {
+  const { visible } = useChannelContentAccess();
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const channels = useGuildStore((s) => s.channels);
   const members = useGuildStore((s) => s.members[guildId]);
@@ -42,8 +44,8 @@ export function ChannelColumn({ guildId }: { guildId: string }) {
   const [editingCategory, setEditingCategory] = useState<Channel | null>(null);
 
   const sections = useMemo(
-    () => (guild && userId ? channelSections({ guild, channels, members, userId }) : []),
-    [guild, channels, members, userId],
+    () => (guild && userId ? channelSections({ guild, channels, members, userId }).map((section) => ({ ...section, channels: section.channels.filter((c) => visible(c.id)) })).filter((section) => !section.id || visible(section.id)) : []),
+    [guild, channels, members, userId, visible],
   );
 
   return (

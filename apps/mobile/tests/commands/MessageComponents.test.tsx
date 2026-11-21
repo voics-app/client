@@ -2,6 +2,9 @@ import { Alert } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useInteractionStore } from '@discordy/core/application/stores/interactionStore';
+import { initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { Message, MessageComponent } from '@discordy/core/contracts/rest';
 import { InteractionModal } from '../../src/commands/InteractionModal';
 import { MessageComponents } from '../../src/messages/components/MessageComponents';
@@ -105,6 +108,20 @@ describe('interaction modal', () => {
       row({ type: 4, custom_id: 'body', label: 'Details', style: 2, required: false }),
     ],
   };
+
+  it('withholds an already open bot form after a restriction change and keeps the draft for deliberate continuation', async () => {
+    initialiseAgeRestrictedAccess('https://instance.test');
+    useSessionStore.getState().setStatus('ready');
+    useInteractionStore.getState().openModal(modal);
+    await render(withSafeArea(<InteractionModal />));
+    await fireEvent.changeText(screen.getByLabelText('Subject'), 'Keep my draft');
+    await act(() => useGuildStore.getState().upsertChannel({ ...useGuildStore.getState().channels.general!, nsfw: true }));
+    expect(screen.queryByText('Send feedback')).toBeNull();
+    expect(screen.queryByLabelText('Subject')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByLabelText('Subject').props.value).toBe('Keep my draft');
+    expect(mockApi.createInteraction).not.toHaveBeenCalled();
+  });
 
   it('stays closed until an application opens a form', async () => {
     await render(withSafeArea(<InteractionModal />));

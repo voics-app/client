@@ -14,9 +14,11 @@ import { theme } from '../theme';
 import { Button, Field } from '../ui/controls';
 import { ListRow } from '../ui/ListRow';
 import { Sheet } from '../ui/Sheet';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 /** Desktop's Forward picker: recent DMs and groups, then channels you can send in, with an optional comment. A private chat is shown disabled. */
 export function ForwardSheet({ message: shown, onClose }: { message: ChatMessage | null; onClose(): void }) {
+  const { canShow } = useChannelContentAccess();
   const message = useLastValue(shown);
   const channels = useGuildStore((s) => s.channels);
   const guilds = useGuildStore((s) => s.guilds);
@@ -29,9 +31,10 @@ export function ForwardSheet({ message: shown, onClose }: { message: ChatMessage
   const targets = useMemo(
     () =>
       forwardTargets({ channels, guilds, closed, query, hasAttachments, dmName: (c) => dmTitle(c, relationships), modeOf: (c) => c.delivery_mode, permissionsOf: permissionsInChannel })
+        .filter((target) => canShow(target.id))
         // An encrypted server channel must never receive a message through the server in the clear, so it is shown but cannot be picked.
         .map((t) => (t.kind === 'channel' && channels[t.id]?.delivery_mode !== 'standard' ? { ...t, disabledReason: FORWARD_REASON_PRIVATE } : t)),
-    [channels, guilds, closed, query, hasAttachments, relationships],
+    [channels, guilds, closed, query, hasAttachments, relationships, canShow],
   );
 
   const close = () => {
@@ -40,7 +43,7 @@ export function ForwardSheet({ message: shown, onClose }: { message: ChatMessage
     onClose();
   };
   const send = async (target: ForwardTarget) => {
-    if (!message) return;
+    if (!message || !canShow(message.channel_id) || !canShow(target.id)) return;
     setBusy(target.id);
     try {
       await forwardMessage(getRuntime().api, message, target.id, comment);

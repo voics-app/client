@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
@@ -7,6 +7,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
+import { confirmAgeRestrictedChannel, initialiseAgeRestrictedAccess } from '@discordy/core/application/ageRestrictedAccess';
 
 const updateMember = vi.fn(async (_g: string, u: string, patch: { channel_id: string | null }) => ({ user: { id: u }, roles: [], ...patch }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { updateMember: (...a: [string, string, never]) => updateMember(...a) } }) }));
@@ -22,9 +23,9 @@ function seed(perms: bigint) {
     guilds: { [G]: { id: G, name: 'G', owner_id: 'owner', roles: [{ id: G, name: '@everyone', color: 0, hoist: false, position: 0, permissions: perms.toString(), managed: false, mentionable: false }] } } as never,
     members: { [G]: { alice: { user: user('alice'), roles: [] }, bob: { user: user('bob'), roles: [] } } } as never,
     channels: {
-      v1: { id: 'v1', guild_id: G, type: 2, name: 'Lounge', position: 0, user_limit: 2 },
-      v2: { id: 'v2', guild_id: G, type: 2, name: 'Quiet', position: 1 },
-      t1: { id: 't1', guild_id: G, type: 0, name: 'general', position: 2 },
+      v1: { id: 'v1', guild_id: G, type: 2, name: 'Lounge', position: 0, user_limit: 2, nsfw: false },
+      v2: { id: 'v2', guild_id: G, type: 2, name: 'Quiet', position: 1, nsfw: false },
+      t1: { id: 't1', guild_id: G, type: 0, name: 'general', position: 2, nsfw: false },
     } as never,
   });
   useVoiceStore.setState({
@@ -39,6 +40,25 @@ const dragBob = () => fireEvent.dragStart(screen.getByText('bob').closest('li')!
 describe('voice channel rows', () => {
   beforeEach(() => updateMember.mockClear());
   afterEach(cleanup);
+
+  it('withholds restricted occupants until Continue and hides the channel immediately on an account preference update', () => {
+    seed(ALL_PERMISSIONS);
+    initialiseAgeRestrictedAccess('https://instance.test');
+    useSessionStore.getState().setStatus('ready');
+    useSessionStore.getState().setSettings({ preferences: {} });
+    useGuildStore.getState().upsertChannel({ ...useGuildStore.getState().channels.v1!, nsfw: true });
+    render(<ChannelSidebar guildId={G} />);
+    expect(screen.getByText('Lounge')).toBeTruthy();
+    expect(screen.queryByText('bob')).toBeNull();
+    act(() => { confirmAgeRestrictedChannel('v1'); });
+    expect(screen.getByText('bob')).toBeTruthy();
+    act(() => useSessionStore.getState().setSettings({ preferences: { hide_age_restricted_channels: true } }));
+    expect(screen.queryByText('Lounge')).toBeNull();
+    expect(screen.queryByText('bob')).toBeNull();
+    expect(screen.getByText('general')).toBeTruthy();
+    cleanup();
+    useSessionStore.getState().setSettings({ preferences: {} });
+  });
 
   it('renders icons, not letters, and tells server mute from self mute', () => {
     seed(ALL_PERMISSIONS);

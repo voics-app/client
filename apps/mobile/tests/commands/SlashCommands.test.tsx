@@ -39,7 +39,7 @@ jest.mock('@expo/vector-icons', () => {
   return { Ionicons: ({ name }: { name: string }) => <Text>{`icon:${name}`}</Text> };
 });
 
-const channel = { id: 'general', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard' } as Channel;
+const channel = { id: 'general', type: 0, guild_id: 'g1', nsfw: false, name: 'general', delivery_mode: 'standard' } as Channel;
 const mount = (slashChannel: Channel | null = channel, onSubmit = jest.fn()) =>
   render(withSafeArea(<Composer mode={{ kind: 'compose' }} blockedReason={null} placeholder="Message #general" canAttach slashChannel={slashChannel ?? undefined} onSubmit={onSubmit} onCancelMode={jest.fn()} />));
 

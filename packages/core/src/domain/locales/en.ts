@@ -1,5 +1,26 @@
 /** English is the canonical catalog and fallback. Values use ICU MessageFormat. */
 export const en = {
+  "age.report": "Report channel",
+  "report.channel": "Report #{name}",
+  "report.discloseChannel": "Moderators receive your account, category and note, plus the channel ID, server ID, parent ID, name, type and age-restricted flag copied by the server. No messages, topics, attachments or member lists are fetched or included. The server owner at filing is recorded for context.",
+  "report.channelSentBody": "Moderators can now review this channel. Sending a report does not change the channel or notify its members.",
+  "report.targetUnavailable": "This report target is no longer available.",
+  "age.title": "Age-restricted channel",
+  "age.body": "This channel is marked age-restricted. Continue if you want to view its content. This choice applies to this channel for your current session.",
+  "age.hidden": "Age-restricted content is hidden",
+  "age.hiddenBody": "Your account is set to hide age-restricted channels. You can change this in Privacy settings.",
+  "age.unavailable": "Channel unavailable",
+  "age.unavailableBody": "We cannot check this channel's content settings yet. Return to your conversations or wait for the channel to become available.",
+  "age.continue": "Continue",
+  "age.back": "Back to conversations",
+  "age.settings": "Privacy settings",
+  "age.leave": "Leave server",
+  "age.leaveTitle": "Leave this server?",
+  "age.leaveBody": "You will need another invite to join again.",
+  "age.leaveError": "Could not leave server",
+  "age.hideSetting": "Hide age-restricted channels",
+  "age.settingBody": "Hide these channels and block their content on your account. Turning this off still requires Continue for each channel.",
+  "age.saveError": "Could not save this setting. Your previous choice is still active. Try the switch again.",
   "passkey.browserTitle": "Continue with your passkey",
   "passkey.browserWait": "Keep this tab open while your browser checks your passkey.",
   "passkey.browserOrigin": "Your browser will open {origin}. Your password and session stay in the desktop app.",
@@ -2167,6 +2188,9 @@ export const en = {
   "boundary.a.message.can.have.at.most.10.attachments": "A message can have at most 10 attachments.",
   "boundary.this.attachment.is.no.longer.available": "This attachment is no longer available.",
   "boundary.the.server.returned.the.wrong.number.of.upload.slots": "The server returned the wrong number of upload slots.",
+  "report.close": "Close report",
+  "age.voiceError": "Could not finish leaving voice",
+  "report.notePlaceholder": "Anything that helps the moderators",
 } as const;
 
 export type MessageId = keyof typeof en;

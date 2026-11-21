@@ -12,9 +12,11 @@ import { PressableScale } from '../ui/PressableScale';
 import { OccupantList } from '../voice/OccupantList';
 import { Badge } from './Badge';
 import { channelFlags } from './railModel';
+import { useChannelContentAccess } from '../safety/useChannelContentAccess';
 
 /** One channel in the column: `#`, speaker, megaphone or forum icon, name, lock and capacity marks, mention badge, and for voice channels the people inside. */
 export function ChannelRow({ channel, guildId, active, canMoveMembers, onMenu }: { channel: Channel; guildId: string; active: boolean; canMoveMembers: boolean; onMenu?: (channel: Channel) => void }) {
+  const { canShow } = useChannelContentAccess();
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
   const occupants = useVoiceStore((s) => usersInChannel(s.states, channel.guild_id, channel.id).length);
@@ -46,7 +48,7 @@ export function ChannelRow({ channel, guildId, active, canMoveMembers, onMenu }:
         {view.capacity && <Text style={[styles.capacity, view.capacity.full && styles.full]}>{view.capacity.label}</Text>}
         <Badge value={flags.mentions} />
       </PressableScale>
-      {view.voice && <OccupantList channel={channel} compact />}
+      {view.voice && canShow(channel.id) && <OccupantList channel={channel} compact />}
     </View>
   );
 }
