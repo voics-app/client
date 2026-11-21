@@ -1,3 +1,4 @@
+import { StickerImage } from './StickerImage';
 import { ArrowClockwise, BellSlash, ChatTeardropText, Eye, LockKey, Timer, Plugs, WarningCircle } from '@phosphor-icons/react';
 import { isMentioned, isSilent } from '@discordy/core/domain/notificationPolicy';
 import { memo, useRef, useState } from 'react';
@@ -291,6 +292,7 @@ export const MessageItem = memo(function MessageItem({ message, startsGroup, gui
             </>
           )}
           <ForwardedMessage message={message} guildId={guildId} />
+          {message.sticker_items?.map((sticker) => <StickerImage key={sticker.id} sticker={sticker} />)}
           {message.attachments.length > 0 && <MessageAttachments attachments={message.attachments} channelId={message.channel_id} />}
           {sending && message.nonce != null && <UploadProgress nonce={String(message.nonce)} />}
           <MessageEmbeds message={message} />

@@ -1,5 +1,5 @@
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
-import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, Sticker, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
@@ -30,6 +30,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
+import { useStickerPopover } from './StickerPopover';
 import { LazyFeature } from '../../shared/ui/LazyFeature';
 
 const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashCommandPanel }) => ({ default: SlashCommandPanel }));
@@ -194,6 +195,13 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
 
   const [pickingTime, setPickingTime] = useState(false);
   const emoji = useEmojiPopover(channel.guild_id, (picked) => insertAtCaret(picked.text + ' '), channel.id);
+  const stickers = useStickerPopover(channel.guild_id, (sticker) => {
+    if (!standard || !canSend || slowmodeLeft > 0) return;
+    useSlowmodeStore.getState().markSent(channel.id);
+    void getRuntime().privacy.sender.send(channel, { content: '', stickers: [sticker], replyTo: replyTo?.id ?? null, pingReplied })
+      .then(() => setReplyTo(channel.id, null))
+      .catch((error: unknown) => { useSlowmodeStore.getState().markSent(channel.id, 0); reportError(error, 'Sticker not sent'); });
+  });
 
   // Mentions chosen from a member context menu are inserted into the open composer of that channel.
   const mentionRequest = useMentionStore((s) => s.request);
@@ -572,6 +580,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
+          {standard && <IconButton label="Stickers" disabled={!canSend || slowmodeLeft > 0} onClick={(event) => stickers.open(event.currentTarget)}><Sticker size={22} /></IconButton>}
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
@@ -583,6 +592,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {dragging && <div className="drop-overlay">Drop files to attach</div>}
       </div>
       {emoji.node}
+      {stickers.node}
       <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />
     </div>
   );

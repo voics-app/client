@@ -1,3 +1,4 @@
+import { StickerItems } from './StickerItems';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -25,6 +26,7 @@ export function MessageSummary({ message, channelName, children }: { message: Ch
         <Text style={styles.time}>{formatMessageTime(message.timestamp, Date.now())}</Text>
       </View>
       {message.content ? <MarkdownText source={message.content} /> : null}
+      <StickerItems items={message.sticker_items} />
       {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={false} />}
       {children}
     </View>

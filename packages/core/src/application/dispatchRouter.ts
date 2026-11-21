@@ -190,6 +190,7 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     },
     GUILD_BAN_REMOVE: (d: { guild_id: string }) => ctx.invalidate(['guild', d.guild_id, 'bans']),
     GUILD_EMOJIS_UPDATE: (d: { guild_id: string; emojis: Emoji[] }) => guilds().setEmojis(d.guild_id, d.emojis),
+    GUILD_STICKERS_UPDATE: (d: { guild_id: string }) => ctx.invalidate(['guild-stickers', d.guild_id]),
     INVITE_CREATE: (d: { guild_id?: string }) => d.guild_id && ctx.invalidate(['guild', d.guild_id, 'invites']),
     INVITE_DELETE: (d: { guild_id?: string }) => d.guild_id && ctx.invalidate(['guild', d.guild_id, 'invites']),
     AUDIT_LOG_ENTRY_CREATE: (d: { guild_id: string }) => ctx.invalidate(['guild', d.guild_id, 'audit']),

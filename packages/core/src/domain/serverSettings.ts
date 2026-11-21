@@ -2,7 +2,7 @@
 import { Permission } from '../contracts/permissions';
 import { hasPermission } from './permissions';
 
-export type ServerSettingsTabId = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTabId = 'overview' | 'roles' | 'emoji' | 'stickers' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export interface ServerSettingsTabEntry {
   id: ServerSettingsTabId;
@@ -17,6 +17,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
     { id: 'overview', label: 'Overview', group: 'Server', show: can(Permission.MANAGE_GUILD) },
     { id: 'roles', label: 'Roles', group: 'Server', show: can(Permission.MANAGE_ROLES) },
     { id: 'emoji', label: 'Emoji', group: 'Server', show: can(Permission.MANAGE_GUILD_EXPRESSIONS) },
+    { id: 'stickers', label: 'Stickers', group: 'Server', show: can(Permission.MANAGE_GUILD_EXPRESSIONS) },
     { id: 'members', label: 'Members', group: 'People', show: true },
     { id: 'invites', label: 'Invites', group: 'People', show: can(Permission.MANAGE_GUILD) },
     { id: 'template', label: 'Template', group: 'Server', show: can(Permission.MANAGE_GUILD) },
@@ -29,5 +30,5 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
 
 /** Settings remain reachable for audit readers as well as server managers. */
 export function canOpenServerSettings(perms: bigint): boolean {
-  return hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS) || hasPermission(perms, Permission.VIEW_AUDIT_LOG) || hasPermission(perms, Permission.MANAGE_WEBHOOKS);
+  return hasPermission(perms, Permission.MANAGE_GUILD_EXPRESSIONS) || hasPermission(perms, Permission.MANAGE_GUILD) || hasPermission(perms, Permission.MANAGE_ROLES) || hasPermission(perms, Permission.MANAGE_CHANNELS) || hasPermission(perms, Permission.VIEW_AUDIT_LOG) || hasPermission(perms, Permission.MANAGE_WEBHOOKS);
 }

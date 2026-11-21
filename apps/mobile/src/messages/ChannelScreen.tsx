@@ -14,7 +14,7 @@ import { useMessageStore, type ChatMessage } from '@discordy/core/application/st
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import { ChannelType, RelationshipType, type User } from '@discordy/core/contracts/rest';
+import { ChannelType, RelationshipType, type User, type Sticker } from '@discordy/core/contracts/rest';
 import { headerButtons } from '@discordy/core/domain/chatHeader';
 import { firstUnreadMessageId, unreadBar } from '@discordy/core/domain/unread';
 import { buildRows, showJumpToLatest, type ChatRow } from './chatRows';
@@ -355,7 +355,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           />
         )}
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
-          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} {...(access?.standard && access.canSend && channel ? { onSticker: (sticker: Sticker) => { setMode(COMPOSE); void service.send(channel, { content: '', stickers: [sticker], ...(mode.kind === 'reply' ? { replyTo: mode.messageId } : {}) }).then((ok) => (ok ? notifySuccess() : notifyError())).catch(fail); } } : {})} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         </KeyboardAvoidingView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />

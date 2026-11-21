@@ -781,3 +781,13 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .report-category small { display: block; color: var(--fg-subtle); }
 .field-error { margin: 0; color: var(--danger, #d03b3b); font-size: var(--fs-small); }
 .passkey-list { list-style: none; margin: 0; padding: 0; }
+
+.sticker-picker { padding: 12px; gap: 12px; }
+.sticker-picker h3, .sticker-picker p { margin: 0; }
+.sticker-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; overflow-y: auto; }
+.sticker-picker-grid button { display: grid; place-items: center; border-radius: 8px; padding: 4px; }
+.sticker-picker-grid button:hover, .sticker-picker-grid button:focus-visible { background: var(--hover); }
+.sticker-manage { grid-template-columns: 1fr; }
+.sticker-manage li { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) auto; }
+.sticker-manage .input-shell { min-width: 0; }
+@media (max-width: 600px) { .sticker-manage li { grid-template-columns: 40px minmax(0, 1fr) auto; } .sticker-manage .sticker-tags { grid-column: 2; grid-row: 2; } .sticker-manage li > button { grid-column: 3; grid-row: 1 / 3; } }

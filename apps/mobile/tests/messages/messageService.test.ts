@@ -154,6 +154,13 @@ describe('MessageService', () => {
     expect(timeline().byId[snow(900)]?.localState).toBeUndefined();
   });
 
+  it('sends selected sticker IDs through the standard message API', async () => {
+    const api = makeApi();
+    const sticker = { id: '1', name: 'Happy', format_type: 3 as const };
+    await new MessageService(api).send(channel, { content: '', stickers: [sticker] });
+    expect(api.sendMessage.mock.calls[0]![1]).toMatchObject({ sticker_ids: ['1'] });
+  });
+
   it('sends a reply with a message reference', async () => {
     const api = makeApi();
     await new MessageService(api).send(channel, { content: 'yo', replyTo: snow(3) });

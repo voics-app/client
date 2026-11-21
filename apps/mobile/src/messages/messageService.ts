@@ -7,7 +7,7 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { idBefore } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
+import type { Channel, CreateMessageBody, StickerItem } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
 import type { MessageSender } from '@discordy/core/application/privacy/messageSender';
@@ -21,6 +21,7 @@ export type MessageApi = Pick<ApiPort, 'messages' | 'ack' | 'sendMessage' | 'edi
 
 export interface SendInput {
   content: string;
+  stickers?: StickerItem[];
   replyTo?: string;
   files?: OutgoingFile[];
 }
@@ -156,6 +157,7 @@ export class MessageService {
     if (!user) throw new Error('Not signed in');
     const nonce = this.nonce();
     const encrypted = this.privateChannel(channel.id) !== null;
+    if (encrypted && input.stickers?.length) throw new Error("Stickers can only be sent in standard chats.");
     const reference = input.replyTo ? { message_id: input.replyTo, channel_id: channel.id, guild_id: channel.guild_id ?? undefined } : undefined;
     const store = useMessageStore.getState();
     store.addOptimistic({
@@ -170,6 +172,7 @@ export class MessageService {
       mentions: [],
       mention_roles: [],
       attachments: (input.files ?? []).map((f, i) => ({ id: `local-${i}`, filename: f.name, content_type: f.mimeType, size: f.size, url: f.uri })),
+      sticker_items: input.stickers,
       embeds: [],
       pinned: false,
       type: reference ? 19 : 0,
@@ -186,7 +189,7 @@ export class MessageService {
         return true;
       }
       const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
-      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
+      const body: CreateMessageBody = { content: input.content, nonce, ...(input.stickers?.length ? { sticker_ids: input.stickers.map((item) => item.id) } : {}), ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
       this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });

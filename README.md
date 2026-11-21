@@ -221,3 +221,13 @@ Tests run locally, not in CI. Install [lefthook](https://github.com/evilmartians
 # Passkeys
 
 Desktop account settings support passkey enrollment, naming and removal; password sign-in offers registered passkeys as a second factor. The ceremony uses the system browser at an explicitly configured HTTPS relying-party origin. See [desktop passkeys](docs/passkeys.md) for configuration, recovery, security boundaries, the isolated browser/API test and OS/mobile acceptance limits.
+
+## Sticker client proposal
+
+Desktop server settings expose sticker upload and management to members with
+MANAGE_GUILD_EXPRESSIONS. The Standard guild composer sends server stickers and
+message history renders PNG, APNG, GIF and Lottie items, including forwards.
+This draft requires the matching contracts, API, messages and gateway changes;
+the built-in pack is available in Standard guild channels and DMs; visual and end-to-end verification remain outstanding.
+
+Mobile can select and send stickers in Standard chats and renders Lottie with the native Expo-compatible renderer. A native rebuild and device acceptance are required. Animated GIF/APNG show a label when animation is disabled; invalid or unavailable Lottie also shows a label.

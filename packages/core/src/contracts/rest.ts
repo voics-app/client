@@ -286,9 +286,22 @@ export interface MessageReference {
   fail_if_not_exists?: boolean;
 }
 
+export interface StickerItem {
+  id: Snowflake;
+  name: string;
+  /** 1 PNG, 2 APNG, 3 Lottie, 4 GIF. */
+  format_type: 1 | 2 | 3 | 4;
+}
+
+export interface Sticker extends StickerItem {
+  guild_id: Snowflake;
+  tags: string;
+  available: boolean;
+}
+
 /** A frozen copy of a forwarded message (Discord `message_snapshots`). */
 export interface MessageSnapshot {
-  message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'embeds' | 'type' | 'flags'>;
+  message: Pick<Message, 'content' | 'timestamp' | 'edited_timestamp' | 'mentions' | 'mention_roles' | 'attachments' | 'sticker_items' | 'embeds' | 'type' | 'flags'>;
 }
 
 export interface MessageCall {
@@ -310,6 +323,7 @@ export interface Message {
   mentions: User[];
   mention_roles: Snowflake[];
   attachments: Attachment[];
+  sticker_items?: StickerItem[];
   embeds: Embed[];
   reactions?: Reaction[];
   nonce?: string | number | null;
@@ -730,6 +744,7 @@ export const ApiErrorCode = {
 
 export interface CreateMessageBody {
   content: string;
+  sticker_ids?: Snowflake[];
   nonce: string;
   attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];
   message_reference?: MessageReference;
