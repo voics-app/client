@@ -189,6 +189,11 @@ export interface GuildMember {
   communication_disabled_until?: string | null;
 }
 
+export interface OnboardingOption { label: string; role_id: string | null; channel_id: string | null }
+export interface OnboardingQuestion { title: string; options: OnboardingOption[] }
+export interface OnboardingConfig { enabled: boolean; questions: OnboardingQuestion[] }
+export interface OnboardingResponse { config: OnboardingConfig; revision: number }
+
 export interface Guild {
   id: Snowflake;
   name: string;
@@ -940,3 +945,5 @@ export interface GuildDiscoverySettings {
   member_count: number;
   blockers: string[];
 }
+
+export interface LinkedConnection { provider: string; account_id: string; name: string; visible: boolean }

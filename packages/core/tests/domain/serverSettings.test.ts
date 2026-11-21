@@ -10,9 +10,9 @@ describe('serverSettingsTabs', () => {
   });
 
   it('opens a page per permission', () => {
-    expect(shown(Permission.MANAGE_ROLES)).toEqual(['profile', 'roles', 'members']);
+    expect(shown(Permission.MANAGE_ROLES)).toEqual(['roles', 'profile', 'members']);
     expect(shown(Permission.BAN_MEMBERS)).toEqual(['profile', 'members', 'bans']);
-    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'profile', 'members', 'invites', 'template', 'discovery', 'integrations']);
+    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'rules', 'onboarding', 'welcome', 'profile', 'members', 'invites', 'template', 'discovery', 'integrations']);
     expect(shown(Permission.MANAGE_WEBHOOKS)).toEqual(['profile', 'members', 'integrations']);
   });
 });
