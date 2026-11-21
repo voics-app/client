@@ -28,6 +28,7 @@ export { rowSlug };
 const row = (tab: UserSettingsTab, label: string, keywords = ''): SettingEntry => ({ tab, label, keywords });
 
 const TAB_KEYWORDS: Record<UserSettingsTab, string> = {
+  linkedAccounts: 'github account linked profile connections',
   account: 'username email password security two-factor 2fa log out sign out delete',
   profile: 'display name avatar about me bio colour color banner',
   privacy: 'delivery mode encryption e2ee ephemeral p2p',

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { useInviteLinkStore } from '../invites/inviteLinkStore';
+import { openGuild } from '../navigation/openChat';
 import type { DiscoveryGuild } from '@discordy/core/contracts/rest';
 import { categoryLabel, memberCountLabel } from '@discordy/core/domain/discoveryModel';
 import { getRuntime } from '../runtime';
@@ -17,7 +18,7 @@ export const DISCOVER_PAGE = 24;
 function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag(tag: string): void }) {
   const joined = useGuildStore((s) => Boolean(s.guilds[guild.id]));
   const [busy, setBusy] = useState(false);
-  const open = () => useUiStore.getState().navigate({ kind: 'guild', guildId: guild.id, channelId: null });
+  const open = () => openGuild(guild.id);
   const join = async () => {
     setBusy(true);
     const ok = await attempt(async () => {
@@ -26,7 +27,7 @@ function GuildCard({ guild, onTag }: { guild: DiscoveryGuild; onTag(tag: string)
     }, 'Could not join this server');
     setBusy(false);
     // The server arrives over the gateway a moment after joining.
-    if (ok) setTimeout(open, 300);
+    if (ok) useInviteLinkStore.getState().openScreening(guild.id, true);
   };
   return (
     <View accessibilityLabel={guild.name} style={styles.card}>

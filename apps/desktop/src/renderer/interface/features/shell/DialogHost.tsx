@@ -8,7 +8,7 @@ import { useRelationshipStore } from '@discordy/core/application/stores/peopleSt
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
-import { ChannelType, type Invite } from '@discordy/core/contracts/rest';
+import { ChannelType, type Invite, type OnboardingResponse } from '@discordy/core/contracts/rest';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -31,6 +31,7 @@ import { ModViewDialog } from '../members/ModViewDialog';
 import { PruneDialog } from '../members/PruneDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
 import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
+import { GuildEventsDialog } from '../channels/GuildEventsDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
@@ -45,13 +46,61 @@ function useClose() {
   return () => useUiStore.getState().openDialog(null);
 }
 
-function JoinGuildDialog({ initial }: { initial?: string }) {
+function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initial?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
+  const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const [welcome, setWelcome] = useState<{ guildId: string; description: string; channels: { channel_id: string; description: string }[] } | null>(null);
+  const [onboarding, setOnboarding] = useState<{ guildId: string; data: OnboardingResponse; choices: number[] } | null>(null);
   const close = useClose();
   const api = getRuntime().api;
+  const finishJoin = async (guildId: string, firstJoin: boolean, suggestedChannel?: string) => {
+    if (firstJoin) {
+      try {
+        const screen = await api.welcomeScreen(guildId);
+        if (screen.enabled) { setWelcome({ guildId, description: screen.description, channels: screen.channels }); setScreening(null); return; }
+      } catch (err) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load the welcome screen', body: errorMessage(err) });
+      }
+    }
+    close();
+    setTimeout(() => openGuild(guildId), 300);
+    if (suggestedChannel) setTimeout(() => openChannel(suggestedChannel), 500);
+  };
+  const beginOnboarding = async (guildId: string, firstJoin: boolean) => {
+    if (firstJoin) {
+      try {
+        const data = await api.onboarding(guildId);
+        if (data.config.enabled && data.config.questions.length) {
+          setScreening(null);
+          setOnboarding({ guildId, data, choices: data.config.questions.map(() => -1) });
+          return;
+        }
+      } catch (err) {
+        useUiStore.getState().toast({ tone: 'warning', title: 'Could not load onboarding', body: errorMessage(err) });
+      }
+    }
+    await finishJoin(guildId, firstJoin);
+  };
+  useEffect(() => {
+    if (!initialGuildId) return;
+    setBusy(true);
+    api.memberVerification(initialGuildId).then((data) => {
+      if (data.pending) setScreening({ guildId: initialGuildId, rules: data.rules, revision: data.revision });
+      else {
+        const userId = useSessionStore.getState().user?.id;
+        const member = userId && useGuildStore.getState().members[initialGuildId]?.[userId];
+        if (member) useGuildStore.getState().upsertMember(initialGuildId, { ...member, pending: false });
+        void beginOnboarding(initialGuildId, !!initialFirstJoin);
+      }
+    }).catch((err: unknown) => setError(errorMessage(err))).finally(() => setBusy(false));
+    // This dialog loads its initial server once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGuildId, initialFirstJoin]);
   const lookupCode = async (raw: string) => {
     setBusy(true);
     setError(null);
@@ -59,10 +108,9 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
       const found = await api.invite(parseInviteCode(raw));
       const gid = found.guild?.id;
       if (gid && useGuildStore.getState().guilds[gid]) {
-        // Already a member: no accept step, just go there.
-        close();
-        openGuild(gid);
-        useUiStore.getState().toast({ tone: 'info', title: `You are already in ${found.guild?.name ?? 'this server'}` });
+        const verification = await api.memberVerification(gid);
+        if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
+        else { close(); openGuild(gid); }
         return;
       }
       setInvite(found);
@@ -90,17 +138,80 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
   const accept = async () => {
     if (!invite) return;
     setBusy(true);
-    const joined = await attempt(() => api.acceptInvite(invite.code), 'Could not join server');
-    setBusy(false);
-    if (joined) {
-      close();
-      const gid = joined.guild?.id ?? invite.guild?.id;
-      if (gid) setTimeout(() => openGuild(gid), 300);
+    try {
+      const joined = joinedGuildId ? null : await api.acceptInvite(invite.code);
+      const gid = joinedGuildId ?? joined?.guild?.id ?? invite.guild?.id;
+      if (!gid) throw new Error('The server was not returned by the invite.');
+      setJoinedGuildId(gid);
+      const verification = await api.memberVerification(gid);
+      if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
+      else await beginOnboarding(gid, true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   };
+  const acceptRules = async () => {
+    if (!screening || !agreed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.acceptMemberVerification(screening.guildId, screening.revision);
+      const userId = useSessionStore.getState().user?.id;
+      const member = userId && useGuildStore.getState().members[screening.guildId]?.[userId];
+      if (member) useGuildStore.getState().upsertMember(screening.guildId, { ...member, pending: false });
+      await beginOnboarding(screening.guildId, true);
+    } catch (err) {
+      setError(errorMessage(err));
+      setAgreed(false);
+      try {
+        const latest = await api.memberVerification(screening.guildId);
+        setScreening({ guildId: screening.guildId, rules: latest.rules, revision: latest.revision });
+      } catch { /* Keep the displayed rules and allow another attempt. */ }
+    } finally { setBusy(false); }
+  };
+  const completeOnboarding = async () => {
+    if (!onboarding || onboarding.choices.some((choice) => choice < 0)) return;
+    setBusy(true); setError(null);
+    try {
+      const result = await api.completeOnboarding(onboarding.guildId, onboarding.data.revision, onboarding.choices);
+      setOnboarding(null);
+      await finishJoin(onboarding.guildId, true, result.channel_ids[0]);
+    } catch (err) {
+      setError(errorMessage(err));
+      try {
+        const data = await api.onboarding(onboarding.guildId);
+        setOnboarding({ guildId: onboarding.guildId, data, choices: data.config.questions.map(() => -1) });
+      } catch { /* Preserve the displayed choices for retry. */ }
+    } finally { setBusy(false); }
+  };
   return (
-    <Modal open onClose={close} title="Join a server" description="Enter an invite link or code.">
-      {invite ? (
+    <Modal open onClose={close} title="Join a server" description={screening ? 'Review the server rules to continue.' : onboarding ? 'Choose what interests you.' : welcome ? 'Find a place to start.' : 'Enter an invite link or code.'}>
+      {welcome ? (
+        <div className="stack"><h3>Welcome</h3><p>{welcome.description}</p>
+          {welcome.channels.map((channel) => <Button key={channel.channel_id} variant="ghost" onClick={() => { close(); openGuild(welcome.guildId); setTimeout(() => openChannel(channel.channel_id), 300); }}>{channel.description}</Button>)}
+          <Button variant="primary" onClick={() => { close(); openGuild(welcome.guildId); }}>Continue</Button>
+        </div>
+      ) : onboarding ? (
+        <div className="stack">
+          {onboarding.data.config.questions.map((question, qi) => <fieldset key={qi} className="stack onboarding-question"><legend>{question.title}</legend>
+            {question.options.map((option, oi) => <label key={oi}><input type="radio" name={`onboarding-${qi}`} checked={onboarding.choices[qi] === oi} onChange={() => setOnboarding({ ...onboarding, choices: onboarding.choices.map((choice, i) => i === qi ? oi : choice) })} /> {option.label}</label>)}
+          </fieldset>)}
+          {error && <p role="alert">{error}</p>}
+          <div className="row-end"><Button variant="ghost" onClick={() => { const id = onboarding.guildId; setOnboarding(null); void finishJoin(id, true); }}>Skip</Button><Button variant="primary" loading={busy} disabled={onboarding.choices.some((choice) => choice < 0)} onClick={() => void completeOnboarding()}>Continue</Button></div>
+        </div>
+      ) : initialGuildId && !screening ? (
+        <div className="stack"><p>{error ?? 'Loading server rules…'}</p><Button variant="ghost" onClick={close}>Close</Button></div>
+      ) : screening ? (
+        <div className="stack">
+          <h3>Server rules</h3>
+          <ol>{screening.rules.map((rule, index) => <li key={index}>{rule}</li>)}</ol>
+          <label><input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> I agree to these rules</label>
+          {error && <p role="alert">{error}</p>}
+          <div className="row-end"><Button variant="primary" loading={busy} disabled={!agreed} onClick={() => void acceptRules()}>Accept rules</Button></div>
+        </div>
+      ) : invite ? (
         <div className="stack">
           <div className="invite-card">
             <Avatar id={invite.guild?.id} name={invite.guild?.name ?? '?'} avatar={invite.guild?.icon} size={56} square kind="icons" />
@@ -113,6 +224,7 @@ function JoinGuildDialog({ initial }: { initial?: string }) {
             <Button variant="ghost" onClick={() => setInvite(null)}>Back</Button>
             <Button variant="primary" loading={busy} onClick={() => void accept()}>Accept invite</Button>
           </div>
+          {error && <p role="alert">{error}</p>}
         </div>
       ) : (
         <form onSubmit={lookup} className="stack">
@@ -390,8 +502,10 @@ function ActiveDialog() {
   switch (dialog.kind) {
     case 'botAuthorize': return <BotAuthorizeDialog key={JSON.stringify(dialog.request)} request={dialog.request} />;
     case 'createGuild': return <CreateGuildDialog />;
+    case 'guildEvents': return <GuildEventsDialog guildId={dialog.guildId} />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
+    case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} initialFirstJoin={dialog.firstJoin} />;
     case 'createChannel': return <CreateChannelDialog guildId={dialog.guildId} parentId={dialog.parentId} type={dialog.type} />;
     case 'invite': return <InviteDialog guildId={dialog.guildId} channelId={dialog.channelId} />;
     case 'newDm': return <NewDmDialog preselect={dialog.preselect} />;

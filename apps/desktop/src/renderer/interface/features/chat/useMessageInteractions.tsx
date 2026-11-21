@@ -1,4 +1,4 @@
-import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
+import { ArrowBendUpLeft, ArrowBendUpRight, ChatTeardropText, Copy, DotsThree, Hash, Link, MagnifyingGlass, Megaphone, PencilSimple, PushPin, SmileyWink, Smiley, SpeakerHigh, Trash, EnvelopeSimple, Flag, ArrowSquareOut, FloppyDisk, Image as ImageIcon, PlusCircle } from '@phosphor-icons/react';
 import { threadNameFor } from '@discordy/core/domain/threads';
 import { DELETE_PRIVATE_NOTE } from '@discordy/core/domain/disappearing';
 import { useCallback, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react';
@@ -11,6 +11,7 @@ import type { MenuItemModel } from '@discordy/core/domain/menuModel';
 import { buildMessageMenu, buildToolbar, type MessageTarget } from '@discordy/core/domain/messageMenuModel';
 import { parseApiEmoji, quickReactions, type QuickEmoji } from '@discordy/core/domain/quickReactions';
 import { Permission } from '@discordy/core/contracts/permissions';
+import { ChannelType, MessageFlag } from '@discordy/core/contracts/rest';
 import { attempt, copyText, markMessageUnread } from '../../app/actions';
 import { useConnectionStore } from '../../app/connectionStore';
 import { openExternalUrl } from '../../app/links';
@@ -96,6 +97,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const [hover, setHover] = useState(false);
   const [focused, setFocused] = useState(false);
   const [editingAttachments, setEditingAttachments] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const closeAttachmentEditor = useCallback(() => setEditingAttachments(false), []);
   const [target, setTarget] = useState<MessageTarget>({ kind: 'message' });
   const selectionRef = useRef('');
@@ -152,6 +154,15 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const appCommands = useContextCommands(can(perms, Permission.USE_APPLICATION_COMMANDS) ? message.channel_id : null, menu.open && standard);
   const canManage = can(perms, Permission.MANAGE_MESSAGES);
   const canReact = can(perms, Permission.ADD_REACTIONS);
+  const canPublish = channel?.type === ChannelType.GUILD_ANNOUNCEMENT && standard && !message.localState &&
+    (message.type === 0 || message.type === 19) && ((message.flags ?? 0) & (MessageFlag.CROSSPOSTED | MessageFlag.IS_CROSSPOST)) === 0 &&
+    (isMine ? can(perms, Permission.SEND_MESSAGES) : canManage);
+  const publish = async () => {
+    setPublishing(true);
+    const result = await attempt(() => getRuntime().api.publishAnnouncement(message.channel_id, message.id), 'Could not publish announcement');
+    setPublishing(false);
+    if (result) useMessageStore.getState().receive(result);
+  };
 
   const run = (id: string, arg: string | undefined) => {
     switch (id) {
@@ -225,6 +236,7 @@ export function useMessageInteractions(message: ChatMessage, guildId: string | n
   const toolbarActions = buildToolbar({ isMine, standard, canReact, canManageMessages: canManage, forwardSupported: FORWARD_SUPPORTED, pinned: Boolean(message.pinned), quick, shift, developerMode });
   const toolbar = visible ? (
     <div className="message-toolbar glass" role="toolbar" aria-label="Message actions" data-shift={shift || undefined}>
+      {canPublish && <IconButton label="Publish announcement" size="sm" disabled={publishing} onClick={() => void publish()}><Megaphone size={18} /></IconButton>}
       {toolbarActions.map((a, i) => {
         const key = `${a.id}-${i}`;
         switch (a.id) {

@@ -12,6 +12,7 @@ import { ChannelSettings } from './channel/ChannelSettings';
 import { confirmLogout } from './logout';
 import { searchSettings } from './searchIndex';
 import { USER_TABS } from './userTabs';
+import { LinkedAccounts } from './user/LinkedAccounts';
 import { AuthorizedApps } from '../integrations/AuthorizedApps';
 import { DeveloperTab } from './user/DeveloperTab';
 import { AboutTab, AccessibilityTab, AccountTab, AdvancedTab, ChatTab, DesktopTab, AppearanceTab, ConnectionTab, DevicesTab, KeybindsTab, NotificationsTab, PrivacyTab, ProfileTab, VoiceTab } from './user/UserTabs';
@@ -62,7 +63,7 @@ function SettingsSearch({ tab }: { tab: UserSettingsTab }) {
 function UserSettings({ tab }: { tab: UserSettingsTab }) {
   const open = useUiStore((s) => s.openSettings);
   let lastGroup = '';
-  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, authorizedApps: <AuthorizedApps />, about: <AboutTab /> }[tab];
+  const body = { account: <AccountTab />, profile: <ProfileTab />, privacy: <PrivacyTab />, devices: <DevicesTab />, voice: <VoiceTab />, keybinds: <KeybindsTab />, appearance: <AppearanceTab />, accessibility: <AccessibilityTab />, notifications: <NotificationsTab />, chat: <ChatTab />, connection: <ConnectionTab />, desktop: <DesktopTab />, advanced: <AdvancedTab />, developer: <DeveloperTab />, linkedAccounts: <LinkedAccounts />, authorizedApps: <AuthorizedApps />, about: <AboutTab /> }[tab];
   return (
     <Layout
       title="User settings"

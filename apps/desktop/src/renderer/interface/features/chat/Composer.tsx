@@ -1,4 +1,7 @@
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
+import { scheduleDraftError, scheduleUnavailable } from '@discordy/core/domain/scheduledMessages';
+import type { ScheduleSourceDraft } from '@discordy/core/application/scheduledCreateJournal';
+import type { ScheduledMessageDraft } from '@discordy/core/contracts/scheduledMessages';
 import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -30,6 +33,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeSwitcher } from '../privacy/ModeSwitcher';
 import { PeerStatus } from '../privacy/PeerStatus';
 import { useEmojiPopover } from './EmojiPopover';
+import { ScheduledMessagesDialog } from '../scheduling/ScheduledMessagesDialog';
 import { LazyFeature } from '../../shared/ui/LazyFeature';
 
 const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashCommandPanel }) => ({ default: SlashCommandPanel }));
@@ -91,6 +95,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [running, setRunning] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<{ initial: 'list' | 'create'; draft: ScheduledMessageDraft; source: ScheduleSourceDraft } | null>(null);
   const plusMenu = useMenu();
   const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -445,11 +450,28 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
     else insertAtCaret(pasted);
   };
 
-  const plusEntries: MenuEntry[] = plusMenuEntries().map((id): MenuEntry => {
-    if (id === 'upload') return { kind: 'item', label: 'Upload a file', icon: <UploadSimple size={16} />, disabled: !canAttach, title: canAttach ? undefined : 'Attachments unavailable here', onSelect: () => fileInput.current?.click() };
+  const schedulingDraft = (): ScheduledMessageDraft => {
+    let content = text.trim();
+    const tts = parseTtsCommand(content);
+    if (tts !== null) content = tts;
+    const silent = tts === null ? parseSilentPrefix(content) : null;
+    if (silent !== null) content = silent;
+    for (const [token, wire] of mentionMap.current) content = content.split(token).join(wire);
+    if (usePrefsStore.getState().convertEmoticons) content = convertEmoticons(content);
+    return { content, tts: tts !== null, silent: silent !== null, reply_to: replyTo?.id ?? null, replied_user: replyTo?.author.id !== me ? pingReplied : true };
+  };
+  const schedulingUnavailable = scheduleUnavailable({ mode, attachments: files.length, editing: editing?.channelId === channel.id, command: command !== null || (commandSearch !== null && parseTtsCommand(text) === null), canSend }) ?? scheduleDraftError(schedulingDraft());
+  const openScheduling = (initial: 'list' | 'create') => setSchedule({ initial, draft: schedulingDraft(), source: { text, replyTo: replyTo?.id ?? null } });
+  const scheduled = (source: ScheduleSourceDraft | null) => {
+    if (!source || mode !== 'standard' || files.length > 0 || useUiStore.getState().editing?.channelId === channel.id || useSessionStore.getState().user?.id !== me || textRef.current !== source.text || (useUiStore.getState().replyTo[channel.id]?.id ?? null) !== source.replyTo) return;
+    textRef.current = ''; setText(''); setReplyTo(channel.id, null); mentionMap.current.clear();
+    useDraftStore.getState().clearDraft(channel.id);
+  };
+  const plusEntries: MenuEntry[] = [...plusMenuEntries().map((id): MenuEntry => {
+    if (id === 'upload') return { kind: 'item', label: 'Upload a file', icon: <UploadSimple size={16} />, disabled: !canSend || !canAttach, title: canAttach ? undefined : 'Attachments unavailable here', onSelect: () => fileInput.current?.click() };
     const label = id === 'thread' ? 'Create thread' : id === 'poll' ? 'Create poll' : 'Use apps';
     return { kind: 'item', label, disabled: true, onSelect: () => undefined };
-  });
+  }), { kind: 'separator' }, { kind: 'item', label: 'Send later', icon: <Clock size={16} />, disabled: Boolean(schedulingUnavailable), title: schedulingUnavailable ?? undefined, onSelect: () => openScheduling('create') }, { kind: 'item', label: 'Scheduled messages', onSelect: () => openScheduling('list') }];
   const FORMATS: { kind: FormatKind; label: string; icon: ReactNode }[] = [
     { kind: 'bold', label: 'Bold', icon: <TextB size={16} /> },
     { kind: 'italic', label: 'Italic', icon: <TextItalic size={16} /> },
@@ -528,7 +550,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           </div>
         )}
         <div className="composer-row">
-          <IconButton label="Add to message" aria-haspopup="menu" aria-expanded={plusMenu.open} disabled={!canSend} onClick={plusMenu.openBelow}>
+          <IconButton label="Add to message" aria-haspopup="menu" aria-expanded={plusMenu.open} onClick={plusMenu.openBelow}>
             <PlusCircle size={22} />
           </IconButton>
           <Menu open={plusMenu.open} x={plusMenu.anchor?.x ?? 0} y={plusMenu.anchor?.y ?? 0} entries={plusEntries} onClose={plusMenu.close} minWidth={180} />
@@ -585,6 +607,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {dragging && <div className="drop-overlay">Drop files to attach</div>}
       </div>
       {emoji.node}
+      {schedule && <ScheduledMessagesDialog channelId={channel.id} mode={mode} initial={schedule.initial} draft={schedule.draft} source={schedule.source} createDisabledReason={schedulingUnavailable} canSend={canSend} canTts={ttsAllowed} onAccepted={scheduled} onClose={() => setSchedule(null)} />}
       <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />
     </div>
   );

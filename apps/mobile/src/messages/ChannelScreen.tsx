@@ -357,7 +357,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         )}
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
           {channel && (access?.standard || getRuntime().privateAttachments) && <VoiceRecorder disabled={Boolean(blockedReason) || !access?.canSendVoice || (access.standard && !access.canAttach)} onSend={(file, voice) => service.send(channel, { content: '', files: [file], voice })} />}
-          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
+          <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} scheduling={{ channelId, mode: channel?.delivery_mode ?? 'standard', canTts: access?.canTts ?? false }} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
         </KeyboardAvoidingView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />

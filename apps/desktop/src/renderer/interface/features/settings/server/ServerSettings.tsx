@@ -8,7 +8,11 @@ import { confirmDeleteServer } from './deleteServer';
 import { ServerDiscovery } from './ServerDiscovery';
 import { ServerTemplate } from './ServerTemplate';
 import { ServerAudit, ServerBans, ServerEmoji, ServerInvites, ServerMembers } from './ServerTabs';
+import { ServerProfile } from './ServerProfile';
 import { ServerOverview } from './ServerOverview';
+import { ServerRules } from './ServerRules';
+import { ServerOnboarding } from './ServerOnboarding';
+import { ServerWelcome } from './ServerWelcome';
 import { RolesEditor } from './RolesEditor';
 import { ServerIntegrations } from '../../integrations/ServerIntegrations';
 
@@ -20,7 +24,7 @@ export function ServerSettings({ guildId, tab, auditTarget }: { guildId: string;
   if (!guild) return null;
   const tabs = serverSettingsTabs(perms).filter((entry) => entry.show);
   const selectedTab = tabs.find((entry) => entry.id === tab)?.id ?? tabs[0]?.id ?? 'members';
-  const body = { overview: <ServerOverview guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
+  const body = { overview: <ServerOverview guildId={guildId} />, rules: <ServerRules guildId={guildId} />, onboarding: <ServerOnboarding guildId={guildId} />, welcome: <ServerWelcome guildId={guildId} />, profile: <ServerProfile guildId={guildId} />, roles: <RolesEditor guildId={guildId} />, emoji: <ServerEmoji guildId={guildId} />, members: <ServerMembers guildId={guildId} />, invites: <ServerInvites guildId={guildId} />, template: <ServerTemplate guildId={guildId} />, discovery: <ServerDiscovery guildId={guildId} />, bans: <ServerBans guildId={guildId} />, audit: <ServerAudit guildId={guildId} target={auditTarget} />, integrations: <ServerIntegrations guildId={guildId} /> }[selectedTab];
   return (
     <Layout title="Server settings" nav={<>{(['Server', 'People', 'Moderation'] as const).map((group) => {
       const entries = tabs.filter((entry) => entry.group === group);
