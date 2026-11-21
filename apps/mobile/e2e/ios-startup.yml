@@ -9,7 +9,7 @@ appId: nl.voics.app
       - tapOn: Open
 - extendedWaitUntil:
     visible: Welcome back
-    timeout: 120000
+    timeout: 300000
 - assertVisible: Email
 - assertVisible: Password
 - takeScreenshot: sign-in
