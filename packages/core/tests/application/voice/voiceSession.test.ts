@@ -65,6 +65,22 @@ describe('voiceUrl', () => {
 });
 
 describe('VoiceSession protocol', () => {
+  it('routes a separate soundboard stream and removes it without dropping microphone audio', async () => {
+    const received: [string, unknown][] = [];
+    const session = makeSession({ onSoundboardAudio: (user, stream) => received.push([user, stream]) });
+    const socket = await connectToReady(session);
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description() });
+    await vi.advanceTimersByTimeAsync(5);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, soundboard_ssrc: 4321, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+    await vi.advanceTimersByTimeAsync(10);
+    const stream = { id: 'u2:soundboard' };
+    FakePeerConnection.latest().track('3', stream);
+    expect(received).toEqual([['u2', stream]]);
+    socket.receive({ op: VoiceOp.VIDEO, d: { user_id: 'u2', audio_ssrc: 0, soundboard_ssrc: null, video_ssrc: 0, rtx_ssrc: 0, streams: [] } });
+    expect(received).toEqual([['u2', stream], ['u2', null]]);
+    session.close();
+  });
+
   it('announces a camera once native outbound stats become available after replaceTrack', async () => {
     const session = makeSession();
     const socket = await connectToReady(session);
@@ -278,6 +294,21 @@ describe('VoiceSession end-to-end encryption honesty', () => {
     bypass: vi.fn(),
     clear: vi.fn(),
     dispose: vi.fn(),
+  });
+
+  it('protects a separate soundboard sender before applying an E2EE answer', async () => {
+    const c = cryptor(true);
+    const track = { kind: 'audio', stop: () => undefined } as MediaTrackLike;
+    const session = makeSession({ cryptor: c, createDave: dave, soundboardTrack: track });
+    const socket = await connectToReady(session);
+    const select = socket.sent.find((frame) => frame.op === VoiceOp.SELECT_PROTOCOL)?.d;
+    expect(select).toMatchObject({ data: { ssrcs: { audio: 111, soundboard: 112 } } });
+    socket.receive({ op: VoiceOp.SESSION_DESCRIPTION, d: description({ e2ee: { protocol_version: 2 } }) });
+    await vi.advanceTimersByTimeAsync(5);
+    const pc = FakePeerConnection.latest();
+    expect(c.attachSender).toHaveBeenCalledWith(pc.transceivers[3]!.sender, 'audio', 'opus', 'me');
+    expect(pc.remoteDescriptions[0]).toMatch(/m=audio[\s\S]*a=mid:3[\s\S]*a=recvonly/);
+    session.close();
   });
 
   it('refuses an E2EE call when the device cannot protect frames', async () => {

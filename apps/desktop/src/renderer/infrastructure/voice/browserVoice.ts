@@ -2,11 +2,13 @@
 import type { GatewayPort } from '@discordy/core/application/ports/gateway';
 import { createStreamSampler } from './streamSampler';
 import { cameraCaptureConstraints } from '@discordy/core/domain/videoPresets';
-import type { MediaPeerConnection } from '@discordy/core/application/ports/media';
+import type { MediaPeerConnection, MediaStreamLike } from '@discordy/core/application/ports/media';
 import { VoiceSession } from '@discordy/core/application/voice/voiceSession';
 import { VoiceController, type SessionParams } from '@renderer/application/voice/voiceController';
 import { WatchTogetherService } from '@renderer/application/watch/watchTogetherService';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
+import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { createBrowserMicPipeline, createBrowserMixer } from '../audio/browserAudio';
 import { browserSocketFactory } from '../net/socket';
 import { DaveSession } from '@discordy/core/application/voice/daveSession';
@@ -28,6 +30,7 @@ function createVoiceSession(
   params: SessionParams,
   identityKeysOf: BrowserVoiceOptions['identityKeysOf'],
   iceServers: BrowserVoiceOptions['iceServers'],
+  onSoundboardAudio: (userId: string, stream: MediaStreamLike | null) => void,
 ): VoiceSession {
   const cryptor = new FrameCryptor();
   const bridge = window.discordy;
@@ -39,6 +42,7 @@ function createVoiceSession(
     sessionId: params.sessionId,
     token: params.token,
     socketFactory: browserSocketFactory,
+    onSoundboardAudio,
     // `encodedInsertableStreams` enables the createEncodedStreams fallback, needed only on Chromium without
     // RTCRtpScriptTransform. With it set, every sender and receiver must be piped (FrameCryptor.bypass for clear calls).
     createPeerConnection: () =>
@@ -58,11 +62,19 @@ function createVoiceSession(
 
 export function createVoiceController(options: BrowserVoiceOptions): VoiceController {
   const bridge = window.discordy;
+  const mixer = createBrowserMixer();
   return new VoiceController({
     gateway: options.gateway,
-    createSession: (params) => createVoiceSession(params, options.identityKeysOf, options.iceServers),
+    createSession: (params) => createVoiceSession(params, options.identityKeysOf, options.iceServers, (userId, stream) => {
+      if (stream) {
+        const muted = userId in useLocalPeopleStore.getState().mutedUsers;
+        const volume = useVoiceStore.getState().userVolumes[userId] ?? (muted ? 0 : undefined);
+        if (volume !== undefined) mixer.setUserVolume(userId, volume);
+      }
+      mixer.setSoundboardStream(userId, stream as MediaStream | null);
+    }),
     mic: createBrowserMicPipeline(),
-    mixer: createBrowserMixer(),
+    mixer,
     openCamera: (deviceId, preset) =>
       navigator.mediaDevices.getUserMedia({
         video: { ...cameraCaptureConstraints(preset), deviceId: deviceId ? { exact: deviceId } : undefined },

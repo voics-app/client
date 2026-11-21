@@ -8,7 +8,7 @@
 import type { SessionDescription } from '../../contracts/voice';
 import { VIDEO_BWE_FMTP } from '../../domain/sdp';
 
-export type SourceKind = 'audio' | 'camera' | 'screen';
+export type SourceKind = 'audio' | 'soundboard' | 'camera' | 'screen';
 
 export interface RemoteSource {
   userId: string;
@@ -20,7 +20,7 @@ export interface RemoteSource {
 
 export type SectionPlan =
   | { mid: string; role: 'remote'; source: RemoteSource }
-  | { mid: string; role: 'local-screen' };
+  | { mid: string; role: 'local-screen' | 'local-soundboard' };
 
 interface OfferSection {
   kind: 'audio' | 'video';
@@ -146,7 +146,7 @@ export function extendAnswer(baseAnswer: string, offerSdp: string, remote: Sessi
     const plan = plans.find((p) => p.mid === offer.mid);
     let direction: 'sendonly' | 'recvonly' | 'inactive' = 'inactive';
     let source: RemoteSource | null = null;
-    if (plan?.role === 'local-screen') direction = 'recvonly';
+    if (plan?.role === 'local-screen' || plan?.role === 'local-soundboard') direction = 'recvonly';
     if (plan?.role === 'remote' && plan.source.active) {
       direction = 'sendonly';
       source = plan.source;

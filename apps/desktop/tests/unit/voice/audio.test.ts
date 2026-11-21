@@ -1,3 +1,4 @@
+import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { MicPipeline } from '@renderer/infrastructure/audio/micPipeline';
@@ -163,6 +164,25 @@ describe('RemoteAudioMixer', () => {
     expect(userGain.gain.value).toBe(2);
     mixer.setUserVolume('u1', -1);
     expect(userGain.gain.value).toBe(0);
+  });
+
+  it('mutes soundboard without changing the microphone gain', () => {
+    const { mixer, nodes } = setup();
+    usePrefsStore.setState({ soundboardVolume: 0.4, soundboardMuted: false });
+    mixer.setStream('u1', stream);
+    const voiceGain = nodes[nodes.length - 1]!;
+    mixer.setSoundboardStream('u1', stream);
+    const soundGain = nodes[nodes.length - 1]!;
+    expect(soundGain.gain.value).toBe(0.4);
+    usePrefsStore.setState({ soundboardMuted: true });
+    expect(soundGain.gain.value).toBe(0);
+    expect(voiceGain.gain.value).toBe(1);
+    usePrefsStore.setState({ soundboardMuted: false });
+    mixer.setUserVolume('u1', 0);
+    expect(voiceGain.gain.value).toBe(0);
+    expect(soundGain.gain.value).toBe(0);
+    usePrefsStore.setState({ soundboardMuted: false, soundboardVolume: 1 });
+    mixer.dispose();
   });
 
   it('remembers volume set before the stream arrives', () => {

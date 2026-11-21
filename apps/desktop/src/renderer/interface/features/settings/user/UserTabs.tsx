@@ -300,6 +300,8 @@ export function VoiceTab() {
           </div>
         )}
       </Field>
+      <SettingRow title="Soundboard volume" description="Controls soundboard playback independently of voices."><Slider label="Soundboard volume" value={prefs.soundboardVolume} min={0} max={1} step={0.01} onChange={(v) => prefs.set('soundboardVolume', v)} format={(v) => `${Math.round(v * 100)}%`} /></SettingRow>
+      <SettingRow title="Mute soundboard"><Switch label="Mute soundboard" checked={prefs.soundboardMuted} onChange={(v) => prefs.set('soundboardMuted', v)} /></SettingRow>
       <SettingRow title="Input mode"><Segmented label="Input mode" value={prefs.inputMode} onChange={(v) => prefs.set('inputMode', v)} options={[{ value: 'vad', label: 'Voice activity' }, { value: 'ptt', label: 'Push to talk' }]} /></SettingRow>
       {prefs.inputMode === 'vad' ? (
         <SettingRow title="Sensitivity" description="Speech above the marker opens the microphone."><Slider label="Voice activity threshold" value={prefs.vadThreshold} min={0.02} max={0.6} step={0.01} onChange={(v) => prefs.set('vadThreshold', v)} /></SettingRow>
