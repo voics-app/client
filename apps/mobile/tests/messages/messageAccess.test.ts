@@ -13,12 +13,18 @@ const access = (permissions: bigint, extra: Partial<Channel> = {}, owner?: strin
 
 describe('channelAccess', () => {
   it('allows sending, reacting and reading for a regular member', () => {
-    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: false, standard: true });
+    expect(access(BASIC)).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: false, canTts: false, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: false, standard: true });
   });
 
   it('allows application commands with Use Application Commands, and always in a direct message', () => {
     expect(access(BASIC | Permission.USE_APPLICATION_COMMANDS).canUseCommands).toBe(true);
     expect(dmAccess(channel({ guild_id: null as never, type: 1 })).canUseCommands).toBe(true);
+  });
+
+  it('allows scheduled text-to-speech only with Send TTS Messages, or in a direct message', () => {
+    expect(access(BASIC).canTts).toBe(false);
+    expect(access(BASIC | Permission.SEND_TTS_MESSAGES).canTts).toBe(true);
+    expect(dmAccess(channel({ guild_id: null, type: 1 })).canTts).toBe(true);
   });
 
   it('blocks sending when SEND_MESSAGES is missing', () => {
@@ -136,7 +142,7 @@ describe('messageActions', () => {
 
 describe('dmAccess', () => {
   it('lets participants send, react and read, but never moderate', () => {
-    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: true });
+    expect(dmAccess(channel({ guild_id: null, type: 1 }))).toEqual({ canSend: true, canReact: true, canReadHistory: true, canAttach: true, canTts: true, canManageMessages: false, canCreateThread: false, canManageThreads: false, canUseCommands: true, standard: true });
   });
 
   it('marks private delivery as not standard', () => {

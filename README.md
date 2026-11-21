@@ -6,6 +6,14 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+Standard text messages can be scheduled from the composer’s **Send later** action
+(mobile also supports holding Send). **Scheduled messages** lists your channel’s
+requests with explicit local time, edit/cancel while pending and safe confirmation
+retries after a lost response. Uncertain delivery offers inspection without
+automatic resend. Attachments and private delivery cannot be scheduled. This
+requires the enabled messages scheduling backend; see [the client behavior and
+contract notes](docs/scheduled-messages.md).
+
 Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
 
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
@@ -44,6 +52,7 @@ These controls require the API vanity/audit-policy release (api#96 and api#85).
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
 | `packages/core` | `@discordy/core`, shared by desktop and mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format), `src/application` (ports and platform-free zustand stores), `src/infrastructure` (HTTP and gateway clients), and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
+| `packages/react` | `@discordy/react`, shared React interface hooks for desktop and mobile. No DOM, native views or browser globals; scheduling uses the same form conflicts, durable retry state and visible-list refresh behavior on both platforms. |
 | `apps/desktop/src/shared` | IPC contract and the brand |
 | `apps/desktop/src/renderer/domain` | The few domain modules that still read the brand (`BRAND`); they move once the brand is injected |
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |
