@@ -123,7 +123,7 @@ jobs:
     name: Publish to the update feed
     needs: [windows]
     if: needs.windows.outputs.skip != 'true'
-    uses: discordy-voics/.github/.github/workflows/minio-publish.yml@main
+    uses: voics-app/.github/.github/workflows/minio-publish.yml@main
     with:
       artifact: installer-windows
       bucket: discordy-updates

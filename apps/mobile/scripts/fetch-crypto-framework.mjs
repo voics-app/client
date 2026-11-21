@@ -9,7 +9,7 @@
  * Environment:
  *   VOICS_CRYPTO_GITHUB_TOKEN   required; a token that can read Actions artifacts of the repository (EAS secret).
  *   VOICS_CRYPTO_BRANCH         branch whose newest artifact is used; default develop. Set it to test a feature branch.
- *   VOICS_CRYPTO_REPO           default discordy-voics/client.
+ *   VOICS_CRYPTO_REPO           default voics-app/client.
  * The commit the artifact was built from is printed. The token is never printed.
  */
 import { execFileSync } from 'node:child_process';
@@ -38,7 +38,7 @@ if (!token) {
   console.error('crypto framework: set VOICS_CRYPTO_GITHUB_TOKEN to a token that can read Actions artifacts of the repository.');
   process.exit(1);
 }
-const repo = process.env.VOICS_CRYPTO_REPO ?? 'discordy-voics/client';
+const repo = process.env.VOICS_CRYPTO_REPO ?? 'voics-app/client';
 const branch = process.env.VOICS_CRYPTO_BRANCH ?? 'develop';
 const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
 
