@@ -80,7 +80,7 @@ DM rows show custom status or live typing and offer a close button on hover or k
 
 The Forward picker uses each DM recipient's user ID for their global avatar, including animated images. Forwarding still targets the DM channel ID; recipients without an avatar retain their initials. The routing regression is covered by `apps/desktop/tests/unit/interface/ForwardDialog.test.tsx`.
 
-Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
+Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes friend-request source controls when supported by the API and safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 ## Webhooks and authorized applications
 

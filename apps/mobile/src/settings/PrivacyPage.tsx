@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { DeliveryMode } from '@discordy/core/contracts/rest';
+import type { DeliveryMode, UserSettings } from '@discordy/core/contracts/rest';
 import { DELIVERY_MODES, MODE_COPY } from '@discordy/core/domain/deliveryMode';
 import { buildFriendsView } from '@discordy/core/domain/friendsModel';
 import { dmTitle } from '../dms/dmModel';
@@ -23,6 +23,11 @@ export function PrivacyPage({ highlight }: { highlight: string | null }) {
   const relationships = useRelationshipStore((s) => s.byUser);
   const blocked = buildFriendsView(Object.values(relationships), {}).blocked;
   const overrides = Object.entries(settings.delivery_overrides ?? {});
+  const flags = settings.friend_source_flags;
+  const setSource = (field: keyof NonNullable<UserSettings['friend_source_flags']>, value: boolean) =>
+    void attempt(async () => {
+      useSessionStore.getState().setSettings(await getRuntime().api.updateSettings({ friend_source_flags: { [field]: value } }));
+    }, 'Could not update friend request settings');
 
   const choose = (mode: DeliveryMode) =>
     void attempt(async () => {
@@ -75,6 +80,13 @@ export function PrivacyPage({ highlight }: { highlight: string | null }) {
       </SettingRow>
       <Hint>{ENCRYPTION_UNAVAILABLE}</Hint>
 
+      {flags && <>
+        <SectionLabel>Friend requests</SectionLabel>
+        <Hint>When Everyone is off, people can send a new request if they match any enabled source. Existing friends and pending requests remain available.</Hint>
+        <SwitchRow title="Friend requests from everyone" value={flags.all === true} onChange={(v) => setSource('all', v)} />
+        <SwitchRow title="Friend requests from friends of friends" value={flags.mutual_friends === true} onChange={(v) => setSource('mutual_friends', v)} />
+        <SwitchRow title="Friend requests from shared server members" value={flags.mutual_guilds === true} onChange={(v) => setSource('mutual_guilds', v)} />
+      </>}
       <SectionLabel>Calls</SectionLabel>
       <SwitchRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted." value={settings.e2ee_calls_default === true} onChange={setCallsEncrypted} />
 

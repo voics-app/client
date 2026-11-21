@@ -12,7 +12,7 @@ import { VIDEO_PRESETS, type VideoPresetId } from '@discordy/core/domain/videoPr
 import { Ringtone } from '@renderer/infrastructure/audio/ringtone';
 import { useStreamerActive, useStreamerRuntime } from '../../../app/streamer';
 import { keyLabel, uiohookKeycode } from '@discordy/core/domain/uiohookKeys';
-import type { DeliveryMode } from '@discordy/core/contracts/rest';
+import type { DeliveryMode, UserSettings } from '@discordy/core/contracts/rest';
 import { IDLE_TIMEOUT_CHOICES, type DesktopSettings } from '@shared/ipc';
 import { useUpdateStore } from '@discordy/core/application/stores/updateStore';
 import { speak } from '@renderer/infrastructure/tts';
@@ -145,6 +145,10 @@ export function PrivacyTab() {
   }, []);
   const choose = (mode: DeliveryMode) => void attempt(() => getRuntime().privacy.sender.setDefaultMode(mode), 'Could not update default');
   const overrides = Object.entries(settings.delivery_overrides ?? {});
+  const flags = settings.friend_source_flags;
+  const setSource = (field: keyof NonNullable<UserSettings['friend_source_flags']>, value: boolean) => void attempt(async () => {
+    useSessionStore.getState().setSettings(await getRuntime().api.updateSettings({ friend_source_flags: { [field]: value } }));
+  }, 'Could not update friend request settings');
   return (
     <Page title="Privacy and delivery" sub="Choose how your direct messages travel. The strictest setting among participants wins.">
       <div className="mode-cards" role="radiogroup" aria-label="Default delivery mode for new direct messages">
@@ -159,6 +163,13 @@ export function PrivacyTab() {
       {crypto && !crypto.available && (
         <p className="settings-warning" role="alert">Encrypted modes are unavailable on this install: {crypto.reason ?? 'the native crypto module did not load'}. Nothing is ever sent unencrypted in a private mode.</p>
       )}
+      {flags && <>
+        <h3>Friend requests</h3>
+        <p className="setting-desc">When Everyone is off, people can send a new request if they match any enabled source. Existing friends and pending requests remain available.</p>
+        <SettingRow title="Everyone"><Switch label="Friend requests from everyone" checked={flags.all === true} onChange={(v) => setSource('all', v)} /></SettingRow>
+        <SettingRow title="Friends of friends"><Switch label="Friend requests from friends of friends" checked={flags.mutual_friends === true} onChange={(v) => setSource('mutual_friends', v)} /></SettingRow>
+        <SettingRow title="Server members"><Switch label="Friend requests from shared server members" checked={flags.mutual_guilds === true} onChange={(v) => setSource('mutual_guilds', v)} /></SettingRow>
+      </>}
       <h3>Calls</h3>
       <SettingRow title="Encrypt all my calls end-to-end" description="Applies to DMs, group DMs, voice channels and Go Live. If anyone in a call has this on, the whole call is encrypted.">
         <Switch label="Encrypt all my calls end-to-end" checked={settings.e2ee_calls_default === true} disabled={crypto !== null && !crypto.available} onChange={(v) => void attempt(() => getRuntime().privacy.sender.setE2eeCallsDefault(v), 'Could not update calls setting')} />
