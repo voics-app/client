@@ -78,6 +78,17 @@ describe('dispatchRouter', () => {
     useVoiceStore.getState().resetCall();
   });
 
+  it('tracks thread membership changes and refreshes the parent list', () => {
+    const { route, ctx } = setup();
+    route('THREAD_CREATE', { id: '201', type: 11, guild_id: '100', parent_id: '200', name: 'Thread', delivery_mode: 'standard' });
+    route('THREAD_MEMBERS_UPDATE', { id: '201', member_count: 2, added_members: [{ user_id: '1' }], removed_member_ids: [] });
+    expect(useGuildStore.getState().channels['201']?.is_thread_member).toBe(true);
+    expect(useGuildStore.getState().channels['201']?.member_count).toBe(2);
+    expect(ctx.invalidate).toHaveBeenCalledWith(['channel', '200', 'threads']);
+    route('THREAD_MEMBERS_UPDATE', { id: '201', member_count: 1, added_members: [], removed_member_ids: ['1'] });
+    expect(useGuildStore.getState().channels['201']?.is_thread_member).toBe(false);
+  });
+
   it('accepts unavailable guild placeholders in READY and fills them from GUILD_CREATE', () => {
     const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate: vi.fn() });
     route('READY', {
@@ -342,6 +353,13 @@ describe('dispatchRouter', () => {
     const { route, ctx } = setup();
     route('GUILD_BAN_ADD', { guild_id: '100', user: friend });
     expect(ctx.invalidate).toHaveBeenCalledWith(['guild', '100', 'bans']);
+  });
+
+  it('invalidates the affected stage for each lifecycle event', () => {
+    const { route, ctx } = setup();
+    for (const event of ['STAGE_INSTANCE_CREATE', 'STAGE_INSTANCE_UPDATE', 'STAGE_INSTANCE_DELETE']) route(event, { channel_id: 'stage' });
+    expect(ctx.invalidate).toHaveBeenCalledTimes(3);
+    expect(ctx.invalidate).toHaveBeenCalledWith(['stage-instance', 'stage']);
   });
 
   it('ignores unknown events', () => {

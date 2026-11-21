@@ -7,6 +7,7 @@ import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { ALL_PERMISSIONS, Permission } from '@discordy/core/contracts/permissions';
 import { ChannelSidebar } from '@renderer/interface/features/channels/ChannelSidebar';
+import { openVoiceChannel } from '@renderer/interface/app/voiceActions';
 
 const updateMember = vi.fn(async (_g: string, u: string, patch: { channel_id: string | null }) => ({ user: { id: u }, roles: [], ...patch }));
 vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { updateMember: (...a: [string, string, never]) => updateMember(...a) } }) }));
@@ -25,6 +26,7 @@ function seed(perms: bigint) {
       v1: { id: 'v1', guild_id: G, type: 2, name: 'Lounge', position: 0, user_limit: 2 },
       v2: { id: 'v2', guild_id: G, type: 2, name: 'Quiet', position: 1 },
       t1: { id: 't1', guild_id: G, type: 0, name: 'general', position: 2 },
+      s1: { id: 's1', guild_id: G, type: 13, name: 'Town hall', position: 3 },
     } as never,
   });
   useVoiceStore.setState({
@@ -51,6 +53,18 @@ describe('voice channel rows', () => {
     expect(occupants[0]).not.toMatch(/ [MV]$/);
     expect(occupants[0]).toMatch(/LIVE$/);
     expect(document.querySelectorAll('.occupant svg').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('opens a stage without joining or moving voice while enforcement is unavailable', () => {
+    seed(ALL_PERMISSIONS);
+    vi.mocked(openVoiceChannel).mockClear();
+    render(<ChannelSidebar guildId={G} />);
+    fireEvent.click(screen.getByText('Town hall'));
+    expect(openVoiceChannel).not.toHaveBeenCalled();
+    expect(useUiStore.getState().view).toMatchObject({ kind: 'guild', guildId: G, channelId: 's1' });
+    dragBob();
+    fireEvent.drop(rowOf('Town hall'));
+    expect(updateMember).not.toHaveBeenCalled();
   });
 
   it('shows n/limit and marks a full channel', () => {

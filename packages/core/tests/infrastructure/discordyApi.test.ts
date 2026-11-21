@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DiscordyApi } from '../../src/infrastructure/http/discordyApi';
-import type { HttpClient } from '../../src/infrastructure/http/httpClient';
+import { ApiError, type HttpClient } from '../../src/infrastructure/http/httpClient';
 
 function fakeHttp() {
   const request = vi.fn(async () => undefined);
@@ -144,4 +144,17 @@ describe('DiscordyApi push token', () => {
     await new DiscordyApi(http).removeVoipToken();
     expect(request).toHaveBeenLastCalledWith('DELETE', '/users/@me/devices/voip', { reason: undefined });
   });
+});
+
+it('uses stage lifecycle endpoints and treats a missing stage as inactive', async () => {
+  const { http, request } = fakeHttp();
+  const api = new DiscordyApi(http);
+  request.mockRejectedValueOnce(new ApiError(404, 10003, 'Not found'));
+  expect(await api.stageInstance('12')).toBeNull();
+  await api.startStage('12', 'Town hall');
+  expect(request).toHaveBeenLastCalledWith('POST', '/stage-instances', { body: { channel_id: '12', topic: 'Town hall', privacy_level: 2 }, reason: undefined });
+  await api.updateStage('12', 'Questions');
+  expect(request).toHaveBeenLastCalledWith('PATCH', '/stage-instances/12', { body: { topic: 'Questions' } });
+  await api.endStage('12');
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/stage-instances/12', { reason: undefined });
 });

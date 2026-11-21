@@ -26,3 +26,9 @@ describe('settingsPages', () => {
     expect(ids(Permission.MANAGE_GUILD)).not.toContain('channels');
   });
 });
+
+
+it('exposes appeals in mobile ban settings to an appeal-only moderator', () => {
+  expect(ids(Permission.MANAGE_BAN_APPEALS)).toContain('bans');
+  expect(ids(Permission.BAN_MEMBERS | Permission.MANAGE_BAN_APPEALS)).toContain('bans');
+});

@@ -59,9 +59,10 @@ import type {
   UserNote,
   UserSettings,
   VoiceRegion,
+  StageInstance,
 } from '../../contracts/rest';
 import { toQuery, type SearchParams } from '../../domain/messageSearch';
-import type { HttpClient, RequestOptions } from './httpClient';
+import { ApiError, type HttpClient, type RequestOptions } from './httpClient';
 
 const enc = encodeURIComponent;
 
@@ -232,6 +233,15 @@ export class DiscordyApi implements ApiPort {
   updateSettings(patch: Partial<UserSettings>) {
     return this.patch<UserSettings>('/users/@me/settings', patch);
   }
+  gifs(query?: string) {
+    return this.get<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string; proxy_url?: string } } }[] }>(query ? '/gifs/search' : '/gifs/trending', query ? { q: query } : undefined);
+  }
+  gifCategories() {
+    return this.get<{ tags: { searchterm: string; name: string }[] }>('/gifs/categories');
+  }
+  gifPreviews(urls: string[]) {
+    return this.post<{ urls: string[] }>('/gifs/previews', { urls });
+  }
   privateChannels() {
     return this.get<Channel[]>('/users/@me/channels');
   }
@@ -350,7 +360,7 @@ export class DiscordyApi implements ApiPort {
   members(guildId: string, query: { limit?: number; after?: string } = {}) {
     return this.get<GuildMember[]>(`/guilds/${guildId}/members`, { limit: query.limit ?? 1000, after: query.after });
   }
-  updateMember(guildId: string, userId: string, patch: Partial<GuildMember> & { channel_id?: string | null }) {
+  updateMember(guildId: string, userId: string, patch: Partial<GuildMember> & { channel_id?: string | null; suppress?: boolean }) {
     return this.patch<GuildMember>(`/guilds/${guildId}/members/${userId}`, patch);
   }
   kickMember(guildId: string, userId: string, reason?: string) {
@@ -362,6 +372,11 @@ export class DiscordyApi implements ApiPort {
   removeMemberRole(guildId: string, userId: string, roleId: string) {
     return this.del<void>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`);
   }
+  appealForm(guildId: string) { return this.get<{ question: string }>(`/guilds/${guildId}/ban-appeals/form`); }
+  setAppealForm(guildId: string, question: string) { return this.put<void>(`/guilds/${guildId}/ban-appeals/form`, { question }); }
+  submitBanAppeal(guildId: string, answer: string, question: string) { return this.post<{ id: string }>(`/guilds/${guildId}/ban-appeals`, { answer, question }); }
+  banAppeals(guildId: string) { return this.get<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]>(`/guilds/${guildId}/ban-appeals`); }
+  resolveBanAppeal(guildId: string, id: string, decision: 'accept' | 'deny') { return this.post<void>(`/guilds/${guildId}/ban-appeals/${id}/${decision}`); }
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
   }
@@ -434,6 +449,18 @@ export class DiscordyApi implements ApiPort {
   }
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
+  }
+  listThreads(channelId: string, archived: boolean) {
+    return this.get<Channel[]>(`/channels/${channelId}/threads`, { archived: String(archived) });
+  }
+  joinThread(threadId: string, userId = '@me') {
+    return this.put<void>(`/channels/${threadId}/thread-members/${enc(userId)}`);
+  }
+  leaveThread(threadId: string, userId = '@me') {
+    return this.del<void>(`/channels/${threadId}/thread-members/${enc(userId)}`);
+  }
+  updateThread(threadId: string, patch: { archived?: boolean; locked?: boolean; auto_archive_duration?: number }) {
+    return this.patch<Channel>(`/channels/${threadId}`, patch);
   }
 
   discoveryGuilds(query: DiscoveryQuery = {}) {
@@ -553,6 +580,19 @@ export class DiscordyApi implements ApiPort {
     return this.http.upload(url, file, onProgress, signal);
   }
 
+  async stageInstance(channelId: string) {
+    try { return await this.get<StageInstance>(`/stage-instances/${enc(channelId)}`); }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+  }
+  startStage(channelId: string, topic: string) {
+    return this.post<StageInstance>('/stage-instances', { channel_id: channelId, topic, privacy_level: 2 });
+  }
+  updateStage(channelId: string, topic: string) {
+    return this.patch<StageInstance>(`/stage-instances/${enc(channelId)}`, { topic });
+  }
+  endStage(channelId: string) {
+    return this.del<void>(`/stage-instances/${enc(channelId)}`);
+  }
   voiceRegions() {
     return this.get<VoiceRegion[]>('/voice/regions');
   }

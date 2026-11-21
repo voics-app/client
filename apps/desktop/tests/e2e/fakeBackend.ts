@@ -66,6 +66,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const guilds: Guild[] = [];
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
+  const stages = new Map<string, { id: string; guild_id: string; channel_id: string; topic: string; privacy_level: number; discoverable_disabled: boolean }>();
   const events: Record<string, unknown>[] = [];
   const interested = new Set<string>();
   const friendRequests: string[] = [];
@@ -82,12 +83,20 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       channels: [
         { id: snowflake(), name: 'general', type: 0, guild_id: id, position: 0, delivery_mode: 'standard', last_message_id: null, topic: 'Say hello' },
         { id: snowflake(), name: 'Lounge', type: 2, guild_id: id, position: 1, delivery_mode: 'standard', last_message_id: null, topic: null },
+        { id: snowflake(), name: 'Town hall', type: 13, guild_id: id, position: 2, delivery_mode: 'standard', last_message_id: null, topic: null },
       ],
     };
     guilds.push(guild);
     return guild;
   };
   addGuild('Nightglass HQ');
+  const threadParent = guilds[0]!.channels[0]!;
+  const thread = {
+    id: snowflake(), guild_id: guilds[0]!.id, parent_id: threadParent.id,
+    name: 'Working notes', type: 11, delivery_mode: 'standard', owner_id: USER.id,
+    member_count: 0, is_thread_member: false,
+    thread_metadata: { archived: false, locked: false, auto_archive_duration: 1440, archive_timestamp: new Date().toISOString(), invitable: true },
+  };
   const screeningGuild: Guild = {
     id: snowflake(), name: 'Screened server', pending: true,
     channels: [{ id: snowflake(), name: 'general', type: 0, guild_id: '', position: 0, delivery_mode: 'standard', last_message_id: null, topic: null }],
@@ -184,8 +193,35 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     const url = new URL(req.url ?? '/', 'http://x');
     const path = url.pathname.replace(/^\/api\/v1/, '');
     const body = req.method === 'GET' ? {} : await readBody(req);
+    const proxyUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/external/fixture`;
+    const gifUrl = 'https://gif.example.test/cat.gif';
+    if (path === '/external/fixture') {
+      res.writeHead(200, { 'Content-Type': 'image/gif' });
+      // Two distinct frames so the still-frame test exercises an actual animation.
+      return res.end(Buffer.from('R0lGODlhAgACAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAAIBgABCAQQEAAh+QQBCgABACwAAAAAAgACAIEAAP8AAAAAAAAAAAAIBgABCAQQEAA7', 'base64'));
+    }
+    if (path === '/gifs/categories') return json(res, 200, { tags: [{ name: 'Cats', searchterm: 'cats' }] });
+    if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
+    if (path === '/gifs/previews') return json(res, 200, { urls: ((body.urls ?? []) as string[]).map(() => proxyUrl) });
 
-    if (path === '/auth/login' || path === '/auth/register') return json(res, 200, { access_token: 'access-1', refresh_token: 'refresh-1', user: USER });
+    if (path === '/stage-instances' && req.method === 'POST') {
+      const channelId = String(body.channel_id);
+      const guild = guilds.find((g) => g.channels.some((channel) => channel.id === channelId));
+      if (!guild) return json(res, 404, { code: 10003, message: 'Unknown channel' });
+      const stage = { id: snowflake(), guild_id: guild.id, channel_id: channelId, topic: String(body.topic), privacy_level: 2, discoverable_disabled: false };
+      stages.set(channelId, stage);
+      dispatch('STAGE_INSTANCE_CREATE', stage);
+      return json(res, 201, stage);
+    }
+    const stageMatch = /^\/stage-instances\/(\d+)$/.exec(path);
+    if (stageMatch) {
+      const stage = stages.get(stageMatch[1]!);
+      if (!stage) return json(res, 404, { code: 10003, message: 'No live stage' });
+      if (req.method === 'GET') return json(res, 200, stage);
+      if (req.method === 'PATCH') { stage.topic = String(body.topic); dispatch('STAGE_INSTANCE_UPDATE', stage); return json(res, 200, stage); }
+      if (req.method === 'DELETE') { stages.delete(stage.channel_id); dispatch('STAGE_INSTANCE_DELETE', stage); return json(res, 204, null); }
+    }
+    if (path === '/auth/login'  || path === '/auth/register') return json(res, 200, { access_token: 'access-1', refresh_token: 'refresh-1', user: USER });
     if (path === '/auth/refresh') return json(res, 200, { access_token: 'access-2', refresh_token: 'refresh-2' });
     if (path === '/auth/logout') return json(res, 204, null);
     if (path === '/devices') return json(res, 200, { device_id: snowflake() });
@@ -209,7 +245,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       friendRequests.push(String(body.token));
       return json(res, 204, null);
     }
-    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
+    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false, ...((body.preferences ?? {}) as object) } });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
     const eventInterest = /^\/guilds\/(\d+)\/scheduled-events\/(\d+)\/users\/@me$/.exec(path);
     if (eventInterest) {
@@ -262,6 +298,20 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       respondToInteraction(id, body);
       return json(res, 201, { id });
     }
+    if (path === `/channels/${threadParent.id}/threads` && req.method === 'GET') {
+      return json(res, 200, String(thread.thread_metadata.archived) === (url.searchParams.get('archived') ?? 'false') ? [thread] : []);
+    }
+    if (path === `/channels/${thread.id}` && req.method === 'GET') return json(res, 200, thread);
+    if (path === `/channels/${thread.id}` && req.method === 'PATCH') {
+      if (typeof body.archived === 'boolean') thread.thread_metadata.archived = body.archived;
+      if (typeof body.locked === 'boolean') thread.thread_metadata.locked = body.locked;
+      dispatch('THREAD_UPDATE', thread);
+      return json(res, 200, thread);
+    }
+    if (path === `/channels/${thread.id}/thread-members/%40me` || path === `/channels/${thread.id}/thread-members/@me`) {
+      if (req.method === 'PUT') { thread.is_thread_member = true; thread.member_count = 1; return json(res, 204, null); }
+      if (req.method === 'DELETE') { thread.is_thread_member = false; thread.member_count = 0; return json(res, 204, null); }
+    }
     const history = /^\/channels\/(\d+)\/messages$/.exec(path);
     if (history) {
       const id = history[1]!;
@@ -279,7 +329,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
         mentions: [],
         mention_roles: [],
         attachments: [],
-        embeds: [],
+        embeds: String(body.content ?? '').trim() === gifUrl ? [{ type: 'image', url: gifUrl, thumbnail: { url: gifUrl, proxy_url: proxyUrl, width: 2, height: 2 } }] : [],
         pinned: false,
         type: 0,
         nonce: body.nonce ?? null,
@@ -314,7 +364,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               guilds: guilds.map(guildPayload),
               private_channels: [{ id: DM_ID, type: 1, recipients: [FRIEND], delivery_mode: 'standard', last_message_id: null }],
               relationships: [{ id: FRIEND.id, type: 1, user: FRIEND }],
-              user_settings: { default_delivery_mode: 'standard', status: 'online' },
+              user_settings: { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false } },
               read_state: [],
               presences: [],
             },

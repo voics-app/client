@@ -152,12 +152,36 @@ export function createDispatchRouter(ctx: DispatchContext): (event: string, data
     },
     GUILD_UPDATE: (d: GuildFull) => guilds().patchGuild(d),
     GUILD_DELETE: (d: { id: string }) => guilds().removeGuild(d.id),
+    STAGE_INSTANCE_CREATE: (d: { channel_id: string }) => ctx.invalidate(['stage-instance', d.channel_id]),
+    STAGE_INSTANCE_UPDATE: (d: { channel_id: string }) => ctx.invalidate(['stage-instance', d.channel_id]),
+    STAGE_INSTANCE_DELETE: (d: { channel_id: string }) => ctx.invalidate(['stage-instance', d.channel_id]),
     CHANNEL_CREATE: (d: Channel) => guilds().upsertChannel(d),
     CHANNEL_UPDATE: (d: Channel) => guilds().upsertChannel(d),
     CHANNEL_DELETE: (d: Channel) => guilds().removeChannel(d.id),
-    THREAD_CREATE: (d: Channel) => guilds().upsertChannel(d),
-    THREAD_UPDATE: (d: Channel) => guilds().upsertChannel(d),
-    THREAD_DELETE: (d: Channel) => guilds().removeChannel(d.id),
+    THREAD_CREATE: (d: Channel) => {
+      guilds().upsertChannel(d);
+      if (d.parent_id) ctx.invalidate(['channel', d.parent_id, 'threads']);
+    },
+    THREAD_UPDATE: (d: Channel) => {
+      guilds().upsertChannel(d);
+      ctx.invalidate(['thread', d.id]);
+      if (d.parent_id) ctx.invalidate(['channel', d.parent_id, 'threads']);
+    },
+    THREAD_DELETE: (d: Channel) => {
+      const parent = guilds().channels[d.id]?.parent_id;
+      guilds().removeChannel(d.id);
+      if (parent) ctx.invalidate(['channel', parent, 'threads']);
+    },
+    THREAD_MEMBERS_UPDATE: (d: { id: string; member_count: number; added_members?: { user_id?: string }[]; removed_member_ids?: string[] }) => {
+      const channel = guilds().channels[d.id];
+      if (!channel) return;
+      const me = meId();
+      const joined = d.added_members?.some((member) => member.user_id === me);
+      const left = me !== null && d.removed_member_ids?.includes(me);
+      guilds().upsertChannel({ ...channel, member_count: d.member_count, ...(joined || left ? { is_thread_member: Boolean(joined) } : {}) });
+      ctx.invalidate(['thread', d.id]);
+      if (channel.parent_id) ctx.invalidate(['channel', channel.parent_id, 'threads']);
+    },
     CHANNEL_RECIPIENT_ADD: (d: { channel_id: string; user: User }) => {
       const c = guilds().channels[d.channel_id];
       if (c) guilds().upsertChannel({ ...c, recipients: [...(c.recipients ?? []).filter((u) => u.id !== d.user.id), d.user] });

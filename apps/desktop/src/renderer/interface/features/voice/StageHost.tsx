@@ -4,11 +4,13 @@ import { isVoiceChannel } from '../../app/navigation';
 import { ForumView } from '../chat/ForumView';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { VoiceChannelView } from './VoiceChannelView';
+import { StageChannelView } from './StageChannelView';
 
 /** Chooses what fills the main stage for a channel: chat, voice room or forum. */
 export function StageHost({ channelId }: { channelId: string }) {
   const channel = useGuildStore((s) => s.channels[channelId]);
   if (!channel) return <div className="stage-empty" />;
+  if (channel.type === ChannelType.GUILD_STAGE_VOICE) return <StageChannelView channelId={channelId} />;
   if (isVoiceChannel(channel)) return <VoiceChannelView channelId={channelId} />;
   if (channel.type === ChannelType.GUILD_FORUM) return <ForumView key={channelId} channelId={channelId} />;
   return <ChatView channelId={channelId} />;

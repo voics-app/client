@@ -127,6 +127,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
 }
 
 function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel; active: boolean; dnd: ChannelDnd; pinned?: boolean }) {
+  const hasThreads = useGuildStore((s) => Object.values(s.channels).some((thread) => thread.parent_id === channel.id && thread.type >= 10 && thread.type <= 12 && !thread.thread_metadata?.archived));
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
   const muted = isChannelMutedDeep(settings, channel, Date.now());
@@ -154,6 +155,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
   if (!can(perms, Permission.VIEW_CHANNEL)) return null;
 
   const select = () => {
+    if (kind === 'stage' && channel.guild_id) { navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id }); return; }
     if (capacity?.joinBlocked && !occupants.some((o) => o.user_id === me)) return;
     if (isVoice) void openVoiceChannel(channel.guild_id ?? null, channel.id);
     else if (channel.guild_id) navigate({ kind: 'guild', guildId: channel.guild_id, channelId: channel.id });
@@ -163,7 +165,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
   return (
     <li data-channel-id={channel.id} data-attention={mentions > 0 ? 'mention' : unread ? 'unread' : undefined} className={(hoverClass(dnd, dropKey({ kind: 'channel', id: channel.id })).trim() + (moveHover ? ' is-move-target' : '')).trim() || undefined}
       onDragOver={(e) => {
-        if (!isVoice || !draggedOccupant || !canDropOccupant(draggedOccupant, channel)) return;
+        if (kind === 'stage' || !isVoice || !draggedOccupant || !canDropOccupant(draggedOccupant, channel)) return;
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -175,7 +177,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
       onDrop={(e) => {
         setMoveHover(false);
         const dragged = draggedOccupant;
-        if (!isVoice || !dragged || !canDropOccupant(dragged, channel) || !channel.guild_id || !can(guildPerms, Permission.MOVE_MEMBERS)) return;
+        if (kind === 'stage' || !isVoice || !dragged || !canDropOccupant(dragged, channel) || !channel.guild_id || !can(guildPerms, Permission.MOVE_MEMBERS)) return;
         e.preventDefault();
         e.stopPropagation();
         draggedOccupant = null;
@@ -196,6 +198,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
           {unread && <span className="channel-unread-dot" aria-label="Unread" />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
           <span className="channel-name">{channel.name}</span>
+          {hasThreads && <ChatsCircle size={13} className="channel-thread-badge" aria-label="Active threads" />}
           {pinned && <PushPin size={12} weight="fill" className="channel-pin" aria-label="Pinned" />}
           {isPrivateChannel(channel) && <LockSimple size={12} weight="fill" className="channel-lock" aria-label="Private channel" />}
           {channel.nsfw && <span className="channel-nsfw" title="Age-restricted" aria-label="Age-restricted">18+</span>}

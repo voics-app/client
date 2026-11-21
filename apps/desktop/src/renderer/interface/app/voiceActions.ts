@@ -2,8 +2,12 @@
 import type { VideoPresetId } from '@discordy/core/domain/videoPresets';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { reportError } from './actions';
 import { openChannel } from './navigation';
+import { getRuntime } from './runtime';
 
 export type ShareResult = { ok: true } | { ok: false; reason: 'protected_content' | 'cancelled' | 'error'; message?: string };
 
@@ -13,6 +17,7 @@ export interface VoiceFacade {
   setMute(muted: boolean): Promise<void>;
   setDeaf(deafened: boolean): Promise<void>;
   setCamera(enabled: boolean): Promise<void>;
+  requestToSpeak(requested: boolean): Promise<void>;
   startScreenShare(options: { sourceId: string; audio: boolean; preset: VideoPresetId }): Promise<ShareResult>;
   stopScreenShare(): Promise<void>;
   setScreenPreset(preset: VideoPresetId): Promise<void>;
@@ -31,12 +36,40 @@ function require(): VoiceFacade | null {
 }
 
 export async function joinVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
+  if (useGuildStore.getState().channels[channelId]?.type === ChannelType.GUILD_STAGE_VOICE) return;
   const call = useVoiceStore.getState().call;
   if (call.channelId === channelId && call.status !== 'idle') return;
   try {
     await require()?.join(guildId, channelId);
   } catch (error) {
     reportError(error, 'Could not join voice');
+  }
+}
+
+/** Joins a stage with local capture muted before the voice handshake. */
+export async function joinStageAudience(guildId: string, channelId: string): Promise<void> {
+  if (useGuildStore.getState().channels[channelId]?.type !== ChannelType.GUILD_STAGE_VOICE) return;
+  const call = useVoiceStore.getState().call;
+  if (call.channelId === channelId && call.status !== 'idle') return;
+  const voice = require();
+  if (!voice) return;
+  try {
+    await voice.setMute(true);
+    await voice.join(guildId, channelId);
+  } catch (error) {
+    reportError(error, 'Could not join stage');
+  }
+}
+
+export async function requestStageSpeak(requested: boolean): Promise<void> {
+  await run(() => require()?.requestToSpeak(requested));
+}
+
+export async function setStageAudience(guildId: string, userId: string, suppress: boolean): Promise<void> {
+  try {
+    await getRuntime().api.updateMember(guildId, userId, { suppress });
+  } catch (error) {
+    reportError(error, suppress ? 'Could not move member to audience' : 'Could not invite member to speak');
   }
 }
 
@@ -55,7 +88,14 @@ export async function leaveVoice(): Promise<void> {
 }
 
 export async function toggleMute(): Promise<void> {
-  const { selfMute } = useVoiceStore.getState();
+  const { selfMute, call, states } = useVoiceStore.getState();
+  const userId = useSessionStore.getState().user?.id;
+  const isStage = call.channelId && useGuildStore.getState().channels[call.channelId]?.type === ChannelType.GUILD_STAGE_VOICE;
+  const selfState = userId && call.guildId ? states[call.guildId]?.[userId] : undefined;
+  if (selfMute && isStage && (selfState?.channel_id !== call.channelId || selfState.suppress !== false)) {
+    useUiStore.getState().toast({ tone: 'info', title: 'Audience members are muted', body: 'You can listen while muted.' });
+    return;
+  }
   await run(() => require()?.setMute(!selfMute));
 }
 

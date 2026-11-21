@@ -64,7 +64,7 @@ export type Dialog =
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
   | { kind: 'confirm'; title: string; body: string; confirmLabel: string; confirmText?: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
-export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | { kind: 'profile' } | null;
+export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'threads' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | { kind: 'profile' } | null;
 
 export interface Toast {
   id: number;
@@ -95,7 +95,7 @@ export interface UiState {
   openSettings(target: SettingsTarget | null): void;
   openDialog(dialog: Dialog | null): void;
   setSidePanel(panel: SidePanel): void;
-  toggleSidePanel(kind: 'members' | 'pins' | 'watch' | 'search' | 'profile'): void;
+  toggleSidePanel(kind: 'members' | 'pins' | 'watch' | 'search' | 'threads' | 'profile'): void;
   /** Bumped by Ctrl+F so the channel header search box takes focus. */
   searchFocus: number;
   focusSearch(): void;

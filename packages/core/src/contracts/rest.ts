@@ -23,6 +23,15 @@ export const ChannelType = {
 } as const;
 export type ChannelType = (typeof ChannelType)[keyof typeof ChannelType];
 
+export interface StageInstance {
+  id: Snowflake;
+  guild_id: Snowflake;
+  channel_id: Snowflake;
+  topic: string;
+  privacy_level: 2;
+  discoverable_disabled: boolean;
+}
+
 export interface User {
   id: Snowflake;
   username: string;
@@ -76,6 +85,7 @@ export interface UserPreferences {
   ringtone?: string;
   skin_tone?: string;
   recent_reactions?: { id: string | null; name: string; animated?: boolean }[];
+  favorite_gifs?: string[];
 }
 
 export interface UserSettings {
@@ -125,6 +135,7 @@ export interface ThreadMetadata {
   auto_archive_duration: number;
   archive_timestamp: string;
   locked: boolean;
+  invitable?: boolean;
 }
 
 export interface ForumTag {
@@ -159,6 +170,7 @@ export interface Channel {
   rtc_region?: string | null;
   message_count?: number;
   member_count?: number;
+  is_thread_member?: boolean;
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];

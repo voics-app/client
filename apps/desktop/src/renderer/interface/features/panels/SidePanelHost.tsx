@@ -9,6 +9,7 @@ import { SearchPanel } from '../search/SearchPanel';
 import { DmProfilePanel } from './DmProfilePanel';
 import { PinsPanel } from './PinsPanel';
 import { ThreadPanel } from './ThreadPanel';
+import { ThreadsPanel } from './ThreadsPanel';
 import { WatchPanel } from './WatchPanel';
 
 export function SidePanelHost() {
@@ -18,7 +19,7 @@ export function SidePanelHost() {
   const channel = useGuildStore((s) => (view.channelId ? s.channels[view.channelId] : undefined));
   const isGuildView = view.kind === 'guild';
   const effective = panel?.kind === 'members' && !isGuildView ? null : panel;
-  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : effective?.kind === 'profile' ? 'Profile' : null;
+  const title = effective?.kind === 'pins' ? 'Pinned messages' : effective?.kind === 'search' ? 'Search results' : effective?.kind === 'threads' ? 'Threads' : effective?.kind === 'thread' ? 'Thread' : effective?.kind === 'watch' ? 'Watch Together' : effective?.kind === 'profile' ? 'Profile' : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -34,6 +35,7 @@ export function SidePanelHost() {
           {effective.kind === 'pins' && channel && <PinsPanel channelId={channel.id} />}
           {effective.kind === 'search' && <SearchPanel channelId={view.channelId} />}
           {effective.kind === 'thread' && <ThreadPanel threadId={effective.threadId} />}
+          {effective.kind === 'threads' && <ThreadsPanel key={view.channelId} channelId={view.channelId} />}
           {effective.kind === 'watch' && <WatchPanel channelId={view.channelId} />}
           {effective.kind === 'profile' && channel && <DmProfilePanel channelId={channel.id} />}
         </motion.div>

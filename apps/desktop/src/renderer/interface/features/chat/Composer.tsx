@@ -40,6 +40,7 @@ const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashC
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
 import { VoiceRecorder } from './VoiceRecorder';
+import { GifPicker } from './GifPicker';
 import { captureFailedSendScope, currentFailedSendScope, failedSendKey, useFailedSendQueue, type FailedDraft } from './failedSendQueue';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -95,6 +96,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const [running, setRunning] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const [pickingGif, setPickingGif] = useState(false);
   const [schedule, setSchedule] = useState<{ initial: 'list' | 'create'; draft: ScheduledMessageDraft; source: ScheduleSourceDraft } | null>(null);
   const plusMenu = useMenu();
   const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
@@ -596,6 +598,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           <ModeSwitcher channel={channel} mode={mode} />
           <VoiceRecorder channel={channel} disabled={!canSend || !canAttach || slowmodeLeft > 0 || Boolean(channel.guild_id && !can(perms, Permission.SEND_VOICE_MESSAGES))} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
+          <IconButton label="GIF" disabled={!canSend} onClick={() => setPickingGif((open) => !open)}>GIF</IconButton>
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>
           <IconButton label={slowmodeLeft > 0 ? `Slowmode: wait ${slowmodeLeft}s` : 'Send message'} tone="accent" active={Boolean((text.trim() || files.length || command) && !tooLong && slowmodeLeft === 0)} disabled={!canSend || slowmodeLeft > 0 || tooLong || (!command && !text.trim() && files.length === 0)} onClick={() => void send()}>
             <PaperPlaneRight size={20} weight="fill" />
@@ -607,6 +610,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
         {dragging && <div className="drop-overlay">Drop files to attach</div>}
       </div>
       {emoji.node}
+      {pickingGif && <GifPicker onClose={() => setPickingGif(false)} onPick={(url) => { setPickingGif(false); insertAtCaret(`${url} `); }} />}
       {schedule && <ScheduledMessagesDialog channelId={channel.id} mode={mode} initial={schedule.initial} draft={schedule.draft} source={schedule.source} createDisabledReason={schedulingUnavailable} canSend={canSend} canTts={ttsAllowed} onAccepted={scheduled} onClose={() => setSchedule(null)} />}
       <TimestampPicker open={pickingTime} onClose={() => setPickingTime(false)} onInsert={(markup) => { setPickingTime(false); insertAtCaret(`${markup} `); }} />
     </div>
