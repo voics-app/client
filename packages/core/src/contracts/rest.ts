@@ -179,6 +179,8 @@ export interface GuildMember {
   user: User;
   nick?: string | null;
   avatar?: string | null;
+  banner?: string | null;
+  bio?: string | null;
   roles: Snowflake[];
   joined_at: string;
   deaf: boolean;

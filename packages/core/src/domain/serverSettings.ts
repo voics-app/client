@@ -2,7 +2,7 @@
 import { Permission } from '../contracts/permissions';
 import { hasPermission } from './permissions';
 
-export type ServerSettingsTabId = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTabId = 'overview' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export interface ServerSettingsTabEntry {
   id: ServerSettingsTabId;
@@ -15,6 +15,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
   const can = (bit: bigint) => hasPermission(perms, bit);
   return [
     { id: 'overview', label: 'Overview', group: 'Server', show: can(Permission.MANAGE_GUILD) },
+    { id: 'profile', label: 'Server profile', group: 'People', show: true },
     { id: 'roles', label: 'Roles', group: 'Server', show: can(Permission.MANAGE_ROLES) },
     { id: 'emoji', label: 'Emoji', group: 'Server', show: can(Permission.MANAGE_GUILD_EXPRESSIONS) },
     { id: 'members', label: 'Members', group: 'People', show: true },
