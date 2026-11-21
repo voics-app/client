@@ -1,7 +1,8 @@
 import { useI18n } from '../../shared/i18n';
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
 import { ArrowBendUpLeft, Clock, Code, EyeSlash, LockSimple, PaperPlaneRight, PlusCircle, Quotes, Smiley, TextB, TextItalic, TextStrikethrough, UploadSimple, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
+import { canShowChannelContent } from '@discordy/core/application/ageRestrictedAccess';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { DM_SCOPE, useInteractionStore } from '@discordy/core/application/stores/interactionStore';
 import { useMentionStore } from '@discordy/core/application/stores/mentionStore';
@@ -35,6 +36,9 @@ import { LazyFeature } from '../../shared/ui/LazyFeature';
 const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashCommandPanel }) => ({ default: SlashCommandPanel }));
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { beginSend, captureSendScope, editedAfterSend, finishSend, isSendScopeCurrent, receiveFailedSends, recoverFailedSend, type SendDraft, type SendRecoveryReceiver } from './composerSendRecovery';
+import { captureFailedSendScope, currentFailedSendScope, failedSendKey, useFailedSendQueue } from './failedSendQueue';
+import { useConnectionStore } from '../../app/connectionStore';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const TYPING_INTERVAL_MS = 8000;
@@ -88,8 +92,15 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const plusMenu = useMenu();
   const sendWithCtrlEnter = usePrefsStore(selectSendWithCtrlEnter);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const mounted = useRef(true);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const textRef = useRef(text);
   textRef.current = text;
+  const filesRef = useRef(files);
+  filesRef.current = files;
   const fileInput = useRef<HTMLInputElement>(null);
   const mentionMap = useRef(new Map<string, string>());
   const lastTyping = useRef(0);
@@ -99,6 +110,10 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const editing = useUiStore((s) => s.editing);
   const setEditing = useUiStore((s) => s.setEditing);
   const me = useSessionStore((s) => s.user?.id ?? null);
+  useSessionStore((s) => s.sessionId);
+  useSessionStore((s) => s.deviceId);
+  useSessionStore((s) => s.status);
+  useConnectionStore((s) => s.runtimeVersion);
   const pingReplied = useReplyPingStore((s) => s.ping);
   const setPingReplied = useReplyPingStore((s) => s.setPing);
   const lastSent = useSlowmodeStore((s) => s.lastSent[channel.id]);
@@ -120,6 +135,30 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   const slowmodeLeft = standard && !slowmodeBypass ? slowmodeRemaining(channel.rate_limit_per_user, lastSent, now) : 0;
   const remainingChars = charsRemaining(text);
   const tooLong = remainingChars < 0;
+  const sendScope = captureSendScope(channel, mode);
+  const recoveryScope = captureFailedSendScope(channel.id, mode);
+  const recoveryKey = failedSendKey(recoveryScope);
+  const failed = useFailedSendQueue((state) => state.byScope[recoveryKey]);
+  const recoveryReceiver = useRef<SendRecoveryReceiver>({ empty: () => false, matchesSaved: () => false, restore: () => undefined });
+  recoveryReceiver.current = {
+    empty: () => !textRef.current && filesRef.current.length === 0 && !useUiStore.getState().replyTo[channel.id] && useUiStore.getState().editing?.channelId !== channel.id && !command,
+    matchesSaved: (draft) => textRef.current === draft.text && filesRef.current.length === 0 && (useUiStore.getState().replyTo[channel.id]?.id ?? null) === (draft.replyTo?.id ?? null) && !command && useUiStore.getState().editing?.channelId !== channel.id,
+    restore: (draft) => {
+      textRef.current = draft.text;
+      filesRef.current = draft.files;
+      mentionMap.current = new Map(draft.mentions);
+      setText(draft.text);
+      setFiles(draft.files);
+      setDescriptions(draft.descriptions);
+      if (draft.replyTo) setPingReplied(draft.pingReplied);
+      setReplyTo(channel.id, draft.replyTo);
+    },
+  };
+  useLayoutEffect(() => receiveFailedSends(sendScope, {
+    empty: () => recoveryReceiver.current.empty(),
+    matchesSaved: (draft) => recoveryReceiver.current.matchesSaved(draft),
+    restore: (draft) => recoveryReceiver.current.restore(draft),
+  }), [sendScope.epoch, sendScope.channelBinding, sendScope.mode]); // eslint-disable-line react-hooks/exhaustive-deps -- receivers read the current render through a ref
 
   useEffect(() => {
     if (slowmodeLeft <= 0) return;
@@ -134,13 +173,14 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!standard) return;
-    const id = setTimeout(() => useDraftStore.getState().setDraft(channel.id, text, replyTo ?? null), 300);
+    const scope = captureSendScope(channel, mode);
+    const id = setTimeout(() => { if (isSendScopeCurrent(scope)) useDraftStore.getState().setDraft(channel.id, text, replyTo ?? null); }, 300);
     return () => clearTimeout(id);
-  }, [text, replyTo, standard, channel.id]);
+  }, [text, replyTo, standard, channel, mode]);
   useEffect(
     () => () => {
       // Flush on unmount so a fast channel switch never loses the last keystrokes.
-      if (mode === 'standard') useDraftStore.getState().setDraft(channel.id, textRef.current, useUiStore.getState().replyTo[channel.id] ?? null);
+      if (mode === 'standard' && isSendScopeCurrent(sendScope)) useDraftStore.getState().setDraft(channel.id, textRef.current, useUiStore.getState().replyTo[channel.id] ?? null);
     },
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -181,6 +221,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   }, [mentionRequest, channel.id]);
 
   function insertAtCaret(value: string): void {
+    editedAfterSend(sendScope);
     const el = ref.current;
     const start = el?.selectionStart ?? text.length;
     const end = el?.selectionEnd ?? text.length;
@@ -253,6 +294,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   useEffect(() => setSelected(0), [token?.trigger, token?.query, commandSearch]);
 
   const accept = (s: Suggestion) => {
+    editedAfterSend(sendScope);
     if (s.entry) {
       setCommand(s.entry);
       setCommandValues({});
@@ -289,9 +331,9 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       const limit = mode === 'standard' ? MAX_FILE_BYTES : maxFileBytes(mode);
       const { accepted, problems } = acceptFiles(files, incoming, limit, mode === 'standard', undefined, locale);
       if (problems.length > 0) reportError(new Error(problems.join(' ')), msg("settings.composer.file.not.attached"));
-      if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
+      if (accepted.length > 0) { editedAfterSend(captureSendScope(channel, mode)); filesRef.current = [...filesRef.current, ...accepted]; setFiles(filesRef.current); }
     },
-    [canAttach, mode, files, msg, locale],
+    [canAttach, mode, files, msg, locale, channel],
   );
 
   const runCommand = async () => {
@@ -350,23 +392,32 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
       silent,
       pingReplied: replyTo && replyTo.author.id !== me ? pingReplied : true,
     };
-    const draft = { text, files, descriptions };
+    const draft: SendDraft = { text, files: [...files], descriptions: new Map(descriptions), mentions: new Map(mentionMap.current), replyTo: replyTo ?? null, pingReplied };
+    const scope = captureSendScope(channel, mode);
+    const runtime = getRuntime();
+    textRef.current = '';
+    filesRef.current = [];
     setText('');
     setFiles([]);
     setDescriptions(new Map());
     setReplyTo(channel.id, null);
     mentionMap.current.clear();
+    const attempt = beginSend(scope);
     if (standard) useSlowmodeStore.getState().markSent(channel.id);
     try {
-      await getRuntime().privacy.sender.send(channel, input);
-      if (tts) speak(content, prefs.ttsRate);
+      await runtime.privacy.sender.send(channel, input);
+      const currentPrefs = usePrefsStore.getState();
+      if (tts && isSendScopeCurrent(scope) && canShowChannelContent(channel.id) && currentPrefs.ttsReadAloud) speak(content, currentPrefs.ttsRate);
     } catch (e) {
+      if (!isSendScopeCurrent(scope)) return;
       if (standard) useSlowmodeStore.getState().markSent(channel.id, 0);
       const cancelled = e instanceof Error && e.name === 'UploadCancelled';
       if (!cancelled && !useUiStore.getState().toasts.some((t) => t.body === (e instanceof Error ? e.message : ''))) reportError(e, msg("settings.composer.message.not.sent"));
-      setText((current) => current || draft.text);
-      setFiles((current) => (current.length > 0 ? current : draft.files));
-      setDescriptions((current) => (current.size > 0 ? current : draft.descriptions));
+      // The current mounted composer owns recovery; a gated Standard stage can claim it later.
+      if (standard) recoverFailedSend(attempt, draft);
+      else if (mounted.current && recoveryReceiver.current.empty()) recoveryReceiver.current.restore(draft);
+    } finally {
+      finishSend(attempt);
     }
   };
 
@@ -379,6 +430,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   };
 
   const format = (kind: FormatKind) => {
+    editedAfterSend(sendScope);
     const el = ref.current;
     if (!el) return;
     const edit = applyFormat(text, el.selectionStart, el.selectionEnd, kind);
@@ -436,6 +488,16 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
   return (
     <div className={`composer-wrap density-${density}`} onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(msg("settings.composer.files"))) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
       <PeerStatus channel={channel} mode={mode} />
+      {failed && failed.length > 0 && <div className="field-hint" role="status">
+        {msg('chat.failedSendWaiting', { count: failed.length })}
+        <button type="button" disabled={!recoveryReceiver.current.empty()} onClick={() => {
+          const item = failed[0];
+          if (!item || !currentFailedSendScope(recoveryScope) || !canShowChannelContent(channel.id) || !recoveryReceiver.current.empty()) return;
+          recoveryReceiver.current.restore(item.draft);
+          useFailedSendQueue.getState().remove(recoveryScope, item.id);
+        }}>{msg('chat.restoreFailedSend')}</button>
+        <button type="button" onClick={() => { const item = failed[0]; if (item) useFailedSendQueue.getState().remove(recoveryScope, item.id); }}>{msg('chat.discardFailedSend')}</button>
+      </div>}
       {suggestions.length > 0 && (
         <ul className="suggestions glass" role="listbox" aria-label={t(commandSearch !== null ? 'composer.commands' : 'composer.suggestions')}>
           {suggestions.map((s, i) => (
@@ -469,7 +531,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
             <IconButton label={t('composer.cancelReply')} size="sm" onClick={() => setReplyTo(channel.id, null)}><X size={14} /></IconButton>
           </div>
         )}
-        <ComposerFiles files={files} descriptions={descriptions} allowDescriptions={standard} onChange={(next, nextDescriptions) => { setFiles(next); setDescriptions(nextDescriptions); }} />
+        <ComposerFiles files={files} descriptions={descriptions} allowDescriptions={standard} onChange={(next, nextDescriptions) => { editedAfterSend(sendScope); filesRef.current = next; setFiles(next); setDescriptions(nextDescriptions); }} />
         {command && (
           <LazyFeature load={loadSlashCommandPanel} close={() => setCommand(null)} props={{ entry: command, values: commandValues, channel, busy: running, onChange: setCommandValues, onRun: () => void runCommand(), onCancel: () => { setCommand(null); ref.current?.focus(); } }} />
         )}
@@ -502,7 +564,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
             disabled={!canSend}
             placeholder={placeholder}
             aria-label={placeholder}
-            onChange={(e) => { setText(e.target.value); setCaret(e.target.selectionStart); notifyTyping(); }}
+            onChange={(e) => { editedAfterSend(sendScope); textRef.current = e.target.value; setText(e.target.value); setCaret(e.target.selectionStart); notifyTyping(); }}
             onSelect={(e) => { setCaret(e.currentTarget.selectionStart); setHasSelection(e.currentTarget.selectionEnd > e.currentTarget.selectionStart); }}
             onPaste={onPaste}
             onKeyDown={(e) => {
