@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { BASE, close, launch, type Instance } from './matrix-helpers';
 
-test('manager uploads a sticker and sends it from the picker; history survives reload', async ({}, testInfo) => {
+test('manager uploads a sticker and sends it from the picker; history survives reload', async (_fixtures, testInfo) => {
   test.skip(process.env.STICKER_QA !== '1', 'Set STICKER_QA=1 for the isolated local QA stack.');
   const host = new URL(BASE).hostname;
   if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]') throw new Error('Sticker QA requires a loopback-only isolated stack.');
@@ -58,6 +58,8 @@ test('manager uploads a sticker and sends it from the picker; history survives r
         const response = await alice.page.request.delete(`${created.url}/${encodeURIComponent(created.id)}`, {
           headers: { authorization: created.authorization },
         });
+        // Fixture cleanup failures must surface even when the test body threw.
+        // eslint-disable-next-line no-unsafe-finally
         if (!response.ok() && response.status() !== 404) throw new Error(`Failed to delete fixture sticker ${created.id}: ${response.status()}`);
       }
     } finally {
