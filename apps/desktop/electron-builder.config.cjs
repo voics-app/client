@@ -25,6 +25,24 @@ module.exports = {
     warningsAsErrors: false,
     shortcutName: brand.shortName,
   },
-  mac: { category: 'public.app-category.social-networking', target: ['dmg'], icon: 'build/icon.png' },
+  // macOS: universal (arm64 + x64) .dmg. Unsigned until a Developer ID exists: set CSC_LINK/CSC_KEY_PASSWORD (and
+  // APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER for notarization) as secrets and the same config signs.
+  // No auto-update on macOS yet: Squirrel.Mac refuses unsigned updates, so no zip/latest-mac.yml is produced.
+  mac: {
+    category: 'public.app-category.social-networking',
+    target: ['dmg'],
+    icon: 'build/icon.png',
+    artifactName: `${brand.productName}-\${version}.\${ext}`,
+    identity: process.env.CSC_LINK ? undefined : null,
+    hardenedRuntime: Boolean(process.env.CSC_LINK),
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    notarize: Boolean(process.env.APPLE_API_KEY),
+    extendInfo: {
+      NSMicrophoneUsageDescription: `${brand.displayName} uses the microphone for voice chat.`,
+      NSCameraUsageDescription: `${brand.displayName} uses the camera for video calls.`,
+    },
+  },
+  afterSign: 'build/after-sign.cjs',
   linux: { target: ['AppImage', 'deb'], category: 'Network', icon: 'build/icon.png', maintainer: brand.publisher },
 };
