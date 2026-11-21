@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -6,8 +6,9 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { Permission } from '@discordy/core/contracts/permissions';
 import type { User } from '@discordy/core/contracts/rest';
 
+const updateRole = vi.fn(async (_g: string, id: string, changes: Record<string, unknown>) => ({ id, position: 1, managed: false, ...changes }));
 const reorderRoles = vi.fn(async (_g: string, changes: { id: string; position: number }[]) => changes);
-vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { reorderRoles, addMemberRole: async () => undefined, removeMemberRole: async () => undefined } }) }));
+vi.mock('@renderer/interface/app/runtime', () => ({ getRuntime: () => ({ api: { reorderRoles, updateRole, addMemberRole: async () => undefined, removeMemberRole: async () => undefined } }) }));
 
 import { RolesEditor } from '@renderer/interface/features/settings/server/RolesEditor';
 
@@ -24,7 +25,7 @@ function seed(me: string) {
   });
 }
 
-beforeEach(() => reorderRoles.mockClear());
+beforeEach(() => { reorderRoles.mockClear(); updateRole.mockClear(); });
 afterEach(cleanup);
 
 describe('RolesEditor', () => {
@@ -59,6 +60,18 @@ describe('RolesEditor', () => {
     expect(screen.getByTestId('role-row-high').getAttribute('draggable')).toBe('true');
   });
 
+  it('saves the display separately setting as the role hoist flag', () => {
+    seed('owner');
+    render(<RolesEditor guildId={G} />);
+    fireEvent.click(screen.getByTestId('role-row-low').querySelector('button')!);
+    const toggle = screen.getByRole('switch', { name: 'Display separately' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(updateRole).toHaveBeenCalledWith(G, 'low', expect.objectContaining({ hoist: true }));
+  });
+
   it('warns for administrator and clears permissions', () => {
     seed('owner');
     useGuildStore.getState().upsertRole(G, role('low', 1, '8'));
@@ -70,3 +83,4 @@ describe('RolesEditor', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+

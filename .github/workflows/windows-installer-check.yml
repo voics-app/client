@@ -1,0 +1,62 @@
+﻿name: Windows installer verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'native/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/windows-installer-check.yml'
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm dist:win
+      - name: Verify installer and feed metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          test -f "apps/desktop/release/Voics-Setup-${version}.exe"
+          grep -q "^version: ${version}$" apps/desktop/release/latest.yml
+      - name: Inspect installed application and protocol handler
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem apps/desktop/release/Voics-Setup-*.exe | Select-Object -First 1).FullName
+          $process = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA/Programs" -Filter Voics.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw 'Installed Voics.exe was not found' }
+          $info = $exe.VersionInfo
+          Write-Host "ProductName=$($info.ProductName); FileDescription=$($info.FileDescription); FileVersion=$($info.FileVersion)"
+          if ($info.ProductName -ne 'Voics' -or $info.FileDescription -ne 'Voics') { throw 'Unexpected executable identity' }
+          $app = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 15
+          $key = 'HKCU:\Software\Classes\voics\shell\open\command'
+          $command = (Get-Item $key).GetValue('')
+          Write-Host "voics protocol command=$command"
+          if (-not $command.Contains($exe.FullName)) { throw 'Protocol does not point at installed Voics executable' }
+          Stop-Process -Id $app.Id -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows-check
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.exe.blockmap
+            apps/desktop/release/latest.yml
+          retention-days: 7

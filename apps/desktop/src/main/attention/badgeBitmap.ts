@@ -28,7 +28,7 @@ const GLYPHS: Record<string, readonly string[]> = {
   '7': ['111', '001', '010', '010', '010'],
   '8': ['111', '101', '111', '101', '111'],
   '9': ['111', '101', '111', '001', '111'],
-  '!': ['010', '010', '010', '000', '010'],
+  '+': ['000', '010', '111', '010', '000'],
 };
 
 export function createBitmap(width: number, height: number): Bitmap {
@@ -54,10 +54,10 @@ export function fillCircle(bmp: Bitmap, cx: number, cy: number, radius: number, 
   }
 }
 
-/** Overlay text for a mention count: 1..99 as digits, above that a bare "!". */
+/** Overlay text for a mention count: 1..9 as digits, then 9+. */
 export function overlayLabel(mentions: number): string {
   if (mentions <= 0) return '';
-  if (mentions > 99) return '!';
+  if (mentions > 9) return '9+';
   return String(Math.floor(mentions));
 }
 

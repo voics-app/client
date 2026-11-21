@@ -3,3 +3,29 @@
 .voice-chat-panel { width: 340px; flex: none; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--hairline); background: var(--bg-1); }
 .voice-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--hairline); }
 .voice-chat-head h2 { font-size: var(--fs-section); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Keep call and chat within the available window while the divider moves. */
+.dm-call-stage { flex: none; min-height: 0; display: flex; overflow: hidden; }
+.dm-call-stage .voice-stage { min-height: 0; }
+.guild-call-stage { flex: 1 1 0; min-width: 0; display: flex; overflow: hidden; }
+.guild-call-stage[style] { flex: none; }
+.voice-chat-panel { width: auto; flex: 1 1 0; min-width: 0; }
+.chat { min-height: 0; }
+.call-resize-handle { flex: none; background: var(--hairline); touch-action: none; }
+.call-resize-handle:hover, .call-resize-handle:focus-visible { background: var(--accent); outline: none; }
+.call-resize-handle.is-horizontal { width: 6px; cursor: col-resize; }
+.call-resize-handle.is-vertical { height: 6px; cursor: row-resize; }
+.stage-grid.is-audio-only .stage-tiles { grid-auto-rows: minmax(0, 164px); align-content: center; }
+.stage-grid.is-audio-only .stage-cell { max-width: 240px; width: 100%; justify-self: center; }
+.stage-grid.is-audio-only .tile.is-avatar { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: transparent; box-shadow: none; }
+.stage-grid.is-audio-only .tile-avatar { height: auto; background: transparent; }
+.stage-grid.is-audio-only .tile-label { position: static; max-width: 100%; padding: 2px 8px; background: transparent; color: var(--fg-muted); }
+.user-panel-actions { gap: 4px; }
+.split-control { gap: 2px; }
+.split-control > .icon-btn.device-arrow { width: 20px; height: 28px; margin-left: 0; flex: none; }
+.voice-stage .stage-controls { gap: 8px; }
+.stage-controls .icon-btn-lg { width: 42px; height: 42px; }
+.dm-call-stage .voice-stage, .guild-call-stage .voice-stage { overflow: auto; }
+.dm-call-stage .stage-grid { min-height: 100px; }
+
+.voice-stage-head { flex-wrap: wrap; gap: 8px; }

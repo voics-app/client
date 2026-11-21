@@ -38,9 +38,12 @@ function require(): VoiceFacade | null {
 export async function joinVoiceChannel(guildId: string | null, channelId: string): Promise<void> {
   if (useGuildStore.getState().channels[channelId]?.type === ChannelType.GUILD_STAGE_VOICE) return;
   const call = useVoiceStore.getState().call;
-  if (call.channelId === channelId && call.status !== 'idle') return;
+  if (call.channelId === channelId && call.status !== 'idle') { openChannel(channelId); return; }
   try {
-    await require()?.join(guildId, channelId);
+    const engine = require();
+    if (!engine) return;
+    await engine.join(guildId, channelId);
+    openChannel(channelId);
   } catch (error) {
     reportError(error, 'Could not join voice');
   }
