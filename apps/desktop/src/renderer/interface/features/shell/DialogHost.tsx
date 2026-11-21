@@ -31,6 +31,7 @@ import { ModViewDialog } from '../members/ModViewDialog';
 import { PruneDialog } from '../members/PruneDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
 import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
+import { GuildEventsDialog } from '../channels/GuildEventsDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
@@ -501,6 +502,7 @@ function ActiveDialog() {
   switch (dialog.kind) {
     case 'botAuthorize': return <BotAuthorizeDialog key={JSON.stringify(dialog.request)} request={dialog.request} />;
     case 'createGuild': return <CreateGuildDialog />;
+    case 'guildEvents': return <GuildEventsDialog guildId={dialog.guildId} />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
     case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} initialFirstJoin={dialog.firstJoin} />;
