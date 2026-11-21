@@ -60,7 +60,7 @@ jobs:
   publish:
     name: Publish to the update feed
     needs: [fetch]
-    uses: discordy-voics/.github/.github/workflows/minio-publish.yml@main
+    uses: voics-app/.github/.github/workflows/minio-publish.yml@main
     with:
       artifact: android-apk
       bucket: discordy-updates
