@@ -3,6 +3,7 @@ import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
 import type {
   LinkedConnection,
   ApplicationCommand,
@@ -67,6 +68,23 @@ const enc = encodeURIComponent;
 
 export class DiscordyApi implements ApiPort {
   constructor(private readonly http: HttpClient) {}
+
+  guildScheduledEvents(guildId: string) {
+    return this.get<GuildScheduledEvent[]>(`/guilds/${enc(guildId)}/scheduled-events`);
+  }
+  guildScheduledEvent(guildId: string, eventId: string) {
+    return this.get<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}`);
+  }
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent) {
+    return this.post<GuildScheduledEvent>(`/guilds/${enc(guildId)}/scheduled-events`, body);
+  }
+  guildScheduledEventInterest(guildId: string, eventId: string) {
+    return this.get<{ interested: boolean }>(`/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`);
+  }
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean) {
+    const path = `/guilds/${enc(guildId)}/scheduled-events/${enc(eventId)}/users/@me`;
+    return interested ? this.put<void>(path) : this.del<void>(path);
+  }
 
   private get<T>(path: string, query?: RequestOptions['query']) {
     return this.http.request<T>('GET', path, { query });
@@ -215,6 +233,15 @@ export class DiscordyApi implements ApiPort {
   updateSettings(patch: Partial<UserSettings>) {
     return this.patch<UserSettings>('/users/@me/settings', patch);
   }
+  gifs(query?: string) {
+    return this.get<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string; proxy_url?: string } } }[] }>(query ? '/gifs/search' : '/gifs/trending', query ? { q: query } : undefined);
+  }
+  gifCategories() {
+    return this.get<{ tags: { searchterm: string; name: string }[] }>('/gifs/categories');
+  }
+  gifPreviews(urls: string[]) {
+    return this.post<{ urls: string[] }>('/gifs/previews', { urls });
+  }
   privateChannels() {
     return this.get<Channel[]>('/users/@me/channels');
   }
@@ -345,6 +372,11 @@ export class DiscordyApi implements ApiPort {
   removeMemberRole(guildId: string, userId: string, roleId: string) {
     return this.del<void>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`);
   }
+  appealForm(guildId: string) { return this.get<{ question: string }>(`/guilds/${guildId}/ban-appeals/form`); }
+  setAppealForm(guildId: string, question: string) { return this.put<void>(`/guilds/${guildId}/ban-appeals/form`, { question }); }
+  submitBanAppeal(guildId: string, answer: string, question: string) { return this.post<{ id: string }>(`/guilds/${guildId}/ban-appeals`, { answer, question }); }
+  banAppeals(guildId: string) { return this.get<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]>(`/guilds/${guildId}/ban-appeals`); }
+  resolveBanAppeal(guildId: string, id: string, decision: 'accept' | 'deny') { return this.post<void>(`/guilds/${guildId}/ban-appeals/${id}/${decision}`); }
   bans(guildId: string) {
     return this.get<Ban[]>(`/guilds/${guildId}/bans`);
   }

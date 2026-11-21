@@ -59,6 +59,17 @@ function setup(readyOverrides: Record<string, unknown> = {}) {
 }
 
 describe('dispatchRouter', () => {
+  it('invalidates event views and routes targeted start reminders', () => {
+    const invalidate = vi.fn();
+    const onScheduledEventStart = vi.fn();
+    const route = createDispatchRouter({ onVoiceServerUpdate: vi.fn(), onIncomingMessage: vi.fn(), invalidate, onScheduledEventStart });
+    route('GUILD_SCHEDULED_EVENT_USER_ADD', { guild_id: '100', guild_scheduled_event_id: '9', user_id: '1' });
+    expect(invalidate).toHaveBeenCalledWith(['guild-events', '100']);
+    expect(invalidate).toHaveBeenCalledWith(['event-interest', '100', '9']);
+    const reminder = { guild_id: '100', guild_scheduled_event_id: '9', scheduled_start_time: '2026-12-01T12:00:00Z', revision: 0, dedupe_key: '100:9:0:1' };
+    route('GUILD_SCHEDULED_EVENT_START', reminder);
+    expect(onScheduledEventStart).toHaveBeenCalledWith(reminder);
+  });
   beforeEach(() => {
     useGuildStore.getState().reset();
     useMessageStore.getState().reset();

@@ -9,6 +9,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore, type Dialog } from '@discordy/core/application/stores/uiStore';
 import { inviteWebUrl, parseInviteCode } from '@discordy/core/domain/inviteLinks';
 import { ChannelType, type Invite, type OnboardingResponse } from '@discordy/core/contracts/rest';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { attempt, copyText, errorMessage } from '../../app/actions';
 import { openChannel, openGuild } from '../../app/navigation';
 import { useConnectionStore } from '../../app/connectionStore';
@@ -31,6 +32,7 @@ import { ModViewDialog } from '../members/ModViewDialog';
 import { PruneDialog } from '../members/PruneDialog';
 import { FolderSettingsDialog } from './FolderSettingsDialog';
 import { CreateGuildDialog, TemplateLinkDialog } from './CreateGuildDialog';
+import { GuildEventsDialog } from '../channels/GuildEventsDialog';
 import { EditNicknameDialog } from '../members/EditNicknameDialog';
 import { ProfileDialog } from '../members/ProfileDialog';
 import { GroupDmDialog } from '../home/GroupDmDialog';
@@ -45,12 +47,15 @@ function useClose() {
   return () => useUiStore.getState().openDialog(null);
 }
 
-function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initial?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
+export function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initial?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
   const [code, setCode] = useState(initial ?? '');
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
+  const [appealQuestion, setAppealQuestion] = useState<string | null>(null);
+  const [appealAnswer, setAppealAnswer] = useState('');
+  const [appealSent, setAppealSent] = useState(false);
   const [joinedGuildId, setJoinedGuildId] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [welcome, setWelcome] = useState<{ guildId: string; description: string; channels: { channel_id: string; description: string }[] } | null>(null);
@@ -146,10 +151,25 @@ function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initia
       if (verification.pending) setScreening({ guildId: gid, rules: verification.rules, revision: verification.revision });
       else await beginOnboarding(gid, true);
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ApiError && err.code === 40007 && invite.guild?.id) {
+        try { setAppealQuestion((await api.appealForm(invite.guild.id)).question); }
+        catch (formError) { if (formError instanceof ApiError && formError.status === 404) setAppealQuestion(''); else setError(errorMessage(formError)); }
+      } else setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
+  };
+  const submitAppeal = async () => {
+    if (!invite?.guild?.id || !appealQuestion) return;
+    setBusy(true); setError(null);
+    try { await api.submitBanAppeal(invite.guild.id, appealAnswer, appealQuestion); setAppealSent(true); }
+    catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        try { setAppealQuestion((await api.appealForm(invite.guild.id)).question); } catch { /* Retain the draft and original error. */ }
+      }
+      setError(errorMessage(err));
+    }
+    finally { setBusy(false); }
   };
   const acceptRules = async () => {
     if (!screening || !agreed) return;
@@ -187,7 +207,15 @@ function JoinGuildDialog({ initial, initialGuildId, initialFirstJoin }: { initia
   };
   return (
     <Modal open onClose={close} title="Join a server" description={screening ? 'Review the server rules to continue.' : onboarding ? 'Choose what interests you.' : welcome ? 'Find a place to start.' : 'Enter an invite link or code.'}>
-      {welcome ? (
+      {appealQuestion !== null ? (
+        <div className="stack"><h2>You are banned</h2>
+          {appealSent ? <p>Your appeal has been submitted.</p> : appealQuestion ? <>
+            <Field label={appealQuestion} error={error}>{(id) => <Input id={id} value={appealAnswer} maxLength={2000} onChange={(e) => setAppealAnswer(e.target.value)} />}</Field>
+            <Button loading={busy} disabled={!appealAnswer.trim()} onClick={() => void submitAppeal()}>Submit appeal</Button>
+          </> : <p>This server has not enabled appeals.</p>}
+          <Button variant="ghost" onClick={close}>Close</Button>
+        </div>
+      ) : welcome ? (
         <div className="stack"><h3>Welcome</h3><p>{welcome.description}</p>
           {welcome.channels.map((channel) => <Button key={channel.channel_id} variant="ghost" onClick={() => { close(); openGuild(welcome.guildId); setTimeout(() => openChannel(channel.channel_id), 300); }}>{channel.description}</Button>)}
           <Button variant="primary" onClick={() => { close(); openGuild(welcome.guildId); }}>Continue</Button>
@@ -501,6 +529,7 @@ function ActiveDialog() {
   switch (dialog.kind) {
     case 'botAuthorize': return <BotAuthorizeDialog key={JSON.stringify(dialog.request)} request={dialog.request} />;
     case 'createGuild': return <CreateGuildDialog />;
+    case 'guildEvents': return <GuildEventsDialog guildId={dialog.guildId} />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;
     case 'memberScreening': return <JoinGuildDialog initialGuildId={dialog.guildId} initialFirstJoin={dialog.firstJoin} />;

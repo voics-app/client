@@ -41,6 +41,7 @@ export interface FakeBackend {
   messages: Map<string, unknown[]>;
   /** Bodies received by `POST /interactions`. */
   interactions: Record<string, unknown>[];
+  events: Record<string, unknown>[];
   friendRequests: string[];
   close(): Promise<void>;
 }
@@ -66,6 +67,8 @@ export async function startFakeBackend(): Promise<FakeBackend> {
   const messages = new Map<string, unknown[]>();
   const interactions: Record<string, unknown>[] = [];
   const stages = new Map<string, { id: string; guild_id: string; channel_id: string; topic: string; privacy_level: number; discoverable_disabled: boolean }>();
+  const events: Record<string, unknown>[] = [];
+  const interested = new Set<string>();
   const friendRequests: string[] = [];
   const favourites = new Set<string>();
   let invite = '';
@@ -183,6 +186,16 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     const url = new URL(req.url ?? '/', 'http://x');
     const path = url.pathname.replace(/^\/api\/v1/, '');
     const body = req.method === 'GET' ? {} : await readBody(req);
+    const proxyUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/external/fixture`;
+    const gifUrl = 'https://gif.example.test/cat.gif';
+    if (path === '/external/fixture') {
+      res.writeHead(200, { 'Content-Type': 'image/gif' });
+      // Two distinct frames so the still-frame test exercises an actual animation.
+      return res.end(Buffer.from('R0lGODlhAgACAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAAIBgABCAQQEAAh+QQBCgABACwAAAAAAgACAIEAAP8AAAAAAAAAAAAIBgABCAQQEAA7', 'base64'));
+    }
+    if (path === '/gifs/categories') return json(res, 200, { tags: [{ name: 'Cats', searchterm: 'cats' }] });
+    if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
+    if (path === '/gifs/previews') return json(res, 200, { urls: ((body.urls ?? []) as string[]).map(() => proxyUrl) });
 
     if (path === '/stage-instances' && req.method === 'POST') {
       const channelId = String(body.channel_id);
@@ -225,8 +238,27 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       friendRequests.push(String(body.token));
       return json(res, 204, null);
     }
-    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online' });
+    if (path === '/users/@me/settings') return json(res, 200, { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false, ...((body.preferences ?? {}) as object) } });
     if (path === '/voice/regions') return json(res, 200, [{ id: 'eu-west', name: 'Europe West', optimal: true }]);
+    const eventInterest = /^\/guilds\/(\d+)\/scheduled-events\/(\d+)\/users\/@me$/.exec(path);
+    if (eventInterest) {
+      const id = eventInterest[2]!;
+      if (req.method === 'GET') return json(res, 200, { interested: interested.has(id) });
+      if (req.method === 'PUT') interested.add(id);
+      if (req.method === 'DELETE') interested.delete(id);
+      const event = events.find((item) => item.id === id);
+      if (event) event.user_count = interested.has(id) ? 1 : 0;
+      return json(res, 204, null);
+    }
+    const guildEvents = /^\/guilds\/(\d+)\/scheduled-events$/.exec(path);
+    if (guildEvents) {
+      const guildId = guildEvents[1]!;
+      if (req.method === 'GET') return json(res, 200, events.filter((event) => event.guild_id === guildId));
+      const event = { id: snowflake(), guild_id: guildId, creator_id: USER.id, status: 1, channel_id: null, entity_metadata: null, image: null, description: null, scheduled_end_time: null, user_count: 0, ...body };
+      events.push(event);
+      dispatch('GUILD_SCHEDULED_EVENT_CREATE', event);
+      return json(res, 201, event);
+    }
     if (/^\/channels\/\d+\/invites$/.test(path) && req.method === 'POST') return json(res, 201, { code: 'smoke-private-invite' });
     if (path === '/invites/screening-fixture') {
       const invite = { code: 'screening-fixture', guild: { id: screeningGuild.id, name: screeningGuild.name, icon: null }, channel: screeningGuild.channels[0], approximate_member_count: 1, approximate_presence_count: 1 };
@@ -276,7 +308,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
         mentions: [],
         mention_roles: [],
         attachments: [],
-        embeds: [],
+        embeds: String(body.content ?? '').trim() === gifUrl ? [{ type: 'image', url: gifUrl, thumbnail: { url: gifUrl, proxy_url: proxyUrl, width: 2, height: 2 } }] : [],
         pinned: false,
         type: 0,
         nonce: body.nonce ?? null,
@@ -311,7 +343,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
               guilds: guilds.map(guildPayload),
               private_channels: [{ id: DM_ID, type: 1, recipients: [FRIEND], delivery_mode: 'standard', last_message_id: null }],
               relationships: [{ id: FRIEND.id, type: 1, user: FRIEND }],
-              user_settings: { default_delivery_mode: 'standard', status: 'online' },
+              user_settings: { default_delivery_mode: 'standard', status: 'online', preferences: { animate_gifs: false } },
               read_state: [],
               presences: [],
             },
@@ -328,6 +360,7 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     gatewayUrl: `ws://127.0.0.1:${port}`,
     messages,
     interactions,
+    events,
     friendRequests,
     close: () =>
       new Promise<void>((resolve) => {

@@ -39,6 +39,7 @@ export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' 
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }
   | { kind: 'createGuild' }
+  | { kind: 'guildEvents'; guildId: string }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
   | { kind: 'memberScreening'; guildId: string; firstJoin?: boolean }

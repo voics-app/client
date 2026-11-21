@@ -14,6 +14,10 @@ const mockApi = {
   ack: jest.fn(async (_c: string, _m: string) => undefined),
   bans: jest.fn(async (_g: string): Promise<Ban[]> => [{ user: PAT, reason: 'spam' }]),
   unban: jest.fn(async (_g: string, _u: string) => undefined),
+  appealForm: jest.fn(async (_g: string) => ({ question: 'Why?' })),
+  setAppealForm: jest.fn(async (_g: string, _q: string) => undefined),
+  banAppeals: jest.fn(async (_g: string): Promise<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]> => [{ id: '77', user_id: 'u2', question: 'Why?', answer: 'Sorry', status: 'open', created_at: '2026-01-01T00:00:00Z', resolved_at: null, resolved_by: null }]),
+  resolveBanAppeal: jest.fn(async (_g: string, _id: string, _decision: 'accept' | 'deny') => undefined),
   auditLog: jest.fn(async (_g: string, _q: object): Promise<AuditLog> => ({ audit_log_entries: [{ id: '1000', target_id: 'u2', user_id: 'u3', action_type: 22, reason: 'raid' }], users: [{ id: 'u3', username: 'sam', global_name: 'Sam', avatar: null }] })),
   createEmoji: jest.fn(async (_g: string, body: { name: string }) => ({ id: 'e2', name: body.name, animated: false })),
   updateEmoji: jest.fn(async (_g: string, id: string, patch: { name: string }) => ({ id, animated: false, ...patch })),
@@ -65,6 +69,15 @@ describe('bans', () => {
     confirmAlert('Unban');
     await waitFor(() => expect(mockApi.unban).toHaveBeenCalledWith('g1', 'u2'));
     expect(await screen.findByText('Nobody is banned from this server.')).toBeTruthy();
+  });
+
+  it('lets an appeal-only moderator review without access to the ban list', async () => {
+    seedServer(Permission.MANAGE_BAN_APPEALS);
+    await openPage('Bans');
+    expect(await screen.findByText('Sorry')).toBeTruthy();
+    expect(mockApi.bans).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText('Deny'));
+    await waitFor(() => expect(mockApi.resolveBanAppeal).toHaveBeenCalledWith('g1', '77', 'deny'));
   });
 
   it('is not offered without Ban Members', async () => {

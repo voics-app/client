@@ -74,6 +74,7 @@ export const Intent = {
   DIRECT_MESSAGE_REACTIONS: 1 << 13,
   DIRECT_MESSAGE_TYPING: 1 << 14,
   MESSAGE_CONTENT: 1 << 15,
+  GUILD_SCHEDULED_EVENTS: 1 << 16,
 } as const;
 
 export const ALL_INTENTS: number = Object.values(Intent).reduce((acc, bit) => acc | bit, 0);

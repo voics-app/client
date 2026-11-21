@@ -5,6 +5,7 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { Invite, OnboardingResponse } from '@discordy/core/contracts/rest';
+import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { BRAND } from '../brand';
 import { getRuntime } from '../runtime';
 import { ServerIcon } from '../shell/ServerIcon';
@@ -17,6 +18,9 @@ import { inviteCodeOf, invitePreview } from './joinModel';
 export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId, initialFirstJoin }: { visible: boolean; onClose(): void; initialCode?: string; initialGuildId?: string; initialFirstJoin?: boolean }) {
   const [text, setText] = useState('');
   const [invite, setInvite] = useState<Invite | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [screening, setScreening] = useState<{ guildId: string; rules: string[]; revision: number } | null>(null);
@@ -29,6 +33,9 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId,
   const close = () => {
     setText('');
     setInvite(null);
+    setQuestion(null);
+    setAnswer('');
+    setSent(false);
     setError(null);
     setScreening(null);
     setJoinedGuildId(null);
@@ -111,8 +118,23 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId,
       const rules = await getRuntime().api.memberVerification(guildId);
       if (rules.pending) setScreening({ guildId, rules: rules.rules, revision: rules.revision });
       else await finishJoin(guildId, true);
-    } catch (e) { setError(errorMessage(e)); }
-    finally { setBusy(false); }
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 40007 && invite.guild?.id) {
+        try { setQuestion((await getRuntime().api.appealForm(invite.guild.id)).question); }
+        catch (formError) { if (formError instanceof ApiError && formError.status === 404) setQuestion(''); else setError(errorMessage(formError)); }
+      } else setError(errorMessage(e));
+    } finally { setBusy(false); }
+  };
+  const submitAppeal = async () => {
+    if (!invite?.guild?.id || !question) return;
+    setBusy(true); setError(null);
+    try { await getRuntime().api.submitBanAppeal(invite.guild.id, answer, question); setSent(true); }
+    catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        try { setQuestion((await getRuntime().api.appealForm(invite.guild.id)).question); } catch { /* Keep the draft and original error. */ }
+      }
+      setError(errorMessage(err));
+    } finally { setBusy(false); }
   };
 
   const acceptRules = async () => {
@@ -163,7 +185,17 @@ export function JoinServerSheet({ visible, onClose, initialCode, initialGuildId,
   return (
     <Sheet visible={visible} title="Join a server" closeLabel="Close join a server" onClose={close}>
       <View style={styles.body}>
-        {initialGuildId && !screening && !welcome && !onboarding ? (
+        {question !== null ? (
+          <>
+            <Text style={styles.name}>You are banned</Text>
+            {sent ? <Text style={styles.hint}>Your appeal has been submitted.</Text> : question ? <>
+              <Field label={question} value={answer} onChangeText={setAnswer} maxLength={2000} multiline />
+              {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+              <Button label="Submit appeal" tone="primary" busy={busy} disabled={!answer.trim()} onPress={() => void submitAppeal()} />
+            </> : <Text style={styles.hint}>This server has not enabled appeals.</Text>}
+            <Button label="Close" onPress={close} />
+          </>
+        ) : initialGuildId && !screening && !welcome && !onboarding ? (
           <Text accessibilityRole={error ? 'alert' : undefined} style={styles.hint}>{error ?? 'Loading server rules…'}</Text>
         ) : welcome ? (
           <>

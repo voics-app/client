@@ -49,6 +49,7 @@ export const Permission = {
   SEND_VOICE_MESSAGES: 1n << 46n,
   SEND_POLLS: 1n << 49n,
   USE_EXTERNAL_APPS: 1n << 50n,
+  MANAGE_BAN_APPEALS: 1n << 53n,
 } as const;
 
 export type PermissionName = keyof typeof Permission;

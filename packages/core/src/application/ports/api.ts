@@ -2,6 +2,7 @@
 import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
 import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
   LinkedConnection,
@@ -80,6 +81,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  guildScheduledEvents(guildId: string): Promise<GuildScheduledEvent[]>;
+  guildScheduledEvent(guildId: string, eventId: string): Promise<GuildScheduledEvent>;
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent): Promise<GuildScheduledEvent>;
+  guildScheduledEventInterest(guildId: string, eventId: string): Promise<{ interested: boolean }>;
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean): Promise<void>;
   connections(): Promise<LinkedConnection[]>;
   userConnections(userId: string): Promise<LinkedConnection[]>;
   authorizeGithubConnection(): Promise<{ url: string }>;
@@ -125,6 +131,9 @@ export interface ApiPort {
   userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
+  gifs(query?: string): Promise<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string; proxy_url?: string } } }[] }>;
+  gifCategories(): Promise<{ tags: { searchterm: string; name: string }[] }>;
+  gifPreviews(urls: string[]): Promise<{ urls: string[] }>;
   privateChannels(): Promise<Channel[]>;
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
@@ -174,6 +183,11 @@ export interface ApiPort {
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
+  appealForm(guildId: string): Promise<{ question: string }>;
+  setAppealForm(guildId: string, question: string): Promise<void>;
+  submitBanAppeal(guildId: string, answer: string, question: string): Promise<{ id: string }>;
+  banAppeals(guildId: string): Promise<{ id: string; user_id: string; question: string; answer: string; status: string; created_at: string; resolved_at: string | null; resolved_by: string | null }[]>;
+  resolveBanAppeal(guildId: string, id: string, decision: 'accept' | 'deny'): Promise<void>;
   bans(guildId: string): Promise<Ban[]>;
   ban(guildId: string, userId: string, reason?: string, options?: { delete_message_seconds?: number }): Promise<void>;
   unban(guildId: string, userId: string): Promise<void>;

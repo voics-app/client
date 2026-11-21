@@ -1,4 +1,4 @@
-import { BellRinging, BellSlash, CaretDoubleUp, Check, Copy, FolderPlus, Gear, Hash, Shield, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, CalendarBlank, CaretDoubleUp, Check, Copy, FolderPlus, Gear, Hash, Shield, SignOut, Trash, UserPlus } from '@phosphor-icons/react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
@@ -28,6 +28,7 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
     .filter((c) => c.guild_id === guildId && c.type === ChannelType.GUILD_CATEGORY)
     .map((c) => c.id);
   const entries: MenuEntry[] = [
+    { kind: 'item', label: 'Events', icon: <CalendarBlank size={16} />, onSelect: () => ui.openDialog({ kind: 'guildEvents', guildId }) },
     { kind: 'item', label: 'Mark as read', icon: <Check size={16} />, onSelect: () => markGuildRead(guildId) },
     muted
       ? { kind: 'item', label: 'Unmute server', icon: <BellRinging size={16} />, onSelect: () => void muteGuild(guildId, undefined) }
