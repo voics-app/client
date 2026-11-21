@@ -1,9 +1,8 @@
-import { Alert } from 'react-native';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
-import type { Invite } from '@discordy/core/contracts/rest';
+import type { Invite, OnboardingResponse } from '@discordy/core/contracts/rest';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { resetStores, seedServer } from '../support/server';
 
@@ -14,6 +13,11 @@ const mockApi = {
   acceptInvite: jest.fn(async (_code: string) => invite()),
   appealForm: jest.fn(async (_guild: string) => ({ question: 'What changed?' })),
   submitBanAppeal: jest.fn(async (_guild: string, _answer: string, _question: string) => ({ id: '77' })),
+  memberVerification: jest.fn(async (_guildId: string) => ({ enabled: false, rules: [] as string[], revision: 0, pending: false })),
+  acceptMemberVerification: jest.fn(async (_guildId: string, _revision: number) => undefined),
+  welcomeScreen: jest.fn(async (_guildId: string) => ({ enabled: false, description: '', channels: [] })),
+  onboarding: jest.fn(async (_guildId: string): Promise<OnboardingResponse> => ({ config: { enabled: false, questions: [] }, revision: 0 })),
+  completeOnboarding: jest.fn(async (_guildId: string, _revision: number, _choices: number[]) => ({ channel_ids: [] as string[] })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -117,15 +121,37 @@ describe('join a server', () => {
   });
 
   it('tells you when accepting fails and keeps the preview', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     mockApi.acceptInvite.mockRejectedValueOnce(new Error('You are banned from this server'));
     await openJoin();
     await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
     await fireEvent.press(screen.getByLabelText('Continue'));
     await fireEvent.press(await screen.findByLabelText('Accept invite'));
-    await waitFor(() => expect(alert).toHaveBeenCalledWith('Could not join the server', expect.stringContaining('banned')));
+    expect(await screen.findByText('You are banned from this server')).toBeTruthy();
     expect(screen.getByLabelText('Accept invite')).toBeTruthy();
     await act(async () => undefined);
-    alert.mockRestore();
+  });
+
+  it('requires agreement to the displayed revision before opening a screened server', async () => {
+    mockApi.memberVerification.mockResolvedValueOnce({ enabled: true, rules: ['Be kind'], revision: 7, pending: true });
+    await openJoin();
+    await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await fireEvent.press(await screen.findByLabelText('Accept invite'));
+    expect(await screen.findByText('1. Be kind')).toBeTruthy();
+    expect(screen.getByLabelText('Accept rules').props.accessibilityState.disabled).toBe(true);
+    await fireEvent.press(screen.getByLabelText('I agree to these rules'));
+    await fireEvent.press(screen.getByLabelText('Accept rules'));
+    await waitFor(() => expect(mockApi.acceptMemberVerification).toHaveBeenCalledWith('g9', 7));
+  });
+
+  it('submits the selected onboarding option and version', async () => {
+    mockApi.onboarding.mockResolvedValueOnce({ config: { enabled: true, questions: [{ title: 'Your interest?', options: [{ label: 'Chat', role_id: null, channel_id: null }] }] }, revision: 4 });
+    await openJoin();
+    await fireEvent.changeText(screen.getByLabelText('Invite link or code'), 'hTKzmak');
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await fireEvent.press(await screen.findByLabelText('Accept invite'));
+    await fireEvent.press(await screen.findByLabelText('Chat'));
+    await fireEvent.press(screen.getByLabelText('Continue'));
+    await waitFor(() => expect(mockApi.completeOnboarding).toHaveBeenCalledWith('g9', 4, [0]));
   });
 });

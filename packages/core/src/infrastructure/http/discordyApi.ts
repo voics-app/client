@@ -44,6 +44,8 @@ import type {
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -439,6 +441,24 @@ export class DiscordyApi implements ApiPort {
   acceptInvite(code: string) {
     return this.post<Invite>(`/invites/${enc(code)}`);
   }
+  memberVerification(guildId: string) {
+    return this.get<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`);
+  }
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }) {
+    return this.put<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`, body);
+  }
+  acceptMemberVerification(guildId: string, revision: number) {
+    return this.post<void>(`/guilds/${enc(guildId)}/member-verification/accept`, { revision });
+  }
+  welcomeScreen(guildId: string) {
+    return this.get<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`);
+  }
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }) {
+    return this.put<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`, body);
+  }
+  onboarding(guildId: string) { return this.get<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`); }
+  setOnboarding(guildId: string, body: OnboardingConfig) { return this.put<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`, body); }
+  completeOnboarding(guildId: string, revision: number, choices: number[]) { return this.post<{ channel_ids: string[] }>(`/guilds/${enc(guildId)}/onboarding/complete`, { revision, choices }); }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }

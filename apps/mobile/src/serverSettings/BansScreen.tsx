@@ -62,7 +62,7 @@ function Body({ guildId }: { guildId: string }) {
     </>}
     {mayBan && <><Text style={styles.heading}>Current bans</Text>{failed ? <Notice>Could not load the bans.</Notice> : !bans ? <Notice>Loading bans...</Notice> : bans.length > 0 && <TextInput accessibilityLabel="Search bans" placeholder="Search by name, ID or reason" placeholderTextColor={theme.subtle} value={query} onChangeText={setQuery} autoCapitalize="none" autoCorrect={false} style={styles.search} />}</>}
   </View>;
-  return <View style={styles.screen}><FlatList data={mayBan ? shown : []} keyExtractor={(b) => b.user.id} keyboardShouldPersistTaps="handled" ListHeaderComponent={header} ListEmptyComponent={mayBan && bans ? <Notice>{bans.length === 0 ? 'Nobody is banned from this server.' : 'No matching bans.'}</Notice> : null} renderItem={({ item }) => <ListRow title={nameOf(item)} subtitle={item.reason ?? 'No reason given'} left={<Avatar user={item.user} size={36} />} right={<Button label="Unban" accessibilityLabel={`Unban ${nameOf(item)}`} onPress={() => unban(item)} />} />} /></View>;
+  return <View style={styles.screen}><FlatList data={mayBan ? shown : []} keyExtractor={(b) => b.user.id} keyboardShouldPersistTaps="handled" ListHeaderComponent={header} ListEmptyComponent={mayBan && bans ? <Notice>{bans.length === 0 ? 'Nobody is banned from this server.' : 'No matching bans.'}</Notice> : undefined} renderItem={({ item }) => <ListRow title={nameOf(item)} subtitle={item.reason ?? 'No reason given'} left={<Avatar user={item.user} size={36} />} right={<Button label="Unban" accessibilityLabel={`Unban ${nameOf(item)}`} onPress={() => unban(item)} />} />} /></View>;
 }
 
 /** Server settings > Bans: ordinary bans and appeal review, each gated by its own permission. */

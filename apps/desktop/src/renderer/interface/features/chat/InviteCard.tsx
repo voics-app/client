@@ -2,11 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import type { Invite } from '@discordy/core/contracts/rest';
 import { instanceInviteCodes } from '@discordy/core/domain/inviteLinks';
-import { errorMessage } from '../../app/actions';
-import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useConnectionStore } from '../../app/connectionStore';
-import { openGuild } from '../../app/navigation';
 import { getRuntime } from '../../app/runtime';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button } from '../../shared/ui/Button';
@@ -29,7 +26,6 @@ function InviteCard({ code }: { code: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(typeof IntersectionObserver === 'undefined');
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
   const joinedGuild = useGuildStore((s) => (invite?.guild?.id ? !!s.guilds[invite.guild.id] : false));
 
   // Render the card (and fetch) only once it scrolls into view.
@@ -51,18 +47,6 @@ function InviteCard({ code }: { code: string }) {
   }, [visible, code]);
 
   const guildId = invite?.guild?.id;
-  const join = async () => {
-    setBusy(true);
-    try {
-      const joined = await getRuntime().api.acceptInvite(code);
-      const gid = joined.guild?.id ?? guildId;
-      if (gid) setTimeout(() => openGuild(gid), 300);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 40007) useUiStore.getState().openDialog({ kind: 'joinGuild', code });
-      else useUiStore.getState().toast({ tone: 'danger', title: 'Could not join server', body: errorMessage(err) });
-    } finally { setBusy(false); }
-  };
-
   if (invite === null) {
     return (
       <div ref={ref} className="invite-embed is-invalid" role="group" aria-label="Invite">
@@ -85,7 +69,7 @@ function InviteCard({ code }: { code: string }) {
           {joinedGuild ? (
             <Button variant="ghost" disabled>Joined</Button>
           ) : (
-            <Button variant="primary" loading={busy} onClick={() => void join()}>Join</Button>
+            <Button variant="primary" onClick={() => useUiStore.getState().openDialog({ kind: 'joinGuild', code })}>Join</Button>
           )}
         </>
       ) : (

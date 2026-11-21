@@ -1,9 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { Invite } from '@discordy/core/contracts/rest';
-import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { clearInviteLookups, InviteCards } from '../../src/invites/InviteCards';
 import { openInviteLink, useInviteLinkStore } from '../../src/invites/inviteLinkStore';
 import { openLink } from '../../src/messages/markdown/links';
@@ -32,28 +30,7 @@ describe('invite cards', () => {
     expect(await screen.findByText('Chess Club')).toBeTruthy();
     expect(screen.getByText('12 members, 3 online')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Join'));
-    await waitFor(() => expect(mockApi.acceptInvite).toHaveBeenCalledWith('abc123'));
-  });
-
-  it('opens the joined server after the gateway has had a moment to deliver it', async () => {
-    jest.useFakeTimers();
-    await render(<InviteCards content={LINK} />);
-    await act(async () => {
-      await Promise.resolve();
-    });
-    await fireEvent.press(await screen.findByLabelText('Join'));
-    await act(async () => {
-      jest.advanceTimersByTime(400);
-    });
-    expect(useUiStore.getState().view).toMatchObject({ kind: 'guild', guildId: 'g9' });
-    jest.useRealTimers();
-  });
-
-  it('opens the appeal entry when the invite is banned', async () => {
-    mockApi.acceptInvite.mockRejectedValueOnce(new ApiError(403, 40007, 'You are banned'));
-    await render(<InviteCards content={LINK} />);
-    await fireEvent.press(await screen.findByLabelText('Join'));
-    await waitFor(() => expect(useInviteLinkStore.getState().code).toBe('abc123'));
+    expect(useInviteLinkStore.getState().code).toBe('abc123');
   });
 
   it('says Joined, with no button, for a server you are in', async () => {
