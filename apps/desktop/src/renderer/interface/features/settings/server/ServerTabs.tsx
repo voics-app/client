@@ -2,6 +2,7 @@ import { Trash, Upload } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useStreamerActive } from '../../../app/streamer';
 import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, canPruneMembers, filterBans, filterMembers, isMemberAuditEntry, isTimedOut, type MemberFilter, type MemberSort } from '@discordy/core/domain/moderationTools';
 import { timestampOf } from '@discordy/core/domain/snowflake';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -19,6 +20,7 @@ import { IconButton } from '../../../shared/ui/IconButton';
 import { EmptyState, Skeleton } from '../../../shared/ui/Misc';
 import { readAsDataUrl } from '../imageUpload';
 import { AUDIT_ACTIONS } from '@discordy/core/domain/auditActions';
+import { ServerAuditPolicy } from './ServerAuditPolicy';
 
 function Page({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
   return (
@@ -153,6 +155,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
 }
 
 export function ServerInvites({ guildId }: { guildId: string }) {
+  const streamer = useStreamerActive();
   const qc = useQueryClient();
   const apiUrl = useConnectionStore((c) => c.apiUrl);
   const invites = useQuery({ queryKey: ['guild', guildId, 'invites'], queryFn: () => getRuntime().api.guildInvites(guildId) });
@@ -162,7 +165,7 @@ export function ServerInvites({ guildId }: { guildId: string }) {
         <ul className="manage-list">
           {invites.data?.map((i) => (
             <li key={i.code}>
-              <div className="manage-copy"><strong className="mono">{i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
+              <div className="manage-copy"><strong className="mono">{streamer ? 'Hidden in streamer mode' : i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
               <Button size="sm" onClick={() => void copyText(inviteWebUrl(i.code, apiUrl), 'Invite link copied')}>Copy</Button>
               <IconButton label="Revoke invite" tone="danger" onClick={() => void attempt(async () => { await getRuntime().api.deleteInvite(i.code); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'invites'] }); }, 'Could not revoke invite')}><Trash size={18} /></IconButton>
             </li>
@@ -197,12 +200,13 @@ export function ServerBans({ guildId }: { guildId: string }) {
   );
 }
 
-export function ServerAudit({ guildId }: { guildId: string }) {
+export function ServerAudit({ guildId, target }: { guildId: string; target?: { id: string; name: string } }) {
+  const auditEnabled = useGuildStore((s) => s.guilds[guildId]?.audit_log_enabled ?? true);
   const [actionType, setActionType] = useState('');
   const [actorId, setActorId] = useState('');
-  const query = { limit: 100, ...(actionType ? { action_type: Number(actionType) } : {}), ...(actorId ? { user_id: actorId } : {}) };
+  const query = { limit: 100, ...(target ? { target_id: target.id } : {}), ...(actionType ? { action_type: Number(actionType) } : {}), ...(actorId ? { user_id: actorId } : {}) };
   const log = useInfiniteQuery({
-    queryKey: ['guild', guildId, 'audit', actionType, actorId],
+    queryKey: ['guild', guildId, 'audit', actionType, actorId, target?.id],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => getRuntime().api.auditLog(guildId, { ...query, before: pageParam }),
     getNextPageParam: (last) => (last.audit_log_entries.length >= 100 ? last.audit_log_entries[last.audit_log_entries.length - 1]?.id : undefined),
@@ -214,6 +218,8 @@ export function ServerAudit({ guildId }: { guildId: string }) {
   const moderators = Object.values(members ?? {});
   return (
     <Page title="Audit log" sub="Moderation and configuration actions, newest first.">
+      <ServerAuditPolicy key={guildId} guildId={guildId} />
+      {target && <div className="row"><p>Showing entries for {target.name}.</p><Button size="sm" variant="ghost" onClick={() => useUiStore.getState().openSettings({ kind: 'server', guildId, tab: 'audit' })}>Clear target filter</Button></div>}
       <div className="member-filters row">
         <Select aria-label="Filter by action" value={actionType} onChange={(e) => setActionType(e.target.value)}>
           <option value="">All actions</option>
@@ -224,7 +230,7 @@ export function ServerAudit({ guildId }: { guildId: string }) {
           {moderators.map((m) => <option key={m.user.id} value={m.user.id}>{displayName(m.user, m.nick)}</option>)}
         </Select>
       </div>
-      {log.isLoading ? <Loading /> : entries.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title="Nothing logged yet" /> : (
+      {log.isLoading ? <Loading /> : log.isError ? <div><p className="field-error" role="alert">Could not load audit entries.</p><Button onClick={() => void log.refetch()}>Try again</Button></div> : entries.length === 0 ? <EmptyState icon={<Upload size={32} weight="light" />} title={auditEnabled ? 'No matching audit entries' : 'No retained audit entries'} body={auditEnabled ? 'New actions appear here when they match your filters.' : 'Logging is off. Changes to audit settings are still recorded.'} /> : (
         <ul className="manage-list audit">
           {entries.map((e) => {
             const actor = e.user_id ? users.get(e.user_id) : undefined;

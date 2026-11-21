@@ -11,7 +11,7 @@ function context(state: string) {
     close: vi.fn(async () => undefined),
     currentTime: 0,
     destination: {},
-    createGain: () => ({ gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn() }),
+    createGain: () => ({ gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() }),
     createOscillator: () => ({ type: 'sine', frequency: { value: 0 }, start: vi.fn(), stop: vi.fn(), connect: vi.fn() }),
   };
   return ctx;

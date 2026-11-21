@@ -6,7 +6,10 @@ import { CommandPalette } from '../features/palette/CommandPalette';
 import { DialogHost } from '../features/shell/DialogHost';
 import { IncomingCallHost } from '../features/calls/IncomingCall';
 import { Shell } from '../features/shell/Shell';
-import { SettingsHost } from '../features/settings/SettingsHost';
+import { useUiStore } from '@discordy/core/application/stores/uiStore';
+import { LazyFeature } from '../shared/ui/LazyFeature';
+
+const loadSettings = () => import('../features/settings/SettingsHost').then(({ SettingsHost }) => ({ default: SettingsHost }));
 import { Toasts } from '../shared/ui/Toasts';
 import { Lightbox } from '../features/chat/Lightbox';
 import { Spinner } from '../shared/ui/Spinner';
@@ -15,6 +18,7 @@ import { useActivityReporting } from './activity';
 import { useDesktopIntegration } from './desktopIntegration';
 import { UpdateBanner } from '../features/updates/UpdateBanner';
 import { useGlobalShortcuts } from './shortcuts';
+import { startObsDetection, useStreamerActive } from './streamer';
 import { useAppearance } from './appearance';
 import { useWindowResizing } from '../shared/hooks/useWindowResizing';
 import { createRuntime, type Runtime } from './runtime';
@@ -36,12 +40,16 @@ function Boot({ message }: { message: string }) {
 export function App() {
   const [runtime, setRuntime] = useState<Runtime | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const settings = useUiStore((s) => s.settings);
   const status = useSessionStore((s) => s.status);
+  const streamer = useStreamerActive();
   useAppearance();
   useWindowResizing();
   useGlobalShortcuts();
   useActivityReporting();
   useDesktopIntegration();
+  useEffect(() => startObsDetection(), []);
+  useEffect(() => { if (streamer) window.speechSynthesis?.cancel(); }, [streamer]);
 
   useEffect(() => {
     let alive = true;
@@ -92,7 +100,7 @@ export function App() {
           <Shell />
           <IncomingCallHost />
           <DialogHost />
-          <SettingsHost />
+          {settings && <LazyFeature load={loadSettings} props={{}} close={() => useUiStore.getState().openSettings(null)} />}
           <UpdateBanner />
           <Lightbox />
         </>

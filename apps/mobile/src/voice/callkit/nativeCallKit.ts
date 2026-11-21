@@ -1,6 +1,7 @@
 /**
- * The one place that loads the VoicsCallKit Expo module (modules/voics-callkit: CallKit and PushKit). It is loaded lazily and only in a native
- * iOS build: Expo Go has no such module, and without it calls ring only while the app is open, in the app's own call card.
+ * The one place that loads the VoicsCallKit Expo module (modules/voics-callkit: CallKit and PushKit on iOS; Telecom, a full-screen incoming-call
+ * notification and the FCM call push on Android). It is loaded lazily and only in a native iOS or Android build: Expo Go has no such module, and
+ * without it calls ring only while the app is open, in the app's own call card.
  */
 import { Platform } from 'react-native';
 import { isNativeBuild } from '../../native/isNativeBuild';
@@ -19,7 +20,7 @@ export type CallEndReason = 'local' | 'unanswered' | 'answeredElsewhere' | 'decl
 
 export interface NativeCallKit {
   onEvent(listener: (event: CallKitEvent) => void): () => void;
-  /** The PushKit token (hex) the system gave this install, or null before it has. */
+  /** The PushKit token (hex) the system gave this install, or null before it has. Always null on Android: calls ring through the FCM token registered as the push token. */
   voipToken(): Promise<string | null>;
   /** Shows a call ringing in the system UI; false when the system refused it (Do Not Disturb) or it is already shown. */
   reportIncoming(call: { channelId: string; callerName: string | null; isPrivate: boolean; ringSeconds: number }): Promise<boolean>;
@@ -30,7 +31,7 @@ export interface NativeCallKit {
   setMuted(channelId: string, muted: boolean): Promise<void>;
 }
 
-/** The module as Swift exposes it (modules/voics-callkit/ios/VoicsCallKitModule.swift). */
+/** The module as Swift and Kotlin expose it (modules/voics-callkit/ios/VoicsCallKitModule.swift, android/.../VoicsCallKitModule.kt): the same functions and one event stream. */
 export interface VoicsCallKitModule {
   addListener(event: 'onCallEvent', listener: (event: unknown) => void): { remove(): void };
   voipToken(): Promise<string | null>;
@@ -84,9 +85,9 @@ export function createNativeCallKit(module: VoicsCallKitModule): NativeCallKit {
   };
 }
 
-/** CallKit and PushKit, or null in Expo Go, on any platform but iOS, and in a build without the module. */
+/** CallKit and PushKit (iOS) or Telecom (Android), or null in Expo Go, on any other platform, and in a build without the module. */
 export function loadNativeCallKit(): NativeCallKit | null {
-  if (!isNativeBuild || Platform.OS !== 'ios') return null;
+  if (!isNativeBuild || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { requireOptionalNativeModule } = require('expo') as { requireOptionalNativeModule<T>(name: string): T | null };

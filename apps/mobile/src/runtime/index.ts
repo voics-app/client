@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { uuid } from 'expo';
 import { Platform } from 'react-native';
 import { expoSecureBackend } from '../adapters/expoSecureBackend';
 import { createSecureSessionVault } from '../adapters/secureSessionVault';
@@ -28,9 +29,10 @@ export function getRuntime(): MobileRuntime {
     platform: Platform.OS,
     version: Constants.expoConfig?.version ?? '0.0.0',
     vault: createSecureSessionVault(expoSecureBackend),
+    refreshRequestId: uuid.v4,
     socketFactory: nativeSocketFactory,
     progressUpload: uploadWithProgress,
-    cdnUrl: BRAND.cdnUrl,
+    cdnUrl: typeof Constants.expoConfig?.extra?.cdnUrl === 'string' ? Constants.expoConfig.extra.cdnUrl : BRAND.cdnUrl,
     ...(loadNativePush() ? { removePushToken: () => getRuntime().api.removePushToken() } : {}),
     createPrivacy: loadNativePrivacy,
     createVoice: ({ gateway, iceServers, crypto, identityKeysOf }) => {

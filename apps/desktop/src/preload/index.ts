@@ -34,6 +34,11 @@ const crypto = Object.fromEntries(
 ) as unknown as CryptoBridge;
 
 const bridge: DiscordyBridge = {
+  passkeys: {
+    site: () => ipcRenderer.invoke(IpcChannel.passkeySite),
+    perform: (request) => ipcRenderer.invoke(IpcChannel.passkeyPerform, request),
+    cancel: (id) => ipcRenderer.invoke(IpcChannel.passkeyCancel, id),
+  },
   app: {
     info: () => ipcRenderer.invoke(IpcChannel.appInfo),
     setConnection: (profile) => ipcRenderer.invoke(IpcChannel.appSetConnection, profile),
@@ -46,6 +51,7 @@ const bridge: DiscordyBridge = {
     setZoom: (factor) => webFrame.setZoomFactor(Math.min(2, Math.max(0.5, Number(factor) || 1))),
     setVoiceState: (state) => ipcRenderer.send(IpcChannel.appVoiceState, state),
     onTrayCommand: (listener) => subscribe<TrayCommand>(IpcChannel.appTrayCommand, listener),
+    obsRunning: () => ipcRenderer.invoke(IpcChannel.obsRunning),
   },
   idle: {
     seconds: () => ipcRenderer.invoke(IpcChannel.idleSeconds),

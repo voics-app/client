@@ -28,6 +28,7 @@ export interface TilesInput {
   rows: readonly ParticipantRow[];
   remote: readonly RemoteStream[];
   localCamera: NativeVideoStream | null;
+  localScreen?: NativeVideoStream | null;
   /** Keys (`userId:screen`) of remote screen shares that exist. */
   screenKeys: readonly string[];
   /** Keys of the screen shares the user chose to watch. */
@@ -37,12 +38,13 @@ export interface TilesInput {
 export const tileKey = (userId: string, kind: 'main' | 'screen'): string => `${userId}:${kind}`;
 
 /** One tile per person (camera or avatar), plus one per remote screen share. */
-export function buildTiles({ rows, remote, localCamera, screenKeys, watching }: TilesInput): StageTileModel[] {
+export function buildTiles({ rows, remote, localCamera, localScreen, screenKeys, watching }: TilesInput): StageTileModel[] {
   const tiles: StageTileModel[] = [];
   for (const row of rows) {
     const camera = row.self ? localCamera : ((remote.find((r) => r.userId === row.userId && r.kind === 'camera')?.stream as NativeVideoStream | undefined) ?? null);
     tiles.push({ key: tileKey(row.userId, 'main'), kind: camera ? 'camera' : 'avatar', hasVideo: camera !== null, isSelf: row.self, row, stream: camera, watchable: false });
     const screenKey = tileKey(row.userId, 'screen');
+    if (row.self && localScreen) tiles.push({ key: screenKey, kind: 'screen', hasVideo: false, isSelf: true, row, stream: null, watchable: false });
     if (row.self || !screenKeys.includes(screenKey)) continue;
     const watched = watching.includes(screenKey);
     const stream = watched ? ((remote.find((r) => r.userId === row.userId && r.kind === 'screen')?.stream as NativeVideoStream | undefined) ?? null) : null;

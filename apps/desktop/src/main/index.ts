@@ -1,12 +1,12 @@
 /** Main-process composition root. */
 import type { BrowserWindow} from 'electron';
-import { app, powerMonitor } from 'electron';
+import { app, powerMonitor, shell } from 'electron';
 import { resolve } from 'node:path';
 import { IpcChannel, type AppInfo, type ConnectionProfile } from '../shared/ipc';
 import { installDisplayMediaHandler } from './capture';
 import { resolveConnection, resolveUpdateFeed } from './config';
 import { CryptoHost } from './cryptoHost';
-import { DeepLinkInbox, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
+import { DeepLinkInbox, LEGACY_PROTOCOL, PROTOCOL, findDeepLink, routeFromDeepLink } from './deepLinks';
 import { GlobalKeybinds, HookHub, PushToTalk } from './hotkeys';
 import { registerIpc } from './ipc';
 import { loadMainSettings, saveMainSettings } from './settings';
@@ -21,6 +21,8 @@ import { legacyUserDataDir, migrateLegacyUserData } from './userDataMigration';
 import { createMainWindow, installSessionPolicies } from './window';
 import { BRAND } from '../shared/brand';
 import { shouldRegisterProtocol } from './protocolRegistration';
+import { passkeySite } from './passkeys/config';
+import { PasskeyBroker } from './passkeys/passkeyBroker';
 
 if (process.env.DISCORDY_USER_DATA_DIR) {
   app.setPath('userData', process.env.DISCORDY_USER_DATA_DIR);
@@ -53,10 +55,14 @@ function navigate(link: string | null): void {
 
 function registerProtocol(): void {
   if (!shouldRegisterProtocol(app.isPackaged, env.DISCORDY_REGISTER_DEV_PROTOCOL)) return;
+  for (const protocol of new Set([PROTOCOL, LEGACY_PROTOCOL])) registerScheme(protocol);
+}
+
+function registerScheme(protocol: string): void {
   if (process.defaultApp && process.argv[1]) {
-    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1])]);
+    app.setAsDefaultProtocolClient(protocol, process.execPath, [resolve(process.argv[1])]);
   } else {
-    app.setAsDefaultProtocolClient(PROTOCOL);
+    app.setAsDefaultProtocolClient(protocol);
   }
 }
 
@@ -65,6 +71,8 @@ function bootstrap(): void {
   let connection: ConnectionProfile = resolveConnection(env, settings.connection);
   const updateFeedUrl = resolveUpdateFeed(env);
   const getWindow = () => mainWindow;
+  const getPasskeySite = () => passkeySite(env, connection);
+  const passkeys = new PasskeyBroker(getPasskeySite, url => shell.openExternal(url));
 
   const info = (): AppInfo => ({
     version: app.getVersion(),
@@ -111,6 +119,8 @@ function bootstrap(): void {
   );
 
   registerIpc({
+    passkeys,
+    passkeySite: getPasskeySite,
     window: getWindow,
     setActivity: (counts) => {
       trayController.setActivity(counts);
@@ -125,6 +135,7 @@ function bootstrap(): void {
     },
     info,
     setConnection: (profile) => {
+      passkeys.cancel();
       connection = profile;
     },
     crypto: new CryptoHost(),
@@ -135,6 +146,7 @@ function bootstrap(): void {
   });
 
   mainWindow = createMainWindow({ startHidden });
+  mainWindow.on('closed', () => passkeys.cancel());
   const sendLock = (locked: boolean) => mainWindow?.webContents.send(IpcChannel.idleLock, locked);
   powerMonitor.on('lock-screen', () => sendLock(true));
   powerMonitor.on('suspend', () => sendLock(true));
@@ -154,6 +166,7 @@ function bootstrap(): void {
   if (!e2e) updater.start();
 
   app.on('before-quit', () => {
+    passkeys.cancel();
     quitting = true;
     updater.stop();
     pushToTalk.dispose();
@@ -174,7 +187,8 @@ if (!app.requestSingleInstanceLock()) {
     navigate(url);
   });
   app.setAppUserModelId(BRAND.appId);
-  registerProtocol();
+  // E2E uses a disposable profile and must not claim the user's OS protocol associations.
+  if (env.DISCORDY_E2E !== '1') registerProtocol();
   navigate(findDeepLink(process.argv));
 
   // Belt and braces with the window's autoplayPolicy: no web contents may block audio that lacks a click.

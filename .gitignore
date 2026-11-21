@@ -10,8 +10,13 @@ target/
 !.env.example
 test-results/
 playwright-report/
+.playwright-cli/
+.impeccable/review/
 .vite/
 *.log
 .DS_Store
 native.d.ts
 stage/
+
+# Firebase client config for the Android app: supplied to EAS as the file env var GOOGLE_SERVICES_JSON, never committed.
+google-services.json

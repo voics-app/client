@@ -28,6 +28,7 @@ function loadNative(): { module: NativeModule | null; reason?: string } {
 export class CryptoHost {
   private readonly native = loadNative();
   private engine: NativeEngine | null = null;
+  private readonly keyWrites = new Map<string, Promise<string>>();
 
   private requireEngine(): NativeEngine {
     if (!this.engine) throw new Error('crypto store not initialised; sign in first');
@@ -39,12 +40,20 @@ export class CryptoHost {
     return this.native.module;
   }
 
-  private databaseKey(userId: string): string {
+  private async databaseKey(userId: string): Promise<string> {
+    const writing = this.keyWrites.get(userId);
+    if (writing) return writing;
+    const pending = this.loadOrCreateDatabaseKey(userId);
+    this.keyWrites.set(userId, pending);
+    try { return await pending; } finally { this.keyWrites.delete(userId); }
+  }
+
+  private async loadOrCreateDatabaseKey(userId: string): Promise<string> {
     const file = userDataPath('crypto', `${userId}.key`);
     const existing = readSecret(file);
     if (existing && existing.length === 32) return existing.toString('hex');
     const key = randomBytes(32);
-    writeSecret(file, key);
+    await writeSecret(file, key);
     return key.toString('hex');
   }
 
@@ -56,7 +65,7 @@ export class CryptoHost {
       const nativeModule = this.requireModule();
       this.engine = nativeModule.NativeCrypto.open(
         userDataPath('crypto', `${userId}.db`),
-        this.databaseKey(userId),
+        await this.databaseKey(userId),
         `${userId}:${deviceLabel}`,
       );
       return b64(this.engine.ensureIdentity());

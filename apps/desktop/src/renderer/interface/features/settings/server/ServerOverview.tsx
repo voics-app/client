@@ -14,6 +14,7 @@ import { AssetImage } from '../../../shared/ui/AssetImage';
 import { Field, Input, Select, SettingRow, Switch, TextArea } from '../../../shared/ui/Form';
 import { UnsavedBar } from '../../../shared/ui/UnsavedBar';
 import { readImageUpload } from '../imageUpload';
+import { ServerVanity } from './ServerVanity';
 
 type ImageField = 'icon' | 'banner' | 'splash';
 
@@ -122,6 +123,8 @@ export function ServerOverview({ guildId }: { guildId: string }) {
       <Section title="Invite splash" hint="The background of your invite pages.">
         <WideImage label="Splash" kind="splashes" guildId={guildId} hash={guild.splash} pending={current.splash} onPick={(f) => void pick('splash', f)} onClear={() => change({ splash: null })} />
       </Section>
+
+      <ServerVanity key={guildId} guildId={guildId} />
 
       <Section title="System messages">
         <Field label="System messages channel" hint="Where welcome messages are posted.">

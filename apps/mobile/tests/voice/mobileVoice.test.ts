@@ -96,8 +96,8 @@ function audioTrack(): NativeAudioTrack & { volume: number | null } {
   return t;
 }
 
-function cameraStream() {
-  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn() };
+function cameraStream(facingMode?: 'user' | 'environment') {
+  const track = { kind: 'video', enabled: true, stop: jest.fn(), _switchCamera: jest.fn(), getSettings: () => ({ facingMode }) };
   return { track, getTracks: () => [track], getVideoTracks: () => [track], toURL: () => 'stream-url' };
 }
 
@@ -303,6 +303,48 @@ describe('mobile video', () => {
     return stack;
   }
 
+  it('does not open the camera outside a connected call', async () => {
+    const { voice, openCamera } = setup();
+    await expect(voice.controller.setVideo(true)).rejects.toThrow(/connected call/i);
+    expect(openCamera).not.toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('uses the captured camera facing when native capture falls back on a one-camera device', async () => {
+    const { voice, openCamera } = await inCall();
+    openCamera.mockResolvedValueOnce(cameraStream('environment') as unknown as NativeVideoStream);
+    await voice.controller.setVideo(true);
+    expect(openCamera).toHaveBeenCalledWith('front');
+    expect(voice.controller.facing).toBe('back');
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
+    voice.dispose();
+  });
+
+  it('keeps the actual facing and explains an unavailable camera instead of claiming a successful flip', async () => {
+    const { voice, openCamera } = await inCall();
+    openCamera.mockResolvedValue(cameraStream('environment') as unknown as NativeVideoStream);
+    await voice.controller.setVideo(true);
+    await expect(voice.controller.switchCamera()).rejects.toThrow('The front camera is not available on this device.');
+    expect(voice.controller.facing).toBe('back');
+    expect(useVoiceStore.getState().selfVideo).toBe(true);
+    voice.dispose();
+  });
+
+  it('does not publish a camera permission result after leaving the call', async () => {
+    const { voice, camera, openCamera } = await inCall();
+    let granted!: (stream: NativeVideoStream) => void;
+    openCamera.mockImplementationOnce(() => new Promise((resolve) => { granted = resolve; }));
+    const opening = voice.controller.setVideo(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const leaving = voice.controller.leave();
+    granted(camera);
+    await Promise.allSettled([opening, leaving]);
+    expect(mockSessions[0]!.camera.filter(({ track }) => track !== null)).toEqual([]);
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    voice.dispose();
+  });
+
   it('uses VP8 and a cryptor for the video of an encrypted call', async () => {
     const { voice } = await inCall();
     expect(mockSessions[0]!.options.preferredVideoCodec).toBe('VP8');
@@ -358,21 +400,57 @@ describe('mobile video', () => {
     voice.dispose();
   });
 
-  it('switches between the front and the back camera on the same track, without touching the sender', async () => {
-    const { voice, camera } = await inCall();
+  it('reopens the requested camera through the protected sender and stops the old capture', async () => {
+    const { voice, camera, openCamera } = await inCall();
+    const back = cameraStream();
     expect(voice.controller.facing).toBe('front');
-    voice.controller.switchCamera();
+    await voice.controller.switchCamera();
     expect(camera.track._switchCamera).not.toHaveBeenCalled();
     await voice.controller.setVideo(true);
+    openCamera.mockResolvedValueOnce(back as unknown as NativeVideoStream);
     const changes = jest.fn();
     voice.controller.subscribeFacing(changes);
-    voice.controller.switchCamera();
-    expect(camera.track._switchCamera).toHaveBeenCalledTimes(1);
+    await voice.controller.switchCamera();
+    expect(openCamera).toHaveBeenLastCalledWith('back');
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(camera.track._switchCamera).not.toHaveBeenCalled();
     expect(voice.controller.facing).toBe('back');
-    expect(changes).toHaveBeenCalledTimes(1);
-    voice.controller.switchCamera();
+    expect(changes).toHaveBeenCalled();
+    expect(mockSessions[0]!.camera.at(-1)?.track).toBe(back.track);
+    await voice.controller.switchCamera();
     expect(voice.controller.facing).toBe('front');
-    expect(mockSessions[0]!.camera).toHaveLength(1);
+    expect(back.track.stop).toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('reports a failed camera switch without claiming the other camera is active', async () => {
+    const { voice, camera, openCamera, gateway } = await inCall();
+    await voice.controller.setVideo(true);
+    openCamera.mockRejectedValueOnce(new Error('Camera unavailable'));
+    await expect(voice.controller.switchCamera()).rejects.toThrow('Camera unavailable');
+    expect(camera.track.stop).toHaveBeenCalled();
+    expect(voice.controller.facing).toBe('front');
+    expect(useVoiceStore.getState()).toMatchObject({ selfVideo: false, localCamera: null });
+    expect(lastState(gateway)).toMatchObject({ self_video: false });
+    voice.dispose();
+  });
+
+  it('discards a camera switch that finishes after Leave', async () => {
+    const { voice, openCamera } = await inCall();
+    await voice.controller.setVideo(true);
+    let finish!: (stream: NativeVideoStream) => void;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => { markStarted = resolve; });
+    openCamera.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; markStarted(); }));
+    const switching = voice.controller.switchCamera();
+    await started;
+    await voice.controller.leave();
+    const late = cameraStream();
+    finish(late as unknown as NativeVideoStream);
+    await switching;
+    expect(late.track.stop).toHaveBeenCalled();
+    expect(useVoiceStore.getState()).toMatchObject({ selfVideo: false, localCamera: null });
+    expect(mockSessions[0]!.camera.some(({ track }) => track === late.track)).toBe(false);
     voice.dispose();
   });
 

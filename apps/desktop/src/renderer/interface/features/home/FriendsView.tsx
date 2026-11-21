@@ -1,15 +1,21 @@
-import { Check, ChatCircle, MagnifyingGlass, Phone, UserPlus, UsersThree, VideoCamera, X } from '@phosphor-icons/react';
+import { Check, ChatCircle, MagnifyingGlass, Phone, Star, UserPlus, UsersThree, VideoCamera, X } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
-import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useFavouriteFriendsStore, usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { friendInviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useConnectionStore } from '../../app/connectionStore';
 import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
-import { attempt, errorMessage } from '../../app/actions';
+import { attempt, copyText, errorMessage } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
+import { openVoiceChannel } from '../../app/voiceActions';
+import { useChannelPermissions, can } from '../../shared/hooks/usePermissions';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { ChannelType } from '@discordy/core/contracts/rest';
 import { getRuntime } from '../../app/runtime';
 import { displayName } from '../../shared/hooks/useNames';
 import { Avatar } from '../../shared/ui/Avatar';
@@ -33,6 +39,14 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
     }
   };
   const isFriend = rel.type === RelationshipType.FRIEND;
+  const favourite = useFavouriteFriendsStore((s) => s.ids.includes(rel.id));
+  const toggleFavourite = async () => {
+    const ok = await attempt(() => api.setFavouriteFriend(rel.id, !favourite).then(() => true), 'Could not update favourite');
+    if (ok) {
+      const store = useFavouriteFriendsStore.getState();
+      store.set(favourite ? store.ids.filter((id) => id !== rel.id) : [...store.ids, rel.id]);
+    }
+  };
   return (
     <li className="friend-row">
       <UserMenuTarget userId={rel.id} name={name} guildId={null} user={rel.user}>
@@ -45,6 +59,7 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
       </button>
       </UserMenuTarget>
       <span className="friend-actions">
+        {isFriend && <IconButton label={favourite ? 'Remove favourite' : 'Add favourite'} onClick={() => void toggleFavourite()}><Star size={20} weight={favourite ? 'fill' : 'regular'} /></IconButton>}
         {isFriend && <IconButton label="Message" onClick={() => void message()}><ChatCircle size={20} weight="fill" /></IconButton>}
         {isFriend && <IconButton label="Voice call" onClick={() => void callUser(rel.id)}><Phone size={20} weight="fill" /></IconButton>}
         {isFriend && <IconButton label="Video call" onClick={() => void callUser(rel.id, true)}><VideoCamera size={20} weight="fill" /></IconButton>}
@@ -59,6 +74,15 @@ function AddFriend() {
   const [username, setUsername] = useState('');
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
+  const createLink = async () => {
+    const invite = await attempt(() => getRuntime().api.createFriendInvite(), 'Could not create friend invite');
+    if (invite) setLink(friendInviteWebUrl(invite.token, useConnectionStore.getState().apiUrl));
+  };
+  const revokeLink = async () => {
+    const ok = await attempt(() => getRuntime().api.revokeFriendInvites().then(() => true), 'Could not revoke friend invite');
+    if (ok) setLink(null);
+  };
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -80,9 +104,28 @@ function AddFriend() {
         <Input aria-label="Username" data-autofocus placeholder="Enter a username" value={username} onChange={(e) => setUsername(e.target.value)} />
         <Button type="submit" variant="primary" loading={busy} disabled={username.trim().length < 2}>Send request</Button>
       </div>
+      <h3>Friend invite link</h3>
+      <p>Anyone with this link can send you a friend request. It expires after 24 hours; creating another link replaces it.</p>
+      <div className="add-friend-row">
+        <Button type="button" onClick={() => void createLink()}>Create link</Button>
+        {link && <Button type="button" onClick={() => void copyText(link, 'Friend invite copied')}>Copy link</Button>}
+        <Button type="button" onClick={() => void revokeLink()}>Revoke link</Button>
+      </div>
+      {link && <Input aria-label="Friend invite link" readOnly value={link} />}
       {result && <p className={`add-friend-result${result.ok ? ' is-ok' : ' is-bad'}`} role="status">{result.text}</p>}
     </form>
   );
+}
+
+function JoinActivityVoice({ channelId, guildId }: { channelId: string; guildId: string | null }) {
+  const channel = useGuildStore((s) => s.channels[channelId]);
+  const permissions = useChannelPermissions(channelId);
+  const connected = useVoiceStore((s) => s.call.channelId === channelId && s.call.status !== 'idle');
+  // A presence alone does not grant access to another person's DM or server voice channel.
+  if (!channel || !guildId || channel.guild_id !== guildId ||
+    (channel.type !== ChannelType.GUILD_VOICE && channel.type !== ChannelType.GUILD_STAGE_VOICE) ||
+    !can(permissions, Permission.VIEW_CHANNEL) || !can(permissions, Permission.CONNECT)) return null;
+  return <Button size="sm" variant="ghost" disabled={connected} onClick={() => void openVoiceChannel(guildId, channelId)}>{connected ? 'Joined' : 'Join voice'}</Button>;
 }
 
 function ActiveNow({ friends }: { friends: Relationship[] }) {
@@ -95,18 +138,19 @@ function ActiveNow({ friends }: { friends: Relationship[] }) {
     <aside className="active-now" aria-label="Active Now">
       <h2>Active Now</h2>
       {entries.length === 0 ? (
-        <p className="setting-desc">When a friend is in a voice channel or playing something, it shows up here.</p>
+        <p className="setting-desc">Friends' voice channels, activities and custom statuses appear here.</p>
       ) : (
         <ul>
           {entries.map((e) => {
             const name = e.rel.nickname || displayName(e.rel.user);
             const channel = e.channelId ? channels[e.channelId] : undefined;
             const guild = e.guildId ? guilds[e.guildId] : undefined;
-            const where = e.kind === 'voice' ? `In voice${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : `Playing ${e.detail}`;
+            const where = e.kind === 'voice' ? `In voice${channel?.name ? ` · ${channel.name}` : ''}${guild ? ` · ${guild.name}` : ''}` : e.kind === 'playing' ? `Playing ${e.detail}` : e.detail;
             return (
               <li key={e.rel.id} className="active-now-card">
-                <Avatar id={e.rel.id} name={name} avatar={e.rel.user.avatar} size={36} status="online" />
+                <Avatar id={e.rel.id} name={name} avatar={e.rel.user.avatar} size={36} status={presence[e.rel.id]?.status ?? 'offline'} />
                 <span className="friend-copy"><span className="friend-name">{name}</span><span className="friend-sub">{where}</span></span>
+                {e.kind === 'voice' && e.channelId && <JoinActivityVoice channelId={e.channelId} guildId={e.guildId} />}
               </li>
             );
           })}
@@ -120,6 +164,7 @@ export function FriendsView() {
   const [tab, setTab] = useState<Tab>('online');
   const [query, setQuery] = useState('');
   const byUser = useRelationshipStore((s) => s.byUser);
+  const favouriteIds = useFavouriteFriendsStore((s) => s.ids);
   const presence = usePresenceStore((s) => s.byUser);
   const all = Object.values(byUser);
   const view = buildFriendsView(all, presence, query);
@@ -171,8 +216,12 @@ export function FriendsView() {
                 </ul>
               ) : (
                 <ul className="friend-list">
+                  {(tab === 'online' || tab === 'all') && list.some((r) => favouriteIds.includes(r.id)) && <>
+                    <li className="friend-heading">Favourites</li>
+                    {list.filter((r) => favouriteIds.includes(r.id)).map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
+                  </>}
                   <li className="friend-heading">{tab === 'online' ? 'Online' : tab === 'all' ? 'All friends' : 'Blocked'} — {list.length}</li>
-                  {list.map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
+                  {list.filter((r) => (tab !== 'online' && tab !== 'all') || !favouriteIds.includes(r.id)).map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
                 </ul>
               )}
             </>

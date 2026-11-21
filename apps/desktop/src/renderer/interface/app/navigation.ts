@@ -4,6 +4,8 @@ import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
+import { getRuntime } from './runtime';
+import { parseAuthorizationRoute } from '@discordy/core/domain/botAuthorization';
 
 export const isVoiceChannel = (c: Pick<Channel, 'type'>): boolean => c.type === ChannelType.GUILD_VOICE || c.type === ChannelType.GUILD_STAGE_VOICE;
 export const isTextChannel = (c: Pick<Channel, 'type'>): boolean =>
@@ -30,12 +32,22 @@ export function openGuild(guildId: string): void {
 /** Handles `/channels/<guild|@me>/<channel>` `/invite/<code>` and `/template/<code>` routes from deep links and notifications. */
 function applyRoute(route: string): void {
   const ui = useUiStore.getState();
+  const authorization = parseAuthorizationRoute(route);
+  if (authorization) { ui.openDialog({ kind: 'botAuthorize', request: authorization }); return; }
   const channel = /^\/channels\/(@me|\d+)(?:\/(\d+))?(?:\/(\d+))?/.exec(route);
   if (channel) {
     const [, scope, channelId, messageId] = channel;
     if (channelId && messageId) useReadNavStore.getState().requestJump(channelId, messageId);
     if (scope === '@me') ui.navigate({ kind: 'home', channelId: channelId ?? null });
     else ui.navigate({ kind: 'guild', guildId: scope!, channelId: channelId ?? null });
+    return;
+  }
+  const friendInvite = /^\/friend-invite\/([A-Za-z0-9_-]{16,128})$/.exec(route);
+  if (friendInvite) {
+    void getRuntime().api.useFriendInvite(friendInvite[1]!).then(
+      () => ui.toast({ tone: 'success', title: 'Friend request sent' }),
+      () => ui.toast({ tone: 'danger', title: 'Could not send friend request', body: 'The link may have expired or been revoked.' }),
+    );
     return;
   }
   const invite = /^\/invite\/([\w-]+)/.exec(route);

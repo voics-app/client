@@ -105,6 +105,12 @@
 .dm-row:hover { background: var(--hover); color: var(--fg); }
 .dm-row.is-active { background: var(--accent-soft); color: var(--fg); }
 .dm-row.is-unread { color: var(--fg); font-weight: 650; }
+.dm-list-item { position: relative; }
+.dm-list-item .dm-row { padding-inline-end: 32px; }
+.dm-close { position: absolute; inset-inline-end: 4px; top: 8px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--fg-subtle); opacity: 0; }
+.dm-list-item:hover .dm-close, .dm-list-item:focus-within .dm-close { opacity: 1; }
+.dm-close:hover { background: var(--hover); color: var(--fg); }
+.dm-typing { display: flex; align-items: center; gap: 6px; }
 .dm-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 /* Pin marker of pinned DMs and the Pinned section of a server (client#222, client#223). */
 .dm-pin, .channel-pin { flex: none; color: var(--fg-subtle); }
@@ -424,8 +430,13 @@ button.mode-badge:active { transform: scale(0.96); }
 .settings-page { display: flex; flex-direction: column; gap: 16px; } .settings-page h1 { font-size: var(--fs-page); letter-spacing: -0.02em; } .settings-page h3 { font-size: var(--fs-title); margin-top: 12px; } .page-sub { color: var(--fg-muted); margin-top: -8px; }
 .save-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: var(--z-float); display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 20px; border-radius: 999px; animation: pop-in 220ms var(--ease-spring); } .save-bar span { margin-right: 24px; font-weight: 560; }
 .save-bar.is-shaking { animation: bar-shake 420ms ease; }
+.save-bar.has-error { max-width: min(760px, calc(100vw - 48px)); border-radius: 14px; }
+.save-bar-copy { display: grid; gap: 4px; max-width: 440px; min-width: 0; }
+.save-bar.has-error .btn { flex-shrink: 0; }
 @keyframes bar-shake { 0%, 100% { translate: 0; box-shadow: none; } 15%, 55% { translate: -9px; box-shadow: 0 0 0 2px var(--danger); } 35%, 75% { translate: 9px; box-shadow: 0 0 0 2px var(--danger); } }
 .settings-logout { margin-top: auto; padding-top: 16px; } .settings-logout .settings-item { display: flex; align-items: center; gap: 8px; }
+.settings-item.is-danger { color: var(--danger); }
+.settings-item.is-danger:hover { background: color-mix(in oklch, var(--danger) 12%, transparent); }
 .settings-search { width: 100%; max-width: 232px; margin-bottom: 12px; } .settings-search-field { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; background: var(--bg-2, rgba(255,255,255,0.06)); color: var(--fg-muted); } .settings-search-field input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--fg); font: inherit; }
 .settings-search-results { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; } .settings-search-results .settings-item { display: flex; flex-direction: column; align-items: flex-start; } .settings-hit-tab { color: var(--fg-subtle); font-size: var(--fs-meta); }
 .setting-row.is-found { animation: row-found 1800ms ease-out; }
@@ -700,7 +711,12 @@ button.mode-badge:active { transform: scale(0.96); }
 .friends-search { display: flex; align-items: center; gap: 8px; margin: 12px 24px 0; padding: 0 10px; border-radius: 10px; background: var(--bg-2); color: var(--fg-subtle); } .friends-search .input-shell { flex: 1; }
 .active-now { width: 280px; flex: none; border-left: 1px solid var(--hairline); padding: 16px; overflow-y: auto; } .active-now h2 { font-size: var(--fs-body); margin: 0 0 12px; } .active-now ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .active-now-card { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: var(--bg-2); }
-@media (max-width: 900px) { .active-now { display: none; } }
+@media (max-width: 1099px) { .active-now { display: none; } }
+.active-now-card { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px 10px; }
+.active-now-card .friend-copy { min-width: 0; flex: 1; }
+.active-now-card .btn { grid-column: 2; justify-self: start; }
+.guild-btn.is-muted:not(:hover):not(:focus-visible):not(.is-active) { opacity: 0.5; }
+.rail-item.is-dragging > .tooltip-anchor > .guild-btn, .rail-item.is-dragging .guild-btn { opacity: 0.4; }
 .mutual-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; } .mutual-list li { display: flex; align-items: center; gap: 8px; }
 
 /* Discover (api#74) */
@@ -764,3 +780,4 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .report-category strong { display: block; font-weight: 600; }
 .report-category small { display: block; color: var(--fg-subtle); }
 .field-error { margin: 0; color: var(--danger, #d03b3b); font-size: var(--fs-small); }
+.passkey-list { list-style: none; margin: 0; padding: 0; }

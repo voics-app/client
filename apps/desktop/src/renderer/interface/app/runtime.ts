@@ -73,15 +73,11 @@ export function createRuntime(info: AppInfo): Runtime {
     tokens: {
       access: () => tokens.access,
       refresh: async () => {
-        if (!tokens.refresh) return null;
-        const rotated = await http.request<Pick<AuthResponse, 'access_token' | 'refresh_token'>>('POST', '/auth/refresh', {
+        if (!manager) return null;
+        return manager.renewTokens((body) => http.request<Pick<AuthResponse, 'access_token' | 'refresh_token'>>('POST', '/auth/refresh', {
           auth: false,
-          body: { refresh_token: tokens.refresh },
-        });
-        tokens.access = rotated.access_token;
-        tokens.refresh = rotated.refresh_token;
-        await manager?.persistTokens(tokens);
-        return tokens.access;
+          body,
+        }), () => crypto.randomUUID());
       },
       expired: () => void manager?.sessionExpired(),
     },

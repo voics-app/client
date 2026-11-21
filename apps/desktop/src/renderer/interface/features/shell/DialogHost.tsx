@@ -1,5 +1,6 @@
 import { ChannelNotificationDialog, GuildNotificationDialog } from '../notifications/NotificationDialogs';
 import { MentionsInbox } from '../notifications/MentionsInbox';
+import { BotAuthorizeDialog } from '../integrations/BotAuthorizeDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dmCandidates } from '@discordy/core/application/dmCandidates';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -37,6 +38,7 @@ import { ScreenPickerDialog } from '../voice/ScreenPickerDialog';
 import { setStatusText, type StatusEmoji } from './customStatus';
 import { BRAND } from '@shared/brand';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useStreamerActive } from '../../app/streamer';
 import { ACTION_LABELS, FIXED_SHORTCUTS } from '@discordy/core/domain/shortcutCatalog';
 
 function useClose() {
@@ -185,6 +187,7 @@ function CreateChannelDialog({ guildId, parentId, type: initialType }: { guildId
 }
 
 function InviteDialog({ guildId, channelId }: { guildId: string; channelId: string }) {
+  const streamer = useStreamerActive();
   const [invite, setInvite] = useState<Invite | null>(null);
   const [maxAge, setMaxAge] = useState('86400');
   const [maxUses, setMaxUses] = useState('0');
@@ -204,7 +207,7 @@ function InviteDialog({ guildId, channelId }: { guildId: string; channelId: stri
       <div className="stack">
         {invite ? (
           <div className="invite-link">
-            <Input readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+            <Input readOnly value={streamer ? 'Hidden in streamer mode' : link} onFocus={(e) => e.currentTarget.select()} />
             <Button variant="primary" onClick={() => void copyText(link, 'Invite link copied')}>Copy</Button>
           </div>
         ) : (
@@ -335,25 +338,33 @@ function ShortcutsDialog() {
   );
 }
 
-function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
+export function ConfirmDialog({ dialog }: { dialog: Extract<Dialog, { kind: 'confirm' }> }) {
   const [busy, setBusy] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const close = useClose();
   return (
     <Modal open onClose={close} title={dialog.title} width={400}>
       <p className="confirm-body">{dialog.body}</p>
+      {dialog.confirmText !== undefined && <Field label={`Type ${dialog.confirmText} to confirm`}>{(id) => <Input id={id} data-autofocus autoComplete="off" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />}</Field>}
+      {error && <p role="alert" className="field-error">{error}</p>}
       <div className="row-end">
         <Button variant="ghost" onClick={close}>Cancel</Button>
         <Button
           variant={dialog.danger ? 'danger' : 'primary'}
           loading={busy}
-          data-autofocus
+          data-autofocus={dialog.confirmText === undefined || undefined}
+          disabled={dialog.confirmText !== undefined && confirmation !== dialog.confirmText}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               await dialog.onConfirm();
+              close();
+            } catch (err) {
+              setError(errorMessage(err));
             } finally {
               setBusy(false);
-              close();
             }
           }}
         >
@@ -377,6 +388,7 @@ function ActiveDialog() {
   const dialog = useUiStore((s) => s.dialog);
   if (!dialog) return null;
   switch (dialog.kind) {
+    case 'botAuthorize': return <BotAuthorizeDialog key={JSON.stringify(dialog.request)} request={dialog.request} />;
     case 'createGuild': return <CreateGuildDialog />;
     case 'template': return <TemplateLinkDialog code={dialog.code} />;
     case 'joinGuild': return <JoinGuildDialog initial={dialog.code} />;

@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { canGo, emptyHistory, pushView, stepHistory, type NavHistory } from '../../domain/navHistory';
 import type { ReportTarget } from '../../domain/reportModel';
+import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { ChatMessage } from './messageStore';
 
 export type View =
@@ -11,7 +12,7 @@ export type View =
 
 export type SettingsTarget =
   | { kind: 'user'; tab: UserSettingsTab }
-  | { kind: 'server'; guildId: string; tab: ServerSettingsTab }
+  | { kind: 'server'; guildId: string; tab: ServerSettingsTab; auditTarget?: { id: string; name: string } }
   | { kind: 'channel'; channelId: string; tab: 'overview' | 'permissions' | 'invites' };
 
 export type UserSettingsTab =
@@ -29,11 +30,13 @@ export type UserSettingsTab =
   | 'desktop'
   | 'advanced'
   | 'developer'
+  | 'authorizedApps'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit';
+export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
 
 export type Dialog =
+  | { kind: 'botAuthorize'; request: BotAuthorizationRequest }
   | { kind: 'createGuild' }
   | { kind: 'template'; code: string }
   | { kind: 'joinGuild'; code?: string }
@@ -56,7 +59,7 @@ export type Dialog =
   | { kind: 'forward'; message: ChatMessage }
   | { kind: 'report'; target: ReportTarget }
   | { kind: 'reactionUsers'; channelId: string; messageId: string; emoji: string }
-  | { kind: 'confirm'; title: string; body: string; confirmLabel: string; danger?: boolean; onConfirm: () => void | Promise<void> };
+  | { kind: 'confirm'; title: string; body: string; confirmLabel: string; confirmText?: string; danger?: boolean; onConfirm: () => void | Promise<void> };
 
 export type SidePanel = { kind: 'members' } | { kind: 'pins' } | { kind: 'search' } | { kind: 'thread'; threadId: string } | { kind: 'watch' } | { kind: 'profile' } | null;
 

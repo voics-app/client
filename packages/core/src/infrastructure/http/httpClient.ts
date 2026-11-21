@@ -16,6 +16,7 @@ export class ApiError extends Error {
     readonly errors?: Record<string, unknown>,
     /** Present on a 60008 login answer. */
     readonly ticket?: string,
+    readonly methods?: string[],
   ) {
     super(message);
     this.name = 'ApiError';
@@ -147,7 +148,8 @@ export class HttpClient {
 function errorFromResponse(status: number, text: string): ApiError {
   const envelope = parseEnvelope(text);
   const message = envelope?.message || `Request failed with HTTP ${status}`;
-  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors, envelope?.ticket);
+  const methods = Array.isArray(envelope?.methods) ? envelope.methods.filter((method): method is string => typeof method === 'string') : undefined;
+  return new ApiError(status, envelope?.code ?? status, message, envelope?.errors, envelope?.ticket, methods);
 }
 
 function parseEnvelope(text: string): Partial<ApiErrorBody> | null {

@@ -1,5 +1,5 @@
 /** Gateway protocol (P7): client <-> gateway, `wss://<gateway>/gateway?v=1&encoding=json`. */
-import type { DeliveryMode, PresenceStatus, Activity, Snowflake, VoiceState } from './rest';
+import type { DeliveryMode, PresenceStatus, Activity, ReadStateEntry, Snowflake, VoiceState } from './rest';
 
 export const GatewayOp = {
   DISPATCH: 0,
@@ -100,6 +100,8 @@ export interface PresenceUpdatePayload {
   status: Exclude<PresenceStatus, 'offline'>;
   activities: Activity[];
   afk: boolean;
+  /** P7 optional lifecycle hint; only mobile user sessions receive a bounded background lease. */
+  background?: boolean;
 }
 
 export interface VoiceStateUpdatePayload {
@@ -191,6 +193,19 @@ export interface MessageAck {
   channel_id: Snowflake;
   message_id: Snowflake;
   mention_count?: number;
+  read_state_version?: string;
+}
+
+export interface ReadStateUpdate {
+  channel_id: Snowflake;
+  last_message_id: Snowflake | null;
+  mention_count: number;
+  read_state_version: string;
+}
+
+export interface ReadStateSync {
+  read_state_versioned: true;
+  read_state: ReadStateEntry[];
 }
 
 export interface P2PSignalFailed {

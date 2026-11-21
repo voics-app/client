@@ -1,5 +1,5 @@
 import { ArrowClockwise, File as FileIcon, FilePdf, LockSimple, Play, WarningCircle, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { Permission } from '@discordy/core/contracts/permissions';
@@ -16,6 +16,7 @@ import { getRuntime } from '../../app/runtime';
 import { MediaPlayer } from './MediaPlayer';
 import { AnimatedImage } from '../../shared/ui/AnimatedImage';
 import { looksAnimated } from '@discordy/core/domain/stillFrame';
+import './attachmentMetadata.css';
 
 const STATE_LABEL: Record<TransferState, string> = {
   encrypting: 'Encrypting',
@@ -74,19 +75,24 @@ function lightboxItem(a: Attachment, src = a.proxy_url ?? a.url): LightboxItem {
   return { kind: previewKind(a) === 'video' ? 'video' : 'image', src, original: a.url, filename: a.filename, description: a.description, width: a.width, height: a.height };
 }
 
-function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachment: Attachment; onError: () => void; tile?: boolean; siblings?: Attachment[]; channelId?: string }) {
-  const kind = previewKind(attachment);
+function useSpoilerDisclosure(attachment: Attachment, channelId?: string) {
   const spoiler = isSpoiler(attachment);
   const [revealed, setRevealed] = useState(false);
   const mode = usePrefsStore((s) => s.spoilerDisplay);
   const guildId = useGuildStore((s) => (channelId ? s.channels[channelId]?.guild_id : null));
   const open = spoilersOpen(mode, can(useGuildPermissions(guildId), Permission.MANAGE_MESSAGES));
   const hidden = spoiler && !revealed && !open;
+  return { hidden, open, reveal: () => setRevealed(true) };
+}
+
+function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachment: Attachment; onError: () => void; tile?: boolean; siblings?: Attachment[]; channelId?: string }) {
+  const kind = previewKind(attachment);
+  const { hidden, open, reveal } = useSpoilerDisclosure(attachment, channelId);
   const src = attachment.proxy_url ?? attachment.url;
   const name = displayFilename(attachment.filename);
 
   const openViewer = () => {
-    const others = (siblings ?? []).filter((a) => a.id === attachment.id || !privateRefOf(a));
+    const others = (siblings ?? []).filter((a) => a.id === attachment.id || (!privateRefOf(a) && (open || !isSpoiler(a))));
     const items = others.map((a) => (a.id === attachment.id ? lightboxItem(attachment, src) : lightboxItem(a)));
     const index = Math.max(0, others.findIndex((a) => a.id === attachment.id));
     useLightboxStore.getState().open(items.length > 0 ? items : [lightboxItem(attachment, src)], items.length > 0 ? index : 0);
@@ -98,7 +104,7 @@ function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachm
       type="button"
       className={`media-tile${tile ? ' is-cell' : ''}${hidden ? ' is-spoiler' : ''}`}
       aria-label={hidden ? `Spoiler: ${name}. Click to reveal` : `Open ${name}`}
-      onClick={() => (hidden ? setRevealed(true) : openViewer())}
+      onClick={() => (hidden ? reveal() : openViewer())}
       style={{ aspectRatio: aspect }}
     >
       {kind === 'image' ? (
@@ -111,6 +117,19 @@ function MediaTile({ attachment, onError, tile, siblings, channelId }: { attachm
       )}
       {hidden && <span className="spoiler-label">Spoiler</span>}
       {!hidden && attachment.description && <span className="alt-badge" title={attachment.description}>ALT</span>}
+    </button>
+  );
+}
+
+/** Spoiler files must not mount text/audio previews or expose download controls before reveal. */
+function FileSpoiler({ attachment, channelId, children }: { attachment: Attachment; channelId?: string; children: ReactNode }) {
+  const { hidden, reveal } = useSpoilerDisclosure(attachment, channelId);
+  if (!hidden) return children;
+  const name = displayFilename(attachment.filename);
+  return (
+    <button type="button" className="attachment-file attachment-spoiler" aria-label={`Spoiler: ${name}. Click to reveal`} onClick={reveal}>
+      <FileIcon size={28} weight="light" aria-hidden="true" />
+      <span><span className="attachment-name">{name}</span><span className="attachment-size">Spoiler · click to reveal</span></span>
     </button>
   );
 }
@@ -171,18 +190,20 @@ function MediaAttachment({ attachment: original, channelId, tile, siblings }: It
     refresh();
   };
   const kind = previewKind(attachment);
-  if ((kind === 'image' || kind === 'video') && !inlineMedia) return <FileCard attachment={attachment} url={url} />;
+  if ((kind === 'image' || kind === 'video') && !inlineMedia) return <FileSpoiler attachment={attachment} channelId={channelId}><FileCard attachment={attachment} url={url} /></FileSpoiler>;
   if (kind === 'image' || kind === 'video') return <MediaTile attachment={attachment} onError={onError} tile={tile} siblings={siblings} channelId={channelId} />;
   if (kind === 'audio') {
     return (
+      <FileSpoiler attachment={attachment} channelId={channelId}>
       <div className="attachment-audio">
         <span className="attachment-name">{displayFilename(attachment.filename)}</span>
         <MediaPlayer kind="audio" src={url} label={attachment.filename} onError={onError} />
       </div>
+      </FileSpoiler>
     );
   }
-  if (kind === 'text') return <TextPreview attachment={attachment} url={url} />;
-  return <FileCard attachment={attachment} url={url} />;
+  if (kind === 'text') return <FileSpoiler attachment={attachment} channelId={channelId}><TextPreview attachment={attachment} url={url} /></FileSpoiler>;
+  return <FileSpoiler attachment={attachment} channelId={channelId}><FileCard attachment={attachment} url={url} /></FileSpoiler>;
 }
 
 /** Files from Ephemeral and P2P chats: decrypted on this device, then shown exactly like any other attachment. */

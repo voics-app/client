@@ -7,6 +7,7 @@ import type { AppInfo, ConnectionProfile, ConnectionProfileId } from '@discordy/
 import type { StoredSession } from '@discordy/core/application/ports/sessionVault';
 import type { UpdateStatus } from '@discordy/core/domain/updateStatus';
 import type { CryptoBridge, CryptoStatus, IncomingMlsResult, LocalMessageRecord } from '@discordy/core/application/ports/crypto';
+import type { PasskeyRequest, PasskeyResult, PasskeySite } from './passkeys';
 
 export type { AppInfo, ConnectionProfile, ConnectionProfileId, UpdateStatus };
 
@@ -70,6 +71,11 @@ export interface NotificationRequest {
 export type { CryptoBridge, CryptoStatus, IncomingMlsResult, LocalMessageRecord };
 
 export interface DiscordyBridge {
+  passkeys: {
+    site(): Promise<PasskeySite | null>;
+    perform(request: PasskeyRequest): Promise<PasskeyResult>;
+    cancel(id: string): Promise<void>;
+  };
   app: {
     info(): Promise<AppInfo>;
     setConnection(profile: ConnectionProfile): Promise<AppInfo>;
@@ -85,6 +91,7 @@ export interface DiscordyBridge {
     /** Reports self mute/deafen for the tray menu. */
     setVoiceState(state: VoiceState): void;
     onTrayCommand(listener: (command: TrayCommand) => void): () => void;
+    obsRunning(): Promise<boolean | null>;
   };
   desktop: {
     get(): Promise<DesktopSettings>;
@@ -132,6 +139,9 @@ export interface GlobalKeybindSpec {
 }
 
 export const IpcChannel = {
+  passkeySite: 'passkeys:site',
+  passkeyPerform: 'passkeys:perform',
+  passkeyCancel: 'passkeys:cancel',
   appInfo: 'app:info',
   appSetConnection: 'app:set-connection',
   appOpenExternal: 'app:open-external',
@@ -142,6 +152,7 @@ export const IpcChannel = {
   appFlash: 'app:flash',
   appVoiceState: 'app:voice-state',
   appTrayCommand: 'app:tray-command',
+  obsRunning: 'app:obs-running',
   desktopGet: 'desktop:get',
   desktopSet: 'desktop:set',
   desktopRelaunch: 'desktop:relaunch',

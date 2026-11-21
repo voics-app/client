@@ -1,5 +1,5 @@
 /** Auth lifecycle: boot from the OS-keychain vault, login/register, device registration, logout. */
-import type { AuthResponse } from '@discordy/core/contracts/rest';
+import type { AuthResponse, PasskeyFinish } from '@discordy/core/contracts/rest';
 import type { StoredSession } from './ports/sessionVault';
 import type { ApiPort } from '@discordy/core/application/ports/api';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -51,6 +51,8 @@ export interface SessionDeps {
 
 export class SessionManager {
   private stored: StoredSession | null = null;
+  private vaultWrites: Promise<void> = Promise.resolve();
+  private refreshing: Promise<string | null> | null = null;
 
   private renewedAt = 0;
   private retry: ReturnType<typeof setTimeout> | null = null;
@@ -81,6 +83,12 @@ export class SessionManager {
     this.deps.runtime.setTokens({ access: null, refresh: null });
     const auth = await this.deps.runtime.api.loginMfa(body);
     await this.adopt(auth);
+  }
+
+  /** Adopts only the session returned by server-side WebAuthn verification. */
+  async loginPasskey(body: PasskeyFinish & { ticket: string }): Promise<void> {
+    this.deps.runtime.setTokens({ access: null, refresh: null });
+    await this.adopt(await this.deps.runtime.api.finishPasskeyLogin(body));
   }
 
   async register(body: { email: string; username: string; password: string }): Promise<void> {
@@ -124,11 +132,60 @@ export class SessionManager {
     await this.teardown();
   }
 
-  /** Persists rotated tokens (called by the runtime after a refresh). */
-  async persistTokens(tokens: TokenPair): Promise<void> {
-    if (!this.stored || !tokens.access || !tokens.refresh) return;
-    this.stored = { ...this.stored, accessToken: tokens.access, refreshToken: tokens.refresh };
-    await this.deps.vault.save(this.stored);
+  /**
+   * Save the retry identity before sending. A lost response or failed successor
+   * save leaves the old token and the same request id available after restart.
+   * In-memory tokens change only after the new pair is durable.
+   */
+  renewTokens(
+    rotate: (body: { refresh_token: string; request_id: string }) => Promise<Pick<AuthResponse, 'access_token' | 'refresh_token'>>,
+    newRequestId: () => string,
+  ): Promise<string | null> {
+    if (!this.refreshing) {
+      this.refreshing = this.rotateTokens(rotate, newRequestId).finally(() => { this.refreshing = null; });
+    }
+    return this.refreshing;
+  }
+
+  private async rotateTokens(
+    rotate: (body: { refresh_token: string; request_id: string }) => Promise<Pick<AuthResponse, 'access_token' | 'refresh_token'>>,
+    newRequestId: () => string,
+  ): Promise<string | null> {
+    let current = this.stored;
+    if (!current) return null;
+    if (!current.refreshRequestId) {
+      const pending = { ...current, refreshRequestId: newRequestId() };
+      await this.writeVault(() => this.deps.vault.save(pending));
+      if (this.stored !== current) return null;
+      this.stored = pending;
+      current = pending;
+    }
+    const rotated = await rotate({ refresh_token: current.refreshToken, request_id: current.refreshRequestId! });
+    if (this.stored !== current) return null;
+    if (typeof rotated.access_token !== 'string' || !rotated.access_token
+      || typeof rotated.refresh_token !== 'string' || !rotated.refresh_token) {
+      throw new Error('Refresh response is missing credentials');
+    }
+    const saved: StoredSession = {
+      accessToken: rotated.access_token,
+      refreshToken: rotated.refresh_token,
+      userId: current.userId,
+      deviceId: current.deviceId,
+    };
+    await this.writeVault(async () => {
+      if (this.stored === current) await this.deps.vault.save(saved);
+    });
+    if (this.stored !== current) return null;
+    this.stored = saved;
+    this.deps.runtime.setTokens({ access: saved.accessToken, refresh: saved.refreshToken });
+    return saved.accessToken;
+  }
+
+  /** Serializes saves and clears so logout cannot be undone by a delayed save. */
+  private writeVault(write: () => Promise<void>): Promise<void> {
+    const pending = this.vaultWrites.then(write);
+    this.vaultWrites = pending.catch(() => undefined);
+    return pending;
   }
 
   private async adopt(auth: AuthResponse): Promise<void> {
@@ -151,7 +208,8 @@ export class SessionManager {
     }
     session.setDevice(deviceId, identity?.identityKeyB64 ?? null);
     this.stored = { accessToken: auth.access_token, refreshToken: auth.refresh_token, userId: auth.user.id, deviceId };
-    await this.deps.vault.save(this.stored);
+    const stored = this.stored;
+    await this.writeVault(() => this.deps.vault.save(stored));
     this.begin();
   }
 
@@ -162,14 +220,14 @@ export class SessionManager {
   }
 
   private async teardown(): Promise<void> {
+    this.stored = null;
     if (this.retry) clearTimeout(this.retry);
     this.retry = null;
     this.renewedAt = 0;
     this.deps.onChange?.(false);
     this.deps.runtime.disconnect();
     this.deps.runtime.setTokens({ access: null, refresh: null });
-    await this.deps.vault.clear().catch(() => undefined);
-    this.stored = null;
+    await this.writeVault(() => this.deps.vault.clear()).catch(() => undefined);
     useGuildStore.getState().reset();
     useMessageStore.getState().reset();
     usePresenceStore.getState().reset();

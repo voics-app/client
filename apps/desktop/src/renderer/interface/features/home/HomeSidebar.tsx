@@ -1,17 +1,18 @@
-import { Plus, UsersThree, LockKey, Plugs, PushPin, ListChecks } from '@phosphor-icons/react';
-import { useMemo, useRef, useState } from 'react';
+import { Plus, UsersThree, LockKey, Plugs, PushPin, ListChecks, X } from '@phosphor-icons/react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useClosedDmStore } from '@discordy/core/application/stores/closedDmStore';
 import { useNotificationSettingsStore } from '@discordy/core/application/stores/notificationSettingsStore';
 import { buildDmMenu, visibleDms } from '@discordy/core/domain/dmModel';
 import { DM_SCOPE, isChannelMuted, MUTE_DURATIONS } from '@discordy/core/domain/notificationSettings';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { usePresenceStore, useReadStateStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { typingUsers, useTypingStore, usePresenceStore, useReadStateStore, useRelationshipStore, useFavouriteFriendsStore } from '@discordy/core/application/stores/peopleStores';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { ChannelType, RelationshipType, type Activity, type Channel, type PresenceStatus } from '@discordy/core/contracts/rest';
 import { bulkLeaveConfirmation, pruneSelection, selectableGroupIds, toggleSelected } from '@discordy/core/domain/groupDmSelection';
 import { isUnread } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { isPinFull, MAX_PINNED_DMS, orderPinnedFirst } from '@discordy/core/domain/pins';
+import { getRuntime } from '../../app/runtime';
 import { markChannelRead } from '../../app/actions';
 import { muteChannel } from '../../app/notificationActions';
 import { closeDm, leaveGroupDm, leaveGroupDms } from '../../app/dmActions';
@@ -26,6 +27,7 @@ import { Count } from '../../shared/ui/Misc';
 import { Menu, useMenu } from '../../shared/ui/Menu';
 import { toMenuEntries } from '../../shared/ui/menuAdapter';
 import { useRovingFocus } from '../../shared/hooks/useRovingFocus';
+import { useNow } from '../../shared/hooks/useNow';
 
 /** Selection mode of the DM list: ticking is only offered for group DMs, 1:1 rows are shown dimmed and inert. */
 interface Selection { selected: boolean; onToggle: () => void }
@@ -35,6 +37,10 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
   const menu = useMenu();
   const openDialog = useUiStore((s) => s.openDialog);
   const muted = useNotificationSettingsStore((s) => isChannelMuted(s.byScope[DM_SCOPE], c.id, Date.now()));
+  const typing = useTypingStore((s) => s.byChannel);
+  const me = useSessionStore((s) => s.user?.id ?? null);
+  const now = useNow(1500);
+  const isTyping = typingUsers(typing, c.id, me, now).length > 0;
   const group = c.type === ChannelType.GROUP_DM;
   const peer = group ? undefined : (c.recipients ?? [])[0];
   const model = buildDmMenu({ group, hasUnread: unread || mentions > 0, muted, hasPeer: Boolean(peer), pinned, pinFull });
@@ -57,7 +63,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
       {peer ? <Avatar id={peer.id} name={name} avatar={peer.avatar} size={34} status={status} /> : <Avatar id={c.id} name={name} avatar={c.icon ?? null} size={34} kind="channel-icons" />}
       <span className="dm-copy">
         <span className="dm-name">{name}</span>
-        <StatusLine className="dm-status" activities={activities} max={60} />
+        {isTyping ? <span className="dm-status dm-typing" role="status" aria-label={`${name} is typing`}><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span> Typing…</span> : <StatusLine className="dm-status" activities={activities} max={60} />}
       </span>
     </>
   );
@@ -79,7 +85,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
     );
   }
   return (
-    <li onContextMenu={menu.openAt}>
+    <li className="dm-list-item" onContextMenu={menu.openAt}>
       <button type="button" className={`dm-row${active ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} onClick={() => openChannel(c.id)} aria-current={active || undefined}>
         {copy}
         {pinned && <PushPin size={13} weight="fill" className="dm-pin" aria-label="Pinned" />}
@@ -87,6 +93,7 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
         {c.delivery_mode === 'p2p' && <Plugs size={13} weight="fill" className="channel-mode mode-p2p" aria-label="Peer-to-peer" />}
         <Count value={mentions} tone="danger" />
       </button>
+      <button type="button" className="dm-close" aria-label={`Close conversation with ${name}`} onClick={() => closeDm(c.id)}><X size={16} /></button>
       <Menu open={menu.open} x={menu.anchor?.x ?? 0} y={menu.anchor?.y ?? 0} entries={entries} onClose={menu.close} />
     </li>
   );
@@ -94,6 +101,19 @@ function DmRow({ channel: c, name, unread, mentions, active, status, activities,
 
 export function HomeSidebar() {
   const channels = useGuildStore((s) => s.channels);
+  const favouriteIds = useFavouriteFriendsStore((s) => s.ids);
+  const relationships = useRelationshipStore((s) => s.byUser);
+  useEffect(() => {
+    let active = true;
+    useFavouriteFriendsStore.getState().set([]);
+    const initial = useFavouriteFriendsStore.getState().ids;
+    void Promise.resolve().then(() => getRuntime().api.favouriteFriends()).then((ids) => {
+      if (active && useFavouriteFriendsStore.getState().ids === initial) useFavouriteFriendsStore.getState().set(ids);
+    }).catch(() => {
+      if (active) useUiStore.getState().toast({ tone: 'danger', title: 'Could not load favourites' });
+    });
+    return () => { active = false; useFavouriteFriendsStore.getState().set([]); };
+  }, []);
   const reads = useReadStateStore((s) => s.byChannel);
   const presence = usePresenceStore((s) => s.byUser);
   const view = useUiStore((s) => s.view);
@@ -138,14 +158,17 @@ export function HomeSidebar() {
           </span>
         </header>
         <ul className="dm-list">
-          {dms.map((c) => {
+          {dms.some((c) => c.type === ChannelType.DM && (c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)) && <li className="category-head is-static">Favourites</li>}
+          {[...dms.filter((c) => c.type === ChannelType.DM && (c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)), ...dms.filter((c) => c.type !== ChannelType.DM || !(c.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND))].map((c, index) => {
             const peers = c.recipients ?? [];
             const name = c.name || peers.map((u) => displayName(u)).join(', ') || 'Unknown';
             const read = reads[c.id];
             const unread = isUnread(c.last_message_id, read?.lastReadId);
             const active = view.channelId === c.id;
             const status = c.type === ChannelType.DM && peers[0] ? (presence[peers[0].id]?.status ?? 'offline') : null;
-            return <DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} selection={selecting ? { selected: ticked.includes(c.id), onToggle: () => setSelected(toggleSelected(ticked, c.id)) } : undefined} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} />;
+            const isFavourite = c.type === ChannelType.DM && peers.some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND);
+            const before = index > 0 && dms.some((d) => d.type === ChannelType.DM && (d.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)) && !isFavourite && index === dms.filter((d) => d.type === ChannelType.DM && (d.recipients ?? []).some((u) => favouriteIds.includes(u.id) && relationships[u.id]?.type === RelationshipType.FRIEND)).length;
+            return <Fragment key={c.id}>{before && <li className="category-head is-static">Direct messages</li>}<DmRow key={c.id} channel={c} name={name} unread={unread} mentions={read?.mentionCount ?? 0} active={active} pinned={pinIds.includes(c.id)} pinFull={isPinFull(pinIds, c.id, MAX_PINNED_DMS)} status={status} selection={selecting ? { selected: ticked.includes(c.id), onToggle: () => setSelected(toggleSelected(ticked, c.id)) } : undefined} activities={c.type === ChannelType.DM && peers[0] ? presence[peers[0].id]?.activities : undefined} /></Fragment>;
           })}
           {dms.length === 0 && <li className="sidebar-empty">No conversations yet. Start one with the plus button.</li>}
         </ul>

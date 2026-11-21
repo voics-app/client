@@ -1,6 +1,7 @@
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import type { RoleColorMode } from '@discordy/core/domain/appearance';
 import type { SpoilerDisplay } from '@discordy/core/domain/prefsTypes';
+import { Platform } from 'react-native';
 import { getPush } from '../notifications/push';
 import { statusLabel } from '../notifications/push/pushModel';
 import { usePushPrefs, usePushStatus } from '../notifications/push/pushStore';
@@ -44,7 +45,7 @@ export function NotificationsPage({ highlight }: { highlight: string | null }) {
   return (
     <SettingsPage highlight={highlight}>
       <SectionLabel>Push notifications</SectionLabel>
-      <SettingRow title="Push notifications" description={statusLabel(status)}>
+      <SettingRow title="Push notifications" description={statusLabel(status, Platform.OS === 'android' ? 'Android Settings' : 'iOS Settings')}>
         {status === 'granted' || !available ? null : <TextButton label={status === 'denied' ? 'Open Settings' : 'Turn on'} onPress={() => void getPush().enable()} />}
       </SettingRow>
       <SwitchRow

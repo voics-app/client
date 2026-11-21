@@ -211,9 +211,16 @@ export interface Guild {
   voice_region?: string | null;
   /** When true, pruning members needs ADMINISTRATOR instead of KICK_MEMBERS. */
   prune_admin_only?: boolean;
+  audit_log_enabled?: boolean;
+  audit_log_retention_days?: 30 | 90 | 365;
 }
 
 /** GuildFull as delivered by READY / GUILD_CREATE (P4 `/state`). */
+export interface VanityUrl {
+  code: string | null;
+  uses: number;
+}
+
 export interface GuildFull extends Guild {
   channels: Channel[];
   threads?: Channel[];
@@ -397,6 +404,45 @@ export interface ApplicationSummary {
   bot_id?: Snowflake;
   bot?: User;
 }
+
+/** Explicit personal bot-install consent; these records contain no access token. */
+export interface ApplicationAuthorization {
+  id: Snowflake;
+  application: ApplicationSummary;
+  guild: { id: Snowflake; name: string; icon: string | null };
+  scopes: ('bot' | 'applications.commands')[];
+  permissions: string;
+  created_at: string;
+  authorized_at: string;
+}
+
+export interface BotAuthorizationInfo {
+  application: ApplicationSummary;
+  user: User;
+  guilds: { id: Snowflake; name: string; icon: string | null; permissions: string; bot_permissions: string | null; installation_revision: string }[];
+  scopes: ('bot' | 'applications.commands')[];
+  permissions: string;
+}
+
+export interface GuildIntegration {
+  application: ApplicationSummary;
+  permissions: string;
+  installed_at: string;
+}
+
+export interface Webhook {
+  id: Snowflake;
+  type: number;
+  guild_id?: Snowflake | null;
+  channel_id: Snowflake | null;
+  name: string | null;
+  avatar: string | null;
+  application_id: Snowflake | null;
+}
+
+/** Only create/reset responses include credentials. Never persist or cache this object. */
+export interface WebhookCredential extends Webhook { token: string; url: string }
+export interface WebhookEdit { name?: string; avatar?: string | null; channel_id?: Snowflake }
 
 /** Application entry of `GET /guilds/{id}/application-command-index`: an installed bot and its avatar. */
 export interface CommandIndexApplication {
@@ -624,6 +670,7 @@ export interface ApiErrorBody {
   errors?: Record<string, unknown>;
   /** Login answered 60008: the ticket completes the login with a second factor. */
   ticket?: string;
+  methods?: string[];
   retry_after?: number;
 }
 
@@ -636,6 +683,28 @@ export interface BackupCode {
   /** Plaintext, present only right after generation. */
   code?: string;
   consumed: boolean;
+}
+
+export interface Passkey {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface PasskeyChallenge {
+  challenge_id: string;
+  publicKey: Record<string, unknown>;
+}
+
+export interface PasskeyRegistration {
+  passkey: Passkey;
+  backup_codes?: BackupCode[];
+}
+
+export interface PasskeyFinish {
+  challenge_id: string;
+  credential: Record<string, unknown>;
 }
 
 export interface AccountChange {
@@ -676,6 +745,20 @@ export interface AttachmentUploadSlot {
   id: string;
   upload_url: string;
   upload_filename: string;
+}
+
+/** Partial metadata edits of existing attachments. Files and filenames are immutable. */
+export interface AttachmentMetadataEdit {
+  id: Snowflake;
+  description?: string | null;
+  /** Only IS_SPOILER may be changed; zero explicitly clears it. */
+  flags?: number;
+}
+
+export interface EditMessageBody {
+  content?: string;
+  flags?: number;
+  attachments?: AttachmentMetadataEdit[];
 }
 
 /** Short-lived coturn REST credentials minted by the gateway (P2 TURN_URLS / TURN_STATIC_AUTH_SECRET). */
@@ -741,6 +824,13 @@ export interface UserNote {
   note: string;
 }
 
+export interface ReadStateEntry {
+  id: Snowflake;
+  last_message_id: Snowflake | null;
+  mention_count: number;
+  read_state_version?: string;
+}
+
 export interface ReadyPayload {
   v: number;
   user: User;
@@ -753,7 +843,8 @@ export interface ReadyPayload {
   user_guild_settings?: GuildNotificationSettings[];
   /** Private notes keyed by the noted user's id. */
   notes?: Record<Snowflake, string>;
-  read_state?: { id: Snowflake; last_message_id: Snowflake | null; mention_count: number }[];
+  read_state?: ReadStateEntry[];
+  read_state_versioned?: true;
   presences?: PresenceUpdate[];
   turn?: TurnCredentials;
 }

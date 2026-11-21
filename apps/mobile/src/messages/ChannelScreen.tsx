@@ -6,9 +6,8 @@ import type { ReportTarget } from '@discordy/core/domain/reportModel';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
-import { KeyboardChatScrollView, KeyboardGestureArea, KeyboardStickyView } from 'react-native-keyboard-controller';
-import { useSharedValue } from 'react-native-reanimated';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardGestureArea } from 'react-native-keyboard-controller';
 import { errorMessage } from '@discordy/core/application/errorMessage';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useMessageStore, type ChatMessage } from '@discordy/core/application/stores/messageStore';
@@ -31,6 +30,7 @@ import { MembersEdgeSwipe } from './MembersEdgeSwipe';
 import { Composer, COMPOSER_INPUT_ID, type ComposerMode } from './Composer';
 import { ForwardSheet } from './ForwardSheet';
 import { MessageActionSheet } from './MessageActionSheet';
+import { AttachmentMetadataSheet } from './AttachmentMetadataSheet';
 import { ReportSheet } from '../report/ReportSheet';
 import { MessageRow, nameOf } from './MessageRow';
 import { blockUser } from '../friends/friendActions';
@@ -67,13 +67,6 @@ const NO_HISTORY_NOTICE = 'You do not have permission to read the history of thi
 export function ChannelScreen({ guildId, channelId }: { guildId?: string; channelId: string }) {
   const service = useMessageService();
   const insets = useSafeAreaInsets();
-  // The composer's height (with the home-indicator padding) is the list's bottom padding: the dock floats over the list and rides the keyboard frame by frame on the UI thread.
-  const dockHeight = useSharedValue(0);
-  const onDockLayout = useCallback((e: LayoutChangeEvent) => void (dockHeight.value = e.nativeEvent.layout.height), [dockHeight]);
-  const renderScroll = useCallback(
-    (props: ScrollViewProps) => <KeyboardChatScrollView {...props} inverted keyboardLiftBehavior="always" offset={insets.bottom} extraContentPadding={dockHeight} keyboardDismissMode="interactive" />,
-    [insets.bottom, dockHeight],
-  );
   const guild = useGuildStore((s) => (guildId ? s.guilds[guildId] : undefined));
   const channel = useGuildStore((s) => s.channels[channelId]);
   const parent = useGuildStore((s) => (channel?.parent_id ? s.channels[channel.parent_id] : undefined));
@@ -84,6 +77,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
 
   const [mode, setMode] = useState<ComposerMode>(COMPOSE);
   const [selected, setSelected] = useState<ChatMessage | null>(null);
+  const [editingAttachments, setEditingAttachments] = useState<ChatMessage | null>(null);
   const [selecting, setSelecting] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -271,6 +265,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
   return (
     <ChatContext.Provider value={chat}>
       <View style={styles.screen}>
+        <KeyboardAvoidingView behavior="padding" automaticOffset keyboardVerticalOffset={-insets.bottom} style={styles.list}>
         <KeyboardGestureArea interpolator="ios" textInputNativeID={COMPOSER_INPUT_ID} style={styles.list}>
         <Stack.Screen
           options={{
@@ -307,11 +302,11 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           <View style={styles.list}>
           <FlatList
             ref={listRef}
-            renderScrollComponent={renderScroll}
             onScrollToIndexFailed={(info) => listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })}
             testID="message-list"
             style={styles.list}
             inverted
+            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 32 }}
             contentContainerStyle={styles.listContent}
             data={rows}
             keyExtractor={(row) => row.key}
@@ -322,6 +317,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             onStartReached={() => void service.loadNewer(channelId).catch(fail)}
             onStartReachedThreshold={0.5}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             ListHeaderComponent={<ThinkingRows channelId={channelId} />}
             ListEmptyComponent={<EmptyState icon="chatbubbles-outline" title="No messages yet" body="Say hello." />}
             renderItem={({ item }) =>
@@ -349,7 +345,7 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
         )}
         </KeyboardGestureArea>
         {guildId && <MembersEdgeSwipe guildId={guildId} />}
-        <KeyboardStickyView offset={{ opened: insets.bottom }} style={styles.sticky}>
+        <View style={[styles.dock, { paddingBottom: insets.bottom }]}>
         {readable && loaded && (away || detached) && (
           <JumpToLatest
             onPress={() => {
@@ -358,12 +354,12 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
             }}
           />
         )}
-        <View onLayout={onDockLayout} style={[styles.dock, { paddingBottom: insets.bottom }]}>
           {channel && <PeerStatusBar channelId={channelId} mode={channel.delivery_mode ?? 'standard'} {...(peer ? { onSafetyNumber: () => setSafetyPeer(peer.id) } : {})} />}
           <Composer mode={mode} blockedReason={blockedReason} guildId={guildId} {...(access?.standard ? { draftKey: channelId } : {})} {...(access?.standard && access.canUseCommands && channel ? { slashChannel: channel } : {})} canAttach={access?.canAttach ?? false} placeholder={composerPlaceholder(channel, relationships)} onSubmit={submit} onCancelMode={() => setMode(COMPOSE)} />
         </View>
-        </KeyboardStickyView>
+        </KeyboardAvoidingView>
         <ForwardSheet message={forwarding} onClose={() => setForwarding(null)} />
+        <AttachmentMetadataSheet message={editingAttachments} onClose={() => setEditingAttachments(null)} />
         <ReportSheet target={reporting} onClose={() => setReporting(null)} />
         <NewThreadSheet message={threadFrom} onClose={() => setThreadFrom(null)} />
         <SafetyNumberSheet peerId={safetyPeer} onClose={() => setSafetyPeer(null)} />
@@ -385,6 +381,10 @@ export function ChannelScreen({ guildId, channelId }: { guildId?: string; channe
           }}
           onEdit={() => {
             if (selected) setMode({ kind: 'edit', messageId: selected.id, content: selected.content });
+            close();
+          }}
+          onEditAttachments={() => {
+            setEditingAttachments(selected);
             close();
           }}
           onDelete={() => {
@@ -471,7 +471,6 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   /** The list is inverted, so top is the gap above the composer and bottom is the gap under the oldest message. */
   listContent: { paddingTop: 16, paddingBottom: 16 },
-  sticky: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   dock: { backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notice: { color: theme.muted, textAlign: 'center', padding: 32 },

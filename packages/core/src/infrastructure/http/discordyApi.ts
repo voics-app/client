@@ -1,20 +1,32 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
   ApplicationCommand,
   ApplicationSummary,
+  ApplicationAuthorization,
+  BotAuthorizationInfo,
+  GuildIntegration,
+  Webhook,
+  WebhookCredential,
+  WebhookEdit,
   AttachmentUploadSlot,
   AuditLog,
   AccountChange,
   AuthResponse,
   BackupCode,
+  Passkey,
+  PasskeyChallenge,
+  PasskeyFinish,
+  PasskeyRegistration,
   TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   PushTokenBody,
@@ -22,6 +34,7 @@ import type {
   Device,
   Emoji,
   Guild,
+  VanityUrl,
   DiscoveryPage,
   GuildTemplate,
   DiscoveryQuery,
@@ -77,6 +90,27 @@ export class DiscordyApi implements ApiPort {
   }
   loginMfa(body: { ticket: string; code: string }) {
     return this.http.request<AuthResponse>('POST', '/auth/mfa/totp', { body, auth: false });
+  }
+  startPasskeyLogin(ticket: string) {
+    return this.http.request<PasskeyChallenge>('POST', '/auth/mfa/webauthn/start', { body: { ticket }, auth: false });
+  }
+  finishPasskeyLogin(body: PasskeyFinish & { ticket: string }) {
+    return this.http.request<AuthResponse>('POST', '/auth/mfa/webauthn/finish', { body, auth: false });
+  }
+  passkeys() {
+    return this.get<Passkey[]>('/users/@me/mfa/passkeys');
+  }
+  startPasskeyRegistration(password: string, name: string) {
+    return this.post<PasskeyChallenge>('/users/@me/mfa/passkeys/register/start', { password, name });
+  }
+  finishPasskeyRegistration(body: PasskeyFinish) {
+    return this.post<PasskeyRegistration>('/users/@me/mfa/passkeys/register/finish', body);
+  }
+  renamePasskey(id: string, name: string) {
+    return this.patch<Passkey>(`/users/@me/mfa/passkeys/${enc(id)}`, { name });
+  }
+  async removePasskey(id: string, password: string, code: string) {
+    await this.http.request<void>('DELETE', `/users/@me/mfa/passkeys/${enc(id)}`, { body: { password, code } });
   }
   async forgotPassword(email: string) {
     await this.http.request('POST', '/auth/forgot-password', { body: { email }, auth: false });
@@ -182,6 +216,13 @@ export class DiscordyApi implements ApiPort {
   relationships() {
     return this.get<Relationship[]>('/users/@me/relationships');
   }
+  favouriteFriends() { return this.get<string[]>('/users/@me/favourites'); }
+  setFavouriteFriend(userId: string, value: boolean) {
+    return value ? this.put<void>(`/users/@me/favourites/${userId}`, {}) : this.del<void>(`/users/@me/favourites/${userId}`);
+  }
+  createFriendInvite() { return this.post<{ token: string; expires_at: string }>('/users/@me/friend-invites', {}); }
+  revokeFriendInvites() { return this.del<void>('/users/@me/friend-invites'); }
+  useFriendInvite(token: string) { return this.post<void>('/friend-invites', { token }); }
   guildNotificationSettings(guildId: string | null) {
     return this.get<GuildNotificationSettings>(`/users/@me/guilds/${guildId ?? '@me'}/settings`);
   }
@@ -244,6 +285,12 @@ export class DiscordyApi implements ApiPort {
   }
   updateGuild(guildId: string, patch: Partial<Guild>) {
     return this.patch<Guild>(`/guilds/${guildId}`, patch);
+  }
+  guildVanityUrl(guildId: string) {
+    return this.get<VanityUrl>(`/guilds/${guildId}/vanity-url`);
+  }
+  updateGuildVanityUrl(guildId: string, code: string | null) {
+    return this.patch<VanityUrl>(`/guilds/${guildId}/vanity-url`, { code });
   }
   deleteGuild(guildId: string) {
     return this.del<void>(`/guilds/${guildId}`);
@@ -394,7 +441,7 @@ export class DiscordyApi implements ApiPort {
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
   }
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }) {
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody) {
     return this.patch<Message>(`/channels/${channelId}/messages/${messageId}`, patch);
   }
   deleteMessage(channelId: string, messageId: string) {
@@ -448,6 +495,39 @@ export class DiscordyApi implements ApiPort {
 
   applications() {
     return this.get<ApplicationSummary[]>('/applications');
+  }
+  botAuthorizationInfo(request: BotAuthorizationRequest) {
+    return this.get<BotAuthorizationInfo>('/oauth2/authorize', { ...request });
+  }
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string; installation_revision: string }) {
+    return this.post<{ location: string }>('/oauth2/authorize', request);
+  }
+  applicationAuthorizations() {
+    return this.get<ApplicationAuthorization[]>('/oauth2/tokens');
+  }
+  revokeApplicationAuthorization(authorizationId: string) {
+    return this.del<void>(`/oauth2/tokens/${enc(authorizationId)}`);
+  }
+  guildIntegrations(guildId: string) {
+    return this.get<GuildIntegration[]>(`/guilds/${enc(guildId)}/integrations`);
+  }
+  removeGuildIntegration(guildId: string, applicationId: string) {
+    return this.del<void>(`/guilds/${enc(guildId)}/integrations/${enc(applicationId)}`);
+  }
+  guildWebhooks(guildId: string) {
+    return this.get<Webhook[]>(`/guilds/${enc(guildId)}/webhooks`);
+  }
+  createWebhook(channelId: string, body: { name: string; avatar?: string }) {
+    return this.post<WebhookCredential>(`/channels/${enc(channelId)}/webhooks`, body);
+  }
+  updateWebhook(webhookId: string, body: WebhookEdit) {
+    return this.patch<Webhook>(`/webhooks/${enc(webhookId)}`, body);
+  }
+  resetWebhookToken(webhookId: string) {
+    return this.post<WebhookCredential>(`/webhooks/${enc(webhookId)}/reset-token`);
+  }
+  deleteWebhook(webhookId: string) {
+    return this.del<void>(`/webhooks/${enc(webhookId)}`);
   }
   globalCommands(applicationId: string) {
     return this.get<ApplicationCommand[]>(`/applications/${applicationId}/commands`);

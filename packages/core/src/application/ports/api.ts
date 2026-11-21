@@ -1,25 +1,38 @@
 /** REST port (P9). Implemented by `infrastructure/http/discordyApi.ts`. */
 import type { SearchParams } from '../../domain/messageSearch';
+import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type {
   ApplicationCommand,
   ApplicationSummary,
+  ApplicationAuthorization,
+  BotAuthorizationInfo,
+  GuildIntegration,
+  Webhook,
+  WebhookCredential,
+  WebhookEdit,
   AttachmentUploadSlot,
   AuditLog,
   AccountChange,
   AuthResponse,
   BackupCode,
+  Passkey,
+  PasskeyChallenge,
+  PasskeyFinish,
+  PasskeyRegistration,
   TotpEnrollment,
   Ban,
   Channel,
   CommandIndex,
   CreateInteractionBody,
   CreateMessageBody,
+  EditMessageBody,
   DeliveryMode,
   AuthSession,
   Device,
   Emoji,
   Guild,
+  VanityUrl,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   DiscoveryPage,
@@ -66,6 +79,13 @@ export interface ApiPort {
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
   loginMfa(body: { ticket: string; code: string }): Promise<AuthResponse>;
+  startPasskeyLogin(ticket: string): Promise<PasskeyChallenge>;
+  finishPasskeyLogin(body: PasskeyFinish & { ticket: string }): Promise<AuthResponse>;
+  passkeys(): Promise<Passkey[]>;
+  startPasskeyRegistration(password: string, name: string): Promise<PasskeyChallenge>;
+  finishPasskeyRegistration(body: PasskeyFinish): Promise<PasskeyRegistration>;
+  renamePasskey(id: string, name: string): Promise<Passkey>;
+  removePasskey(id: string, password: string, code: string): Promise<void>;
   forgotPassword(email: string): Promise<void>;
   resetPassword(token: string, password: string): Promise<void>;
   verifyEmail(token: string): Promise<void>;
@@ -99,6 +119,11 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  favouriteFriends(): Promise<string[]>;
+  setFavouriteFriend(userId: string, value: boolean): Promise<void>;
+  createFriendInvite(): Promise<{ token: string; expires_at: string }>;
+  revokeFriendInvites(): Promise<void>;
+  useFriendInvite(token: string): Promise<void>;
   /** `guildId` null addresses the user's DMs (`@me`). */
   guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
   updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;
@@ -123,6 +148,8 @@ export interface ApiPort {
   deleteGuildTemplate(guildId: string, code: string): Promise<void>;
   guild(guildId: string): Promise<Guild>;
   updateGuild(guildId: string, patch: Partial<Guild>): Promise<Guild>;
+  guildVanityUrl(guildId: string): Promise<VanityUrl>;
+  updateGuildVanityUrl(guildId: string, code: string | null): Promise<VanityUrl>;
   deleteGuild(guildId: string): Promise<void>;
   createChannel(guildId: string, body: CreateChannelBody): Promise<Channel>;
   reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null; lock_permissions?: boolean }[]): Promise<void>;
@@ -179,7 +206,7 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
-  editMessage(channelId: string, messageId: string, patch: { content?: string; flags?: number }): Promise<Message>;
+  editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
   removeReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
@@ -196,6 +223,17 @@ export interface ApiPort {
   voiceRegions(): Promise<VoiceRegion[]>;
 
   applications(): Promise<ApplicationSummary[]>;
+  botAuthorizationInfo(request: BotAuthorizationRequest): Promise<BotAuthorizationInfo>;
+  authorizeBot(request: BotAuthorizationRequest & { guild_id: string; installation_revision: string }): Promise<{ location: string }>;
+  applicationAuthorizations(): Promise<ApplicationAuthorization[]>;
+  revokeApplicationAuthorization(authorizationId: string): Promise<void>;
+  guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
+  removeGuildIntegration(guildId: string, applicationId: string): Promise<void>;
+  guildWebhooks(guildId: string): Promise<Webhook[]>;
+  createWebhook(channelId: string, body: { name: string; avatar?: string }): Promise<WebhookCredential>;
+  updateWebhook(webhookId: string, body: WebhookEdit): Promise<Webhook>;
+  resetWebhookToken(webhookId: string): Promise<WebhookCredential>;
+  deleteWebhook(webhookId: string): Promise<void>;
   globalCommands(applicationId: string): Promise<ApplicationCommand[]>;
   createApplication(body: { name: string; description?: string }): Promise<ApplicationSummary>;
   /** Issues a new bot token and invalidates the old one. The token is returned once; callers must not persist or log it. */

@@ -4,6 +4,9 @@ import type { StoredSession } from '@discordy/core/application/ports/sessionVaul
 import type { SocketLike } from '@discordy/core/infrastructure/net/socket';
 import { messageCache } from '../../src/offline/messageCache';
 import { createRuntime } from '../../src/runtime/createRuntime';
+import { STALE_AFTER_MS, watchForeground } from '../../src/runtime/foreground';
+import { rememberMobileStatus } from '../../src/runtime/mobilePresence';
+import { createMemoryStorage, installDeviceStorage } from '@discordy/core/application/ports/deviceStorage';
 
 class FakeSocket implements SocketLike {
   static all: FakeSocket[] = [];
@@ -29,6 +32,7 @@ class FakeSocket implements SocketLike {
 
 const user = { id: 'u1', username: 'me', discriminator: '0', avatar: null };
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+const cleanup: (() => void)[] = [];
 
 function memoryVault(initial: StoredSession | null = null) {
   let stored = initial;
@@ -57,6 +61,7 @@ function setup(initial: StoredSession | null = null) {
     socketFactory: (url) => new FakeSocket(url),
     fetch: fetchMock as unknown as typeof fetch,
   });
+  cleanup.push(() => runtime.gateway.disconnect());
   return { runtime, get, fetchMock };
 }
 
@@ -71,6 +76,76 @@ describe('mobile runtime', () => {
     FakeSocket.all = [];
     useSessionStore.getState().reset();
     useGuildStore.getState().reset();
+    installDeviceStorage(createMemoryStorage());
+  });
+  afterEach(() => { cleanup.splice(0).reverse().forEach((stop) => stop()); });
+
+  it('recovers a refresh response lost before restart using the request id already saved in the vault', async () => {
+    const { vault, get } = memoryVault({ accessToken: 'old-access', refreshToken: 'old-refresh', userId: 'u1', deviceId: null });
+    const requests: { refresh_token: string; request_id?: string }[] = [];
+    const fetchMock = jest.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      requests.push(body);
+      expect(get()).toMatchObject({ refreshToken: 'old-refresh', refreshRequestId: body.request_id });
+      if (requests.length === 1) throw new TypeError('connection closed after server commit');
+      return new Response(JSON.stringify({ access_token: 'new-access', refresh_token: 'new-refresh' }), { status: 200 });
+    });
+    const make = () => {
+      const rt = createRuntime({ apiUrl: 'https://api.test', gatewayUrl: 'wss://gw.test', deviceName: 'Voics iOS', platform: 'ios', version: '1', vault, socketFactory: (url) => new FakeSocket(url), fetch: fetchMock as unknown as typeof fetch });
+      cleanup.push(() => rt.gateway.disconnect());
+      return rt;
+    };
+    const beforeCrash = make();
+    await beforeCrash.session.boot();
+    expect(await beforeCrash.http.renewSession()).toBe('unavailable');
+    expect(requests[0]?.request_id).toMatch(/^[0-9a-f-]{36}$/);
+    beforeCrash.gateway.disconnect();
+    const restarted = make();
+    await restarted.session.boot();
+    expect(await restarted.http.renewSession()).toBe('renewed');
+    expect(requests[1]).toEqual(requests[0]);
+    expect(get()).toEqual({ accessToken: 'new-access', refreshToken: 'new-refresh', userId: 'u1', deviceId: null });
+  });
+
+  it('publishes the background lifecycle, restores explicit Online after resume, and clears presence on logout', async () => {
+    const { runtime } = setup();
+    let now = 0;
+    let emit: (state: string) => void = () => undefined;
+    cleanup.push(watchForeground({ addEventListener: (_type, listener) => { emit = listener; return { remove: jest.fn() }; } }, runtime.gateway, () => now));
+    await runtime.session.login({ email: 'me@example.test', password: 'pw' });
+    const first = FakeSocket.all[0]!;
+    expect((await helloAndExpectIdentify(first))?.d.presence).toMatchObject({ status: 'invisible' });
+    first.receive({ op: 0, s: 1, t: 'READY', d: { session_id: 's1', user, user_settings: { status: 'online' }, guilds: [], private_channels: [] } });
+    emit('background');
+    expect(first.sent.at(-1)).toMatchObject({ op: 3, d: { status: 'idle', afk: true, background: true } });
+    emit('active');
+    rememberMobileStatus('online');
+    emit('background');
+    expect(first.sent.at(-1)).toMatchObject({ op: 3, d: { status: 'online', background: true } });
+    now = STALE_AFTER_MS;
+    emit('active');
+    const second = FakeSocket.all[1]!;
+    second.receive({ op: 10, d: { heartbeat_interval: 60_000 } });
+    await flush();
+    expect(second.sent.some((f) => f.op === 3)).toBe(false);
+    second.receive({ op: 0, s: 2, t: 'RESUMED', d: {} });
+    expect(second.sent.at(-1)).toMatchObject({ op: 3, d: { status: 'online', background: false } });
+    await runtime.session.logout();
+    expect(second.sent.at(-1)).toMatchObject({ op: 3, d: { status: 'invisible', background: false } });
+    const sent = second.sent.length;
+    emit('background');
+    emit('active');
+    expect(second.sent).toHaveLength(sent);
+  });
+
+  it.each(['invisible', 'dnd'])('never publishes default Online before READY hydrates saved %s', async (status) => {
+    const { runtime } = setup({ accessToken: 'acc', refreshToken: 'ref', userId: 'u1', deviceId: null });
+    cleanup.push(watchForeground({ currentState: 'background', addEventListener: () => ({ remove: jest.fn() }) }, runtime.gateway));
+    await runtime.session.boot();
+    const socket = FakeSocket.all[0]!;
+    expect((await helloAndExpectIdentify(socket))?.d.presence).toMatchObject({ status: 'invisible' });
+    socket.receive({ op: 0, s: 1, t: 'READY', d: { session_id: 's1', user, user_settings: { status }, guilds: [], private_channels: [] } });
+    expect(socket.sent.filter((f) => f.op === 3).map((f) => f.d.status)).toEqual([status]);
   });
 
   it('signs in, stores the session, identifies as the mobile client and fills the stores from READY', async () => {
