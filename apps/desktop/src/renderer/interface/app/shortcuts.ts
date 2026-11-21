@@ -178,10 +178,13 @@ export function useGlobalShortcuts(): void {
         FIXED[fixed]();
         return;
       }
-      const bind = usePrefsStore.getState().keybinds.find((k) => k.keys && (k.keys === described || (k.action === 'markRead' && e.shiftKey && described === `Shift+${k.keys}`)));
+      const binds = usePrefsStore.getState().keybinds;
+      const withoutShift = described.split('+').filter((part) => part !== 'Shift').join('+');
+      const bind = binds.find((k) => k.keys && k.keys === described) ?? binds.find((k) => k.keys && k.action === 'markRead' && e.shiftKey && k.keys === withoutShift);
       if (!bind || isGloballyHandled(bind.id)) return;
       if (bind.action === 'toggleStreamerMode' && e.repeat) return;
-      if (bind.action === 'markRead' && (e.defaultPrevented || isTypingTarget(e.target) || overlayOpen())) return;
+      const composerShortcut = (e.key === 'Escape' || e.ctrlKey || e.metaKey || e.altKey) && e.target instanceof HTMLElement && e.target.matches('textarea.composer-input');
+      if (bind.action === 'markRead' && (e.defaultPrevented || (isTypingTarget(e.target) && !composerShortcut) || overlayOpen())) return;
       e.preventDefault();
       if (infoFor(bind.action).hold) {
         if (e.repeat) return;
