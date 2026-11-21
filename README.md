@@ -74,7 +74,7 @@ Desktop renderer builds defer settings, server administration, the emoji picker 
 
 ## Desktop navigation and safety
 
-Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
+Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings, a per-server new-DM restriction and Copy server ID. Friends and existing DMs remain available; another shared server that permits DMs can allow initiation, as can having no shared server. Existing direct connections are not closed. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
 
 DM rows show custom status or live typing and offer a close button on hover or keyboard focus. Closing a DM hides its row; it does not delete its history or leave a group conversation. Friends > Active Now includes voice, activities and custom statuses. Join voice appears only for an accessible server voice channel; the column hides below 1100px.
 

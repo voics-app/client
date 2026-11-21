@@ -9,6 +9,7 @@ import { canOpenServerSettings, serverSettingsTabs } from '@discordy/core/domain
 import { Permission } from '@discordy/core/contracts/permissions';
 import { ChannelType } from '@discordy/core/contracts/rest';
 import { attempt, copyText, leaveGuild, markGuildRead } from '../../app/actions';
+import { getRuntime } from '../../app/runtime';
 import { muteGuild, setGuildToggles } from '../../app/notificationActions';
 import { confirmDeleteServer } from '../settings/server/deleteServer';
 import { can, useGuildPermissions } from '../../shared/hooks/usePermissions';
@@ -19,6 +20,8 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
   const guild = useGuildStore((s) => s.guilds[guildId]);
   const me = useSessionStore((s) => s.user?.id);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(guildId)]);
+  const privacy = useSessionStore((s) => s.settings.preferences);
+  const restricted = privacy?.guild_dm_restrictions?.[guildId] ?? privacy?.default_guilds_restricted ?? false;
   const ui = useUiStore.getState();
   if (!guild) return [];
   const muted = isGuildMuted(settings, Date.now());
@@ -39,6 +42,16 @@ export function useGuildMenuEntries(guildId: string): MenuEntry[] {
         },
     { kind: 'item', label: 'Notification settings', icon: <BellRinging size={16} />, onSelect: () => ui.openDialog({ kind: 'guildNotifications', guildId }) },
     { kind: 'item', label: 'Hide muted channels', checked: settings?.hide_muted_channels ?? false, onSelect: () => void setGuildToggles(guildId, { hide_muted_channels: !settings?.hide_muted_channels }) },
+    { kind: 'item', label: 'Allow new DMs from server members', checked: !restricted, onSelect: () => ui.openDialog({
+      kind: 'confirm',
+      title: restricted ? 'Allow new DMs?' : 'Restrict new DMs?',
+      body: 'Friends and existing DM conversations remain available. A shared server that allows DMs can also permit a new conversation. People with no shared server can still start a DM. This setting does not close existing direct connections.',
+      confirmLabel: restricted ? 'Allow' : 'Restrict',
+      onConfirm: async () => {
+        const saved = await attempt(() => getRuntime().api.updateSettings({ preferences: { guild_dm_restrictions: { [guildId]: !restricted } } }), 'Could not save DM privacy');
+        if (saved) useSessionStore.getState().setSettings(saved);
+      },
+    }) },
     { kind: 'item', label: 'Privacy settings', icon: <Shield size={16} />, onSelect: () => ui.openSettings({ kind: 'user', tab: 'privacy' }) },
     {
       kind: 'item',

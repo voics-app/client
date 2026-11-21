@@ -55,6 +55,8 @@ export interface GuildFolder {
 
 /** Synced client preferences; sparse (a key is present once set). See docs/specs user settings sync. */
 export interface UserPreferences {
+  default_guilds_restricted?: boolean;
+  guild_dm_restrictions?: Record<Snowflake, boolean>;
   accent?: 'iris' | 'aurora' | 'ember' | 'rose' | 'citrine' | 'sky';
   reduce_motion?: boolean;
   font_scale?: number;
