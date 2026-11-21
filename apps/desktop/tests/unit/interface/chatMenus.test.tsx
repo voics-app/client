@@ -43,10 +43,10 @@ function seed(opts: { perms?: bigint; me?: string } = {}) {
     } as never,
     members: { [G]: { [me]: { user: user(me), roles: [], joined_at: '', deaf: false, mute: false } } } as never,
     channels: {
-      cat1: { id: 'cat1', guild_id: G, type: 4, name: 'Text', position: 0 },
-      cat2: { id: 'cat2', guild_id: G, type: 4, name: 'Voice', position: 1 },
-      c1: { id: 'c1', guild_id: G, type: 0, name: 'general', parent_id: 'cat1', position: 0, last_message_id: '50' },
-      c2: { id: 'c2', guild_id: G, type: 0, name: 'quiet', parent_id: 'cat1', position: 1, last_message_id: '10' },
+      cat1: { id: 'cat1', guild_id: G, type: 4, name: 'Text', position: 0, nsfw: false },
+      cat2: { id: 'cat2', guild_id: G, type: 4, name: 'Voice', position: 1, nsfw: false },
+      c1: { id: 'c1', guild_id: G, type: 0, name: 'general', parent_id: 'cat1', position: 0, last_message_id: '50', nsfw: false },
+      c2: { id: 'c2', guild_id: G, type: 0, name: 'quiet', parent_id: 'cat1', position: 1, last_message_id: '10', nsfw: false },
       c3: { id: 'c3', guild_id: G, type: 0, name: 'secret', parent_id: 'cat1', position: 2, last_message_id: '10', nsfw: true, permission_overwrites: [{ id: G, type: 0, allow: '0', deny: '1024' }] },
     } as never,
   });

@@ -25,7 +25,7 @@ beforeEach(() => {
   useSessionStore.getState().reset();
   useSessionStore.getState().setUser({ id: 'me', username: 'me', global_name: null, avatar: null });
   useSessionStore.getState().setStatus('ready');
-  useGuildStore.getState().upsertChannel({ id: '101', guild_id: '102', type: 0, delivery_mode: 'standard' });
+  useGuildStore.getState().upsertChannel({ id: '101', guild_id: '102', type: 0, nsfw: false, delivery_mode: 'standard' });
   useClosedDmStore.setState({ closed: {} });
   useUiStore.setState({ dialog: { kind: 'forward', message } });
   useConnectionStore.setState({ cdnUrl: 'https://cdn.example.invalid' });
