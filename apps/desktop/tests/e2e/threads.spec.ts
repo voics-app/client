@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { startFakeBackend } from './fakeBackend';
 
-test('browses, joins and archives a synthetic thread', async ({}, testInfo) => {
+test('browses, joins and archives a synthetic thread', async ({ browserName }, testInfo) => {
+  void browserName;
   const backend = await startFakeBackend();
   const userData = mkdtempSync(join(tmpdir(), 'voics-threads-e2e-'));
   const env = {
