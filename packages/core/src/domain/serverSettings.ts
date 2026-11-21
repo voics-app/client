@@ -2,7 +2,7 @@
 import { Permission } from '../contracts/permissions';
 import { hasPermission } from './permissions';
 
-export type ServerSettingsTabId = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTabId = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'widget' | 'bans' | 'audit' | 'integrations';
 
 export interface ServerSettingsTabEntry {
   id: ServerSettingsTabId;
@@ -25,6 +25,7 @@ export function serverSettingsTabs(perms: bigint): ServerSettingsTabEntry[] {
     { id: 'invites', label: 'Invites', group: 'People', show: can(Permission.MANAGE_GUILD) },
     { id: 'template', label: 'Template', group: 'Server', show: can(Permission.MANAGE_GUILD) },
     { id: 'discovery', label: 'Discovery', group: 'Server', show: can(Permission.MANAGE_GUILD) },
+    { id: 'widget', label: 'Widget', group: 'Server', show: can(Permission.MANAGE_GUILD) },
     { id: 'integrations', label: 'Integrations', group: 'Server', show: can(Permission.MANAGE_GUILD) || can(Permission.MANAGE_WEBHOOKS) },
     { id: 'bans', label: 'Bans', group: 'Moderation', show: can(Permission.BAN_MEMBERS) || can(Permission.MANAGE_BAN_APPEALS) },
     { id: 'audit', label: 'Audit log', group: 'Moderation', show: can(Permission.VIEW_AUDIT_LOG) },

@@ -249,6 +249,27 @@ export interface VanityUrl {
   uses: number;
 }
 
+export interface GuildWidgetSettings {
+  enabled: boolean;
+  channel_id: string | null;
+}
+
+export interface GuildWidgetChannel {
+  id: string;
+  name: string;
+  position: number;
+}
+
+/** Public `widget.json`: what anonymous visitors see of an enabled guild. */
+export interface GuildWidget {
+  id: string;
+  name: string;
+  icon: string | null;
+  instant_invite: string | null;
+  presence_count: number | null;
+  channels: GuildWidgetChannel[];
+}
+
 export interface GuildFull extends Guild {
   channels: Channel[];
   threads?: Channel[];

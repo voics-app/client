@@ -38,6 +38,7 @@ import type {
   Emoji,
   Guild,
   VanityUrl,
+  GuildWidgetSettings,
   DiscoveryPage,
   GuildTemplate,
   DiscoveryQuery,
@@ -329,6 +330,12 @@ export class DiscordyApi implements ApiPort {
   }
   updateGuildVanityUrl(guildId: string, code: string | null) {
     return this.patch<VanityUrl>(`/guilds/${guildId}/vanity-url`, { code });
+  }
+  guildWidgetSettings(guildId: string) {
+    return this.get<GuildWidgetSettings>(`/guilds/${guildId}/widget`);
+  }
+  updateGuildWidgetSettings(guildId: string, patch: { enabled?: boolean; channel_id?: string | null }) {
+    return this.patch<GuildWidgetSettings>(`/guilds/${guildId}/widget`, patch);
   }
   deleteGuild(guildId: string) {
     return this.del<void>(`/guilds/${guildId}`);
