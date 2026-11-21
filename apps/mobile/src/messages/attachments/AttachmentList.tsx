@@ -160,7 +160,7 @@ function AudioRow({ attachment, channelId }: { attachment: Attachment; channelId
     if (busy) return;
     setBusy(true);
     const privateRef = privateRefOf(attachment);
-    const service = getRuntime().privacy?.attachments;
+    const service = privateRef ? getRuntime().privacy?.attachments : undefined;
     const resolve = privateRef ? (service && channelId ? service.resolve(attachment, channelId) : Promise.reject(new Error('Private audio is unavailable on this device.'))) : Promise.resolve(attachment.url);
     const isVoice = Boolean(attachment.waveform) || attachment.content_type === 'audio/ogg';
     void resolve.then((source) => isVoice ? prepareVoicePlayback(source) : source).then((result) => {
