@@ -57,6 +57,13 @@
 - Settings, Devices now lists where you are logged in (client, OS, approximate location, last active) with a Log out per device and Log out all known devices; revoked devices are signed out right away. Needs the api and gateway session revocation.
 - Fixed components at the bottom of the window lagging and leaving a trail while resizing on Windows: the voice dock is opaque, and blur and transitions are suspended during a resize.
 
+## 0.9.11
+
+- Open voice calls from the channel list and resize the call and text panels; controls and headers fit narrow windows.
+- Development builds no longer take over the installed app?s Windows invite-link association.
+- The Windows taskbar mention badge shows 9+ for ten or more mentions.
+- Gateway reconnection falls back to the configured endpoint if the advertised resume endpoint fails, with timeouts for stalled handshakes.
+
 ## 0.2.0
 
 Calls, privacy and servers catch up with Discord.

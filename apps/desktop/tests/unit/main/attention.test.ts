@@ -29,8 +29,9 @@ describe('bitmaps', () => {
   it('labels counts', () => {
     expect(overlayLabel(0)).toBe('');
     expect(overlayLabel(7)).toBe('7');
-    expect(overlayLabel(42)).toBe('42');
-    expect(overlayLabel(500)).toBe('!');
+    expect(overlayLabel(9)).toBe('9');
+    expect(overlayLabel(10)).toBe('9+');
+    expect(overlayLabel(500)).toBe('9+');
   });
   it('renders no overlay when nothing is pending', () => expect(renderOverlay(0, 0)).toBeNull());
   it('draws a larger overlay for mentions than for unread', () => {
@@ -41,6 +42,19 @@ describe('bitmaps', () => {
     expect(opaque(u)).toBeGreaterThan(0);
   });
   it('draws different digits differently', () => expect(renderOverlay(1, 0)!.data.equals(renderOverlay(2, 0)!.data)).toBe(false));
+  it('draws the plus glyph for counts above nine', () => {
+    const nine = renderOverlay(9, 0)!;
+    const capped = renderOverlay(10, 0)!;
+    expect(capped.data.equals(nine.data)).toBe(false);
+    // The plus sign has white pixels at its centre and horizontal arms.
+    const isWhite = (x: number, y: number) => {
+      const i = (y * capped.width + x) * 4;
+      return capped.data[i] === 255 && capped.data[i + 1] === 255 && capped.data[i + 2] === 255;
+    };
+    expect(isWhite(24, 14)).toBe(true);
+    expect(isWhite(20, 14)).toBe(true);
+    expect(isWhite(28, 14)).toBe(true);
+  });
   it('adds a state dot without mutating the base', () => {
     const base = createBitmap(16, 16);
     const out = withStateDot(base, 'mentions');
@@ -56,6 +70,12 @@ describe('AttentionPresenter', () => {
     expect(port.setOverlay).toHaveBeenCalledWith(expect.anything(), '2 mentions, 1 unread channel');
     expect(port.setBadgeCount).not.toHaveBeenCalled();
     expect(port.setTitle).toHaveBeenCalledWith('(2) Brand');
+  });
+  it('retains exact accessibility counts when the badge is capped', () => {
+    const port = fakePort();
+    new AttentionPresenter(port, 'Brand', () => null, 'win32').apply({ mentions: 42, unread: 3 });
+    expect(port.setOverlay).toHaveBeenCalledWith(expect.anything(), '42 mentions, 3 unread channels');
+    expect(port.setTitle).toHaveBeenCalledWith('(42) Brand');
   });
   it('clears the overlay at zero and uses badge count elsewhere', () => {
     const win = fakePort();

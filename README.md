@@ -184,6 +184,8 @@ Installers are unsigned, but electron-builder still writes the icon and version 
 
 Edit `apps/desktop/brand.json` (displayName, productName, shortName, appId, protocolScheme, description, publisher, updateFeedHost). The window title, tray, UI copy, deep-link scheme, installer name and `electron-builder.config.cjs` all read it. The unit test `tests/unit/brand/brand.test.ts` fails if the display name is hardcoded anywhere else in `apps/desktop/src`. `@discordy/*` package names and `DISCORDY_*` environment variables are identifiers and stay as they are.
 
+Packaged desktop builds register their link schemes at startup. Development builds do not claim those system associations by default, so they do not replace an installed app's handler. To test links against a development build, start it with `DISCORDY_REGISTER_DEV_PROTOCOL=1`; starting the packaged app again reclaims the association.
+
 ## Configuration
 
 | Variable | Default | Purpose |

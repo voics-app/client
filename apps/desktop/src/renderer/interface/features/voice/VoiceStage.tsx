@@ -104,7 +104,7 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
   const shareKeys = useKeyHint('toggleScreenShare');
   const popOut = usePopOut();
   const layout = useMemo(() => normalizeLayout(saved ?? DEFAULT_STAGE_LAYOUT), [saved]);
-  const { main, rest, hidden, mode } = useMemo(() => arrangeStage(tiles, layout, focusedKey), [tiles, layout, focusedKey]);
+  const { main, rest, hidden, mode } = useMemo(() => arrangeStage(tiles, layout, focusedKey ?? (!saved ? tiles.find((tile) => tile.kind === 'screen')?.key ?? null : null)), [tiles, layout, focusedKey, saved]);
   const columns = gridColumns(rest.length);
   const pin = (key: string) => patchLayout(channelId, { pinned: layout.pinned === key ? null : key });
   const backToGrid = () => {
@@ -126,7 +126,7 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
   const body = (
     <>
       <LayoutGroup>
-        <div className={`stage-grid${main ? ' has-focus' : ''}${mode === 'spotlight' ? ' is-spotlight' : ''}`}>
+        <div className={`stage-grid${main ? ' has-focus' : ''}${mode === 'spotlight' ? ' is-spotlight' : ''}${tiles.every((tile) => tile.kind === 'avatar') ? ' is-audio-only' : ''}`}>
           {main && (
             <motion.div layout transition={snappy} className="stage-focus">
               {renderTile(main, true)}
@@ -209,7 +209,7 @@ export function VoiceStage({ channelId, guildId }: { channelId: string; guildId:
             <UserPlus size={16} /> Invite
           </Button>
         )}
-        <VoiceChatToggle channelId={channelId} />
+        {guildId && <VoiceChatToggle channelId={channelId} />}
       </header>
       {popOut.container ? (
         <>
