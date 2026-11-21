@@ -59,7 +59,7 @@ function guild(deliveryMode: string): GuildFull {
     roles: [everyone],
     emojis: [],
     members: [{ user: ME, roles: [] }],
-    channels: [{ id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', position: 0, delivery_mode: deliveryMode }],
+    channels: [{ id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'general', position: 0, delivery_mode: deliveryMode }],
   } as unknown as GuildFull;
 }
 

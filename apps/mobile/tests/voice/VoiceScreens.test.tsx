@@ -56,8 +56,8 @@ function seedGuild() {
     emojis: [],
     members: [{ user: ME, roles: [] }, { user: PAT, roles: [] }],
     channels: [
-      { id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', name: 'general', position: 0, delivery_mode: 'standard' },
-      { id: 'lounge', type: ChannelType.GUILD_VOICE, guild_id: 'g1', name: 'Lounge', position: 1, delivery_mode: 'standard' },
+      { id: 'general', type: ChannelType.GUILD_TEXT, guild_id: 'g1', nsfw: false, name: 'general', position: 0, delivery_mode: 'standard' },
+      { id: 'lounge', type: ChannelType.GUILD_VOICE, guild_id: 'g1', nsfw: false, name: 'Lounge', position: 1, delivery_mode: 'standard' },
     ],
   } as unknown as GuildFull;
   useSessionStore.setState({ status: 'ready', user: ME as never, sessionId: 'sess' });

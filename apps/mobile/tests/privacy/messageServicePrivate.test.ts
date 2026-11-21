@@ -7,7 +7,7 @@ import { MessageService, type PrivateChat } from '../../src/messages/messageServ
 
 const ME = { id: 'me', username: 'me', global_name: 'Me', discriminator: '0', avatar: null };
 const ephemeral = { id: 'c1', type: 1, name: 'dm', delivery_mode: 'ephemeral' } as Channel;
-const standard = { id: 'c2', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard' } as Channel;
+const standard = { id: 'c2', type: 0, guild_id: 'g1', nsfw: false, name: 'general', delivery_mode: 'standard' } as Channel;
 const stored = (id: string, channelId: string): Message =>
   ({ id, channel_id: channelId, author: ME, content: 'x', timestamp: '2026-01-01T00:00:00Z', edited_timestamp: null, mention_everyone: false, mentions: [], mention_roles: [], attachments: [], embeds: [], pinned: false, type: 0 }) as Message;
 

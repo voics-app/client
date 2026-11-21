@@ -29,7 +29,7 @@ it('uses the server-scoped image in a member row without losing its status', asy
 
 it('uses the server image in the voice channel row and stage tile', async () => {
   useVoiceStore.setState({ states: { '9': { '7': { guild_id: '9', channel_id: '2', user_id: '7', member, self_mute: false, self_deaf: false, mute: false, deaf: false } } } as never });
-  await render(<OccupantList channel={{ id: '2', guild_id: '9', type: 2 } as never} />);
+  await render(<OccupantList channel={{ id: '2', guild_id: '9', nsfw: false, type: 2 } as never} />);
   expect(screen.getByLabelText('Sam avatar').props.source.uri).toBe('https://cdn.test/guilds/9/users/7/avatars/server.png?size=72');
   await cleanup();
   const tile = { key: '7:camera', userId: '7', kind: 'camera', hasVideo: false, stream: null, watchable: false, row: { userId: '7', name: 'Sam', user, self: false, muted: false, deafened: false, speaking: true } } as const;

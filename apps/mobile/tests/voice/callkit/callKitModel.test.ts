@@ -74,7 +74,7 @@ describe('callSnapshot active call', () => {
   });
 
   it('is nothing for a server voice channel, an idle or failed call, or an unknown channel', () => {
-    const voice = channel('20', { type: ChannelType.GUILD_VOICE, guild_id: 'g1' });
+    const voice = channel('20', { type: ChannelType.GUILD_VOICE, guild_id: 'g1', nsfw: false });
     expect(callSnapshot(input({ channels: { '20': voice }, call: { status: 'connected', channelId: '20' } })).active).toBeNull();
     expect(callSnapshot(input({ channels: { '10': channel('10') }, call: { status: 'idle', channelId: '10' } })).active).toBeNull();
     expect(callSnapshot(input({ channels: { '10': channel('10') }, call: { status: 'failed', channelId: '10' } })).active).toBeNull();

@@ -45,7 +45,7 @@ describe('tab results', () => {
 });
 
 describe('runSearch', () => {
-  const channel = { id: 'c1', type: 0, guild_id: 'g1', name: 'general', delivery_mode: 'standard' } as Channel;
+  const channel = { id: 'c1', type: 0, guild_id: 'g1', nsfw: false, name: 'general', delivery_mode: 'standard' } as Channel;
   const target: SearchTarget = { channel, guildName: 'Home', mode: 'standard', candidates: { users: [{ id: 'u2', name: 'pat' }], channels: [{ id: 'c1', name: 'general' }] } };
   const serve = (byHas: Record<string, { total: number; messages: Message[][] }>) =>
     jest.fn(async (_scope: unknown, params: { has?: string[] }) => {

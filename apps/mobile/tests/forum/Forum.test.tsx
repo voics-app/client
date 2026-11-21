@@ -6,7 +6,7 @@ import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { canPost, forumPosts, newPostBody } from '../../src/forum/forumModel';
 import { resetStores, seedServer } from '../support/server';
 
-const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'ideas', name: `post ${id}`, message_count: 2, ...extra }) as Channel;
+const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', nsfw: false, parent_id: 'ideas', name: `post ${id}`, message_count: 2, ...extra }) as Channel;
 
 describe('forumPosts', () => {
   it('lists the public threads of the forum, newest first, archived after the active ones', () => {
