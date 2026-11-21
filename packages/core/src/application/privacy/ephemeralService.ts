@@ -179,7 +179,7 @@ export class EphemeralService {
       nonce: id,
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
-      files: attached.map((a) => a.private),
+      files: attached.map((a, i) => ({ ...a.private, ...(i === 0 && input.voice ? { voice: input.voice } : {}) })),
       ...ttlField(this.retention.ttlOf(channelId)),
     };
     const plaintextB64 = encodePayload(payload);

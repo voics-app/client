@@ -1,0 +1,5 @@
+[bindings.kotlin]
+package_name = "nl.voics.crypto.generated"
+cdylib_name = "discordy_crypto"
+android = true
+java_8_compatible = true

@@ -6,7 +6,7 @@ import type { ApiPort } from '../ports/api';
 import type { GatewayPort } from '../ports/gateway';
 import { useGuildStore } from '../stores/guildStore';
 import { usePrivacyStore } from '../stores/privacyStore';
-import { AttachmentService } from './attachmentService';
+import { AttachmentService, type AttachmentPlatform } from './attachmentService';
 import { DeviceDirectory } from './deviceDirectory';
 import { EphemeralService } from './ephemeralService';
 import { LocalHistory } from './localHistory';
@@ -25,6 +25,7 @@ export interface PrivateMessagingDeps {
   createPeerConnection: (config: PeerConnectionConfig) => PeerConnectionLike;
   /** Downloads an encrypted attachment from the CDN. */
   fetchBytes: (url: string) => Promise<Uint8Array>;
+  attachmentPlatform?: AttachmentPlatform;
   /** Public CDN origin of the active connection profile. */
   cdnUrl: () => string;
   now?: () => number;
@@ -50,8 +51,8 @@ export class PrivateMessaging {
     const now = deps.now ?? Date.now;
     const devices = new DeviceDirectory(deps.api, now);
     const history = new LocalHistory(() => (this.storeOpen ? deps.crypto : undefined), now);
-    this.retention = new PrivateRetention(history, now);
-    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes });
+    this.attachments = new AttachmentService({ api: deps.api, fetchBytes: deps.fetchBytes, platform: deps.attachmentPlatform });
+    this.retention = new PrivateRetention(history, now, (messageId) => this.attachments.removeMessage(messageId));
     this.ephemeral = new EphemeralService({
       gateway: deps.gateway,
       api: deps.api,
@@ -102,6 +103,7 @@ export class PrivateMessaging {
     this.sweeper = undefined;
     this.ephemeral.stop();
     this.p2p.stop();
+    void this.attachments.clear().catch(() => undefined);
   }
 
   /** Feed gateway op frames (op 20 and 22; other ops are ignored). */

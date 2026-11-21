@@ -240,6 +240,16 @@ describe('MessageService', () => {
     const blob = { size: 10, type: 'image/jpeg' } as Blob;
     const readBlob = jest.fn(async () => blob);
 
+    it('sends voice metadata with the uploaded recording and voice flag', async () => {
+      const api = makeApi();
+      const service = new MessageService(api, () => 0, readBlob);
+      await service.send(channel, { content: '', files: [photo], voice: { duration_secs: 2.5, waveform: 'AQID' } });
+      expect(api.sendMessage).toHaveBeenCalledWith('c1', expect.objectContaining({
+        flags: 8192,
+        attachments: [expect.objectContaining({ duration_secs: 2.5, waveform: 'AQID' })],
+      }));
+    });
+
     it('uploads through slots, then sends the message with the attachment list', async () => {
       const api = makeApi();
       const service = new MessageService(api, () => 0, readBlob);

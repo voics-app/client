@@ -1,3 +1,5 @@
 # Produced by native/crypto/ios/build-xcframework.sh (workflow crypto-ios) and unpacked by scripts/fetch-crypto-framework.mjs.
 ios/Frameworks/
 ios/Generated/
+android/Generated/
+android/jniLibs/

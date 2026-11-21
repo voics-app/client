@@ -70,6 +70,14 @@ export class MessageSender {
   }
 
   async send(channel: Channel, input: SendInput): Promise<ChatMessage | null> {
+    if (input.voice) {
+      const { duration_secs, waveform } = input.voice;
+      let validWaveform = false;
+      try { validWaveform = waveform.length > 0 && waveform.length <= 1024 && atob(waveform).length > 0; } catch { /* reject malformed input */ }
+      if (input.content.trim() || input.tts || input.files?.length !== 1 || !input.files?.[0]?.type.startsWith('audio/') || !Number.isFinite(duration_secs) || duration_secs <= 0 || duration_secs > 600 || !validWaveform) {
+        throw new Error('A voice message needs one audio recording with valid duration and waveform.');
+      }
+    }
     const mode = this.resolveMode(channel);
     if (mode === 'standard') return this.sendStandard(channel, input);
     return this.sendPrivate(channel, mode, input);
@@ -232,7 +240,7 @@ export class MessageSender {
         content: input.content,
         nonce,
         ...(input.tts ? { tts: true } : {}),
-        ...(input.silent ? { flags: MessageFlag.SUPPRESS_NOTIFICATIONS } : {}),
+        ...((input.silent || input.voice) ? { flags: (input.silent ? MessageFlag.SUPPRESS_NOTIFICATIONS : 0) | (input.voice ? MessageFlag.IS_VOICE_MESSAGE : 0) } : {}),
         ...(input.replyTo && input.pingReplied === false ? { allowed_mentions: { replied_user: false } } : {}),
         message_reference: optimistic.message_reference,
         attachments: await this.uploadFiles(channel.id, nonce, input),
@@ -285,7 +293,7 @@ export class MessageSender {
       );
       return slots.map((slot, i) => {
         const description = input.fileOptions?.[i]?.description?.trim();
-        return { id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename, ...(description ? { description } : {}) };
+        return { id: slot.id, filename: files[i]!.name, uploaded_filename: slot.upload_filename, ...(description ? { description } : {}), ...(i === 0 && input.voice ? input.voice : {}) };
       });
     } catch (error) {
       if (controller.signal.aborted) throw new UploadCancelled();

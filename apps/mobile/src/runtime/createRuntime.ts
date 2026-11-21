@@ -67,6 +67,7 @@ export interface MobileRuntime {
   voice: MobileVoice | null;
   /** The Ephemeral and P2P engine; null in Expo Go, where those modes stay unavailable. */
   privacy: PrivateMessaging | null;
+  privateAttachments: boolean;
 }
 
 export function createRuntime(config: RuntimeConfig): MobileRuntime {
@@ -122,7 +123,8 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
           return { userId: s.user?.id ?? identityUserId, deviceId: s.deviceId ?? '', identityKeyB64: s.identityKeyB64 ?? '' };
         },
         createPeerConnection: nativePrivacy.createPeerConnection,
-        fetchBytes: config.fetchBytes ?? defaultFetchBytes(config.fetch ?? fetch),
+        fetchBytes: nativePrivacy.fetchAttachmentBytes ?? config.fetchBytes ?? defaultFetchBytes(config.fetch ?? fetch),
+        attachmentPlatform: nativePrivacy.attachmentPlatform,
         cdnUrl: () => config.cdnUrl ?? '',
         iceServers: () => turn.iceServers(),
         deviceLabel: config.deviceName,
@@ -192,7 +194,7 @@ export function createRuntime(config: RuntimeConfig): MobileRuntime {
     },
   });
 
-  return { apiUrl: config.apiUrl, http, api, gateway, interactions: new InteractionService(api), session: manager, voice, privacy };
+  return { apiUrl: config.apiUrl, http, api, gateway, interactions: new InteractionService(api), session: manager, voice, privacy, privateAttachments: Boolean(nativePrivacy?.attachmentPlatform) };
 }
 
 function defaultFetchBytes(request: typeof fetch): (url: string) => Promise<Uint8Array> {

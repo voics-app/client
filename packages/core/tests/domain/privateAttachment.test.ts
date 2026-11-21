@@ -74,6 +74,16 @@ describe('parseFileRef', () => {
     const parsed = parseFileRef(ref({ name: '../x.png', mime: 'text/html' }), '500', 'ephemeral');
     expect(parsed).toMatchObject({ name: 'x.png', mime: 'application/octet-stream' });
   });
+  it('preserves bounded voice metadata within encrypted file references', () => {
+    const voice = { duration_secs: 2.5, waveform: b64(64) };
+    for (const mode of ['ephemeral', 'p2p'] as const) {
+      const source = mode === 'p2p' ? { kind: 'p2p' as const } : ref().source;
+      const parsed = parseFileRef(ref({ source, voice, mime: 'audio/ogg' }), '500', mode);
+      expect(parsed?.voice).toEqual(voice);
+      expect(toAttachment(parsed!)).toMatchObject(voice);
+      expect(parseFileRef(ref({ source, voice: { ...voice, duration_secs: 601 } }), '500', mode)).toBeNull();
+    }
+  });
   it('rejects non-objects', () => {
     expect(parseFileRef(null, '500', 'ephemeral')).toBeNull();
     expect(parseFileRef('x', '500', 'ephemeral')).toBeNull();

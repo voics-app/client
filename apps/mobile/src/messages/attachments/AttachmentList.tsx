@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
 import { useUploadStore } from '@discordy/core/application/stores/uploadStore';
 import type { Attachment } from '@discordy/core/contracts/rest';
@@ -11,9 +11,12 @@ import { theme } from '../../theme';
 import { openLink } from '../markdown/links';
 import { singleMediaSize, tileRows, uploadLabel } from './attachmentModel';
 import { MediaViewer } from './MediaViewer';
+import { privateRefOf } from '@discordy/core/domain/privateAttachment';
+import { getRuntime } from '../../runtime';
+import { discardVoicePlayback, prepareVoicePlayback } from '../voicePlayback';
 
 /** The attachments of one message: an image and video grid, then audio and file rows; unsent messages show their upload progress with Cancel. */
-export function AttachmentList({ attachments, messageId, sending }: { attachments: Attachment[]; messageId: string; sending: boolean }) {
+export function AttachmentList({ attachments, messageId, sending, channelId }: { attachments: Attachment[]; messageId: string; sending: boolean; channelId?: string }) {
   const { width } = useWindowDimensions();
   const [viewing, setViewing] = useState<{ items: Attachment[]; index: number } | null>(null);
   const inlineMedia = usePrefsStore((s) => s.inlineMedia);
@@ -34,7 +37,7 @@ export function AttachmentList({ attachments, messageId, sending }: { attachment
   return (
     <View style={styles.wrap}>
       {media.length > 0 && <MediaGrid media={media} width={available} onOpen={openMedia} />}
-      {files.map((file) => <FileSpoiler key={file.id} attachment={file}>{previewKind(file) === 'audio' ? <AudioRow attachment={file} /> : <FileRow attachment={file} />}</FileSpoiler>)}
+      {files.map((file) => <FileSpoiler key={file.id} attachment={file}>{previewKind(file) === 'audio' ? <AudioRow attachment={file} channelId={channelId} /> : <FileRow attachment={file} />}</FileSpoiler>)}
       {sending && upload && (
         <View style={styles.progress}>
           <View style={styles.track}>
@@ -147,35 +150,53 @@ function FileRow({ attachment }: { attachment: Attachment }) {
 }
 
 /** Audio plays through a player that is only created when the row is first tapped, so a long chat does not hold dozens of players. */
-function AudioRow({ attachment }: { attachment: Attachment }) {
-  const [started, setStarted] = useState(false);
-  if (!started) return <AudioShell attachment={attachment} playing={false} onToggle={() => setStarted(true)} />;
-  return <ActiveAudio attachment={attachment} />;
+function AudioRow({ attachment, channelId }: { attachment: Attachment; channelId?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  const prepared = useRef<string | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (prepared.current) void discardVoicePlayback(prepared.current); }; }, []);
+  if (!url) return <AudioShell attachment={attachment} playing={false} onToggle={() => {
+    if (busy) return;
+    setBusy(true);
+    const privateRef = privateRefOf(attachment);
+    const service = privateRef ? getRuntime().privacy?.attachments : undefined;
+    const resolve = privateRef ? (service && channelId ? service.resolve(attachment, channelId) : Promise.reject(new Error('Private audio is unavailable on this device.'))) : Promise.resolve(attachment.url);
+    const isVoice = Boolean(attachment.waveform) || attachment.content_type === 'audio/ogg';
+    void resolve.then((source) => isVoice ? prepareVoicePlayback(source) : source).then((result) => {
+      if (isVoice) prepared.current = result;
+      if (mounted.current) setUrl(result); else if (isVoice) void discardVoicePlayback(result);
+    }).catch((error: unknown) => Alert.alert('Could not play audio', error instanceof Error ? error.message : 'Audio unavailable')).finally(() => { if (mounted.current) setBusy(false); });
+  }} />;
+  return <ActiveAudio attachment={{ ...attachment, url }} />;
 }
 
 function ActiveAudio({ attachment }: { attachment: Attachment }) {
   const player = useAudioPlayer({ uri: attachment.url });
   const status = useAudioPlayerStatus(player);
   const [auto, setAuto] = useState(true);
+  const [speed, setSpeed] = useState(1);
   if (auto && status.isLoaded) {
     setAuto(false);
     player.play();
   }
-  return <AudioShell attachment={attachment} playing={status.playing} onToggle={() => (status.playing ? player.pause() : player.play())} />;
+  return <AudioShell attachment={attachment} playing={status.playing} onToggle={() => (status.playing ? player.pause() : player.play())} speed={speed} onSpeed={() => { const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; player.setPlaybackRate(next); setSpeed(next); }} />;
 }
 
-function AudioShell({ attachment, playing, onToggle }: { attachment: Attachment; playing: boolean; onToggle(): void }) {
+function AudioShell({ attachment, playing, onToggle, speed, onSpeed }: { attachment: Attachment; playing: boolean; onToggle(): void; speed?: number; onSpeed?(): void }) {
+  let samples: number[] = [];
+  try { samples = [...atob(attachment.waveform ?? '')].slice(0, 64).map((c) => c.charCodeAt(0)); } catch { /* untrusted metadata */ }
   return (
     <View style={styles.file}>
       <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause' : 'Play'} onPress={onToggle} style={styles.play}>
         <Ionicons name={playing ? 'pause' : 'play'} size={22} color={theme.accentText} />
       </Pressable>
       <View style={styles.fileText}>
-        <Text numberOfLines={1} style={styles.fileName}>
-          {displayFilename(attachment.filename)}
-        </Text>
-        <Text style={styles.fileSize}>{formatBytes(attachment.size)}</Text>
+        <Text numberOfLines={1} style={styles.fileName}>{attachment.waveform ? 'Voice message' : displayFilename(attachment.filename)}</Text>
+        {samples.length > 0 && <View accessibilityLabel="Recording waveform" style={styles.wave}>{samples.map((sample, i) => <View key={i} style={{ width: 2, height: Math.max(2, sample / 12), backgroundColor: theme.accent }} />)}</View>}
+        <Text style={styles.fileSize}>{attachment.duration_secs ? `${Math.ceil(attachment.duration_secs)}s` : formatBytes(attachment.size)}</Text>
       </View>
+      {attachment.waveform && onSpeed && <Pressable accessibilityRole="button" accessibilityLabel={`Playback speed ${speed} times`} onPress={onSpeed}><Text style={styles.fileName}>{speed}×</Text></Pressable>}
     </View>
   );
 }
@@ -194,6 +215,7 @@ const styles = StyleSheet.create({
   moreText: { color: theme.text, fontSize: 26, fontWeight: '700' },
   file: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 12, borderRadius: 10, backgroundColor: theme.raised, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.hairlineStrong, maxWidth: 320 },
   fileText: { flex: 1 },
+  wave: { flexDirection: 'row', alignItems: 'center', gap: 1, height: 24, overflow: 'hidden' },
   fileName: { color: theme.accent, fontSize: 15 },
   fileSize: { color: theme.subtle, fontSize: 12 },
   play: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },

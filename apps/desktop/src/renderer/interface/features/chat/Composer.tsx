@@ -39,6 +39,7 @@ import { LazyFeature } from '../../shared/ui/LazyFeature';
 const loadSlashCommandPanel = () => import('./SlashCommandPanel').then(({ SlashCommandPanel }) => ({ default: SlashCommandPanel }));
 import { TimestampPicker } from './TimestampPicker';
 import { ComposerFiles, type Descriptions } from './ComposerFiles';
+import { VoiceRecorder } from './VoiceRecorder';
 import { GifPicker } from './GifPicker';
 import { captureFailedSendScope, currentFailedSendScope, failedSendKey, useFailedSendQueue, type FailedDraft } from './failedSendQueue';
 
@@ -595,6 +596,7 @@ function ComposerInner({ channel, mode }: { channel: Channel; mode: DeliveryMode
           )}
           {slowmodeLeft > 0 && <span className="composer-slowmode" role="timer" aria-label={`Slowmode: ${slowmodeLeft} seconds left`}>Slowmode {formatCountdown(slowmodeLeft)}</span>}
           <ModeSwitcher channel={channel} mode={mode} />
+          <VoiceRecorder channel={channel} disabled={!canSend || !canAttach || slowmodeLeft > 0 || Boolean(channel.guild_id && !can(perms, Permission.SEND_VOICE_MESSAGES))} />
           <IconButton label="Insert timestamp" disabled={!canSend} onClick={() => setPickingTime(true)}><Clock size={22} /></IconButton>
           <IconButton label="GIF" disabled={!canSend} onClick={() => setPickingGif((open) => !open)}>GIF</IconButton>
           <IconButton label="Emoji" disabled={!canSend} onClick={(e) => emoji.open(e.currentTarget, true)}><Smiley size={22} /></IconButton>

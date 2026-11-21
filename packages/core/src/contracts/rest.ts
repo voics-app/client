@@ -267,6 +267,8 @@ export interface Attachment {
   proxy_url?: string;
   height?: number | null;
   width?: number | null;
+  duration_secs?: number;
+  waveform?: string;
   /** AttachmentFlag bits (IS_SPOILER). */
   flags?: number;
 }
@@ -374,6 +376,7 @@ export const MessageFlag = {
   LOADING: 1 << 7,
   /** `@silent`: no push, desktop or unread-mention notification. */
   SUPPRESS_NOTIFICATIONS: 1 << 12,
+  IS_VOICE_MESSAGE: 1 << 13,
 } as const;
 
 export const CommandType = { CHAT_INPUT: 1, USER: 2, MESSAGE: 3 } as const;
@@ -761,7 +764,7 @@ export const ApiErrorCode = {
 export interface CreateMessageBody {
   content: string;
   nonce: string;
-  attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number }[];
+  attachments?: { id: string; filename: string; uploaded_filename: string; description?: string; flags?: number; duration_secs?: number; waveform?: string }[];
   message_reference?: MessageReference;
   embeds?: Embed[];
   tts?: boolean;

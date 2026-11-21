@@ -7,7 +7,7 @@ import { useReadStateStore } from '@discordy/core/application/stores/peopleStore
 import { useReadNavStore } from '@discordy/core/application/stores/readNavStore';
 import { idBefore } from '@discordy/core/domain/unread';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
-import type { Channel, CreateMessageBody } from '@discordy/core/contracts/rest';
+import { MessageFlag, type Channel, type CreateMessageBody } from '@discordy/core/contracts/rest';
 import { parseApiEmoji } from '@discordy/core/domain/quickReactions';
 import { compareSnowflakes, snowflakeFromTimestamp } from '@discordy/core/domain/snowflake';
 import type { MessageSender } from '@discordy/core/application/privacy/messageSender';
@@ -23,6 +23,11 @@ export interface SendInput {
   content: string;
   replyTo?: string;
   files?: OutgoingFile[];
+  voice?: { duration_secs: number; waveform: string };
+}
+
+export function voiceMessageBody(nonce: string, attachment: NonNullable<CreateMessageBody['attachments']>[number], voice: NonNullable<SendInput['voice']>): CreateMessageBody {
+  return { content: '', nonce, attachments: [{ ...attachment, ...voice }], flags: MessageFlag.IS_VOICE_MESSAGE };
 }
 
 /** Reads a picked file into a Blob; React Native's fetch serves file URIs. */
@@ -30,7 +35,7 @@ export type ReadBlob = (file: OutgoingFile) => Promise<Blob>;
 
 const readFromDevice: ReadBlob = async (file) => {
   const blob = await (await fetch(file.uri)).blob();
-  return blob.type ? blob : blob.slice(0, blob.size, file.mimeType);
+  return blob.type === file.mimeType ? blob : blob.slice(0, blob.size, file.mimeType);
 };
 
 /** The Ephemeral and P2P side of the sender; absent in Expo Go, where those chats cannot be opened. */
@@ -48,6 +53,7 @@ export class MessageService {
     private readonly readBlob: ReadBlob = readFromDevice,
     private readonly cache: MessageCache = messageCache,
     private readonly privateChat: PrivateChat | null = null,
+    private readonly privateAttachments = false,
   ) {}
 
   /** The channel when it delivers over Ephemeral or P2P and this build can open such chats; null for standard chats. */
@@ -180,19 +186,30 @@ export class MessageService {
     this.unsent.set(nonce, input);
     try {
       if (encrypted) {
-        await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}) });
+        if (input.files?.length && (!this.privateAttachments || !input.voice || input.files.length !== 1)) throw new Error('Private file sending is not available on this device.');
+        const files = input.files?.map((f) => ({ uri: f.uri, name: f.name, size: f.size, type: f.mimeType }) as unknown as File);
+        await this.privateChat!.send(channel, { content: input.content, ...(input.replyTo ? { replyTo: input.replyTo } : {}), ...(files?.length ? { files } : {}), ...(input.voice ? { voice: input.voice } : {}) });
         this.unsent.delete(nonce);
         useMessageStore.getState().remove(channel.id, nonce);
         return true;
       }
       const attachments = await this.uploadFiles(channel.id, nonce, input.files ?? []);
-      const body: CreateMessageBody = { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
+      if (input.voice && attachments?.length !== 1) throw new Error('A voice message needs one recording.');
+      const body: CreateMessageBody = input.voice && attachments?.[0]
+        ? { ...voiceMessageBody(nonce, attachments[0], input.voice), ...(reference ? { message_reference: reference } : {}) }
+        : { content: input.content, nonce, ...(reference ? { message_reference: reference } : {}), ...(attachments ? { attachments } : {}) };
       const sent = await this.api.sendMessage(channel.id, body);
       this.unsent.delete(nonce);
       useMessageStore.getState().receive({ ...sent, nonce });
       return true;
     } catch (error) {
       if (error instanceof UploadCancelled) {
+        this.discard(channel.id, nonce);
+        return false;
+      }
+      // The recorder retains the local draft for retry; do not leave a second
+      // failed timeline item pointing at a cache file the user may discard.
+      if (input.voice) {
         this.discard(channel.id, nonce);
         return false;
       }

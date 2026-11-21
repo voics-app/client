@@ -81,6 +81,27 @@ describe('createNativePrivacy', () => {
     expect(() => privacy.createPeerConnection({ iceServers: [] })).toThrow(PEER_UNAVAILABLE);
     expect(await privacy.crypto.status()).toEqual({ available: true });
   });
+
+  it('requires the complete native file adapter and refuses unauthenticated audio', async () => {
+    const native = fakeNative();
+    expect(createNativePrivacy(native, null).attachmentPlatform).toBeUndefined();
+    Object.assign(native, {
+      readAttachment: jest.fn(async () => 'AQID'),
+      encryptAttachment: jest.fn(async () => ({ ciphertext: 'BAUG', key_b64: 'key', nonce_b64: 'nonce', sha256_b64: 'hash' })),
+      decryptAttachment: jest.fn(async () => { throw new Error('bad tag'); }),
+      uploadAttachment: jest.fn(async () => undefined),
+      downloadAttachment: jest.fn(async () => 'BAUG'),
+      storeAttachment: jest.fn(async () => 'file:///private.ogg'),
+      removeAttachment: jest.fn(async () => undefined),
+    });
+    const platform = createNativePrivacy(native, null).attachmentPlatform!;
+    expect([...await platform.read({ uri: 'file:///voice.ogg' } as unknown as File)]).toEqual([1, 2, 3]);
+    const encrypted = await platform.encrypt(new Uint8Array([1, 2, 3]));
+    expect([...encrypted.ciphertext]).toEqual([4, 5, 6]);
+    await expect(platform.decrypt(encrypted.ciphertext, { key_b64: 'key', nonce_b64: 'nonce', sha256_b64: 'hash', size: 3 })).rejects.toMatchObject({ reason: 'integrity' });
+    await expect(platform.store('1:0', new Uint8Array([1]), 'text/plain')).rejects.toThrow('Only voice recordings');
+    expect(native.storeAttachment).not.toHaveBeenCalled();
+  });
 });
 
 describe('loadNativePrivacy', () => {
@@ -119,6 +140,12 @@ describe('loadNativePrivacy', () => {
         jest.doMock('expo', () => ({ requireOptionalNativeModule: () => null }));
       }),
     ).toBeNull();
+  });
+
+  it('fails closed when the Android crypto package is absent', () => {
+    expect(load('bare', () => {
+      jest.doMock('expo', () => ({ requireOptionalNativeModule: () => ({ isAvailable: () => false }) }));
+    })).toBeNull();
   });
 
   it('still offers encrypted chats when only the calling module is missing', () => {

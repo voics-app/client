@@ -21,6 +21,7 @@ export class PrivateRetention {
   constructor(
     private readonly history: LocalHistory,
     private readonly now: () => number,
+    private readonly removeAttachments?: (messageId: string) => Promise<void>,
   ) {}
 
   /** Loads the saved timers into the privacy store; call once the encrypted store is open. */
@@ -50,6 +51,7 @@ export class PrivateRetention {
 
   /** Removes a message from the timeline and from the encrypted store. */
   async removeMessage(channelId: string, messageId: string): Promise<void> {
+    await this.removeAttachments?.(messageId);
     useMessageStore.getState().remove(channelId, messageId);
     await this.history.remove(channelId, messageId);
   }

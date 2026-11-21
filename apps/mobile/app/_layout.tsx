@@ -74,6 +74,7 @@ export default function RootLayout() {
             {/* Reachable from an email link whether or not someone is signed in. */}
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="verify-email" options={{ headerShown: false }} />
+            <Stack.Screen name="voice-qa" options={{ title: 'Voice QA fixture' }} />
             <Stack.Screen name="friend-invite/[token]" options={{ title: 'Friend invite' }} />
             <Stack.Protected guard={!signedIn}>
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />

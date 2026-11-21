@@ -195,7 +195,7 @@ export class P2PService {
       nonce: id,
       timestamp: new Date(this.deps.now()).toISOString(),
       reply_to: input.replyTo ?? null,
-      files: outgoing.map((f) => f.attachment.private),
+      files: outgoing.map((f, i) => ({ ...f.attachment.private, ...(i === 0 && input.voice ? { voice: input.voice } : {}) })),
       ...ttlField(this.retention.ttlOf(channel.id)),
     };
     const wire = JSON.stringify({ t: 'msg', id, ...payload });

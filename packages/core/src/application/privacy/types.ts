@@ -1,5 +1,5 @@
 /** Shared types and wire helpers for the private delivery modes (Ephemeral E2EE and P2P). */
-import type { Channel, DeliveryMode, User } from '../../contracts/rest';
+import { MessageFlag, type Channel, type DeliveryMode, type User } from '../../contracts/rest';
 import { MAX_PRIVATE_FILES, parseFileRef, toAttachment, type PrivateFileRef, type PrivateMode } from '../../domain/privateAttachment';
 import { decodeUtf8, encodeUtf8 } from '../../domain/utf8';
 import { parseTtl } from '../../domain/disappearing';
@@ -17,6 +17,7 @@ export interface SendInput {
   replyTo?: string | null;
   /** Private modes encrypt these on this device first; only ciphertext ever leaves it. */
   files?: File[];
+  voice?: { duration_secs: number; waveform: string };
   /** Per file, in the same order: alt text for standard chats. */
   fileOptions?: { description?: string }[];
   /** Text-to-speech message (`/tts`); standard chats only. */
@@ -99,6 +100,7 @@ export function validFiles(raw: unknown, bind: { channelId: string; mode: Privat
     const ref = parseFileRef(item, bind.channelId, bind.mode);
     if (ref && ref.id.startsWith(`${bind.messageId}:`) && !refs.some((r) => r.id === ref.id)) refs.push(ref);
   }
+  if (refs.length !== 1 && refs.some((ref) => ref.voice)) return [];
   return refs;
 }
 
@@ -135,6 +137,7 @@ export function buildPrivateMessage(input: BuildMessageInput): ChatMessage {
     mentions: [],
     mention_roles: [],
     attachments: (payload.files ?? []).map(toAttachment),
+    ...((payload.files?.length === 1 && payload.files[0]?.voice) ? { flags: MessageFlag.IS_VOICE_MESSAGE } : {}),
     embeds: [],
     pinned: false,
     type: payload.reply_to ? 19 : 0,

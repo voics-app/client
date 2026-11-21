@@ -99,7 +99,7 @@ function MessageRowView({ message, replied, showHeader, highlighted, onLongPress
           </View>
         )}
         {message.content !== '' && <InviteCards content={message.content} />}
-        {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} sending={message.localState === 'sending'} />}
+        {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} messageId={message.id} channelId={message.channel_id} sending={message.localState === 'sending'} />}
         {!message.localState && <MessageComponents message={message} />}
         {showReactions && message.reactions && message.reactions.length > 0 && (
           <View style={styles.reactions}>
