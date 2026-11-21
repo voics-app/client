@@ -2,6 +2,7 @@ import { Trash, Upload } from '@phosphor-icons/react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { inviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useStreamerActive } from '../../../app/streamer';
 import { AUDIT_FILTERS, DEFAULT_MEMBER_FILTER, canPruneMembers, filterBans, filterMembers, isMemberAuditEntry, isTimedOut, type MemberFilter, type MemberSort } from '@discordy/core/domain/moderationTools';
 import { timestampOf } from '@discordy/core/domain/snowflake';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -154,6 +155,7 @@ export function ServerMembers({ guildId }: { guildId: string }) {
 }
 
 export function ServerInvites({ guildId }: { guildId: string }) {
+  const streamer = useStreamerActive();
   const qc = useQueryClient();
   const apiUrl = useConnectionStore((c) => c.apiUrl);
   const invites = useQuery({ queryKey: ['guild', guildId, 'invites'], queryFn: () => getRuntime().api.guildInvites(guildId) });
@@ -163,7 +165,7 @@ export function ServerInvites({ guildId }: { guildId: string }) {
         <ul className="manage-list">
           {invites.data?.map((i) => (
             <li key={i.code}>
-              <div className="manage-copy"><strong className="mono">{i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
+              <div className="manage-copy"><strong className="mono">{streamer ? 'Hidden in streamer mode' : i.code}</strong><span>{i.inviter ? `by ${displayName(i.inviter)}` : ''} · {i.uses ?? 0}{i.max_uses ? `/${i.max_uses}` : ''} uses{i.expires_at ? ` · expires ${new Date(i.expires_at).toLocaleString()}` : ' · never expires'}</span></div>
               <Button size="sm" onClick={() => void copyText(inviteWebUrl(i.code, apiUrl), 'Invite link copied')}>Copy</Button>
               <IconButton label="Revoke invite" tone="danger" onClick={() => void attempt(async () => { await getRuntime().api.deleteInvite(i.code); await qc.invalidateQueries({ queryKey: ['guild', guildId, 'invites'] }); }, 'Could not revoke invite')}><Trash size={18} /></IconButton>
             </li>

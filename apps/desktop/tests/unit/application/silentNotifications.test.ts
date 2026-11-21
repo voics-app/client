@@ -22,7 +22,7 @@ describe('notifyIncoming and @silent', () => {
     play.mockClear();
     useUiStore.setState({ view: { channelId: null } } as never);
     useSessionStore.setState({ user: me, settings: { status: 'online' } } as never);
-    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false } as never);
+    usePrefsStore.setState({ notifyDesktop: true, notifySounds: true, soundToggles: {}, flashTaskbar: true, notifyOnlyMentions: false, streamerMode: false, streamerAutoDetect: false } as never);
     vi.stubGlobal('document', { hasFocus: () => false });
   });
 
@@ -43,6 +43,17 @@ describe('notifyIncoming and @silent', () => {
   it.each([null, '100'])('routes a notification to the exact message in scope %s', (guildId) => {
     notifyIncoming(dm({ guild_id: guildId, mentions: [me] }));
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ route: `/channels/${guildId ?? '@me'}/300/9` }));
+  });
+
+  it('redacts DM content and suppresses sound in streamer mode, restoring them when disabled', () => {
+    usePrefsStore.setState({ streamerMode: true });
+    notifyIncoming(dm());
+    expect(notify.mock.calls[0]?.[0]).toMatchObject({ body: 'New direct message', silent: true });
+    expect(play).not.toHaveBeenCalled();
+    usePrefsStore.setState({ streamerMode: false });
+    notifyIncoming(dm());
+    expect(notify.mock.calls[1]?.[0].body).toContain('hello');
+    expect(play).toHaveBeenCalledTimes(1);
   });
 
   it.each([
