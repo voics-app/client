@@ -1,0 +1,70 @@
+# Builds the unsigned (ad-hoc signed) universal macOS .dmg of the desktop app on a GitHub-hosted Mac.
+# GitHub-hosted macOS minutes cost 10x (Free plan: 2000 included minutes a month), so this never runs on
+# push or pull request: release.yml calls it for every release, and it can be started by hand from the
+# Actions tab for a branch (gh workflow run macos-dmg.yml --ref <branch>) to test packaging changes.
+#
+# Output: artifact installer-macos = Voics-X.Y.Z.dmg plus the stable copy Voics-latest.dmg. The private gitops
+# workflow publish-public (source client-macos) uploads both to the discordy-updates bucket, which serves
+# https://updates.voics.nl/Voics-latest.dmg (the website's macOS download). No latest-mac.yml: macOS
+# auto-update needs a Developer ID signature (client#120, docs handbook 09).
+name: macos-dmg
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to build (release.yml passes the version it decided); empty = package.json"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    name: Build macOS dmg
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/crypto
+      - name: Set the version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node -e "const f='apps/desktop/package.json',p=JSON.parse(require('fs').readFileSync(f,'utf8'));p.version=process.env.VERSION;require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the dmg
+        # Signing hooks: with the secrets CSC_LINK, CSC_KEY_PASSWORD (and APPLE_API_KEY, APPLE_API_KEY_ID,
+        # APPLE_API_ISSUER) set, electron-builder signs and notarizes; without them the app is ad-hoc signed.
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        run: pnpm dist:mac
+      - name: Collect the dmg
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          mkdir -p out
+          cp "apps/desktop/release/Voics-${version}.dmg" out/
+          cp "apps/desktop/release/Voics-${version}.dmg" out/Voics-latest.dmg
+          lipo -archs "$(find apps/desktop/release -path '*Voics.app/Contents/MacOS/Voics' | head -1)" || true
+          ls -la out apps/desktop/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos
+          path: out
+          if-no-files-found: error
+          retention-days: 14

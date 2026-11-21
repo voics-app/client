@@ -174,7 +174,7 @@ Media-worker tests wait for the output stream to close before asserting on frame
 
 ```
 pnpm dist:win       # NSIS installer in apps/desktop/release/
-pnpm dist:mac       # dmg (run on macOS)
+pnpm dist:mac       # universal dmg (arm64 + x64), ad-hoc signed; run on macOS. CI: workflow macos-dmg.yml (docs handbook 09)
 pnpm dist:linux     # AppImage and deb (run on Linux)
 ```
 
