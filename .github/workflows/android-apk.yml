@@ -1,5 +1,5 @@
-# Publishes an Android APK, built on EAS with the `apk` profile (apps/mobile/eas.json), to the update
-# feed (https://updates.voics.nl) as Voics-<version>.apk and Voics-latest.apk, which is where the website's
+# Fetches an Android APK, built on EAS with the `apk` profile (apps/mobile/eas.json), for the update
+# feed (https://updates.voics.nl; published by gitops publish-public) as Voics-<version>.apk and Voics-latest.apk, which is where the website's
 # "Download for Android" button points, and attaches it to the GitHub Release android-v<version>.
 #
 # Run by hand after `npx eas-cli build -p android --profile apk` finished:
@@ -57,11 +57,6 @@ jobs:
           gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Voics for Android ${VERSION}" --notes "Android APK. Install: open the file on the phone and allow installing from this source."
           gh release upload "$tag" "out/Voics-${VERSION}.apk" -R "$GITHUB_REPOSITORY" --clobber
 
-  publish:
-    name: Publish to the update feed
-    needs: [fetch]
-    uses: voics-app/.github/.github/workflows/minio-publish.yml@main
-    with:
-      artifact: android-apk
-      bucket: discordy-updates
-      short-cache: Voics-latest.apk
+  # Publishing to the update feed happens in the private gitops repo (workflow publish-public, source
+  # client-android): this repo is public and the in-cluster runner that reaches MinIO does not take jobs from public
+  # repositories. It picks up the android-apk artifact of this run within 10 minutes.
