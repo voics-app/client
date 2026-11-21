@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
-import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import type { Invite } from '@discordy/core/contracts/rest';
 import { instanceInviteCodes } from '@discordy/core/domain/inviteLinks';
 import { getRuntime } from '../runtime';
 import { ServerIcon } from '../shell/ServerIcon';
 import { theme } from '../theme';
-import { attempt } from '../ui/attempt';
 import { Button } from '../ui/controls';
-import { configuredApiUrl } from './inviteLinkStore';
+import { configuredApiUrl, useInviteLinkStore } from './inviteLinkStore';
 import { invitePreview } from './joinModel';
 
 /** Lookups are cached per code for the session; a dead link is cached too, so scrolling does not fetch it again. */
@@ -31,7 +29,6 @@ export const clearInviteLookups = () => lookups.clear();
 
 function InviteCard({ code }: { code: string }) {
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
   const guildId = invite?.guild?.id;
   const joined = useGuildStore((s) => (guildId ? Boolean(s.guilds[guildId]) : false));
 
@@ -42,15 +39,6 @@ function InviteCard({ code }: { code: string }) {
       live = false;
     };
   }, [code]);
-
-  const join = async () => {
-    setBusy(true);
-    const accepted = await attempt(() => getRuntime().api.acceptInvite(code), 'Could not join the server');
-    setBusy(false);
-    const id = accepted?.guild?.id ?? guildId;
-    // The server arrives over the gateway a moment after the invite is accepted.
-    if (accepted && id) setTimeout(() => useUiStore.getState().navigate({ kind: 'guild', guildId: id, channelId: null }), 300);
-  };
 
   if (invite === null) {
     return (
@@ -80,7 +68,7 @@ function InviteCard({ code }: { code: string }) {
           {preview.people}
         </Text>
       </View>
-      {joined ? <Button label="Joined" disabled onPress={() => undefined} /> : <Button label="Join" tone="primary" busy={busy} onPress={() => void join()} />}
+      {joined ? <Button label="Joined" disabled onPress={() => undefined} /> : <Button label="Join" tone="primary" onPress={() => useInviteLinkStore.getState().open(code)} />}
     </View>
   );
 }

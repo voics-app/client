@@ -26,6 +26,12 @@ it('uses explicit consent and integration endpoints and never sends credentials 
   expect(request).toHaveBeenLastCalledWith('DELETE', '/guilds/7/integrations/11', { reason: undefined });
   await api.guildWebhooks('7');
   expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/webhooks', { query: undefined });
+  await api.followAnnouncement('2', '3');
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/followers', { body: { webhook_channel_id: '3' }, reason: undefined });
+  await api.publishAnnouncement('2', '9');
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/messages/9/crosspost', { body: {}, reason: undefined });
+  await api.followedChannels('7');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/followed-channels', { query: undefined });
   await api.createWebhook('2', { name: 'Reminders' });
   expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/webhooks', { body: { name: 'Reminders' }, reason: undefined });
   await api.updateWebhook('21', { avatar: null });

@@ -1,8 +1,10 @@
 /** Typed P9 endpoints over the HttpClient. Paths mirror the master plan exactly. */
 import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application/ports/api';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -43,6 +45,8 @@ import type {
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   GuildMember,
+  OnboardingConfig,
+  OnboardingResponse,
   Invite,
   Message,
   MessageSearchResponse,
@@ -78,6 +82,12 @@ export class DiscordyApi implements ApiPort {
   private del<T>(path: string, reason?: string) {
     return this.http.request<T>('DELETE', path, { reason });
   }
+
+  connections() { return this.get<LinkedConnection[]>('/users/@me/connections'); }
+  userConnections(userId: string) { return this.get<LinkedConnection[]>(`/users/${enc(userId)}/connections`); }
+  authorizeGithubConnection() { return this.post<{ url: string }>('/users/@me/connections/github/authorize'); }
+  setConnectionVisibility(provider: string, visible: boolean) { return this.put<void>(`/users/@me/connections/${enc(provider)}`, { visible }); }
+  deleteConnection(provider: string) { return this.del<void>(`/users/@me/connections/${enc(provider)}`); }
 
   register(body: { email: string; username: string; password: string }) {
     return this.http.request<AuthResponse>('POST', '/auth/register', { body, auth: false });
@@ -410,7 +420,10 @@ export class DiscordyApi implements ApiPort {
   typing(channelId: string) {
     return this.post<void>(`/channels/${channelId}/typing`);
   }
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }) {
+  listForumPosts(channelId: string) {
+    return this.get<Channel[]>(`/channels/${channelId}/threads`);
+  }
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
   }
 
@@ -436,6 +449,24 @@ export class DiscordyApi implements ApiPort {
   acceptInvite(code: string) {
     return this.post<Invite>(`/invites/${enc(code)}`);
   }
+  memberVerification(guildId: string) {
+    return this.get<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`);
+  }
+  setMemberVerification(guildId: string, body: { enabled: boolean; rules: string[] }) {
+    return this.put<{ enabled: boolean; rules: string[]; revision: number; pending: boolean }>(`/guilds/${enc(guildId)}/member-verification`, body);
+  }
+  acceptMemberVerification(guildId: string, revision: number) {
+    return this.post<void>(`/guilds/${enc(guildId)}/member-verification/accept`, { revision });
+  }
+  welcomeScreen(guildId: string) {
+    return this.get<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`);
+  }
+  setWelcomeScreen(guildId: string, body: { enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }) {
+    return this.put<{ enabled: boolean; description: string; channels: { channel_id: string; description: string }[] }>(`/guilds/${enc(guildId)}/welcome-screen`, body);
+  }
+  onboarding(guildId: string) { return this.get<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`); }
+  setOnboarding(guildId: string, body: OnboardingConfig) { return this.put<OnboardingResponse>(`/guilds/${enc(guildId)}/onboarding`, body); }
+  completeOnboarding(guildId: string, revision: number, choices: number[]) { return this.post<{ channel_ids: string[] }>(`/guilds/${enc(guildId)}/onboarding/complete`, { revision, choices }); }
   deleteInvite(code: string) {
     return this.del<void>(`/invites/${enc(code)}`);
   }
@@ -446,6 +477,21 @@ export class DiscordyApi implements ApiPort {
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams) {
     const path = scope.guildId ? `/guilds/${scope.guildId}/messages/search` : `/channels/${scope.channelId}/messages/search`;
     return this.get<MessageSearchResponse>(path, toQuery(params));
+  }
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage) {
+    return this.post<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled`, body);
+  }
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }) {
+    return this.get<ScheduledMessagePage>(`/channels/${enc(channelId)}/messages/scheduled`, query);
+  }
+  scheduledMessage(channelId: string, scheduleId: string) {
+    return this.get<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`);
+  }
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage) {
+    return this.patch<ScheduledMessage>(`/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, body);
+  }
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number) {
+    return this.http.request<ScheduledMessage>('DELETE', `/channels/${enc(channelId)}/messages/scheduled/${enc(scheduleId)}`, { query: { expected_revision: expectedRevision } });
   }
   sendMessage(channelId: string, body: CreateMessageBody) {
     return this.post<Message>(`/channels/${channelId}/messages`, body);
@@ -525,6 +571,15 @@ export class DiscordyApi implements ApiPort {
   }
   guildWebhooks(guildId: string) {
     return this.get<Webhook[]>(`/guilds/${enc(guildId)}/webhooks`);
+  }
+  followAnnouncement(channelId: string, targetChannelId: string) {
+    return this.post<{ channel_id: string; webhook_id: string }>(`/channels/${enc(channelId)}/followers`, { webhook_channel_id: targetChannelId });
+  }
+  publishAnnouncement(channelId: string, messageId: string) {
+    return this.post<Message>(`/channels/${enc(channelId)}/messages/${enc(messageId)}/crosspost`);
+  }
+  followedChannels(guildId: string) {
+    return this.get<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>(`/guilds/${enc(guildId)}/followed-channels`);
   }
   createWebhook(channelId: string, body: { name: string; avatar?: string }) {
     return this.post<WebhookCredential>(`/channels/${enc(channelId)}/webhooks`, body);

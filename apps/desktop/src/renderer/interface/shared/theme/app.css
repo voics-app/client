@@ -1,6 +1,9 @@
 /* Application layout and feature styles. Glass only on floating layers; scrolling content never blurs. */
 
 .stack { display: flex; flex-direction: column; gap: 16px; }
+.onboarding-question { border: 0; padding: 0; margin: 0; min-width: 0; }
+.onboarding-question legend { padding: 0; margin-bottom: 12px; font-weight: 600; }
+.onboarding-question input[type="radio"] { accent-color: var(--accent); }
 .stack.grow, .grow { flex: 1; min-width: 0; }
 .row-end { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
 .row-start { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
@@ -791,3 +794,9 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .gif-picker-item > button:first-child { width: 100%; padding: 0; }
 .gif-picker-item img { width: 100%; max-height: 130px; object-fit: cover; }
 .gif-picker-favorite { position: absolute; right: 3px; top: 3px; }
+
+.forum-controls { display: flex; gap: 16px; padding: 12px 24px; }
+.forum-list--rows { grid-template-columns: 1fr; }
+
+.forum-preview { color: var(--fg-subtle); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.forum-cover { width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-panel); }
