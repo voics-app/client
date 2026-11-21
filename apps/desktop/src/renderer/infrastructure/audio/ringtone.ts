@@ -82,6 +82,7 @@ export const browserRingtoneDeps: RingtoneDeps = {
 export class Ringtone {
   private context: AudioContext | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private output: GainNode | null = null;
 
   constructor(
     private readonly pattern: TonePattern = INCOMING_RING,
@@ -93,6 +94,9 @@ export class Ringtone {
     if (this.context) return;
     const context = this.deps.createContext();
     this.context = context;
+    const output = context.createGain();
+    output.connect(context.destination);
+    this.output = output;
     const wake = () => wakeContext(context);
     wake();
     // A stale or unplugged device must never leave the ring silent: fall back to the system default.
@@ -103,7 +107,7 @@ export class Ringtone {
     const cycle = () => {
       wake();
       try {
-        playCycle(context, pattern, level);
+        playCycle(context, pattern, level, output);
       } catch (error) {
         console.error('ringtone cycle failed', error);
       }
@@ -115,6 +119,8 @@ export class Ringtone {
   stop(): void {
     if (this.timer !== null) clearInterval(this.timer);
     this.timer = null;
+    this.output?.disconnect();
+    this.output = null;
     const context = this.context;
     this.context = null;
     if (!context) return;
@@ -127,11 +133,11 @@ function clampVolume(volume: number): number {
   return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.8;
 }
 
-function playCycle(context: AudioContext, pattern: TonePattern, level: number): void {
-  for (const note of pattern.notes) playNote(context, note, pattern.wave, level);
+function playCycle(context: AudioContext, pattern: TonePattern, level: number, output: AudioNode): void {
+  for (const note of pattern.notes) playNote(context, note, pattern.wave, level, output);
 }
 
-function playNote(context: AudioContext, { hz, at: offset, dur }: ToneNote, wave: OscillatorType, level: number): void {
+function playNote(context: AudioContext, { hz, at: offset, dur }: ToneNote, wave: OscillatorType, level: number, output: AudioNode): void {
   const at = context.currentTime + offset;
   const fade = Math.min(0.05, dur / 4);
   const gain = context.createGain();
@@ -139,7 +145,7 @@ function playNote(context: AudioContext, { hz, at: offset, dur }: ToneNote, wave
   gain.gain.linearRampToValueAtTime(level, at + fade);
   gain.gain.setValueAtTime(level, at + dur - fade);
   gain.gain.linearRampToValueAtTime(0, at + dur);
-  gain.connect(context.destination);
+  gain.connect(output);
   for (const frequency of hz) {
     const oscillator = context.createOscillator();
     oscillator.type = wave;

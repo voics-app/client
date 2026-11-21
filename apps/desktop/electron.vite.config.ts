@@ -32,6 +32,7 @@ export default defineConfig({
     server: { port: Number(process.env.RENDERER_PORT || 5173), strictPort: true },
     worker: { format: 'es' },
     build: {
+      manifest: true,
       rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') },
     },
   },

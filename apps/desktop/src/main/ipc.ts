@@ -1,6 +1,7 @@
 /** IPC handlers: the only path from the sandboxed renderer to privileged APIs. */
 import type { BrowserWindow} from 'electron';
 import { Notification, ipcMain, powerMonitor, shell } from 'electron';
+import { obsRunning } from './obs';
 import { IpcChannel, type AppInfo, type ConnectionProfile, type ActivityCounts, type NotificationRequest, type StoredSession, type CaptureSelection, type VoiceState } from '../shared/ipc';
 import { validateProfile } from './config';
 import { listCaptureSources, selectCaptureSource } from './capture';
@@ -66,6 +67,7 @@ export function registerIpc(deps: IpcDeps): void {
     });
 
   handle(IpcChannel.appInfo, () => deps.info());
+  handle(IpcChannel.obsRunning, () => obsRunning());
   handle(IpcChannel.appTakePendingRoute, () => deps.takePendingRoute());
   handle(IpcChannel.appSetConnection, (profile: ConnectionProfile) => {
     const valid = validateProfile(profile);

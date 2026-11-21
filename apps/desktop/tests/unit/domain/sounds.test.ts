@@ -55,7 +55,7 @@ function fakeContext(state: 'suspended' | 'running') {
     resume: vi.fn(async () => undefined),
     setSinkId: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
-    createGain: () => ({ gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn() }),
+    createGain: () => ({ gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() }),
     createOscillator: () => ({ type: 'sine', frequency: { value: 0 }, start: vi.fn(), stop: vi.fn(), connect: vi.fn() }),
   };
 }

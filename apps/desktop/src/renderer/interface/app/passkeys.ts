@@ -14,10 +14,10 @@ export function usePasskeySite(): PasskeySite | null | undefined {
 }
 
 const failures = {
-  cancelled: getI18n().catalogText("Passkey request cancelled. Try again, or use a backup code to sign in."),
-  timeout: getI18n().catalogText("The passkey request expired. Start again."),
-  unavailable: getI18n().catalogText("The browser could not open a passkey request. Check your default browser or use a backup code."),
-  failed: getI18n().catalogText("The browser could not complete this passkey request. Start again or use a backup code."),
+  cancelled: 'Passkey request cancelled. Try again, or use a backup code to sign in.',
+  timeout: 'The passkey request expired. Start again.',
+  unavailable: 'The browser could not open a passkey request. Check your default browser or use a backup code.',
+  failed: 'The browser could not complete this passkey request. Start again or use a backup code.',
 };
 
 export async function performPasskey(kind: 'create' | 'get', publicKey: Record<string, unknown>, signal: AbortSignal): Promise<Record<string, unknown>> {
@@ -30,7 +30,7 @@ export async function performPasskey(kind: 'create' | 'get', publicKey: Record<s
   try {
     const result = await passkeys.perform({ id, kind, publicKey });
     signal.throwIfAborted();
-    if (!result.ok) throw new Error(failures[result.reason]);
+    if (!result.ok) throw new Error(getI18n().catalogText(failures[result.reason]));
     return result.credential;
   } finally {
     signal.removeEventListener('abort', cancel);

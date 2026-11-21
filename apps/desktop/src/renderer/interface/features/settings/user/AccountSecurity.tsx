@@ -2,6 +2,7 @@ import { useI18n } from '../../../shared/i18n';
 import { ShieldCheck, ShieldWarning } from '@phosphor-icons/react';
 import QRCode from 'qrcode';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useStreamerActive } from '../../../app/streamer';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import {
@@ -58,6 +59,7 @@ function PasswordField({ value, onChange, label, autoFocus = true }: { value: st
 
 export function VerifyEmailBanner({ user }: { user: User }) {
   const { t: msg } = useI18n();
+  const streamer = useStreamerActive();
   const [token, setToken] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const { busy, error, run } = useAction();
@@ -67,7 +69,7 @@ export function VerifyEmailBanner({ user }: { user: User }) {
     <div className="account-banner" role="region" aria-label={msg("settings.accountsecurity.verify.your.email")}>
       <ShieldWarning size={20} weight="fill" />
       <div className="stack grow">
-        <strong>{msg('account.verifyEmail', { email: user.email })}</strong>
+        <strong>{streamer ? msg("settings.accountsecurity.verify.your.email") : msg('account.verifyEmail', { email: user.email })}</strong>
         <span className="setting-desc">{msg("settings.accountsecurity.check.your.inbox.for.the.code.or.ask.for")}</span>
         <div className="row">
           <Input aria-label={msg("settings.accountsecurity.verification.code")} placeholder={msg("settings.accountsecurity.code.from.the.email")} value={token} onChange={(e) => setToken(e.target.value)} />
@@ -261,6 +263,7 @@ type Dialog = { kind: 'edit'; field: Edit } | { kind: 'enable' } | { kind: 'disa
 /** Credential, two-factor and account-lifecycle controls of the My Account page. */
 export function AccountSecurity({ user }: { user: User }) {
   const { t: msg } = useI18n();
+  const streamer = useStreamerActive();
   const [dialog, setDialog] = useState<Dialog>(null);
   const close = () => setDialog(null);
   const mfa = Boolean(user.mfa_enabled);
@@ -273,7 +276,7 @@ export function AccountSecurity({ user }: { user: User }) {
     <>
       <VerifyEmailBanner user={user} />
       <SettingRow title={msg("common.username")} searchKey="Username" description={user.username}><Button onClick={() => setDialog({ kind: 'edit', field: 'username' })}>{msg("settings.accountsecurity.edit")}</Button></SettingRow>
-      <SettingRow title={msg("settings.accountsecurity.email")} searchKey="Email" description={user.email ?? msg("settings.accountsecurity.no.email.on.this.account")}><Button onClick={() => setDialog({ kind: 'edit', field: 'email' })}>{msg("settings.accountsecurity.edit")}</Button></SettingRow>
+      <SettingRow title={msg("settings.accountsecurity.email")} searchKey="Email" description={streamer ? 'Hidden in streamer mode' : user.email ?? msg("settings.accountsecurity.no.email.on.this.account")}><Button disabled={streamer} onClick={() => setDialog({ kind: 'edit', field: 'email' })}>{msg("settings.accountsecurity.edit")}</Button></SettingRow>
       <SettingRow title={msg("settings.accountsecurity.password")} searchKey="Password" description={msg("settings.accountsecurity.changing.it.signs.your.other.sessions.out")}><Button onClick={() => setDialog({ kind: 'edit', field: 'password' })}>{msg("settings.accountsecurity.change")}</Button></SettingRow>
       <SettingRow title={msg("settings.accountsecurity.two.factor.authentication")} searchKey="Two-factor authentication" description={mfa ? msg("settings.accountsecurity.on.use.a.registered.passkey.authenticator.or.backup.code") : msg("settings.accountsecurity.add.a.second.step.with.an.authenticator.app.or")}>
         {mfa ? (
@@ -286,7 +289,7 @@ export function AccountSecurity({ user }: { user: User }) {
       <Passkeys user={user} />
       <SettingRow title={msg("settings.accountsecurity.disable.account")} searchKey="Disable account" description={msg("settings.accountsecurity.sign.out.everywhere.and.hide.your.account.until.you")}><Button variant="danger" onClick={() => setDialog({ kind: 'leave', mode: 'disable' })}>{msg("settings.accountsecurity.disable")}</Button></SettingRow>
       <SettingRow title={msg("settings.accountsecurity.delete.account")} searchKey="Delete account" description={msg("settings.accountsecurity.schedules.deletion.after.14.days")}><Button variant="danger" onClick={() => setDialog({ kind: 'leave', mode: 'delete' })}>{msg("settings.accountsecurity.delete")}</Button></SettingRow>
-      {dialog?.kind === 'edit' && <EditCredentialModal kind={dialog.field} user={user} onClose={close} />}
+      {dialog?.kind === 'edit' && !(streamer && dialog.field === 'email') && <EditCredentialModal kind={dialog.field} user={user} onClose={close} />}
       {dialog?.kind === 'enable' && <EnableTotpModal user={user} onClose={close} />}
       {dialog?.kind === 'disable-totp' && <DisableTotpModal onClose={close} />}
       {dialog?.kind === 'codes' && <BackupCodesModal username={user.username} onClose={close} />}

@@ -3,6 +3,7 @@ import { useSessionStore } from '@discordy/core/application/stores/sessionStore'
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useI18n } from '../../shared/i18n';
 import { BRAND } from '@shared/brand';
+import { useStreamerActive } from '../../app/streamer';
 
 const isMac = navigator.userAgent.includes('Mac');
 
@@ -10,6 +11,7 @@ const isMac = navigator.userAgent.includes('Mac');
 export function Titlebar() {
   const { t } = useI18n();
   const gateway = useSessionStore((s) => s.gateway);
+  const streamer = useStreamerActive();
   const open = useUiStore((s) => s.openPalette);
   const openDialog = useUiStore((s) => s.openDialog);
   const offline = gateway !== 'ready' && gateway !== 'idle';
@@ -25,6 +27,7 @@ export function Titlebar() {
         <kbd className="kbd">Ctrl K</kbd>
       </button>
       <div className="titlebar-end">
+        {streamer && <span className="net-pill" role="status">Streamer mode</span>}
         <button type="button" className="titlebar-icon" aria-label={t('shell.inbox')} title={t('shell.inboxTitle')} onClick={() => openDialog({ kind: 'inbox' })}>
           <Tray size={16} />
         </button>
