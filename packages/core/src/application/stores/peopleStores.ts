@@ -163,3 +163,9 @@ export const useReadStateStore = create<ReadStateState>((set) => ({
     }),
   reset: () => set({ byChannel: {}, snapshots: {}, versioned: false }),
 }));
+
+/** Private friend favourites, loaded for the signed-in account. */
+export const useFavouriteFriendsStore = create<{ ids: string[]; set(ids: string[]): void }>((set) => ({
+  ids: [],
+  set: (ids) => set({ ids }),
+}));

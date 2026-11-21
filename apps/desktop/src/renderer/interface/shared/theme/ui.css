@@ -201,3 +201,8 @@
 .dev-badge { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--hairline); }
 .dev-token { display: flex; flex-direction: column; gap: 8px; min-width: 260px; }
 .dev-actions { display: flex; gap: 8px; }
+
+/* Keep a failed on-demand feature visible even when the app shell fills the window. */
+.lazy-feature-error { position: fixed; z-index: calc(var(--z-modal) + 1); left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--hairline); border-radius: var(--radius-dialog); background: var(--bg-2); color: var(--fg); box-shadow: var(--shadow-dialog); }
+.lazy-feature-error button { margin: 12px 8px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--bg-3); color: var(--fg); }
+.lazy-feature-error p { margin: 12px 0 0; color: var(--fg-muted); }

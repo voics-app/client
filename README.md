@@ -12,6 +12,8 @@ automatic resend. Attachments and private delivery cannot be scheduled. This
 requires the enabled messages scheduling backend; see [the client behavior and
 contract notes](docs/scheduled-messages.md).
 
+Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
+
 Desktop and mobile share gateway recovery in `packages/core`. Each socket has
 10 seconds to receive HELLO, then 30 seconds to finish READY/RESUMED; heartbeat
 ACKs and duplicate HELLOs do not extend authentication. A failed connection to the
@@ -76,6 +78,9 @@ Run these from this `client` folder (the parent `voics` folder is not a pnpm pro
 
 The component gallery is at `#/__gallery` (open the renderer URL with that hash).
 
+Desktop renderer builds defer settings, server administration, the emoji picker and slash-command panel until opened. Chunk failures retry with backoff, then offer retry, close or reload (reload can discard unsaved changes). The container CI build prints the entry and its static JavaScript imports and enforces a 2,800,000-byte uncompressed budget; run `node apps/desktop/scripts/check-renderer-budget.mjs` after a desktop build. CSS, workers, on-demand chunks and compressed transfer size are outside that budget. See [renderer performance](docs/renderer-performance.md) for measurement and acceptance.
+
+
 ## Desktop navigation and safety
 
 Right-click a server icon or open its header menu for notification settings, Hide muted channels, Collapse all categories, account privacy settings and Copy server ID. Hide muted channels is saved per server through notification settings. Muted servers remain reachable but do not add unread or mention badges. Drag near the rail edges to scroll, or focus an icon and press Alt+Shift+Up/Down to reorder it. The Home badge counts unread, unmuted DM conversations; at most eight conversation avatars appear below it.
@@ -86,6 +91,13 @@ The Forward picker uses each DM recipient's user ID for their global avatar, inc
 
 Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
+Desktop taskbar, tray and title activity follows text chats, announcements, threads
+and DMs, with immediate mute updates and timed expiry. Escape marks a channel read;
+Shift+Escape marks its server, including when the composer has focus after its own
+cancel actions. Standard replies offer a remembered ping toggle and `@silent`
+messages. Failed sends restore reply context and mention tokens without replacing
+a newer draft. See [desktop notifications](docs/desktop-notifications.md) for rules,
+keyboard behavior and native acceptance checks.
 ## Webhooks and authorized applications
 
 Server Settings → Integrations lists installed application bots and incoming webhooks.
@@ -210,7 +222,7 @@ Payments, DRM capture, full-text search, slash-command picker UI, and attachment
 
 - Code signing certificates for Windows and macOS (installers are unsigned).
 - A STUN/TURN server for P2P across restrictive NATs. The gateway READY payload carries `turn` (coturn REST credentials, 1h TTL); the client builds `iceServers` from it (plus a derived STUN entry) and re-identifies at 80% of the TTL to refresh them.
-- The generated `@discordy-voics/contracts` package, once published, replaces `packages/core/src/contracts`.
+- The generated `@voics-app/contracts` package, once published, replaces `packages/core/src/contracts`.
 
 ## Git hooks
 

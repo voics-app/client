@@ -31,6 +31,7 @@ export type UserSettingsTab =
   | 'advanced'
   | 'developer'
   | 'authorizedApps'
+  | 'linkedAccounts'
   | 'about';
 
 export type ServerSettingsTab = 'overview' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';

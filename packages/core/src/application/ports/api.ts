@@ -4,6 +4,7 @@ import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -76,6 +77,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  connections(): Promise<LinkedConnection[]>;
+  userConnections(userId: string): Promise<LinkedConnection[]>;
+  authorizeGithubConnection(): Promise<{ url: string }>;
+  setConnectionVisibility(provider: string, visible: boolean): Promise<void>;
+  deleteConnection(provider: string): Promise<void>;
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;
@@ -120,6 +126,11 @@ export interface ApiPort {
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
   relationships(): Promise<Relationship[]>;
+  favouriteFriends(): Promise<string[]>;
+  setFavouriteFriend(userId: string, value: boolean): Promise<void>;
+  createFriendInvite(): Promise<{ token: string; expires_at: string }>;
+  revokeFriendInvites(): Promise<void>;
+  useFriendInvite(token: string): Promise<void>;
   /** `guildId` null addresses the user's DMs (`@me`). */
   guildNotificationSettings(guildId: string | null): Promise<GuildNotificationSettings>;
   updateGuildNotificationSettings(guildId: string | null, patch: GuildNotificationSettingsPatch): Promise<GuildNotificationSettings>;
