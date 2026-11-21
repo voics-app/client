@@ -355,6 +355,8 @@ export interface MessageSearchResponse {
 }
 
 export const MessageFlag = {
+  CROSSPOSTED: 1 << 0,
+  IS_CROSSPOST: 1 << 1,
   SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,

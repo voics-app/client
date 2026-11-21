@@ -253,6 +253,9 @@ export interface ApiPort {
   guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
   removeGuildIntegration(guildId: string, applicationId: string): Promise<void>;
   guildWebhooks(guildId: string): Promise<Webhook[]>;
+  followAnnouncement(channelId: string, targetChannelId: string): Promise<{ channel_id: string; webhook_id: string }>;
+  publishAnnouncement(channelId: string, messageId: string): Promise<Message>;
+  followedChannels(guildId: string): Promise<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>;
   createWebhook(channelId: string, body: { name: string; avatar?: string }): Promise<WebhookCredential>;
   updateWebhook(webhookId: string, body: WebhookEdit): Promise<Webhook>;
   resetWebhookToken(webhookId: string): Promise<WebhookCredential>;
