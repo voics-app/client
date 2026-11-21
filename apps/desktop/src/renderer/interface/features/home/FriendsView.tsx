@@ -1,14 +1,16 @@
 import { useI18n } from '../../shared/i18n';
-import { Check, ChatCircle, MagnifyingGlass, Phone, UserPlus, UsersThree, VideoCamera, X } from '@phosphor-icons/react';
+import { Check, ChatCircle, MagnifyingGlass, Phone, Star, UserPlus, UsersThree, VideoCamera, X } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
-import { usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
+import { useFavouriteFriendsStore, usePresenceStore, useRelationshipStore } from '@discordy/core/application/stores/peopleStores';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { friendInviteWebUrl } from '@discordy/core/domain/inviteLinks';
+import { useConnectionStore } from '../../app/connectionStore';
 import { activeNow, buildFriendsView, friendRequestError, type FriendsTab as Tab } from '@discordy/core/domain/friendsModel';
 import { ApiError } from '@discordy/core/infrastructure/http/httpClient';
 import { RelationshipType, type Relationship } from '@discordy/core/contracts/rest';
-import { attempt, errorMessage } from '../../app/actions';
+import { attempt, copyText, errorMessage } from '../../app/actions';
 import { callUser } from '../../app/callActions';
 import { openChannel } from '../../app/navigation';
 import { openVoiceChannel } from '../../app/voiceActions';
@@ -39,6 +41,14 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
     }
   };
   const isFriend = rel.type === RelationshipType.FRIEND;
+  const favourite = useFavouriteFriendsStore((s) => s.ids.includes(rel.id));
+  const toggleFavourite = async () => {
+    const ok = await attempt(() => api.setFavouriteFriend(rel.id, !favourite).then(() => true), 'Could not update favourite');
+    if (ok) {
+      const store = useFavouriteFriendsStore.getState();
+      store.set(favourite ? store.ids.filter((id) => id !== rel.id) : [...store.ids, rel.id]);
+    }
+  };
   return (
     <li className="friend-row">
       <UserMenuTarget userId={rel.id} name={name} guildId={null} user={rel.user}>
@@ -51,6 +61,7 @@ function FriendRow({ rel, tab }: { rel: Relationship; tab: Tab }) {
       </button>
       </UserMenuTarget>
       <span className="friend-actions">
+        {isFriend && <IconButton label={favourite ? 'Remove favourite' : 'Add favourite'} onClick={() => void toggleFavourite()}><Star size={20} weight={favourite ? 'fill' : 'regular'} /></IconButton>}
         {isFriend && <IconButton label={t('common.message')} onClick={() => void message()}><ChatCircle size={20} weight="fill" /></IconButton>}
         {isFriend && <IconButton label={t('common.voiceCall')} onClick={() => void callUser(rel.id)}><Phone size={20} weight="fill" /></IconButton>}
         {isFriend && <IconButton label={t('common.videoCall')} onClick={() => void callUser(rel.id, true)}><VideoCamera size={20} weight="fill" /></IconButton>}
@@ -66,6 +77,15 @@ function AddFriend() {
   const [username, setUsername] = useState('');
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
+  const createLink = async () => {
+    const invite = await attempt(() => getRuntime().api.createFriendInvite(), 'Could not create friend invite');
+    if (invite) setLink(friendInviteWebUrl(invite.token, useConnectionStore.getState().apiUrl));
+  };
+  const revokeLink = async () => {
+    const ok = await attempt(() => getRuntime().api.revokeFriendInvites().then(() => true), 'Could not revoke friend invite');
+    if (ok) setLink(null);
+  };
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -87,6 +107,14 @@ function AddFriend() {
         <Input aria-label={t('common.username')} data-autofocus placeholder={t('friends.enterUsername')} value={username} onChange={(e) => setUsername(e.target.value)} />
         <Button type="submit" variant="primary" loading={busy} disabled={username.trim().length < 2}>{t('friends.send')}</Button>
       </div>
+      <h3>Friend invite link</h3>
+      <p>Anyone with this link can send you a friend request. It expires after 24 hours; creating another link replaces it.</p>
+      <div className="add-friend-row">
+        <Button type="button" onClick={() => void createLink()}>Create link</Button>
+        {link && <Button type="button" onClick={() => void copyText(link, 'Friend invite copied')}>Copy link</Button>}
+        <Button type="button" onClick={() => void revokeLink()}>Revoke link</Button>
+      </div>
+      {link && <Input aria-label="Friend invite link" readOnly value={link} />}
       {result && <p className={`add-friend-result${result.ok ? ' is-ok' : ' is-bad'}`} role="status">{result.text}</p>}
     </form>
   );
@@ -142,6 +170,7 @@ export function FriendsView() {
   const [tab, setTab] = useState<Tab>('online');
   const [query, setQuery] = useState('');
   const byUser = useRelationshipStore((s) => s.byUser);
+  const favouriteIds = useFavouriteFriendsStore((s) => s.ids);
   const presence = usePresenceStore((s) => s.byUser);
   const all = Object.values(byUser);
   const view = buildFriendsView(all, presence, query);
@@ -193,8 +222,12 @@ export function FriendsView() {
                 </ul>
               ) : (
                 <ul className="friend-list">
+                  {(tab === 'online' || tab === 'all') && list.some((r) => favouriteIds.includes(r.id)) && <>
+                    <li className="friend-heading">Favourites</li>
+                    {list.filter((r) => favouriteIds.includes(r.id)).map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
+                  </>}
                   <li className="friend-heading">{tab === 'online' ? t('presence.online') : tab === 'all' ? t('friends.allFriends') : t('friends.blocked')} — {number(list.length)}</li>
-                  {list.map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
+                  {list.filter((r) => (tab !== 'online' && tab !== 'all') || !favouriteIds.includes(r.id)).map((r) => <FriendRow key={r.id} rel={r} tab={tab} />)}
                 </ul>
               )}
             </>

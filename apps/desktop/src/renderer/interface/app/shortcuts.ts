@@ -116,6 +116,7 @@ const ACTIONS: Record<KeybindAction, (ctx: RunContext) => void> = {
   historyBack: () => void useUiStore.getState().back(),
   historyForward: () => void useUiStore.getState().forward(),
   toggleMembers: () => useUiStore.getState().toggleSidePanel('members'),
+  toggleStreamerMode: () => usePrefsStore.getState().set('streamerMode', !usePrefsStore.getState().streamerMode),
 };
 
 /** Runs a keybind action; held actions get both the press and the release, every other action only the press. */
@@ -179,6 +180,7 @@ export function useGlobalShortcuts(): void {
       }
       const bind = usePrefsStore.getState().keybinds.find((k) => k.keys && (k.keys === described || (k.action === 'markRead' && e.shiftKey && described === `Shift+${k.keys}`)));
       if (!bind || isGloballyHandled(bind.id)) return;
+      if (bind.action === 'toggleStreamerMode' && e.repeat) return;
       if (bind.action === 'markRead' && (e.defaultPrevented || isTypingTarget(e.target) || overlayOpen())) return;
       e.preventDefault();
       if (infoFor(bind.action).hold) {

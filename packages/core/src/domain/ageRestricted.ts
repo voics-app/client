@@ -27,7 +27,10 @@ export function restrictionContext(channelId: string, channels: Readonly<Record<
     if (!KNOWN_TYPES.has(channel.type)
       || (channel.parent_id !== undefined && channel.parent_id !== null && (typeof channel.parent_id !== 'string' || !channel.parent_id))
       || (PRIVATE_TYPES.has(channel.type) && (channel.guild_id || channel.parent_id))) return { kind: 'unknown' };
-    if (seen.has(channel.id) || (channel.nsfw !== undefined && typeof channel.nsfw !== 'boolean')) return { kind: 'unknown' };
+    // Guild channel payloads must explicitly classify their content. An omitted flag is
+    // not evidence that a partially loaded channel or ancestor is safe to show.
+    if (seen.has(channel.id) || (!PRIVATE_TYPES.has(channel.type) && typeof channel.nsfw !== 'boolean')
+      || (PRIVATE_TYPES.has(channel.type) && channel.nsfw !== undefined && typeof channel.nsfw !== 'boolean')) return { kind: 'unknown' };
     if (channel.guild_id !== first.guild_id || (!PRIVATE_TYPES.has(channel.type) && !channel.guild_id)) return { kind: 'unknown' };
     if (THREAD_TYPES.has(channel.type) && !channel.parent_id) return { kind: 'unknown' };
     seen.add(channel.id);

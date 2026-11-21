@@ -23,9 +23,9 @@ function seed(perms: bigint) {
     guilds: { [G]: { id: G, name: 'G', owner_id: 'owner', roles: [{ id: G, name: '@everyone', color: 0, hoist: false, position: 0, permissions: perms.toString(), managed: false, mentionable: false }] } } as never,
     members: { [G]: { alice: { user: user('alice'), roles: [] }, bob: { user: user('bob'), roles: [] } } } as never,
     channels: {
-      v1: { id: 'v1', guild_id: G, type: 2, name: 'Lounge', position: 0, user_limit: 2 },
-      v2: { id: 'v2', guild_id: G, type: 2, name: 'Quiet', position: 1 },
-      t1: { id: 't1', guild_id: G, type: 0, name: 'general', position: 2 },
+      v1: { id: 'v1', guild_id: G, type: 2, name: 'Lounge', position: 0, user_limit: 2, nsfw: false },
+      v2: { id: 'v2', guild_id: G, type: 2, name: 'Quiet', position: 1, nsfw: false },
+      t1: { id: 't1', guild_id: G, type: 0, name: 'general', position: 2, nsfw: false },
     } as never,
   });
   useVoiceStore.setState({

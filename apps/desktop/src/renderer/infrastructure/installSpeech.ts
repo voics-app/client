@@ -1,5 +1,6 @@
 import { installSpeech } from '@discordy/core/application/ports/speech';
 import { speak, stopSpeaking } from './tts';
+import { streamerActive } from '../interface/app/streamer';
 
 // Imported by the renderer entry so gateway TTS messages are read through the browser's speech synthesis.
-installSpeech({ speak, cancel: stopSpeaking });
+installSpeech({ speak: (text, rate) => !streamerActive() && speak(text, rate), cancel: stopSpeaking });
