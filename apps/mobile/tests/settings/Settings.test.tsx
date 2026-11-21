@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
@@ -14,6 +14,10 @@ const PAT: User = { id: 'u2', username: 'pat', global_name: 'Pat', avatar: null 
 const session = (id: string, extra: Partial<AuthSession> = {}): AuthSession => ({ id, client: 'Voics', os: 'iOS', device_name: 'Phone', location: null, current: false, last_used_at: new Date().toISOString(), ...extra }) as AuthSession;
 
 const mockApi = {
+  connections: jest.fn(async (): Promise<{provider: string; account_id: string; name: string; visible: boolean}[]> => []),
+  authorizeGithubConnection: jest.fn(async () => ({ url: 'https://github.com/login/oauth/authorize?state=test' })),
+  setConnectionVisibility: jest.fn(async (_provider: string, _visible: boolean) => undefined),
+  deleteConnection: jest.fn(async (_provider: string) => undefined),
   me: jest.fn(async () => ME),
   changeAccount: jest.fn(async (_change: object) => ME),
   enableTotp: jest.fn(async (_password: string) => ({ secret: 'ABCDEFGHIJKLMNOP', otpauth_uri: 'otpauth://totp/Voics:me?secret=ABCDEFGHIJKLMNOP' })),
@@ -56,6 +60,20 @@ describe('settings', () => {
     useSessionStore.setState({ status: 'ready', user: ME as never, settings: { default_delivery_mode: 'standard' } });
   });
   afterEach(() => alert.mockRestore());
+
+  it('connects in a browser and manages profile visibility', async () => {
+    const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    mockApi.connections.mockResolvedValue([]);
+    await open('/settings/connections');
+    await fireEvent.press(await screen.findByLabelText('Connect'));
+    await waitFor(() => expect(openUrl).toHaveBeenCalledWith('https://github.com/login/oauth/authorize?state=test'));
+    mockApi.connections.mockResolvedValue([{ provider: 'github', account_id: '1', name: 'alice', visible: false }]);
+    await fireEvent.press(await screen.findByLabelText('Refresh'));
+    expect(await screen.findByText('Linked as alice')).toBeTruthy();
+    await fireEvent(screen.getByLabelText('Show on profile'), 'valueChange', true);
+    await waitFor(() => expect(mockApi.setConnectionVisibility).toHaveBeenCalledWith('github', true));
+    openUrl.mockRestore();
+  });
 
   describe('the list', () => {
     it('shows the pages in two groups, with Log out', async () => {

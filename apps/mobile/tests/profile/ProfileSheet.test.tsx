@@ -1,5 +1,7 @@
 import { Alert } from 'react-native';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { ProfileSheet } from '../../src/profile/ProfileSheet';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { renderRouter } from 'expo-router/testing-library';
 import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useUserNotesStore } from '@discordy/core/application/stores/notificationSettingsStore';
@@ -13,6 +15,7 @@ const SAM: User = { id: 'u3', username: 'sam', global_name: 'Sam', avatar: null 
 const dm = { id: '1000', type: ChannelType.DM, delivery_mode: 'standard', recipients: [PAT] } as unknown as Channel;
 
 const mockApi = {
+  userConnections: jest.fn(async (_id: string): Promise<{provider: string; account_id: string; name: string; visible: boolean}[]> => []),
   messages: jest.fn(async () => []),
   ack: jest.fn(async () => undefined),
   userProfile: jest.fn(async (id: string) => ({ user: { ...PAT, id, bio: 'Plays chess' }, mutual_guilds: [{ id: 'g1', nick: 'Patty' }, { id: 'left' }], mutual_friends: [SAM] })),
@@ -58,6 +61,25 @@ describe('full profile sheet', () => {
     expect(screen.getByText('Mutual friends - 1')).toBeTruthy();
     expect(screen.getByText('Sam')).toBeTruthy();
     expect(screen.getByText('Friends since')).toBeTruthy();
+  });
+
+  it('shows the visible connections returned for the viewed profile', async () => {
+    mockApi.userConnections.mockResolvedValueOnce([{ provider: 'github', account_id: '123', name: 'pat-code', visible: true }]);
+    await openProfile(friend(RelationshipType.FRIEND));
+    expect(await screen.findByText('GitHub: pat-code')).toBeTruthy();
+    expect(mockApi.userConnections).toHaveBeenCalledWith('u2');
+  });
+
+  it('clears a previously visible connection when the profile is reopened and refresh fails', async () => {
+    mockApi.userConnections.mockResolvedValueOnce([{ provider: 'github', account_id: '123', name: 'pat-code', visible: true }]);
+    mockApi.userConnections.mockRejectedValueOnce(new Error('offline'));
+    const wrap = (user: User | null) => <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, bottom: 0, left: 0, right: 0 } }}><ProfileSheet user={user} onClose={() => undefined} /></SafeAreaProvider>;
+    const view = await render(wrap(PAT));
+    expect(await screen.findByText('GitHub: pat-code')).toBeTruthy();
+    await view.rerender(wrap(null));
+    await view.rerender(wrap(PAT));
+    await waitFor(() => expect(mockApi.userConnections).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('GitHub: pat-code')).toBeNull();
   });
 
   it('says when there is nothing in common', async () => {

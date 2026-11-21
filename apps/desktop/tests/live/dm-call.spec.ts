@@ -112,7 +112,7 @@ async function launch(
     );
   } catch (e) {
     await page.screenshot({
-      path: `C:/Users/Karma/AppData/Local/Temp/claude/C--Users-Karma-Projects-discordy-voics/24666c3e-bc3c-46e0-abe3-7085afa10e29/scratchpad/stuck-${name}.png`,
+      path: `C:/Users/Karma/AppData/Local/Temp/claude/C--Users-Karma-Projects-voics-app/24666c3e-bc3c-46e0-abe3-7085afa10e29/scratchpad/stuck-${name}.png`,
     });
     console.log(`[${name}] html=${(await page.content()).slice(0, 600)}`);
     console.log(

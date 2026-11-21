@@ -2,12 +2,14 @@ import { Tray, MagnifyingGlass, WifiSlash } from '@phosphor-icons/react';
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { BRAND } from '@shared/brand';
+import { useStreamerActive } from '../../app/streamer';
 
 const isMac = navigator.userAgent.includes('Mac');
 
 /** Draggable title bar with the palette trigger centred as a glass pill. */
 export function Titlebar() {
   const gateway = useSessionStore((s) => s.gateway);
+  const streamer = useStreamerActive();
   const open = useUiStore((s) => s.openPalette);
   const openDialog = useUiStore((s) => s.openDialog);
   const offline = gateway !== 'ready' && gateway !== 'idle';
@@ -23,6 +25,7 @@ export function Titlebar() {
         <kbd className="kbd">Ctrl K</kbd>
       </button>
       <div className="titlebar-end">
+        {streamer && <span className="net-pill" role="status">Streamer mode</span>}
         <button type="button" className="titlebar-icon" aria-label="Mentions inbox (Ctrl+I)" title="Mentions (Ctrl+I)" onClick={() => openDialog({ kind: 'inbox' })}>
           <Tray size={16} />
         </button>

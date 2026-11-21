@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter @discordy/desktop... --ignore-scripts
 COPY packages/core packages/core
 COPY apps/desktop apps/desktop
-RUN pnpm --filter @discordy/desktop exec electron-vite build
+RUN pnpm --filter @discordy/desktop exec electron-vite build && node apps/desktop/scripts/check-renderer-budget.mjs
 
 # --- runtime: unprivileged nginx serving the static renderer ---
 FROM nginxinc/nginx-unprivileged:1.27-alpine
@@ -20,7 +20,7 @@ ARG VERSION=0.1.0
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="discordy-client" \
       org.opencontainers.image.description="Voics client web build (renderer bundle and component gallery)" \
-      org.opencontainers.image.source="https://github.com/discordy-voics/client" \
+      org.opencontainers.image.source="https://github.com/voics-app/client" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="UNLICENSED"
