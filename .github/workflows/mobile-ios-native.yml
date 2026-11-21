@@ -23,7 +23,9 @@ jobs:
   native:
     # Self-hosted execution is limited to trusted branches. The runner must be a disposable
     # macOS ARM64 VM with Xcode 26.6 and the simulator runtime, labelled as below.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # No runner carries that label yet: pull requests only run it once the repository variable
+    # IOS_NATIVE_RUNNER is set to 'ready' (otherwise the job queues for 24h and fails). Manual runs are unaffected.
+    if: github.event_name != 'pull_request' || (vars.IOS_NATIVE_RUNNER == 'ready' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, macOS, ARM64, voics-macos-xcode26]
     timeout-minutes: 45
     env:
