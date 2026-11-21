@@ -66,6 +66,15 @@ it('sends partial attachment metadata with explicit clear values', async () => {
 });
 
 describe('DiscordyApi permanent invitations', () => {
+  it('uses the guild widget settings route and sends explicit null for the channel', async () => {
+    const { http, request } = fakeHttp();
+    const api = new DiscordyApi(http);
+    await api.guildWidgetSettings('7');
+    expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/widget', expect.anything());
+    await api.updateGuildWidgetSettings('7', { enabled: true, channel_id: null });
+    expect(request).toHaveBeenLastCalledWith('PATCH', '/guilds/7/widget', { body: { enabled: true, channel_id: null } });
+  });
+
   it('uses the guild vanity route and sends explicit null when removing', async () => {
     const { http, request } = fakeHttp();
     const api = new DiscordyApi(http);

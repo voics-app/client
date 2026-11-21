@@ -34,7 +34,7 @@ export type UserSettingsTab =
   | 'linkedAccounts'
   | 'about';
 
-export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'bans' | 'audit' | 'integrations';
+export type ServerSettingsTab = 'overview' | 'rules' | 'onboarding' | 'welcome' | 'profile' | 'roles' | 'emoji' | 'members' | 'invites' | 'template' | 'discovery' | 'widget' | 'bans' | 'audit' | 'integrations';
 
 export type Dialog =
   | { kind: 'botAuthorize'; request: BotAuthorizationRequest }

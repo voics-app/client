@@ -36,6 +36,7 @@ import type {
   Emoji,
   Guild,
   VanityUrl,
+  GuildWidgetSettings,
   GuildNotificationSettings,
   GuildNotificationSettingsPatch,
   DiscoveryPage,
@@ -169,6 +170,8 @@ export interface ApiPort {
   updateGuild(guildId: string, patch: Partial<Guild>): Promise<Guild>;
   guildVanityUrl(guildId: string): Promise<VanityUrl>;
   updateGuildVanityUrl(guildId: string, code: string | null): Promise<VanityUrl>;
+  guildWidgetSettings(guildId: string): Promise<GuildWidgetSettings>;
+  updateGuildWidgetSettings(guildId: string, patch: { enabled?: boolean; channel_id?: string | null }): Promise<GuildWidgetSettings>;
   deleteGuild(guildId: string): Promise<void>;
   createChannel(guildId: string, body: CreateChannelBody): Promise<Channel>;
   reorderChannels(guildId: string, positions: { id: string; position: number; parent_id?: string | null; lock_permissions?: boolean }[]): Promise<void>;

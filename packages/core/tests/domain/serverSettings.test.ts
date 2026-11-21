@@ -14,7 +14,7 @@ describe('serverSettingsTabs', () => {
     expect(shown(Permission.BAN_MEMBERS)).toEqual(['profile', 'members', 'bans']);
     expect(shown(Permission.MANAGE_BAN_APPEALS)).toEqual(['profile', 'members', 'bans']);
     expect(canOpenServerSettings(Permission.MANAGE_BAN_APPEALS)).toBe(true);
-    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'rules', 'onboarding', 'welcome', 'profile', 'members', 'invites', 'template', 'discovery', 'integrations']);
+    expect(shown(Permission.MANAGE_GUILD)).toEqual(['overview', 'rules', 'onboarding', 'welcome', 'profile', 'members', 'invites', 'template', 'discovery', 'widget', 'integrations']);
     expect(shown(Permission.MANAGE_WEBHOOKS)).toEqual(['profile', 'members', 'integrations']);
   });
 });
