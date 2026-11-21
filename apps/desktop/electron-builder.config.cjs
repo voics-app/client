@@ -26,5 +26,13 @@ module.exports = {
     shortcutName: brand.shortName,
   },
   mac: { category: 'public.app-category.social-networking', target: ['dmg'], icon: 'build/icon.png' },
-  linux: { target: ['AppImage', 'deb'], category: 'Network', icon: 'build/icon.png', maintainer: brand.publisher },
+  // No "-Setup" in the Linux names: an AppImage is not an installer. latest-linux.yml (AppImage auto-update) names this file.
+  linux: {
+    target: [{ target: 'AppImage', arch: ['x64'] }, { target: 'deb', arch: ['x64'] }],
+    category: 'Network',
+    icon: 'build/icon.png',
+    maintainer: brand.publisher,
+    artifactName: `${brand.productName}-\${version}.\${ext}`,
+    mimeTypes: [`x-scheme-handler/${brand.protocolScheme}`],
+  },
 };

@@ -175,7 +175,7 @@ Media-worker tests wait for the output stream to close before asserting on frame
 ```
 pnpm dist:win       # NSIS installer in apps/desktop/release/
 pnpm dist:mac       # dmg (run on macOS)
-pnpm dist:linux     # AppImage and deb (run on Linux)
+pnpm dist:linux     # AppImage and deb, x64 (run on Linux; CI: release.yml job linux, PR check linux-package.yml)
 ```
 
 Installers are unsigned, but electron-builder still writes the icon and version info into the .exe (it downloads winCodeSign, whose archive contains symlinks, so on Windows run the build as administrator or with Developer Mode on). Auto-update uses the generic provider at `UPDATE_FEED_URL`.
