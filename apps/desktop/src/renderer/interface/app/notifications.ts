@@ -12,8 +12,8 @@ import { isChannelMutedDeep, isGuildMuted, scopeKey } from '@discordy/core/domai
 import { summarizeActivity } from '@discordy/core/domain/unread';
 import { shouldPlaySound } from '@discordy/core/domain/sounds';
 import { soundEffects } from '@renderer/infrastructure/audio/sfx';
-import { ChannelType } from '@discordy/core/contracts/rest';
 import { bridge } from './bridge';
+import { isTextChannel } from './navigation';
 import { streamerActive } from './streamer';
 
 const recentEventReminders = new Set<string>();
@@ -57,11 +57,11 @@ export function totalMentions(): number {
 
 /** Current unread/mention totals over every text channel the viewer can see. */
 export function currentActivity(): { mentions: number; unread: number } {
-  const channels = Object.values(useGuildStore.getState().channels).filter((c) => c.type === ChannelType.GUILD_TEXT || c.type === ChannelType.DM || c.type === ChannelType.GROUP_DM);
   const now = Date.now();
   const byScope = useNotificationSettingsStore.getState().byScope;
-  const muted = Object.fromEntries(channels.map((c) => [c.id, isChannelMutedDeep(byScope[scopeKey(c.guild_id)], c, now)]));
-  return summarizeActivity(channels, useReadStateStore.getState().byChannel, muted);
+  const channels = Object.values(useGuildStore.getState().channels)
+    .filter((c) => isTextChannel(c) && !isChannelMutedDeep(byScope[scopeKey(c.guild_id)], c, now));
+  return summarizeActivity(channels, useReadStateStore.getState().byChannel, {});
 }
 
 /** Desktop notification and taskbar flash for an incoming message, following the notification rules. */
@@ -93,7 +93,7 @@ export function notifyIncoming(message: ChatMessage): void {
   const title = message.guild_id ? `${message.author.global_name ?? message.author.username} in #${channel?.name ?? 'channel'}` : (message.author.global_name ?? message.author.username);
   // Private (E2EE/P2P) plaintext never goes to the OS notification centre (alertBody hides it).
   const body = streamerActive() && !message.guild_id ? 'New direct message' : alertBody(message);
-  const route = message.guild_id ? `/channels/${message.guild_id}/${message.channel_id}` : `/channels/@me/${message.channel_id}`;
+  const route = `/channels/${message.guild_id ?? '@me'}/${message.channel_id}/${message.id}`;
   bridge?.app.notify({ title, body, route, silent: true });
   if (prefs.flashTaskbar) bridge?.app.flashFrame();
 }

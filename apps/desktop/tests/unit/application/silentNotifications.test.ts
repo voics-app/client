@@ -40,6 +40,11 @@ describe('notifyIncoming and @silent', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it.each([null, '100'])('routes a notification to the exact message in scope %s', (guildId) => {
+    notifyIncoming(dm({ guild_id: guildId, mentions: [me] }));
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ route: `/channels/${guildId ?? '@me'}/300/9` }));
+  });
+
   it('redacts DM content and suppresses sound in streamer mode, restoring them when disabled', () => {
     usePrefsStore.setState({ streamerMode: true });
     notifyIncoming(dm());

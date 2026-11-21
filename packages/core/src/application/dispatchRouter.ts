@@ -3,7 +3,7 @@ import { becameFriends } from '@discordy/core/domain/dmIntro';
 import type { GuildScheduledEventStart } from '@discordy/core/contracts/scheduledEvents';
 import { inboxEntryOf } from '@discordy/core/domain/mentionInbox';
 import { isMentioned } from '@discordy/core/domain/notificationPolicy';
-import { isChannelMutedDeep, scopeKey } from '@discordy/core/domain/notificationSettings';
+import { effectiveLevelDeep, isChannelMutedDeep, scopeKey, serverDefaultLevel } from '@discordy/core/domain/notificationSettings';
 import type {
   Channel,
   Emoji,
@@ -100,7 +100,9 @@ export function registerIncoming(message: ChatMessage, notify: (message: ChatMes
     const settings = useNotificationSettingsStore.getState().byScope[scopeKey(message.guild_id)];
     const channel = useGuildStore.getState().channels[message.channel_id];
     const ctx = { meId: me, myRoleIds: viewerRoleIds(message.guild_id, me), suppressEveryone: settings?.suppress_everyone, suppressRoles: settings?.suppress_roles };
-    if (localCounts && isMentioned(message, ctx) && !isChannelMutedDeep(settings, { id: message.channel_id, parent_id: channel?.parent_id }, Date.now())) {
+    const channelRef = { id: message.channel_id, parent_id: channel?.parent_id };
+    const guildDefault = serverDefaultLevel(message.guild_id ? useGuildStore.getState().guilds[message.guild_id]?.default_message_notifications : undefined);
+    if (localCounts && isMentioned(message, ctx) && effectiveLevelDeep(settings, channelRef, guildDefault) !== 2 && !isChannelMutedDeep(settings, channelRef, Date.now())) {
       useReadStateStore.getState().addMention(message.channel_id);
     }
     const entry = inboxEntryOf(message, ctx);

@@ -23,9 +23,9 @@ Explicit response flags override the legacy `SPOILER_` filename convention. A re
 filename. Both platforms conceal ordinary files and audio as well as media tiles; media viewers
 exclude other concealed spoilers. Spoilers are a display choice, not an access-control boundary.
 
-Dependencies: [contracts#38](https://github.com/discordy-voics/contracts/pull/38) and
-[messages#79](https://github.com/discordy-voics/messages/pull/79), paired with
-[messages#60](https://github.com/discordy-voics/messages/issues/60). Client issue #60 concerns
+Dependencies: [contracts#38](https://github.com/voics-app/contracts/pull/38) and
+[messages#79](https://github.com/voics-app/messages/pull/79), paired with
+[messages#60](https://github.com/voics-app/messages/issues/60). Client issue #60 concerns
 role management and is unrelated.
 
 ## Regression commands
