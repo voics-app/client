@@ -50,4 +50,10 @@ describe('role dot and animated image', () => {
     expect(container.querySelector('img')!.getAttribute('src')).toBe('http://x/a.gif');
     expect(container.querySelector('img')!.hasAttribute('data-still')).toBe(false);
   });
+  it('preserves the legacy fallback unless a still frame is required', () => {
+    usePrefsStore.setState({ animateGifs: false });
+    const { container } = render(<><AnimatedImage kind="gif" animated src="http://x/a.gif" alt="legacy" /><AnimatedImage kind="gif" animated requireStill src="http://x/b.gif" alt="strict" /></>);
+    expect(container.querySelector('img[alt="legacy"]')!.getAttribute('src')).toBe('http://x/a.gif');
+    expect(container.querySelector('img[alt="strict"]')!.getAttribute('src')).toBeNull();
+  });
 });

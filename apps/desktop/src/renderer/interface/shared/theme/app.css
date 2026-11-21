@@ -797,3 +797,19 @@ button.channel-topic { background: none; border: 0; border-left: 1px solid var(-
 .report-category small { display: block; color: var(--fg-subtle); }
 .field-error { margin: 0; color: var(--danger, #d03b3b); font-size: var(--fs-small); }
 .passkey-list { list-style: none; margin: 0; padding: 0; }
+.gif-picker { position: absolute; right: 16px; bottom: 76px; z-index: 30; width: min(360px, calc(100vw - 32px)); max-height: 420px; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border, #555); border-radius: 8px; background: var(--bg-secondary, #26262b); color: var(--text-primary, #fff); box-shadow: 0 8px 24px #0008; }
+.gif-picker-header { display: flex; justify-content: space-between; align-items: center; }
+.gif-picker input { width: 100%; padding: 8px; }
+.gif-picker-categories { display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0; }
+.gif-picker-categories button { white-space: nowrap; }
+.gif-picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow-y: auto; }
+.gif-picker-item { position: relative; min-width: 0; }
+.gif-picker-item > button:first-child { width: 100%; padding: 0; }
+.gif-picker-item img { width: 100%; max-height: 130px; object-fit: cover; }
+.gif-picker-favorite { position: absolute; right: 3px; top: 3px; }
+
+.forum-controls { display: flex; gap: 16px; padding: 12px 24px; }
+.forum-list--rows { grid-template-columns: 1fr; }
+
+.forum-preview { color: var(--fg-subtle); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.forum-cover { width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-panel); }

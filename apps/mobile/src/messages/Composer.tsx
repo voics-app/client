@@ -4,6 +4,11 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { convertEmoticons } from '@discordy/core/domain/emoticons';
 import { useDraftStore } from '@discordy/core/application/stores/composerStores';
 import { usePrefsStore } from '@discordy/core/application/stores/prefsStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { ScheduleSourceDraft } from '@discordy/core/application/scheduledCreateJournal';
+import type { ScheduledMessageDraft } from '@discordy/core/contracts/scheduledMessages';
+import { parseSilentPrefix, parseTtsCommand } from '@discordy/core/domain/appearance';
+import { scheduleDraftError, scheduleUnavailable } from '@discordy/core/domain/scheduledMessages';
 import { charsRemaining, showCounter } from '@discordy/core/domain/composerLimits';
 import type { QuickEmoji } from '@discordy/core/domain/quickReactions';
 import type { Channel } from '@discordy/core/contracts/rest';
@@ -12,9 +17,10 @@ import { CommandSheet } from '../commands/CommandSheet';
 import { SlashSuggestions } from '../commands/SlashSuggestions';
 import { useSlashCommands } from '../commands/useSlashCommands';
 import { theme } from '../theme';
+import { ScheduledMessagesSheet, type ScheduleOpening, type SchedulingContext } from '../scheduling/ScheduledMessagesSheet';
 import { EmojiPicker } from '../emoji/EmojiPicker';
 import { emojiText, insertAt } from '../emoji/emojiPickerModel';
-import { AttachMenu } from './AttachMenu';
+import { AttachMenu, AttachmentOptions } from './AttachMenu';
 import { addFiles } from './attachmentPicker';
 import type { OutgoingFile } from './outgoingFile';
 import { PendingFiles } from './PendingFiles';
@@ -38,17 +44,21 @@ export interface ComposerProps {
   draftKey?: string | undefined;
   /** The chat whose application commands `/` offers; absent where commands are not allowed (no permission, private delivery). */
   slashChannel?: Channel | undefined;
+  /** Author-owned schedules remain accessible even when permission to send is lost. */
+  scheduling?: SchedulingContext | undefined;
   onSubmit(text: string, mode: ComposerMode, files: OutgoingFile[]): void;
   onCancelMode(): void;
 }
 
-export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, onSubmit, onCancelMode }: ComposerProps) {
+export function Composer({ mode, blockedReason, placeholder, canAttach, guildId, draftKey, slashChannel, scheduling, onSubmit, onCancelMode }: ComposerProps) {
   const [text, setText] = useState('');
   const [multiline, setMultiline] = useState(false);
   const [files, setFiles] = useState<OutgoingFile[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [command, setCommand] = useState<SlashEntry | null>(null);
+  const [scheduleRequest, setScheduleRequest] = useState<ScheduleOpening | null>(null);
+  const authorId = useSessionStore((state) => state.user?.id);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   useEffect(() => {
@@ -62,8 +72,9 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
     const timer = setTimeout(() => useDraftStore.getState().setDraft(draftKey, text, null), 400);
     return () => clearTimeout(timer);
   }, [text, draftKey, mode.kind]);
-  const latest = useRef({ text, editing: mode.kind === 'edit' });
-  latest.current = { text, editing: mode.kind === 'edit' };
+  const current = { text, editing: mode.kind === 'edit', replyTo: mode.kind === 'reply' ? mode.messageId : null, deliveryMode: scheduling?.mode, attachmentCount: files.length };
+  const latest = useRef(current);
+  latest.current = current;
   // Leaving the chat saves what was typed in the last moments, which the pause above has not saved yet.
   useEffect(
     () => () => {
@@ -74,10 +85,34 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
 
   const slash = useSlashCommands(slashChannel, text, mode.kind === 'compose');
 
+  const schedulingDraft = (): ScheduledMessageDraft => {
+    let content = text.trim();
+    const tts = parseTtsCommand(content);
+    if (tts !== null) content = tts;
+    const silent = tts === null ? parseSilentPrefix(content) : null;
+    if (silent !== null) content = silent;
+    if (usePrefsStore.getState().convertEmoticons) content = convertEmoticons(content);
+    return { content, tts: tts !== null, silent: silent !== null, reply_to: current.replyTo, replied_user: true };
+  };
+  const openScheduling = (initial: ScheduleOpening['initial']) => {
+    if (!scheduling) return;
+    const draft = schedulingDraft();
+    const createDisabledReason = scheduleUnavailable({ mode: scheduling.mode, attachments: files.length, editing: current.editing, command: command !== null || (slash.query !== null && parseTtsCommand(text) === null), canSend: !blockedReason }) ?? scheduleDraftError(draft);
+    if (initial === 'create' && createDisabledReason) { Alert.alert('Cannot schedule this message', createDisabledReason); return; }
+    setScheduleRequest({ initial, draft, source: { text, replyTo: current.replyTo }, createDisabledReason });
+  };
+  const scheduled = (source: ScheduleSourceDraft | null) => {
+    if (!source || latest.current.deliveryMode !== 'standard' || latest.current.editing || latest.current.attachmentCount > 0 || useSessionStore.getState().user?.id !== authorId || latest.current.text !== source.text || latest.current.replyTo !== source.replyTo) return;
+    latest.current.text = ''; setText('');
+    if (draftKey) useDraftStore.getState().clearDraft(draftKey);
+    if (source.replyTo) onCancelMode();
+  };
+
   if (blockedReason) {
     return (
       <View style={styles.blocked}>
         <Text style={styles.blockedText}>{blockedReason}</Text>
+        {scheduling && <><Pressable accessibilityRole="button" onPress={() => openScheduling('list')} style={styles.scheduleLink}><Text style={styles.bannerAction}>Scheduled messages</Text></Pressable><ScheduledMessagesSheet request={scheduleRequest} context={scheduling} canSend={false} onAccepted={scheduled} onClose={() => setScheduleRequest(null)} /></>}
       </View>
     );
   }
@@ -128,8 +163,8 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
       )}
       {files.length > 0 && <PendingFiles files={files} onRemove={(i) => setFiles((current) => current.filter((_, at) => at !== i))} />}
       <View style={[styles.field, multiline ? styles.fieldGrown : styles.fieldSingle]}>
-        {mode.kind === 'compose' && canAttach && (
-          <Pressable accessibilityRole="button" accessibilityLabel="Add attachment" hitSlop={6} onPress={() => setAttachOpen(true)} style={styles.plus}>
+        {(scheduling || (mode.kind === 'compose' && canAttach)) && (
+          <Pressable accessibilityRole="button" accessibilityLabel={scheduling ? 'Message actions' : 'Add attachment'} hitSlop={6} onPress={() => scheduling ? openScheduling('actions') : setAttachOpen(true)} style={styles.plus}>
             <Ionicons name="add" size={26} color={theme.muted} />
           </Pressable>
         )}
@@ -138,7 +173,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
           <Ionicons name="happy-outline" size={24} color={theme.muted} />
         </Pressable>
         {canSubmit && (
-          <Pressable accessibilityRole="button" accessibilityLabel={mode.kind === 'edit' ? 'Save edit' : 'Send'} onPress={submit} style={styles.send}>
+          <Pressable accessibilityRole="button" accessibilityLabel={mode.kind === 'edit' ? 'Save edit' : 'Send'} accessibilityHint={scheduling && mode.kind !== 'edit' ? 'Hold to send later' : undefined} onLongPress={scheduling && mode.kind !== 'edit' ? () => openScheduling('create') : undefined} onPress={submit} style={styles.send}>
             <Ionicons name={mode.kind === 'edit' ? 'checkmark' : 'arrow-up'} size={20} color={theme.accentText} />
           </Pressable>
         )}
@@ -146,6 +181,7 @@ export function Composer({ mode, blockedReason, placeholder, canAttach, guildId,
       {slashChannel && <CommandSheet entry={command} channel={slashChannel} onClose={() => setCommand(null)} />}
       <EmojiPicker visible={emojiOpen} guildId={guildId} onClose={() => setEmojiOpen(false)} onPick={insertEmoji} />
       <AttachMenu visible={attachOpen} onClose={() => setAttachOpen(false)} onPicked={pick} />
+      {scheduling && <ScheduledMessagesSheet request={scheduleRequest} context={scheduling} canSend={true} attachments={mode.kind === 'compose' && canAttach ? <AttachmentOptions onClose={() => setScheduleRequest(null)} onPicked={pick} /> : undefined} onAccepted={scheduled} onClose={() => setScheduleRequest(null)} />}
       {showCounter(remaining) && <Text style={[styles.counter, remaining < 0 && styles.over]}>{remaining}</Text>}
     </View>
   );
@@ -183,4 +219,5 @@ const styles = StyleSheet.create({
   over: { color: theme.danger },
   blocked: { backgroundColor: theme.surface, padding: 18 },
   blockedText: { color: theme.muted, textAlign: 'center' },
+  scheduleLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
 });

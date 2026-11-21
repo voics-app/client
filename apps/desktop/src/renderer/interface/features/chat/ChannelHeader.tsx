@@ -22,6 +22,7 @@ import { Menu, useMenu, type MenuEntry } from '../../shared/ui/Menu';
 import { ModeBadge } from '../privacy/ModeBadge';
 import { SearchBar } from '../search/SearchBar';
 import { MarkdownView } from './MarkdownView';
+import { FollowAnnouncementDialog } from './FollowAnnouncementDialog';
 
 /** The full topic with markdown; MANAGE_CHANNELS holders can edit it in place. */
 export function TopicPopout({ channel, canEdit, onClose }: { channel: Channel; canEdit: boolean; onClose: () => void }) {
@@ -117,6 +118,7 @@ export function ChannelHeader({ channel, mode }: { channel: Channel; mode: Deliv
   const callInProgress = useCallStore((s) => hasParticipants(s.calls[channel.id]));
   const perms = useChannelPermissions(channel.id);
   const [topicOpen, setTopicOpen] = useState(false);
+  const [followOpen, setFollowOpen] = useState(false);
   const isDm = channel.type === ChannelType.DM || channel.type === ChannelType.GROUP_DM;
   const isThread = channel.type >= 10 && channel.type <= 12;
   const peers = channel.recipients ?? [];
@@ -126,7 +128,7 @@ export function ChannelHeader({ channel, mode }: { channel: Channel; mode: Deliv
   const canEdit = canEditTopic(channel, perms);
   const callLabel = inCall ? 'In call' : callInProgress ? 'Join call' : 'Start voice call';
 
-  useEffect(() => setTopicOpen(false), [channel.id]);
+  useEffect(() => { setTopicOpen(false); setFollowOpen(false); }, [channel.id]);
 
   return (
     <header className="channel-header">
@@ -147,6 +149,7 @@ export function ChannelHeader({ channel, mode }: { channel: Channel; mode: Deliv
         )}
       </div>
       <div className="channel-header-actions">
+        {channel.type === ChannelType.GUILD_ANNOUNCEMENT && mode === 'standard' && <Button size="sm" onClick={() => setFollowOpen(true)}>Follow</Button>}
         <ModeBadge mode={mode} />
         <SearchBar channelId={channel.id} />
         {buttons.call && (
@@ -175,6 +178,7 @@ export function ChannelHeader({ channel, mode }: { channel: Channel; mode: Deliv
         {buttons.profile && <IconButton label="User profile" active={sidePanel?.kind === 'profile'} onClick={() => toggle('profile')}><UserCircle size={20} /></IconButton>}
         {buttons.members && <IconButton label="Member list" active={sidePanel?.kind === 'members'} onClick={() => toggle('members')}><Users size={20} /></IconButton>}
       </div>
+      {followOpen && <FollowAnnouncementDialog source={channel} close={() => setFollowOpen(false)} />}
     </header>
   );
 }

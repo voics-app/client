@@ -1,5 +1,7 @@
 # Voics client
 
+Standard forum posts retain their request ID and draft while delivery is pending. Reopen the forum and check the same request after an uncertain result. The forum feed shows stored previews, covers, tags, reply counts and activity when the server can supply them. Private-mode forum creation and first-message attachments are not yet available.
+
 Electron + React desktop client for Voics: servers, channels, threads, DMs, voice, video and screen share, with three delivery modes per chat (Standard, Ephemeral E2EE, P2P). Windows is the primary target; macOS and Linux build from the same sources.
 
 ## Layout
@@ -7,6 +9,14 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 The desktop Threads panel browses visible active or archived threads and lets members join,
 leave, mute, archive or lock where permitted. It requires the thread browse and membership API
 and the corresponding gateway membership events; server-side auto-archive remains separate work.
+
+Standard text messages can be scheduled from the composer’s **Send later** action
+(mobile also supports holding Send). **Scheduled messages** lists your channel’s
+requests with explicit local time, edit/cancel while pending and safe confirmation
+retries after a lost response. Uncertain delivery offers inspection without
+automatic resend. Attachments and private delivery cannot be scheduled. This
+requires the enabled messages scheduling backend; see [the client behavior and
+contract notes](docs/scheduled-messages.md).
 
 Desktop streamer mode is configured in Settings → Notifications; it can hide account email and generated server invite codes, redact direct-message notifications and silence app notification/call tones. Settings → Keybinds offers a configurable toggle. Optional OBS detection checks local process names every five seconds; turn the mode on manually before streaming. See [the streamer mode guide](docs/streamer-mode.md) for its boundaries and verification.
 
@@ -46,6 +56,7 @@ These controls require the API vanity/audit-policy release (api#96 and api#85).
 | `apps/desktop/src/main` | Main process: hardened window, typed IPC, tray (icon, menu, unread state; show / minimize / close-to-tray settings in `trayController.ts` and `desktop/desktopSettings.ts`), deep links, capture, push-to-talk, updater, crypto host |
 | `apps/desktop/src/preload` | `window.discordy` bridge (contextIsolation, sandbox) |
 | `packages/core` | `@discordy/core`, shared by desktop and mobile: `src/domain` (pure logic: permissions, delivery modes, SDP synthesis, markdown, frame format), `src/application` (ports and platform-free zustand stores), `src/infrastructure` (HTTP and gateway clients), and `src/contracts` (REST P9, gateway P7, voice P8). No UI, Electron or browser globals (eslint) |
+| `packages/react` | `@discordy/react`, shared React interface hooks for desktop and mobile. No DOM, native views or browser globals; scheduling uses the same form conflicts, durable retry state and visible-list refresh behavior on both platforms. |
 | `apps/desktop/src/shared` | IPC contract and the brand |
 | `apps/desktop/src/renderer/domain` | The few domain modules that still read the brand (`BRAND`); they move once the brand is injected |
 | `apps/desktop/src/renderer/application` | Zustand stores, use cases (session, privacy, voice, watch), ports |
@@ -84,7 +95,7 @@ DM rows show custom status or live typing and offer a close button on hover or k
 
 The Forward picker uses each DM recipient's user ID for their global avatar, including animated images. Forwarding still targets the DM channel ID; recipients without an avatar retain their initials. The routing regression is covered by `apps/desktop/tests/unit/interface/ForwardDialog.test.tsx`.
 
-Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Unavailable Widget and Server Profile pages stay hidden until their APIs are implemented. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
+Server settings group implemented pages under Server, People and Moderation. The owner can delete a server from the settings footer or server menu after typing its exact name. Server profile (under People, for every member) edits your own server nickname, avatar, banner and About me; clearing a field or removing an image falls back to your account profile, and changes use the shared unsaved-changes bar. The Widget page stays hidden until its API exists. Privacy and delivery includes safety guidance; report dialogs disclose what is sent, and private bot responses can be dismissed locally.
 
 Desktop taskbar, tray and title activity follows text chats, announcements, threads
 and DMs, with immediate mute updates and timed expiry. Escape marks a channel read;

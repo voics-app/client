@@ -7,6 +7,22 @@ function fakeHttp() {
   return { http: { request } as unknown as HttpClient, request };
 }
 
+it('uses event and idempotent interest routes', async () => {
+  const { http, request } = fakeHttp();
+  const api = new DiscordyApi(http);
+  await api.guildScheduledEvents('7');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/scheduled-events', { query: undefined });
+  const event = { name: 'Meetup', entity_type: 3 as const, scheduled_start_time: '2026-12-01T12:00:00Z', scheduled_end_time: '2026-12-01T13:00:00Z', entity_metadata: { location: 'Park' } };
+  await api.createGuildScheduledEvent('7', event);
+  expect(request).toHaveBeenLastCalledWith('POST', '/guilds/7/scheduled-events', { body: event, reason: undefined });
+  await api.guildScheduledEventInterest('7', '8');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/scheduled-events/8/users/@me', { query: undefined });
+  await api.setGuildScheduledEventInterest('7', '8', true);
+  expect(request).toHaveBeenLastCalledWith('PUT', '/guilds/7/scheduled-events/8/users/@me', { body: undefined, reason: undefined });
+  await api.setGuildScheduledEventInterest('7', '8', false);
+  expect(request).toHaveBeenLastCalledWith('DELETE', '/guilds/7/scheduled-events/8/users/@me', { reason: undefined });
+});
+
 it('uses explicit consent and integration endpoints and never sends credentials in metadata edits', async () => {
   const { http, request } = fakeHttp();
   const api = new DiscordyApi(http);
@@ -26,6 +42,12 @@ it('uses explicit consent and integration endpoints and never sends credentials 
   expect(request).toHaveBeenLastCalledWith('DELETE', '/guilds/7/integrations/11', { reason: undefined });
   await api.guildWebhooks('7');
   expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/webhooks', { query: undefined });
+  await api.followAnnouncement('2', '3');
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/followers', { body: { webhook_channel_id: '3' }, reason: undefined });
+  await api.publishAnnouncement('2', '9');
+  expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/messages/9/crosspost', { body: {}, reason: undefined });
+  await api.followedChannels('7');
+  expect(request).toHaveBeenLastCalledWith('GET', '/guilds/7/followed-channels', { query: undefined });
   await api.createWebhook('2', { name: 'Reminders' });
   expect(request).toHaveBeenLastCalledWith('POST', '/channels/2/webhooks', { body: { name: 'Reminders' }, reason: undefined });
   await api.updateWebhook('21', { avatar: null });

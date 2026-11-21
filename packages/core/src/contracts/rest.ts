@@ -76,6 +76,7 @@ export interface UserPreferences {
   ringtone?: string;
   skin_tone?: string;
   recent_reactions?: { id: string | null; name: string; animated?: boolean }[];
+  favorite_gifs?: string[];
 }
 
 export interface UserSettings {
@@ -132,6 +133,8 @@ export interface ForumTag {
   id: Snowflake;
   name: string;
   emoji_name?: string | null;
+  emoji_id?: string | null;
+  moderated?: boolean;
 }
 
 export interface Channel {
@@ -162,6 +165,13 @@ export interface Channel {
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];
+  flags?: number;
+  default_sort_order?: number | null;
+  default_forum_layout?: number;
+  default_reaction_emoji?: { emoji_id: string | null; emoji_name: string | null } | null;
+  require_tags?: boolean;
+  forum_post_status?: 'pending' | 'dispatching' | 'publishing' | 'published' | 'failed';
+  forum_first_message?: Pick<Message, 'id' | 'content' | 'attachments'> | null;
   delivery_mode: DeliveryMode;
   voice_region?: string | null;
 }
@@ -181,6 +191,8 @@ export interface GuildMember {
   user: User;
   nick?: string | null;
   avatar?: string | null;
+  banner?: string | null;
+  bio?: string | null;
   roles: Snowflake[];
   joined_at: string;
   deaf: boolean;
@@ -346,6 +358,8 @@ export interface MessageSearchResponse {
 }
 
 export const MessageFlag = {
+  CROSSPOSTED: 1 << 0,
+  IS_CROSSPOST: 1 << 1,
   SUPPRESS_EMBEDS: 1 << 2,
   EPHEMERAL: 1 << 6,
   LOADING: 1 << 7,

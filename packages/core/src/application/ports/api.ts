@@ -2,6 +2,8 @@
 import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
+import type { CreateGuildScheduledEvent, GuildScheduledEvent } from '../../contracts/scheduledEvents';
+import type { CreateScheduledMessage, EditScheduledMessage, ScheduledMessage, ScheduledMessagePage } from '../../contracts/scheduledMessages';
 import type {
   LinkedConnection,
   ApplicationCommand,
@@ -78,6 +80,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  guildScheduledEvents(guildId: string): Promise<GuildScheduledEvent[]>;
+  guildScheduledEvent(guildId: string, eventId: string): Promise<GuildScheduledEvent>;
+  createGuildScheduledEvent(guildId: string, body: CreateGuildScheduledEvent): Promise<GuildScheduledEvent>;
+  guildScheduledEventInterest(guildId: string, eventId: string): Promise<{ interested: boolean }>;
+  setGuildScheduledEventInterest(guildId: string, eventId: string, interested: boolean): Promise<void>;
   connections(): Promise<LinkedConnection[]>;
   userConnections(userId: string): Promise<LinkedConnection[]>;
   authorizeGithubConnection(): Promise<{ url: string }>;
@@ -123,6 +130,9 @@ export interface ApiPort {
   userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
+  gifs(query?: string): Promise<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string; proxy_url?: string } } }[] }>;
+  gifCategories(): Promise<{ tags: { searchterm: string; name: string }[] }>;
+  gifPreviews(urls: string[]): Promise<{ urls: string[] }>;
   privateChannels(): Promise<Channel[]>;
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
@@ -168,7 +178,7 @@ export interface ApiPort {
   duplicateRole(guildId: string, roleId: string): Promise<Role>;
   reorderRoles(guildId: string, positions: { id: string; position: number }[]): Promise<Role[]>;
   members(guildId: string, query?: { limit?: number; after?: string }): Promise<GuildMember[]>;
-  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
+  updateMember(guildId: string, userId: string, patch: Partial<Pick<GuildMember, 'nick' | 'avatar' | 'banner' | 'bio' | 'roles' | 'mute' | 'deaf' | 'communication_disabled_until'>> & { channel_id?: string | null }): Promise<GuildMember>;
   kickMember(guildId: string, userId: string, reason?: string): Promise<void>;
   addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
   removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
@@ -206,11 +216,12 @@ export interface ApiPort {
   deleteOverwrite(channelId: string, overwriteId: string): Promise<void>;
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
   listThreads(channelId: string, archived: boolean): Promise<Channel[]>;
   joinThread(threadId: string, userId?: string): Promise<void>;
   leaveThread(threadId: string, userId?: string): Promise<void>;
   updateThread(threadId: string, patch: { archived?: boolean; locked?: boolean; auto_archive_duration?: number }): Promise<Channel>;
+  listForumPosts(channelId: string): Promise<Channel[]>;
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }): Promise<Channel>;
 
   discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
   discoveryCategories(): Promise<string[]>;
@@ -226,6 +237,11 @@ export interface ApiPort {
   /** Server-side full-text search; `guildId` searches the whole server, otherwise just the channel. */
   searchMessages(scope: { guildId?: string | null; channelId: string }, params: SearchParams): Promise<MessageSearchResponse>;
   sendMessage(channelId: string, body: CreateMessageBody): Promise<Message>;
+  createScheduledMessage(channelId: string, body: CreateScheduledMessage): Promise<ScheduledMessage>;
+  scheduledMessages(channelId: string, query?: { after?: string; limit?: number }): Promise<ScheduledMessagePage>;
+  scheduledMessage(channelId: string, scheduleId: string): Promise<ScheduledMessage>;
+  editScheduledMessage(channelId: string, scheduleId: string, body: EditScheduledMessage): Promise<ScheduledMessage>;
+  cancelScheduledMessage(channelId: string, scheduleId: string, expectedRevision: number): Promise<ScheduledMessage>;
   editMessage(channelId: string, messageId: string, patch: EditMessageBody): Promise<Message>;
   deleteMessage(channelId: string, messageId: string): Promise<void>;
   addReaction(channelId: string, messageId: string, emoji: string): Promise<void>;
@@ -250,6 +266,9 @@ export interface ApiPort {
   guildIntegrations(guildId: string): Promise<GuildIntegration[]>;
   removeGuildIntegration(guildId: string, applicationId: string): Promise<void>;
   guildWebhooks(guildId: string): Promise<Webhook[]>;
+  followAnnouncement(channelId: string, targetChannelId: string): Promise<{ channel_id: string; webhook_id: string }>;
+  publishAnnouncement(channelId: string, messageId: string): Promise<Message>;
+  followedChannels(guildId: string): Promise<{ channel_id: string; webhook_channel_id: string; webhook_id: string }[]>;
   createWebhook(channelId: string, body: { name: string; avatar?: string }): Promise<WebhookCredential>;
   updateWebhook(webhookId: string, body: WebhookEdit): Promise<Webhook>;
   resetWebhookToken(webhookId: string): Promise<WebhookCredential>;

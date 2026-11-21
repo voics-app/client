@@ -23,7 +23,7 @@ import { bridge, sessionVault } from './bridge';
 import { useConnectionStore } from './connectionStore';
 import { registerIncoming } from '@discordy/core/application/dispatchRouter';
 import { ensureDm } from './dmActions';
-import { notifyIncoming, playFriendRequestSound } from './notifications';
+import { notifyIncoming, notifyScheduledEventStart, playFriendRequestSound } from './notifications';
 import { useUiStore } from '@discordy/core/application/stores/uiStore';
 import { DEVICE_UNREGISTERED_REASON } from '@discordy/core/domain/deliveryMode';
 import { BRAND } from '@shared/brand';
@@ -104,6 +104,7 @@ export function createRuntime(info: AppInfo): Runtime {
     onVoiceServerUpdate: (update) => hooks.onVoiceServerUpdate(update),
     onVoiceState: (state) => hooks.onVoiceState?.(state),
     onIncomingMessage: notifyIncoming,
+    onScheduledEventStart: (event) => void notifyScheduledEventStart(api, event),
     onFriendship: (userId) => void ensureDm(userId),
     onFriendRequest: playFriendRequestSound,
     invalidate: (key) => void queryClient.invalidateQueries({ queryKey: [...key] }),
