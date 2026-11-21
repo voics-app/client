@@ -131,6 +131,8 @@ export interface ForumTag {
   id: Snowflake;
   name: string;
   emoji_name?: string | null;
+  emoji_id?: string | null;
+  moderated?: boolean;
 }
 
 export interface Channel {
@@ -160,6 +162,13 @@ export interface Channel {
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];
+  flags?: number;
+  default_sort_order?: number | null;
+  default_forum_layout?: number;
+  default_reaction_emoji?: { emoji_id: string | null; emoji_name: string | null } | null;
+  require_tags?: boolean;
+  forum_post_status?: 'pending' | 'dispatching' | 'publishing' | 'published' | 'failed';
+  forum_first_message?: Pick<Message, 'id' | 'content' | 'attachments'> | null;
   delivery_mode: DeliveryMode;
   voice_region?: string | null;
 }

@@ -6,16 +6,16 @@ import { ChannelType, type Channel } from '@discordy/core/contracts/rest';
 import { canPost, forumPosts, newPostBody } from '../../src/forum/forumModel';
 import { resetStores, seedServer } from '../support/server';
 
-const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'ideas', name: `post ${id}`, message_count: 2, ...extra }) as Channel;
+const post = (id: string, extra: Partial<Channel> = {}) => ({ id, type: ChannelType.PUBLIC_THREAD, guild_id: 'g1', parent_id: 'ideas', name: `post ${id}`, message_count: 2, delivery_mode: 'standard', ...extra }) as Channel;
 
 describe('forumPosts', () => {
   it('lists the public threads of the forum, newest first, archived after the active ones', () => {
-    const channels = Object.fromEntries([post('100'), post('300'), post('200', { thread_metadata: { archived: true } as never }), post('999', { parent_id: 'other' }), post('400', { type: ChannelType.GUILD_TEXT })].map((c) => [c.id, c]));
+    const channels = Object.fromEntries([post('ideas', { type: ChannelType.GUILD_FORUM, parent_id: null }), post('100'), post('300'), post('200', { thread_metadata: { archived: true } as never }), post('999', { parent_id: 'other' }), post('400', { type: ChannelType.GUILD_TEXT }), post('500', { delivery_mode: 'ephemeral' })].map((c) => [c.id, c]));
     expect(forumPosts(channels, 'ideas').map((c) => c.id)).toEqual(['300', '100', '200']);
   });
 
   it('sends a post as a public thread with the body as its first message', () => {
-    expect(newPostBody(' Title ', ' Body ')).toEqual({ name: 'Title', type: ChannelType.PUBLIC_THREAD, message: { content: 'Body' } });
+    expect(newPostBody(' Title ', ' Body ', 'request-1')).toEqual({ name: 'Title', type: ChannelType.PUBLIC_THREAD, request_id: 'request-1', applied_tags: [], message: { content: 'Body' } });
     expect(canPost('t', ' ')).toBe(false);
     expect(canPost(' ', 'b')).toBe(false);
     expect(canPost('t', 'b')).toBe(true);
@@ -24,7 +24,8 @@ describe('forumPosts', () => {
 
 const mockApi = {
   messages: jest.fn(async () => []),
-  createThread: jest.fn(async (_c: string, body: { name: string }) => post('555', { name: body.name })),
+  listForumPosts: jest.fn(async () => []),
+  createThread: jest.fn(async (_c: string, body: { name: string }) => post('555', { name: body.name, forum_post_status: 'published' })),
 };
 const mockSession = { boot: jest.fn(), login: jest.fn(), loginMfa: jest.fn(), logout: jest.fn() };
 jest.mock('../../src/runtime', () => ({ getRuntime: () => ({ session: mockSession, gateway: { state: 'idle', resumeNow: jest.fn(), send: jest.fn() }, api: mockApi, apiUrl: 'https://api.test' }) }));
@@ -60,7 +61,7 @@ describe('forum channel', () => {
     await fireEvent.changeText(screen.getByLabelText('Title'), 'Gambits');
     await fireEvent.changeText(screen.getByLabelText('Message'), 'Which ones?');
     await fireEvent.press(screen.getByLabelText('Create post'));
-    await waitFor(() => expect(mockApi.createThread).toHaveBeenCalledWith('ideas', { name: 'Gambits', type: ChannelType.PUBLIC_THREAD, message: { content: 'Which ones?' } }));
+    await waitFor(() => expect(mockApi.createThread).toHaveBeenCalledWith('ideas', { name: 'Gambits', type: ChannelType.PUBLIC_THREAD, request_id: expect.any(String), applied_tags: [], message: { content: 'Which ones?' } }));
     await waitFor(() => expect(screen).toHavePathname('/servers/g1/555'));
     expect(useGuildStore.getState().channels['555']).toBeTruthy();
   });

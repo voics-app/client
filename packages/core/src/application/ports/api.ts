@@ -206,7 +206,8 @@ export interface ApiPort {
   deleteOverwrite(channelId: string, overwriteId: string): Promise<void>;
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }): Promise<Channel>;
+  listForumPosts(channelId: string): Promise<Channel[]>;
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }): Promise<Channel>;
 
   discoveryGuilds(query?: DiscoveryQuery): Promise<DiscoveryPage>;
   discoveryCategories(): Promise<string[]>;

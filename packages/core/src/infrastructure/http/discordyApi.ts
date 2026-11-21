@@ -410,7 +410,10 @@ export class DiscordyApi implements ApiPort {
   typing(channelId: string) {
     return this.post<void>(`/channels/${channelId}/typing`);
   }
-  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; message?: { content: string } }) {
+  listForumPosts(channelId: string) {
+    return this.get<Channel[]>(`/channels/${channelId}/threads`);
+  }
+  createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
   }
 
