@@ -221,6 +221,10 @@ export interface ApiPort {
   deleteOverwrite(channelId: string, overwriteId: string): Promise<void>;
   createInvite(channelId: string, body?: { max_age?: number; max_uses?: number }): Promise<Invite>;
   typing(channelId: string): Promise<void>;
+  listThreads(channelId: string, archived: boolean): Promise<Channel[]>;
+  joinThread(threadId: string, userId?: string): Promise<void>;
+  leaveThread(threadId: string, userId?: string): Promise<void>;
+  updateThread(threadId: string, patch: { archived?: boolean; locked?: boolean; auto_archive_duration?: number }): Promise<Channel>;
   listForumPosts(channelId: string): Promise<Channel[]>;
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }): Promise<Channel>;
 

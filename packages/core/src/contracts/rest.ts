@@ -126,6 +126,7 @@ export interface ThreadMetadata {
   auto_archive_duration: number;
   archive_timestamp: string;
   locked: boolean;
+  invitable?: boolean;
 }
 
 export interface ForumTag {
@@ -160,6 +161,7 @@ export interface Channel {
   rtc_region?: string | null;
   message_count?: number;
   member_count?: number;
+  is_thread_member?: boolean;
   thread_metadata?: ThreadMetadata;
   available_tags?: ForumTag[];
   applied_tags?: Snowflake[];

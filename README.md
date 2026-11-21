@@ -6,6 +6,10 @@ Electron + React desktop client for Voics: servers, channels, threads, DMs, voic
 
 ## Layout
 
+The desktop Threads panel browses visible active or archived threads and lets members join,
+leave, mute, archive or lock where permitted. It requires the thread browse and membership API
+and the corresponding gateway membership events; server-side auto-archive remains separate work.
+
 Standard text messages can be scheduled from the composer’s **Send later** action
 (mobile also supports holding Send). **Scheduled messages** lists your channel’s
 requests with explicit local time, edit/cancel while pending and safe confirmation

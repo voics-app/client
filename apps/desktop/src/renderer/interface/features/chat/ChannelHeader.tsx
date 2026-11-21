@@ -163,6 +163,7 @@ export function ChannelHeader({ channel, mode }: { channel: Channel; mode: Deliv
           </IconButton>
         )}
         <NotificationBell channel={channel} />
+        {[ChannelType.GUILD_TEXT, ChannelType.GUILD_ANNOUNCEMENT, ChannelType.GUILD_FORUM].some((type) => type === channel.type) && <IconButton label="Threads" active={sidePanel?.kind === 'threads'} onClick={() => toggle('threads')}><ChatsCircle size={20} /></IconButton>}
         <IconButton label="Pinned messages" active={sidePanel?.kind === 'pins'} onClick={() => toggle('pins')}><PushPin size={20} /></IconButton>
         <IconButton label="Watch Together" active={sidePanel?.kind === 'watch'} onClick={() => toggle('watch')}><Television size={20} /></IconButton>
         {buttons.addFriends && (

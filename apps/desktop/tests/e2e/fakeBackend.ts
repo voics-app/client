@@ -88,6 +88,13 @@ export async function startFakeBackend(): Promise<FakeBackend> {
     return guild;
   };
   addGuild('Nightglass HQ');
+  const threadParent = guilds[0]!.channels[0]!;
+  const thread = {
+    id: snowflake(), guild_id: guilds[0]!.id, parent_id: threadParent.id,
+    name: 'Working notes', type: 11, delivery_mode: 'standard', owner_id: USER.id,
+    member_count: 0, is_thread_member: false,
+    thread_metadata: { archived: false, locked: false, auto_archive_duration: 1440, archive_timestamp: new Date().toISOString(), invitable: true },
+  };
   const screeningGuild: Guild = {
     id: snowflake(), name: 'Screened server', pending: true,
     channels: [{ id: snowflake(), name: 'general', type: 0, guild_id: '', position: 0, delivery_mode: 'standard', last_message_id: null, topic: null }],
@@ -271,6 +278,20 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       const id = snowflake();
       respondToInteraction(id, body);
       return json(res, 201, { id });
+    }
+    if (path === `/channels/${threadParent.id}/threads` && req.method === 'GET') {
+      return json(res, 200, String(thread.thread_metadata.archived) === (url.searchParams.get('archived') ?? 'false') ? [thread] : []);
+    }
+    if (path === `/channels/${thread.id}` && req.method === 'GET') return json(res, 200, thread);
+    if (path === `/channels/${thread.id}` && req.method === 'PATCH') {
+      if (typeof body.archived === 'boolean') thread.thread_metadata.archived = body.archived;
+      if (typeof body.locked === 'boolean') thread.thread_metadata.locked = body.locked;
+      dispatch('THREAD_UPDATE', thread);
+      return json(res, 200, thread);
+    }
+    if (path === `/channels/${thread.id}/thread-members/%40me` || path === `/channels/${thread.id}/thread-members/@me`) {
+      if (req.method === 'PUT') { thread.is_thread_member = true; thread.member_count = 1; return json(res, 204, null); }
+      if (req.method === 'DELETE') { thread.is_thread_member = false; thread.member_count = 0; return json(res, 204, null); }
     }
     const history = /^\/channels\/(\d+)\/messages$/.exec(path);
     if (history) {

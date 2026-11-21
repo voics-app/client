@@ -127,6 +127,7 @@ export function VoiceOccupant({ guildId, state, speaking }: { guildId: string | 
 }
 
 function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel; active: boolean; dnd: ChannelDnd; pinned?: boolean }) {
+  const hasThreads = useGuildStore((s) => Object.values(s.channels).some((thread) => thread.parent_id === channel.id && thread.type >= 10 && thread.type <= 12 && !thread.thread_metadata?.archived));
   const read = useReadStateStore((s) => s.byChannel[channel.id]);
   const settings = useNotificationSettingsStore((s) => s.byScope[scopeKey(channel.guild_id)]);
   const muted = isChannelMutedDeep(settings, channel, Date.now());
@@ -196,6 +197,7 @@ function ChannelRow({ channel, active, dnd, pinned = false }: { channel: Channel
           {unread && <span className="channel-unread-dot" aria-label="Unread" />}
           <Icon size={18} className="channel-icon" weight={active ? 'fill' : 'regular'} />
           <span className="channel-name">{channel.name}</span>
+          {hasThreads && <ChatsCircle size={13} className="channel-thread-badge" aria-label="Active threads" />}
           {pinned && <PushPin size={12} weight="fill" className="channel-pin" aria-label="Pinned" />}
           {isPrivateChannel(channel) && <LockSimple size={12} weight="fill" className="channel-lock" aria-label="Private channel" />}
           {channel.nsfw && <span className="channel-nsfw" title="Age-restricted" aria-label="Age-restricted">18+</span>}

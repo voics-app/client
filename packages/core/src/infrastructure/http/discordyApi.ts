@@ -449,6 +449,18 @@ export class DiscordyApi implements ApiPort {
   createThread(channelId: string, body: { name: string; message_id?: string; type?: number; auto_archive_duration?: number; applied_tags?: string[]; request_id?: string; message?: { content: string } }) {
     return this.post<Channel>(`/channels/${channelId}/threads`, body);
   }
+  listThreads(channelId: string, archived: boolean) {
+    return this.get<Channel[]>(`/channels/${channelId}/threads`, { archived: String(archived) });
+  }
+  joinThread(threadId: string, userId = '@me') {
+    return this.put<void>(`/channels/${threadId}/thread-members/${enc(userId)}`);
+  }
+  leaveThread(threadId: string, userId = '@me') {
+    return this.del<void>(`/channels/${threadId}/thread-members/${enc(userId)}`);
+  }
+  updateThread(threadId: string, patch: { archived?: boolean; locked?: boolean; auto_archive_duration?: number }) {
+    return this.patch<Channel>(`/channels/${threadId}`, patch);
+  }
 
   discoveryGuilds(query: DiscoveryQuery = {}) {
     return this.get<DiscoveryPage>('/discovery/guilds', query as Record<string, string>);
