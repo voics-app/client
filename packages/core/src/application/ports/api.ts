@@ -3,6 +3,7 @@ import type { SearchParams } from '../../domain/messageSearch';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type { CreateReportBody } from '../../domain/reportModel';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -75,6 +76,11 @@ export interface CreateChannelBody {
 }
 
 export interface ApiPort {
+  connections(): Promise<LinkedConnection[]>;
+  userConnections(userId: string): Promise<LinkedConnection[]>;
+  authorizeGithubConnection(): Promise<{ url: string }>;
+  setConnectionVisibility(provider: string, visible: boolean): Promise<void>;
+  deleteConnection(provider: string): Promise<void>;
   register(body: { email: string; username: string; password: string }): Promise<AuthResponse>;
   login(body: { email: string; password: string; totp?: string }): Promise<AuthResponse>;
   logout(): Promise<void>;

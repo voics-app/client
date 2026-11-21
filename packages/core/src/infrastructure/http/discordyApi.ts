@@ -3,6 +3,7 @@ import type { ApiPort, CreateChannelBody, MessageQuery } from '../../application
 import type { CreateReportBody } from '../../domain/reportModel';
 import type { BotAuthorizationRequest } from '../../domain/botAuthorization';
 import type {
+  LinkedConnection,
   ApplicationCommand,
   ApplicationSummary,
   ApplicationAuthorization,
@@ -78,6 +79,12 @@ export class DiscordyApi implements ApiPort {
   private del<T>(path: string, reason?: string) {
     return this.http.request<T>('DELETE', path, { reason });
   }
+
+  connections() { return this.get<LinkedConnection[]>('/users/@me/connections'); }
+  userConnections(userId: string) { return this.get<LinkedConnection[]>(`/users/${enc(userId)}/connections`); }
+  authorizeGithubConnection() { return this.post<{ url: string }>('/users/@me/connections/github/authorize'); }
+  setConnectionVisibility(provider: string, visible: boolean) { return this.put<void>(`/users/@me/connections/${enc(provider)}`, { visible }); }
+  deleteConnection(provider: string) { return this.del<void>(`/users/@me/connections/${enc(provider)}`); }
 
   register(body: { email: string; username: string; password: string }) {
     return this.http.request<AuthResponse>('POST', '/auth/register', { body, auth: false });
