@@ -131,6 +131,24 @@ describe('MicPipeline', () => {
     mic.stop();
   });
 
+  it('forces PTT without changing the saved VAD preference', async () => {
+    const { mic, nodes, press, current } = setup({ inputMode: 'vad', vadThreshold: 0.3, pttReleaseDelayMs: 0 });
+    const levels: boolean[] = [];
+    mic.onLevel((_level, transmitting) => levels.push(transmitting));
+    await mic.start();
+    nodes[3]!.samples = 0.5;
+    await vi.advanceTimersByTimeAsync(40);
+    expect(levels.at(-1)).toBe(true);
+    mic.setForcePushToTalk(true);
+    await vi.advanceTimersByTimeAsync(40);
+    expect(levels.at(-1)).toBe(false);
+    press(true);
+    await vi.advanceTimersByTimeAsync(40);
+    expect(levels.at(-1)).toBe(true);
+    expect(current.inputMode).toBe('vad');
+    mic.stop();
+  });
+
   it('reconfigure restarts capture only when device constraints changed', async () => {
     const { mic, getUserMedia, current } = setup();
     await mic.start();

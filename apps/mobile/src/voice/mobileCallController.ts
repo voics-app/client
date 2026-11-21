@@ -10,6 +10,12 @@ import { presetConstraints } from '@discordy/core/domain/videoPresets';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import type { VoiceSessionPort } from '@discordy/core/application/ports/voice';
 import { VoiceCallController, type VoiceCallDeps } from '@discordy/core/application/voice/voiceCallController';
+import type { JoinTarget } from '@discordy/core/application/voice/voiceCallController';
+import type { VoiceServerUpdate } from '@discordy/core/contracts/gateway';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import type { CameraFacing, NativeVideoStream } from './nativeVoice';
 import { MobileScreenShare, type ScreenShareDriver } from './mobileScreenShare';
 
@@ -35,16 +41,57 @@ export class MobileCallController extends VoiceCallController {
 
   constructor(private readonly mobile: MobileCallDeps) {
     super(mobile);
-    this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState() });
+    this.screenShare = new MobileScreenShare({ driver: mobile.screenShare, session: () => this.session, announce: () => this.sendState(), canPublish: () => this.canStream() });
     this.disposers.push(
-      mobile.onBackground(() => void this.setVideo(false).catch(() => undefined)),
+      mobile.onBackground(() => { this.setPushToTalk(false); void this.setVideo(false).catch(() => undefined); }),
+      useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
       useVoiceStore.subscribe((state, previous) => {
+        if (state.states !== previous.states) this.syncVoicePermissions(this.target);
         if (state.call.status !== previous.call.status && (state.call.status === 'idle' || state.call.status === 'failed')) {
           this.releaseCapture();
           void this.screenShare.stop();
         }
       }),
     );
+  }
+
+  override async join(target: JoinTarget): Promise<void> {
+    if (this.target) await this.leave();
+    this.syncVoicePermissions(target);
+    await super.join(target);
+    if (this.target) this.syncVoicePermissions(this.target);
+  }
+
+  override onVoiceServerUpdate(update: VoiceServerUpdate): void {
+    const accepted = this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId);
+    if (accepted) {
+      this.mobile.mic.setPushToTalk?.(false);
+      this.mobile.mic.setForcePushToTalk?.(true);
+    }
+    super.onVoiceServerUpdate(update);
+    if (accepted) this.syncVoicePermissions(this.target);
+  }
+
+  setPushToTalk(pressed: boolean): void {
+    this.mobile.mic.setPushToTalk?.(pressed);
+  }
+
+  private syncVoicePermissions(target: JoinTarget | null): void {
+    const state = useGuildStore.getState();
+    const guild = target?.guildId ? state.guilds[target.guildId] : undefined;
+    const channel = target ? state.channels[target.channelId] : undefined;
+    const user = useSessionStore.getState().user?.id;
+    const member = target?.guildId && user ? state.members[target.guildId]?.[user] ?? useVoiceStore.getState().states[target.guildId]?.[user]?.member : undefined;
+    const permissions = target?.guildId && guild && channel && user && (member || guild.owner_id === user)
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? [])
+      : 0n;
+    const forced = Boolean(target?.guildId) && !hasPermission(permissions, Permission.USE_VAD);
+    this.mobile.mic.setForcePushToTalk?.(forced);
+    if (useVoiceStore.getState().requiresPtt !== forced) useVoiceStore.getState().setSelf({ requiresPtt: forced });
+    if (this.target && !this.canStream()) {
+      if (useVoiceStore.getState().selfVideo) void this.setVideo(false).catch(() => undefined);
+      if (this.screenShare.status !== 'idle') void this.screenShare.stop().catch(() => undefined);
+    }
   }
 
   get facing(): CameraFacing {
@@ -115,7 +162,12 @@ export class MobileCallController extends VoiceCallController {
     if (generation !== this.captureGeneration) return;
     const session = this.session;
     if (!session || useVoiceStore.getState().call.status !== 'connected') throw new Error('The camera needs a connected call.');
+    if (!this.canStream()) throw new Error('You do not have permission to use video in this channel.');
     const stream = await this.mobile.openCamera(facing);
+    if (!this.canStream()) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     if (generation !== this.captureGeneration || this.session !== session || useVoiceStore.getState().call.status !== 'connected') {
       stream.getTracks().forEach((track) => track.stop());
       return;
@@ -127,7 +179,7 @@ export class MobileCallController extends VoiceCallController {
     }
     try {
       await session.setCameraTrack(track, CAMERA_PRESET);
-      if (generation !== this.captureGeneration || this.session !== session) {
+      if (generation !== this.captureGeneration || this.session !== session || !this.canStream()) {
         stream.getTracks().forEach((t) => t.stop());
         await session.setCameraTrack(null);
         return;

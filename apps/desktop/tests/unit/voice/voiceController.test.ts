@@ -7,6 +7,7 @@ import { DEFAULT_PREFS, type PrefsData } from '@discordy/core/application/stores
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
 import { useLocalPeopleStore } from '@discordy/core/application/stores/localPeopleStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { presetConstraints } from '@discordy/core/domain/videoPresets';
 
 class FakeSession implements VoiceSessionPort {
@@ -42,6 +43,8 @@ class FakeSession implements VoiceSessionPort {
   }
 }
 
+const controllers: VoiceController[] = [];
+
 function setup(prefsOver: Partial<PrefsData> = {}) {
   const sent: { op: number; d: Record<string, unknown> }[] = [];
   const sessions: FakeSession[] = [];
@@ -50,6 +53,7 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     start: vi.fn(async () => ({ kind: 'audio' }) as MediaStreamTrack),
     stop: vi.fn(),
     setSelfMute: vi.fn(),
+    setForcePushToTalk: vi.fn(),
     setSoundshare: vi.fn(),
     reconfigure: vi.fn(async () => null),
     onLevel: vi.fn((l: (lv: number, t: boolean) => void) => {
@@ -90,6 +94,7 @@ function setup(prefsOver: Partial<PrefsData> = {}) {
     serverUpdateTimeoutMs: 15000,
   };
   const controller = new VoiceController(deps);
+  controllers.push(controller);
   return {
     controller,
     sent,
@@ -112,12 +117,129 @@ const update = { token: 'tok', guild_id: 'g1', channel_id: 'c1', endpoint: 'rtc.
 beforeEach(() => {
   vi.useFakeTimers();
   useVoiceStore.getState().resetCall();
-  useVoiceStore.setState({ selfMute: false, selfDeaf: false, userVolumes: {}, speaking: {}, localCamera: null, localScreen: null });
+  useVoiceStore.setState({ states: {}, selfMute: false, selfDeaf: false, userVolumes: {}, speaking: {}, localCamera: null, localScreen: null });
   useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
+  useGuildStore.setState({
+    guilds: { g1: { id: 'g1', owner_id: 'me', roles: [] } } as never,
+    channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+    members: { g1: { me: { roles: [] } } } as never,
+  });
 });
-afterEach(() => vi.useRealTimers());
+afterEach(async () => {
+  for (const controller of controllers.splice(0)) {
+    await controller.leave();
+    controller.dispose();
+  }
+  vi.useRealTimers();
+});
 
 describe('VoiceController', () => {
+  it('refuses camera and screen capture without STREAM', async () => {
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    const { controller, openCamera } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await expect(controller.setVideo(true)).rejects.toThrow(/permission/i);
+    await expect(controller.startScreenShare({ sourceId: 'screen', audio: false, preset: '720p30' })).rejects.toThrow(/permission/i);
+    expect(openCamera).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it('stops an active camera when STREAM is revoked', async () => {
+    const { controller, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    await controller.setVideo(true);
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(useVoiceStore.getState().selfVideo).toBe(false);
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(null);
+    controller.dispose();
+  });
+
+  it('stops a camera obtained after STREAM was revoked', async () => {
+    const { controller, openCamera, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    let resolveCapture!: (stream: MediaStream) => void;
+    openCamera.mockImplementationOnce(() => new Promise((resolve) => { resolveCapture = resolve; }));
+    const pending = controller.setVideo(true);
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    const stop = vi.fn();
+    resolveCapture({ getTracks: () => [{ stop }], getVideoTracks: () => [{ stop }] } as unknown as MediaStream);
+    await expect(pending).rejects.toThrow(/permission/i);
+    expect(stop).toHaveBeenCalled();
+    expect(sessions[0]!.setCameraTrack).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it('detaches and stops camera if STREAM is revoked during sender attachment', async () => {
+    const { controller, openCamera, sessions } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    controller.onVoiceServerUpdate(update);
+    const stop = vi.fn();
+    const track = { stop };
+    openCamera.mockResolvedValueOnce({ getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream);
+    let finishAttach!: () => void;
+    sessions[0]!.setCameraTrack.mockImplementationOnce(() => new Promise<void>((resolve) => { finishAttach = resolve; }));
+    const pending = controller.setVideo(true);
+    await Promise.resolve();
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    finishAttach();
+    await expect(pending).rejects.toThrow(/permission/i);
+    expect(sessions[0]!.setCameraTrack).toHaveBeenLastCalledWith(null);
+    expect(stop).toHaveBeenCalled();
+    controller.dispose();
+  });
+  it('uses a voice-state member when the guild member list was capped', async () => {
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) }] } } as never,
+      channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: {} },
+    });
+    const { controller, mic } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useVoiceStore.setState({ states: { g1: { me: { user_id: 'me', channel_id: 'c1', member: { roles: [] } } } } as never });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    controller.dispose();
+    useGuildStore.getState().reset();
+  });
+
+  it('forces PTT and ducks other callers while a priority member speaks', async () => {
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [
+        { id: 'g1', permissions: String(1n << 10n) },
+        { id: 'priority', permissions: String(1n << 8n) },
+      ] } } as never,
+      channels: { c1: { id: 'c1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: { me: { roles: [] }, priority: { roles: ['priority'] }, other: { roles: [] } } } as never,
+    });
+    const { controller, mic, mixer } = setup();
+    await controller.join({ guildId: 'g1', channelId: 'c1' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useGuildStore.getState().upsertRole('g1', { id: 'g1', permissions: String((1n << 10n) | (1n << 25n)) } as never);
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    useGuildStore.getState().upsertRole('g1', { id: 'g1', permissions: String(1n << 10n) } as never);
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(true);
+    useVoiceStore.setState({ states: { g1: {
+      priority: { user_id: 'priority', channel_id: 'c1' },
+      other: { user_id: 'other', channel_id: 'c1' },
+    } } as never });
+    useVoiceStore.getState().setUserVolume('other', 0.8);
+    useVoiceStore.getState().setSpeaking('priority', 0.5);
+    expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.4);
+    useVoiceStore.getState().setSpeaking('priority', 0);
+    expect(mixer.setUserVolume).toHaveBeenLastCalledWith('other', 0.8);
+    useGuildStore.getState().upsertChannel({ id: 'c2', guild_id: 'g1', type: 2, permission_overwrites: [
+      { id: 'g1', type: 0, allow: String(1n << 25n), deny: '0' },
+    ] } as never);
+    await controller.join({ guildId: 'g1', channelId: 'c2' });
+    expect(mic.setForcePushToTalk).toHaveBeenLastCalledWith(false);
+    expect(mic.stop.mock.invocationCallOrder.at(-1)!).toBeLessThan(mic.setForcePushToTalk.mock.invocationCallOrder.at(-1)!);
+    controller.dispose();
+    useGuildStore.getState().reset();
+  });
   it('joins: starts the mic, sends op 4, then opens a session when the server is allocated', async () => {
     const { controller, sent, sessions, mic } = setup();
     await controller.join({ guildId: 'g1', channelId: 'c1' });
@@ -319,7 +441,7 @@ describe('VoiceController', () => {
     await controller.join({ guildId: 'g1', channelId: 'c1' });
     controller.onVoiceServerUpdate(update);
     sessions[0]!.audio.forEach((l) => l('u9', {} as MediaStream));
-    expect(mixer.setUserVolume).not.toHaveBeenCalled();
+    expect(mixer.setUserVolume).toHaveBeenCalledWith('u9', 1);
     expect(mixer.setStream).toHaveBeenCalledTimes(1);
     expect(useVoiceStore.getState().userVolumes.u9).toBeUndefined();
   });
@@ -333,8 +455,8 @@ describe('VoiceController', () => {
       l('u2', {} as MediaStream);
       l('u3', {} as MediaStream);
     });
-    expect(mixer.setUserVolume).toHaveBeenCalledTimes(1);
     expect(mixer.setUserVolume).toHaveBeenCalledWith('u2', 0);
+    expect(mixer.setUserVolume).toHaveBeenCalledWith('u3', 1);
     useLocalPeopleStore.setState({ mutedUsers: {} });
   });
 

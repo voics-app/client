@@ -5,6 +5,8 @@ import type { MicPort as CoreMicPort } from '@discordy/core/application/ports/vo
 export type { MixerPort, ScreenTrackOptions, SessionClosed, SessionStatus, VoiceSessionPort } from '@discordy/core/application/ports/voice';
 
 export interface MicPort extends CoreMicPort {
+  /** Force the PTT gate for a channel that does not grant voice activity. */
+  setForcePushToTalk?(forced: boolean): void;
   /** Mixes shared-screen audio into the outgoing track (ungated); null removes it. */
   setSoundshare(stream: MediaStream | null): void;
   /** Re-reads prefs (devices, constraints, VAD/PTT); resolves a new track when capture had to restart, else null. */

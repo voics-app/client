@@ -12,7 +12,7 @@ import { useCallKitStore } from '../../src/voice/callkit/callKitStore';
 import { ChannelType, type Channel, type GuildFull, type User, type VoiceState } from '@discordy/core/contracts/rest';
 
 const mockScreenShare = { available: false, status: 'idle', subscribe: jest.fn(() => () => undefined), start: jest.fn(async () => undefined), stop: jest.fn(async () => undefined) };
-const mockController = { screenShare: mockScreenShare, join: jest.fn(async () => undefined), leave: jest.fn(async () => undefined), toggleMute: jest.fn(), toggleDeaf: jest.fn(), toggleVideo: jest.fn(async () => undefined), switchCamera: jest.fn() };
+const mockController = { screenShare: mockScreenShare, join: jest.fn(async () => undefined), leave: jest.fn(async () => undefined), setPushToTalk: jest.fn(), toggleMute: jest.fn(), toggleDeaf: jest.fn(), toggleVideo: jest.fn(async () => undefined), switchCamera: jest.fn() };
 const mockRoute = { current: 'speaker', subscribe: jest.fn(() => () => undefined), toggle: jest.fn() };
 const mockGateway = { state: 'idle', resumeNow: jest.fn(), send: jest.fn() };
 const mockApi = { messages: jest.fn(async () => []), ack: jest.fn(async () => undefined) };
@@ -141,6 +141,19 @@ describe('voice screens', () => {
     expect(mockController.toggleMute).toHaveBeenCalledTimes(1);
     expect(mockController.toggleDeaf).toHaveBeenCalledTimes(1);
     expect(mockRoute.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds and releases push to talk in a restricted channel', async () => {
+    seedGuild();
+    useVoiceStore.getState().setCall({ status: 'connected', channelId: 'lounge', guildId: 'g1' });
+    useVoiceStore.getState().setSelf({ requiresPtt: true });
+    await renderRouter('./app', { initialUrl: '/servers/g1' });
+    await openLounge();
+    const talk = await screen.findByLabelText('Hold to talk');
+    await fireEvent(talk, 'pressIn');
+    expect(mockController.setPushToTalk).toHaveBeenLastCalledWith(true);
+    await fireEvent(talk, 'pressOut');
+    expect(mockController.setPushToTalk).toHaveBeenLastCalledWith(false);
   });
 
   it('explains full-screen visibility before asking iOS for broadcast consent', async () => {

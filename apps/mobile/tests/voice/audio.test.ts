@@ -64,6 +64,25 @@ describe('MobileMic', () => {
     expect(t.enabled).toBe(false);
   });
 
+  it('only sends while PTT is held, and mute still wins', async () => {
+    const { t, mic } = setup();
+    mic.setForcePushToTalk(true);
+    await mic.start();
+    expect(t.enabled).toBe(false);
+    mic.setPushToTalk(true);
+    expect(t.enabled).toBe(true);
+    mic.setSelfMute(true);
+    expect(t.enabled).toBe(false);
+    mic.setSelfMute(false);
+    expect(t.enabled).toBe(false);
+    mic.setPushToTalk(true);
+    expect(t.enabled).toBe(true);
+    mic.setPushToTalk(false);
+    expect(t.enabled).toBe(false);
+    mic.setForcePushToTalk(false);
+    expect(t.enabled).toBe(true);
+  });
+
   it('reports what is being sent as speaking, and not while muted', async () => {
     const { mic, seen, advance } = setup();
     await mic.start();

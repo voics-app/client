@@ -50,6 +50,21 @@ it('stops a late consent result after leaving, and never publishes it', async ()
   expect(share.status).toBe('idle');
 });
 
+it('stops a late consent result if STREAM permission was revoked', async () => {
+  const { driver, stream, track, session, announce } = fixture();
+  let allowed = true;
+  let consent!: (stream: NativeVideoStream) => void;
+  driver.open.mockImplementation(() => new Promise((resolve) => { consent = resolve; }));
+  const share = new MobileScreenShare({ driver, session: () => session as never, announce, canPublish: () => allowed });
+  const opening = share.start();
+  allowed = false;
+  consent(stream);
+  await opening;
+  expect(track.stop).toHaveBeenCalled();
+  expect(session.setScreenTrack).not.toHaveBeenCalled();
+  expect(share.status).toBe('idle');
+});
+
 it('turns the share off when ReplayKit ends capture from Control Center', async () => {
   const { share, track, driver, session } = fixture();
   await share.start();

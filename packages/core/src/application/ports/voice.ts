@@ -40,6 +40,8 @@ export interface MicPort {
   start(): Promise<MediaTrackLike>;
   stop(): void;
   setSelfMute(muted: boolean): void;
+  setForcePushToTalk?(forced: boolean): void;
+  setPushToTalk?(pressed: boolean): void;
   onLevel(listener: (level: number, transmitting: boolean) => void): () => void;
 }
 

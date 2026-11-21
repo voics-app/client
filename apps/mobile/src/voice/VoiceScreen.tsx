@@ -78,6 +78,7 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
   const info = useCallInfo(channelId);
   const call = useVoiceStore((s) => s.call);
   const selfMute = useVoiceStore((s) => s.selfMute);
+  const requiresPtt = useVoiceStore((s) => s.requiresPtt);
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
   const selfVideo = useVoiceStore((s) => s.selfVideo);
   const remote = useVoiceStore((s) => s.remoteStreams);
@@ -94,6 +95,8 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
   const available = voiceAvailable();
   const share = getRuntime().voice?.controller.screenShare;
   const shareStatus = useSyncExternalStore(share?.subscribe ?? (() => () => undefined), () => share?.status ?? 'idle');
+
+  useEffect(() => () => getRuntime().voice?.controller.setPushToTalk?.(false), []);
 
   useEffect(() => {
     if (available) void joinVoice(info.guildId, channelId);
@@ -160,6 +163,20 @@ export function VoiceScreen({ channelId }: { channelId: string }) {
         <VoiceStage view={view} facing={facing} onFocus={(key) => useVoiceStore.getState().focus(key)} />
       )}
       <View style={styles.controls}>
+        {requiresPtt && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Hold to talk"
+            accessibilityHint="Hold this button while speaking, then release it."
+            disabled={!connectedHere || selfMute}
+            onPressIn={() => getRuntime().voice?.controller.setPushToTalk?.(true)}
+            onPressOut={() => getRuntime().voice?.controller.setPushToTalk?.(false)}
+            style={({ pressed }) => [styles.talk, (!connectedHere || selfMute) && styles.controlOff, pressed && styles.pressed]}
+          >
+            <Ionicons name="mic" size={20} color={theme.accentText} />
+            <Text style={styles.talkText}>Hold to talk</Text>
+          </Pressable>
+        )}
         <ControlButton icon={selfMute ? 'mic-off' : 'mic'} label={selfMute ? 'Unmute' : 'Mute'} on={selfMute} onPress={toggleMute} />
         <ControlButton icon={selfVideo ? 'videocam' : 'videocam-off'} label={selfVideo ? 'Turn camera off' : 'Turn camera on'} on={selfVideo} disabled={!connectedHere} onPress={() => void toggleCamera()} />
         {selfVideo && <ControlButton icon="camera-reverse" label={facing === 'front' ? 'Switch to back camera' : 'Switch to front camera'} onPress={switchCamera} />}
@@ -188,6 +205,8 @@ const styles = StyleSheet.create({
   empty: { color: theme.subtle, textAlign: 'center', padding: 32 },
   controls: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', paddingHorizontal: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.hairline },
   control: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.raised },
+  talk: { minHeight: 50, paddingHorizontal: 18, borderRadius: 25, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.accent },
+  talkText: { color: theme.accentText, fontSize: 14, fontWeight: '600' },
   controlOn: { backgroundColor: theme.text },
   controlOff: { opacity: 0.4 },
   controlDanger: { backgroundColor: theme.danger },

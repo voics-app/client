@@ -1,4 +1,5 @@
 import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
 import { GatewayOp } from '@discordy/core/contracts/gateway';
 import type { MediaStreamLike, MediaTrackLike } from '@discordy/core/application/ports/media';
@@ -144,6 +145,11 @@ describe('mobile voice', () => {
     useVoiceStore.getState().resetCall();
     useVoiceStore.setState({ selfMute: false, selfDeaf: false, speaking: {}, localCamera: null, selfVideo: false });
     useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'me', roles: [] } } as never,
+      channels: { v1: { id: 'v1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: { me: { roles: [] } } } as never,
+    });
   });
 
   it('joins: opens the audio session and the microphone, then tells the gateway', async () => {
@@ -293,6 +299,11 @@ describe('mobile video', () => {
     useVoiceStore.getState().resetCall();
     useVoiceStore.setState({ selfMute: false, selfDeaf: false, speaking: {} });
     useSessionStore.setState({ user: { id: 'me', username: 'me', global_name: null, avatar: null }, sessionId: 'sess' });
+    useGuildStore.setState({
+      guilds: { g1: { id: 'g1', owner_id: 'me', roles: [] } } as never,
+      channels: { v1: { id: 'v1', guild_id: 'g1', type: 2, permission_overwrites: [] } } as never,
+      members: { g1: { me: { roles: [] } } } as never,
+    });
   });
 
   async function inCall(withCrypto = true) {
@@ -306,6 +317,15 @@ describe('mobile video', () => {
   it('does not open the camera outside a connected call', async () => {
     const { voice, openCamera } = setup();
     await expect(voice.controller.setVideo(true)).rejects.toThrow(/connected call/i);
+    expect(openCamera).not.toHaveBeenCalled();
+    voice.dispose();
+  });
+
+  it('refuses camera capture without STREAM', async () => {
+    useGuildStore.setState({ guilds: { g1: { id: 'g1', owner_id: 'owner', roles: [{ id: 'g1', permissions: String(1n << 10n) }] } } as never });
+    const { voice, openCamera } = await inCall();
+    await expect(voice.controller.setVideo(true)).rejects.toThrow(/permission/i);
+    await expect(voice.controller.screenShare.start()).rejects.toThrow(/permission/i);
     expect(openCamera).not.toHaveBeenCalled();
     voice.dispose();
   });

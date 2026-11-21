@@ -4,6 +4,11 @@
  * `onVoiceServerUpdate`.
  */
 import { SpeakingFlag } from '@discordy/core/contracts/voice';
+import { Permission } from '@discordy/core/contracts/permissions';
+import { computeChannelPermissions, hasPermission } from '@discordy/core/domain/permissions';
+import { useGuildStore } from '@discordy/core/application/stores/guildStore';
+import { useSessionStore } from '@discordy/core/application/stores/sessionStore';
+import type { VoiceServerUpdate } from '@discordy/core/contracts/gateway';
 import { cameraCaptureConstraints, presetConstraints, type VideoPresetId } from '@discordy/core/domain/videoPresets';
 import type { PrefsData } from '@discordy/core/application/stores/prefsStore';
 import { useVoiceStore } from '@discordy/core/application/stores/voiceStore';
@@ -33,7 +38,13 @@ export class VoiceController extends VoiceCallController {
     super(desktop);
     const host: ScreenShareHost = {
       attach: async (track, options, audio) => {
-        await this.session?.setScreenTrack(track, options);
+        if (!this.canStream()) throw new Error('You do not have permission to share your screen in this channel.');
+        const session = this.session;
+        await session?.setScreenTrack(track, options);
+        if (!this.canStream() || session !== this.session) {
+          await session?.setScreenTrack(null);
+          throw new Error('You do not have permission to share your screen in this channel.');
+        }
         this.desktop.mic.setSoundshare(audio);
         this.soundshare = audio !== null;
         this.pushSpeaking();
@@ -56,11 +67,48 @@ export class VoiceController extends VoiceCallController {
       subscribe: (l: (s: PrefsData, p: PrefsData) => void) => usePrefsStore.subscribe(l),
     };
     this.disposers.push(
+      useGuildStore.subscribe(() => this.syncVoicePermissions(this.target)),
+      useVoiceStore.subscribe((state, previous) => {
+        if (state.states !== previous.states) this.syncVoicePermissions(this.target);
+      }),
       prefs.subscribe((state, previous) => {
         if (DEVICE_KEYS.some((k) => state[k] !== previous[k])) void this.refreshDevices();
         if (state.cameraPreset !== previous.cameraPreset) void this.applyCameraPreset();
       }),
     );
+  }
+
+  override async join(target: JoinTarget): Promise<void> {
+    if (this.target) await this.leave();
+    this.syncVoicePermissions(target);
+    await super.join(target);
+  }
+
+  override onVoiceServerUpdate(update: VoiceServerUpdate): void {
+    const accepted = this.target && update.guild_id === this.target.guildId && (this.session || update.channel_id === this.target.channelId);
+    if (accepted) this.desktop.mic.setForcePushToTalk?.(true);
+    super.onVoiceServerUpdate(update);
+    if (accepted) this.syncVoicePermissions(this.target);
+  }
+
+  private syncVoicePermissions(target: JoinTarget | null): void {
+    if (!target?.guildId) {
+      this.desktop.mic.setForcePushToTalk?.(false);
+      return;
+    }
+    const state = useGuildStore.getState();
+    const guild = state.guilds[target.guildId];
+    const channel = state.channels[target.channelId];
+    const user = useSessionStore.getState().user?.id;
+    const member = user ? state.members[target.guildId]?.[user] ?? useVoiceStore.getState().states[target.guildId]?.[user]?.member : undefined;
+    const permissions = guild && channel && user && (member || guild.owner_id === user)
+      ? computeChannelPermissions({ guildId: target.guildId, ownerId: guild.owner_id, userId: user, memberRoleIds: member?.roles ?? [], roles: guild.roles }, channel.permission_overwrites ?? [])
+      : 0n;
+    this.desktop.mic.setForcePushToTalk?.(!hasPermission(permissions, Permission.USE_VAD));
+    if (this.target && !this.canStream()) {
+      if (useVoiceStore.getState().selfVideo) void this.setVideo(false).catch(() => undefined);
+      if (this.screenShare.active) void this.stopScreenShare().catch(() => undefined);
+    }
   }
 
   protected override async releaseLocalMedia(): Promise<void> {
@@ -94,11 +142,30 @@ export class VoiceController extends VoiceCallController {
       this.sendState();
       return;
     }
+    if (!this.canStream()) throw new Error('You do not have permission to use video in this channel.');
     const { cameraDeviceId, cameraPreset } = this.prefs();
     const stream = await this.desktop.openCamera(cameraDeviceId, cameraPreset);
+    if (!this.canStream()) {
+      for (const track of stream.getTracks()) track.stop();
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     const track = stream.getVideoTracks()[0];
     if (!track) throw new Error('camera produced no video track');
-    await this.session?.setCameraTrack(track, presetConstraints(cameraPreset));
+    const session = this.session;
+    try {
+      await session?.setCameraTrack(track, presetConstraints(cameraPreset));
+    } catch (error) {
+      for (const captured of stream.getTracks()) captured.stop();
+      throw error;
+    }
+    if (!this.canStream() || session !== this.session) {
+      try {
+        await session?.setCameraTrack(null);
+      } finally {
+        for (const captured of stream.getTracks()) captured.stop();
+      }
+      throw new Error('You do not have permission to use video in this channel.');
+    }
     useVoiceStore.getState().setLocalMedia({ localCamera: stream });
     useVoiceStore.getState().setSelf({ selfVideo: true });
     this.sendState();
@@ -130,7 +197,12 @@ export class VoiceController extends VoiceCallController {
 
   async startScreenShare(request: StartScreenShare): Promise<ScreenShareOutcome> {
     if (!this.session) throw new Error('Join a voice channel before sharing your screen');
+    if (!this.canStream()) throw new Error('You do not have permission to share your screen in this channel.');
     const outcome = await this.screenShare.start(request);
+    if (!this.canStream()) {
+      await this.screenShare.stop();
+      throw new Error('You do not have permission to share your screen in this channel.');
+    }
     this.sendState();
     return outcome;
   }
