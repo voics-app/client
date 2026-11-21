@@ -35,7 +35,7 @@ function firstFrame(src: string): Promise<string | null> {
 const PREF = { gif: 'animateGifs', emoji: 'animateEmoji', sticker: 'animateStickers' } as const;
 
 /** An image that honours the matching "play automatically" preference: when off, an animated source shows its first frame and plays on hover or focus. */
-export function AnimatedImage({ kind, animated, src, ...rest }: ImgHTMLAttributes<HTMLImageElement> & { kind: AnimationKind; animated: boolean; src: string }) {
+export function AnimatedImage({ kind, animated, src, requireStill = false, ...rest }: ImgHTMLAttributes<HTMLImageElement> & { kind: AnimationKind; animated: boolean; src: string; requireStill?: boolean }) {
   const play = usePrefsStore((s) => s[PREF[kind]]);
   const still = animated && !play;
   const [frame, setFrame] = useState<string | null>(() => (still ? (stills.get(src) ?? null) : null));
@@ -51,7 +51,7 @@ export function AnimatedImage({ kind, animated, src, ...rest }: ImgHTMLAttribute
   return (
     <img
       {...rest}
-      src={still && frame && !hover ? frame : src}
+      src={still && !hover ? (frame ?? (requireStill ? undefined : src)) : src}
       data-still={still && frame && !hover ? 'true' : undefined}
       onMouseEnter={(e) => { setHover(true); rest.onMouseEnter?.(e); }}
       onMouseLeave={(e) => { setHover(false); rest.onMouseLeave?.(e); }}
