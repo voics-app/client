@@ -96,20 +96,6 @@ test('sends a message in a channel', async () => {
   expect(JSON.stringify([...backend.messages.values()])).toContain('hello from playwright');
 });
 
-test('picks and sends a GIF with still proxy previews', async () => {
-  await page.getByRole('button', { name: 'GIF', exact: true }).click();
-  const picker = page.getByRole('dialog', { name: 'GIF picker' });
-  const preview = picker.getByRole('img', { name: 'Cat' });
-  await expect(preview).toHaveAttribute('data-still', 'true', { timeout: 15_000 });
-  await expect(preview).toHaveAttribute('src', /^data:image\/png/);
-  await picker.getByRole('button', { name: 'Insert Cat' }).click();
-  await page.getByRole('textbox', { name: /Message #general/ }).press('Enter');
-  const messageImage = page.getByRole('log', { name: 'Messages' }).getByRole('button', { name: 'View image' }).last().locator('img');
-  await expect(messageImage).toHaveAttribute('data-still', 'true', { timeout: 15_000 });
-  await expect(messageImage).toHaveAttribute('src', /^data:image\/png/);
-  expect(JSON.stringify([...backend.messages.values()])).toContain('https://gif.example.test/cat.gif');
-});
-
 test('creates a server event and marks interest', async () => {
   await page.getByRole('complementary', { name: 'Channels' }).getByRole('button', { name: 'Nightglass HQ' }).click();
   await page.getByRole('menuitem', { name: 'Events' }).click();

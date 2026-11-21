@@ -200,9 +200,6 @@ export async function startFakeBackend(): Promise<FakeBackend> {
       // Two distinct frames so the still-frame test exercises an actual animation.
       return res.end(Buffer.from('R0lGODlhAgACAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAAIBgABCAQQEAAh+QQBCgABACwAAAAAAgACAIEAAP8AAAAAAAAAAAAIBgABCAQQEAA7', 'base64'));
     }
-    if (path === '/gifs/categories') return json(res, 200, { tags: [{ name: 'Cats', searchterm: 'cats' }] });
-    if (path === '/gifs/trending' || path === '/gifs/search') return json(res, 200, { results: [{ id: 'cat', content_description: 'Cat', media_formats: { gif: { url: gifUrl }, tinygif: { url: gifUrl, proxy_url: proxyUrl } } }] });
-    if (path === '/gifs/previews') return json(res, 200, { urls: ((body.urls ?? []) as string[]).map(() => proxyUrl) });
 
     if (path === '/stage-instances' && req.method === 'POST') {
       const channelId = String(body.channel_id);

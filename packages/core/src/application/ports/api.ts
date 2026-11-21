@@ -131,9 +131,6 @@ export interface ApiPort {
   userProfile(userId: string): Promise<UserProfile>;
   settings(): Promise<UserSettings>;
   updateSettings(patch: Partial<UserSettings>): Promise<UserSettings>;
-  gifs(query?: string): Promise<{ results: { id: string; content_description?: string; media_formats: { gif?: { url: string }; tinygif?: { url: string; proxy_url?: string } } }[] }>;
-  gifCategories(): Promise<{ tags: { searchterm: string; name: string }[] }>;
-  gifPreviews(urls: string[]): Promise<{ urls: string[] }>;
   privateChannels(): Promise<Channel[]>;
   openPrivateChannel(recipientIds: string[]): Promise<Channel>;
   setChannelDeliveryOverride(channelId: string, mode: DeliveryMode | null): Promise<void>;
